@@ -6,18 +6,45 @@
 
 import { ArrowRight, Check, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import Link from "next/link";
-import { startTransition, useActionState, useId, useState, type FormEvent, type ReactNode } from "react";
+import {
+  startTransition,
+  useActionState,
+  useId,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { CheckboxBox } from "@/components/ui/controls";
 import { PendingChip } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
-import { PASSWORD_HINT, passwordChecklist } from "@/features/auth/password-rules";
-import { startCheckout, type CheckoutFormState } from "@/server/billing/actions";
+import { GoogleMark } from "@/features/auth/GoogleMark";
+import {
+  PASSWORD_HINT,
+  passwordChecklist,
+} from "@/features/auth/password-rules";
+import { signInWithGoogle } from "@/server/auth/actions";
+import {
+  startCheckout,
+  type CheckoutFormState,
+} from "@/server/billing/actions";
 import { Field } from "./Field";
-import { checkDetails, type CheckoutField, type CheckoutValues } from "./fields";
+import {
+  checkDetails,
+  type CheckoutField,
+  type CheckoutValues,
+} from "./fields";
 import { formatPhone } from "./phone";
 import { formatTaxId } from "./tax-id";
 
-const FIELD_ORDER: CheckoutField[] = ["fullName", "email", "password", "company", "phone", "taxId", "acceptTerms"];
+const FIELD_ORDER: CheckoutField[] = [
+  "fullName",
+  "email",
+  "password",
+  "company",
+  "phone",
+  "taxId",
+  "acceptTerms",
+];
 
 type CheckoutFormProps = {
   /** Seleção da LP (toQuery); o servidor recalcula o pedido a partir dela. */
@@ -32,9 +59,23 @@ type CheckoutFormProps = {
 
 type Errors = Partial<Record<CheckoutField, string>>;
 
-type ConsentProps = { id: string; checked: boolean; onChange: (v: boolean) => void; error?: string; aside?: ReactNode; children: ReactNode };
+type ConsentProps = {
+  id: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  error?: string;
+  aside?: ReactNode;
+  children: ReactNode;
+};
 
-function Consent({ id, checked, onChange, error, aside, children }: ConsentProps) {
+function Consent({
+  id,
+  checked,
+  onChange,
+  error,
+  aside,
+  children,
+}: ConsentProps) {
   return (
     <div role="group" aria-describedby={error ? `${id}-erro` : undefined}>
       <div className="flex items-start gap-2.5 text-[14px]">
@@ -45,11 +86,16 @@ function Consent({ id, checked, onChange, error, aside, children }: ConsentProps
           <label htmlFor={id} className="cursor-pointer text-fg select-none">
             {children}
           </label>
-          {aside && <span className="ml-1.5 inline-flex align-middle">{aside}</span>}
+          {aside && (
+            <span className="ml-1.5 inline-flex align-middle">{aside}</span>
+          )}
         </div>
       </div>
       {error && (
-        <p id={`${id}-erro`} className="mt-1.5 pl-7 text-[12.5px] text-error-fg">
+        <p
+          id={`${id}-erro`}
+          className="mt-1.5 pl-7 text-[12.5px] text-error-fg"
+        >
           {error}
         </p>
       )}
@@ -57,9 +103,17 @@ function Consent({ id, checked, onChange, error, aside, children }: ConsentProps
   );
 }
 
-export function CheckoutForm({ planQuery, account, workspaceName, signInHref }: CheckoutFormProps) {
+export function CheckoutForm({
+  planQuery,
+  account,
+  workspaceName,
+  signInHref,
+}: CheckoutFormProps) {
   const id = useId();
-  const [state, formAction, pending] = useActionState<CheckoutFormState, FormData>(startCheckout, null);
+  const [state, formAction, pending] = useActionState<
+    CheckoutFormState,
+    FormData
+  >(startCheckout, null);
   const [values, setValues] = useState<CheckoutValues>({
     fullName: account?.fullName ?? "",
     email: account?.email ?? "",
@@ -102,187 +156,287 @@ export function CheckoutForm({ planQuery, account, workspaceName, signInHref }: 
   }
 
   const failure = state && !state.ok ? state.error : null;
+  // Google: entra (ou cria a conta) e volta para este mesmo checkout, já logado
+  const [googleState, googleAction, openingGoogle] = useActionState(
+    signInWithGoogle.bind(null, `/assinar?${planQuery}`),
+    null,
+  );
+  const googleError =
+    googleState && !googleState.ok ? googleState.error.message : null;
+  const googleFormId = `${useId()}-google`;
 
   return (
-    <form onSubmit={onSubmit} noValidate className="relative space-y-8">
-      <input type="hidden" name="plan" value={planQuery} />
-      <input type="hidden" name="acceptTerms" value={values.acceptTerms ? "on" : ""} />
-      <input type="hidden" name="marketing" value={values.marketing ? "on" : ""} />
-      {/* só robô preenche (fora da tela e da leitura) */}
-      <div aria-hidden="true" className="absolute -left-[10000px] h-px w-px overflow-hidden">
-        <label>
-          Site
-          <input type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
-        </label>
-      </div>
-
-      <fieldset className="space-y-4">
-        <legend className="title text-lg text-fg">Você</legend>
-        <Field
-          id={fid("fullName")}
-          label="Nome completo"
-          name="fullName"
-          autoComplete="name"
-          value={values.fullName}
-          onChange={(v) => set("fullName", v)}
-          error={errors.fullName}
-          maxLength={120}
-          required
+    <>
+      <form onSubmit={onSubmit} noValidate className="relative space-y-8">
+        <input type="hidden" name="plan" value={planQuery} />
+        <input
+          type="hidden"
+          name="acceptTerms"
+          value={values.acceptTerms ? "on" : ""}
         />
-        {account ? (
-          <Field id={fid("email")} label="E-mail" value={account.email} onChange={() => {}} readOnly hint="A assinatura fica nesta conta." />
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+        <input
+          type="hidden"
+          name="marketing"
+          value={values.marketing ? "on" : ""}
+        />
+        {/* só robô preenche (fora da tela e da leitura) */}
+        <div
+          aria-hidden="true"
+          className="absolute -left-[10000px] h-px w-px overflow-hidden"
+        >
+          <label>
+            Site
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              defaultValue=""
+            />
+          </label>
+        </div>
+
+        <fieldset className="space-y-4">
+          <legend className="title text-lg text-fg">Você</legend>
+          {!account && (
+            <div className="space-y-3">
+              <button
+                type="submit"
+                form={googleFormId}
+                disabled={openingGoogle || pending}
+                className={`${btn.secondary} w-full rounded-[10px]`}
+              >
+                <GoogleMark />{" "}
+                {openingGoogle ? "Abrindo o Google…" : "Continuar com Google"}
+              </button>
+              {googleError && (
+                <p className="text-[13px] text-error-fg">{googleError}</p>
+              )}
+              <p
+                className="flex items-center gap-3 text-[12.5px] text-fg-2"
+                aria-hidden
+              >
+                <span className="h-px flex-1 bg-line" /> ou com e-mail e senha{" "}
+                <span className="h-px flex-1 bg-line" />
+              </p>
+            </div>
+          )}
+          <Field
+            id={fid("fullName")}
+            label="Nome completo"
+            name="fullName"
+            autoComplete="name"
+            value={values.fullName}
+            onChange={(v) => set("fullName", v)}
+            error={errors.fullName}
+            maxLength={120}
+            required
+          />
+          {account ? (
             <Field
               id={fid("email")}
               label="E-mail"
-              name="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="nome@empresa.com"
-              value={values.email}
-              onChange={(v) => set("email", v)}
-              error={errors.email}
-              maxLength={254}
+              value={account.email}
+              onChange={() => {}}
+              readOnly
+              hint="A assinatura fica nesta conta."
+            />
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                id={fid("email")}
+                label="E-mail"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="nome@empresa.com"
+                value={values.email}
+                onChange={(v) => set("email", v)}
+                error={errors.email}
+                maxLength={254}
+                required
+              />
+              <Field
+                id={fid("password")}
+                label="Crie uma senha"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                value={values.password}
+                onChange={(v) => set("password", v)}
+                error={errors.password}
+                maxLength={72}
+                required
+                trailing={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={
+                      showPassword ? "Esconder a senha" : "Mostrar a senha"
+                    }
+                    aria-pressed={showPassword}
+                    className="inline-flex size-9 items-center justify-center rounded-control text-fg-2 transition-colors hover:text-fg"
+                  >
+                    {showPassword ? (
+                      <EyeOff size={17} aria-hidden />
+                    ) : (
+                      <Eye size={17} aria-hidden />
+                    )}
+                  </button>
+                }
+                hint={
+                  values.password ? (
+                    <ul
+                      className="flex flex-wrap gap-x-3 gap-y-0.5"
+                      aria-label="A senha precisa ter"
+                    >
+                      {passwordChecklist(values.password).map((r) => (
+                        <li
+                          key={r.id}
+                          className={`inline-flex items-center gap-1 ${r.ok ? "text-accent" : ""}`}
+                        >
+                          <Check
+                            size={12}
+                            strokeWidth={3}
+                            aria-hidden
+                            className={r.ok ? "" : "opacity-30"}
+                          />
+                          {r.label}
+                          <span className="sr-only">
+                            {r.ok ? " (ok)" : " (falta)"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    PASSWORD_HINT
+                  )
+                }
+              />
+            </div>
+          )}
+        </fieldset>
+
+        <fieldset className="space-y-4">
+          <legend className="title text-lg text-fg">Empresa</legend>
+          <Field
+            id={fid("company")}
+            label="Empresa ou agência"
+            name="company"
+            autoComplete="organization"
+            value={values.company}
+            onChange={(v) => set("company", v)}
+            error={errors.company}
+            maxLength={80}
+            required
+            hint={
+              workspaceName
+                ? `Nome na fatura. O workspace continua "${workspaceName}".`
+                : "Vira o nome do seu workspace no VYZ."
+            }
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              id={fid("phone")}
+              label="WhatsApp"
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel-national"
+              placeholder="(71) 99999-9999"
+              value={values.phone}
+              onChange={(v) => set("phone", formatPhone(v))}
+              error={errors.phone}
               required
+              hint="Para avisos da conta e do suporte."
             />
             <Field
-              id={fid("password")}
-              label="Crie uma senha"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              autoComplete="new-password"
-              value={values.password}
-              onChange={(v) => set("password", v)}
-              error={errors.password}
-              maxLength={72}
-              required
-              trailing={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  aria-label={showPassword ? "Esconder a senha" : "Mostrar a senha"}
-                  aria-pressed={showPassword}
-                  className="inline-flex size-9 items-center justify-center rounded-control text-fg-2 transition-colors hover:text-fg"
-                >
-                  {showPassword ? <EyeOff size={17} aria-hidden /> : <Eye size={17} aria-hidden />}
-                </button>
-              }
-              hint={
-                values.password ? (
-                  <ul className="flex flex-wrap gap-x-3 gap-y-0.5" aria-label="A senha precisa ter">
-                    {passwordChecklist(values.password).map((r) => (
-                      <li key={r.id} className={`inline-flex items-center gap-1 ${r.ok ? "text-accent" : ""}`}>
-                        <Check size={12} strokeWidth={3} aria-hidden className={r.ok ? "" : "opacity-30"} />
-                        {r.label}
-                        <span className="sr-only">{r.ok ? " (ok)" : " (falta)"}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  PASSWORD_HINT
-                )
-              }
+              id={fid("taxId")}
+              label="CPF ou CNPJ (opcional)"
+              name="taxId"
+              autoCapitalize="characters"
+              autoComplete="off"
+              placeholder="000.000.000-00"
+              value={values.taxId}
+              onChange={(v) => set("taxId", formatTaxId(v))}
+              error={errors.taxId}
+              hint="Para a nota fiscal."
             />
           </div>
+        </fieldset>
+
+        <div className="space-y-3">
+          <Consent
+            id={fid("acceptTerms")}
+            checked={values.acceptTerms}
+            onChange={(v) => set("acceptTerms", v)}
+            error={errors.acceptTerms}
+            aside={
+              <PendingChip
+                label="Textos em revisão"
+                detail="Os documentos completos entram antes do lançamento. O seu aceite fica registrado com a versão vigente, a data e o aparelho."
+              />
+            }
+          >
+            Li e aceito os Termos de Uso e a Política de Privacidade da VYZ.
+          </Consent>
+          <Consent
+            id={fid("marketing")}
+            checked={values.marketing}
+            onChange={(v) => set("marketing", v)}
+          >
+            Quero receber novidades e dicas da VYZ por e-mail e WhatsApp
+            (opcional).
+          </Consent>
+        </div>
+
+        {failure && (
+          <div
+            role="alert"
+            className="rounded-control border border-error/40 bg-error-soft px-4 py-3 text-[14px] text-error-fg"
+          >
+            {failure.message}
+            {(failure.code === "checkout:email_exists" ||
+              failure.code === "auth:required") && (
+              <>
+                {" "}
+                <Link
+                  href={signInHref}
+                  className="font-semibold underline underline-offset-4"
+                >
+                  Entrar e continuar
+                </Link>
+              </>
+            )}
+          </div>
         )}
-      </fieldset>
 
-      <fieldset className="space-y-4">
-        <legend className="title text-lg text-fg">Empresa</legend>
-        <Field
-          id={fid("company")}
-          label="Empresa ou agência"
-          name="company"
-          autoComplete="organization"
-          value={values.company}
-          onChange={(v) => set("company", v)}
-          error={errors.company}
-          maxLength={80}
-          required
-          hint={workspaceName ? `Nome na fatura. O workspace continua "${workspaceName}".` : "Vira o nome do seu workspace no VYZ."}
-        />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            id={fid("phone")}
-            label="WhatsApp"
-            name="phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel-national"
-            placeholder="(71) 99999-9999"
-            value={values.phone}
-            onChange={(v) => set("phone", formatPhone(v))}
-            error={errors.phone}
-            required
-            hint="Para avisos da conta e do suporte."
-          />
-          <Field
-            id={fid("taxId")}
-            label="CPF ou CNPJ (opcional)"
-            name="taxId"
-            autoCapitalize="characters"
-            autoComplete="off"
-            placeholder="000.000.000-00"
-            value={values.taxId}
-            onChange={(v) => set("taxId", formatTaxId(v))}
-            error={errors.taxId}
-            hint="Para a nota fiscal."
-          />
+        <div>
+          <button
+            type="submit"
+            disabled={pending}
+            className={`${btn.primary} w-full rounded-[10px]`}
+          >
+            {pending ? (
+              <>
+                <LoaderCircle size={18} aria-hidden className="animate-spin" />
+                {account ? "Salvando o pedido…" : "Criando sua conta…"}
+              </>
+            ) : (
+              <>
+                Continuar para o pagamento
+                <ArrowRight size={17} aria-hidden />
+              </>
+            )}
+          </button>
+          <p className="mt-3 text-center text-[12.5px] text-fg-2">
+            No próximo passo você confere o total e paga.
+          </p>
         </div>
-      </fieldset>
-
-      <div className="space-y-3">
-        <Consent
-          id={fid("acceptTerms")}
-          checked={values.acceptTerms}
-          onChange={(v) => set("acceptTerms", v)}
-          error={errors.acceptTerms}
-          aside={
-            <PendingChip
-              label="Textos em revisão"
-              detail="Os documentos completos entram antes do lançamento. O seu aceite fica registrado com a versão vigente, a data e o aparelho."
-            />
-          }
-        >
-          Li e aceito os Termos de Uso e a Política de Privacidade da VYZ.
-        </Consent>
-        <Consent id={fid("marketing")} checked={values.marketing} onChange={(v) => set("marketing", v)}>
-          Quero receber novidades e dicas da VYZ por e-mail e WhatsApp (opcional).
-        </Consent>
-      </div>
-
-      {failure && (
-        <div role="alert" className="rounded-control border border-error/40 bg-error-soft px-4 py-3 text-[14px] text-error-fg">
-          {failure.message}
-          {(failure.code === "checkout:email_exists" || failure.code === "auth:required") && (
-            <>
-              {" "}
-              <Link href={signInHref} className="font-semibold underline underline-offset-4">
-                Entrar e continuar
-              </Link>
-            </>
-          )}
-        </div>
-      )}
-
-      <div>
-        <button type="submit" disabled={pending} className={`${btn.primary} w-full rounded-[10px]`}>
-          {pending ? (
-            <>
-              <LoaderCircle size={18} aria-hidden className="animate-spin" />
-              {account ? "Salvando o pedido…" : "Criando sua conta…"}
-            </>
-          ) : (
-            <>
-              Continuar para o pagamento
-              <ArrowRight size={17} aria-hidden />
-            </>
-          )}
-        </button>
-        <p className="mt-3 text-center text-[12.5px] text-fg-2">No próximo passo você confere o total e paga.</p>
-      </div>
-    </form>
+      </form>
+      {/* fora do formulário principal (form não pode ficar dentro de form) */}
+      <form id={googleFormId} action={googleAction} hidden />
+    </>
   );
 }
