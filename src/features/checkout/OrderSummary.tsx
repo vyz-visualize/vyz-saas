@@ -7,7 +7,7 @@ import { Wordmark } from "@/components/brand/Wordmark";
 import { PendingChip } from "@/components/ui/kit";
 import { brl } from "@/lib/format";
 import { describeAccounts } from "@/features/pricing/messages";
-import { PERIOD_LABEL, PLAN_LABEL, PRO_TRACKING_VALUE, type PlanState, type Quote } from "@/features/pricing/pricing";
+import { LP_PLAN_PAGES, PERIOD_LABEL, PLAN_LABEL, PRO_TRACKING_VALUE, type PlanId, type PlanState, type Quote } from "@/features/pricing/pricing";
 
 type OrderSummaryProps = {
   state: PlanState;
@@ -32,8 +32,12 @@ function Row({ label, value }: { label: string; value: string }) {
 export function OrderSummary({ state, quote: q, amountDueNowCents, recurringCents, editHref, simulated = false, className = "" }: OrderSummaryProps) {
   const noPlan = state.plano === "sem";
   const annual = state.periodo === "anual";
-  const headline = noPlan ? "Sem plano · só extras" : `Plano ${PLAN_LABEL[state.plano]} · ${PERIOD_LABEL[state.periodo]}`;
-  const accounts = noPlan ? "" : describeAccounts(state);
+  const lp = state.produto === "lp";
+  const headline = noPlan
+    ? "Sem plano · só extras"
+    : `${lp ? "Landing pages · " : ""}Plano ${PLAN_LABEL[state.plano]} · ${PERIOD_LABEL[state.periodo]}`;
+  const accounts = noPlan || lp ? "" : describeAccounts(state);
+  const pages = noPlan || !lp ? 0 : LP_PLAN_PAGES[state.plano as PlanId];
 
   return (
     <div className={className}>
@@ -47,7 +51,7 @@ export function OrderSummary({ state, quote: q, amountDueNowCents, recurringCent
         <p className="mt-2 text-[17px] font-semibold">{headline}</p>
         {!noPlan && (
           <p className="mt-0.5 text-[13px] text-fg-2">
-            {q.accountsBilled === 1 ? "1 conta" : `${q.accountsBilled} contas`}
+            {lp ? `${pages} ${pages === 1 ? "landing page feita" : "landing pages feitas"} pelo time` : q.accountsBilled === 1 ? "1 conta" : `${q.accountsBilled} contas`}
             {accounts && ` · ${accounts}`}
           </p>
         )}

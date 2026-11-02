@@ -129,7 +129,7 @@ export function MockGenerator() {
             type="button"
             onClick={() => {
               update({ nicho: applied.tipo as "ecommerce" | "imobiliario" });
-              scrollToId("monte-seu-plano");
+              scrollToId("planos");
             }}
             className={`${btn.outline} group mt-3 w-full sm:w-auto`}
           >

@@ -4,7 +4,6 @@ import { ComoFunciona } from "@/features/marketing/sections/ComoFunciona";
 import { Footer } from "@/features/marketing/sections/Footer";
 import { Hero } from "@/features/marketing/sections/Hero";
 import { Intro } from "@/features/marketing/sections/Intro";
-import { MonteSeuPlano } from "@/features/marketing/sections/MonteSeuPlano";
 import { Navbar } from "@/features/marketing/sections/Navbar";
 import { Planos } from "@/features/marketing/sections/Planos";
 import { Ticker } from "@/features/marketing/sections/Ticker";
@@ -38,9 +37,6 @@ export default function Home() {
         </Suspense>
         <Suspense>
           <Planos />
-        </Suspense>
-        <Suspense>
-          <MonteSeuPlano />
         </Suspense>
       </main>
       <Suspense>

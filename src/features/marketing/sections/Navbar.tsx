@@ -14,7 +14,6 @@ import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 const LINKS = [
   { id: "como-funciona", label: "Como funciona" },
   { id: "planos", label: "Planos" },
-  { id: "monte-seu-plano", label: "Monte seu plano" },
 ];
 
 export function Navbar() {

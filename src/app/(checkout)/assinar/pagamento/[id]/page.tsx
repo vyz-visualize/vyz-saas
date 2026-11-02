@@ -73,7 +73,7 @@ async function Payment({ params }: { params: PageProps<"/assinar/pagamento/[id]"
           quote={checkout.quote}
           amountDueNowCents={checkout.amountDueNowCents}
           recurringCents={checkout.recurringCents}
-          editHref={`/?${query}#monte-seu-plano`}
+          editHref={`/?${query}#planos`}
         />
       </aside>
     </div>
@@ -99,7 +99,7 @@ function Closed({ checkout }: { checkout: CheckoutView }) {
         <Link href={`/assinar?${query}`} className={btn.primary}>
           Recomeçar
         </Link>
-        <Link href={`/?${query}#monte-seu-plano`} className={btn.secondary}>
+        <Link href={`/?${query}#planos`} className={btn.secondary}>
           Alterar pedido
         </Link>
       </div>

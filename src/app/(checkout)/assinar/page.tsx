@@ -53,7 +53,7 @@ async function Checkout({ searchParams }: { searchParams: Promise<SearchParams> 
   const order = buildOrder(state);
   const query = toQuery(state);
   const viewer = await getCheckoutViewer(state.produto);
-  const editHref = `/?${query}#monte-seu-plano`;
+  const editHref = `/?${query}#planos`;
 
   if (order.blocked) return <Blocked order={order} state={state} query={query} editHref={editHref} />;
   if (viewer.subscribed) return <AlreadySubscribed workspaceName={viewer.subscribed.workspaceName} />;
