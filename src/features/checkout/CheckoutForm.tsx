@@ -6,45 +6,20 @@
 
 import { ArrowRight, Check, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import Link from "next/link";
-import {
-  startTransition,
-  useActionState,
-  useId,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import { startTransition, useActionState, useId, useState, type FormEvent, type ReactNode } from "react";
 import { CheckboxBox } from "@/components/ui/controls";
 import { PendingChip } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { GoogleMark } from "@/features/auth/GoogleMark";
-import {
-  PASSWORD_HINT,
-  passwordChecklist,
-} from "@/features/auth/password-rules";
+import { PASSWORD_HINT, passwordChecklist } from "@/features/auth/password-rules";
 import { signInWithGoogle } from "@/server/auth/actions";
-import {
-  startCheckout,
-  type CheckoutFormState,
-} from "@/server/billing/actions";
+import { startCheckout, type CheckoutFormState } from "@/server/billing/actions";
 import { Field } from "./Field";
-import {
-  checkDetails,
-  type CheckoutField,
-  type CheckoutValues,
-} from "./fields";
+import { checkDetails, type CheckoutField, type CheckoutValues } from "./fields";
 import { formatPhone } from "./phone";
 import { formatTaxId } from "./tax-id";
 
-const FIELD_ORDER: CheckoutField[] = [
-  "fullName",
-  "email",
-  "password",
-  "company",
-  "phone",
-  "taxId",
-  "acceptTerms",
-];
+const FIELD_ORDER: CheckoutField[] = ["fullName", "email", "password", "company", "phone", "taxId", "acceptTerms"];
 
 type CheckoutFormProps = {
   /** Seleção da LP (toQuery); o servidor recalcula o pedido a partir dela. */
@@ -68,14 +43,7 @@ type ConsentProps = {
   children: ReactNode;
 };
 
-function Consent({
-  id,
-  checked,
-  onChange,
-  error,
-  aside,
-  children,
-}: ConsentProps) {
+function Consent({ id, checked, onChange, error, aside, children }: ConsentProps) {
   return (
     <div role="group" aria-describedby={error ? `${id}-erro` : undefined}>
       <div className="flex items-start gap-2.5 text-[14px]">
@@ -86,16 +54,11 @@ function Consent({
           <label htmlFor={id} className="cursor-pointer text-fg select-none">
             {children}
           </label>
-          {aside && (
-            <span className="ml-1.5 inline-flex align-middle">{aside}</span>
-          )}
+          {aside && <span className="ml-1.5 inline-flex align-middle">{aside}</span>}
         </div>
       </div>
       {error && (
-        <p
-          id={`${id}-erro`}
-          className="mt-1.5 pl-7 text-[12.5px] text-error-fg"
-        >
+        <p id={`${id}-erro`} className="mt-1.5 pl-7 text-[12.5px] text-error-fg">
           {error}
         </p>
       )}
@@ -103,17 +66,9 @@ function Consent({
   );
 }
 
-export function CheckoutForm({
-  planQuery,
-  account,
-  workspaceName,
-  signInHref,
-}: CheckoutFormProps) {
+export function CheckoutForm({ planQuery, account, workspaceName, signInHref }: CheckoutFormProps) {
   const id = useId();
-  const [state, formAction, pending] = useActionState<
-    CheckoutFormState,
-    FormData
-  >(startCheckout, null);
+  const [state, formAction, pending] = useActionState<CheckoutFormState, FormData>(startCheckout, null);
   const [values, setValues] = useState<CheckoutValues>({
     fullName: account?.fullName ?? "",
     email: account?.email ?? "",
@@ -157,70 +112,57 @@ export function CheckoutForm({
 
   const failure = state && !state.ok ? state.error : null;
   // Google: entra (ou cria a conta) e volta para este mesmo checkout, já logado
-  const [googleState, googleAction, openingGoogle] = useActionState(
-    signInWithGoogle.bind(null, `/assinar?${planQuery}`),
-    null,
-  );
-  const googleError =
-    googleState && !googleState.ok ? googleState.error.message : null;
-  const googleFormId = `${useId()}-google`;
+  const [googleState, googleAction, openingGoogle] = useActionState(signInWithGoogle.bind(null, `/assinar?${planQuery}`), null);
+  const googleError = googleState && !googleState.ok ? googleState.error.message : null;
+  // sem conta: primeiro a escolha (Google é o caminho curto); e-mail e senha abre o formulário
+  const [withEmail, setWithEmail] = useState(false);
+
+  if (!account && !withEmail) {
+    return (
+      <div className="space-y-5">
+        <h2 className="title text-lg text-fg">Crie sua conta</h2>
+        <form action={googleAction}>
+          <button type="submit" disabled={openingGoogle} className={`${btn.primary} h-13 w-full rounded-[10px] text-[15.5px]`}>
+            <span className="inline-flex size-6 items-center justify-center rounded-full bg-white">
+              <GoogleMark />
+            </span>
+            {openingGoogle ? "Abrindo o Google…" : "Criar conta com Google"}
+          </button>
+        </form>
+        {googleError && <p className="text-[13px] text-error-fg">{googleError}</p>}
+        <p className="text-center text-[13px] text-fg-2">Um clique, sem senha para lembrar. Você volta direto para este pedido.</p>
+        <p className="flex items-center gap-3 text-[12.5px] text-fg-2" aria-hidden>
+          <span className="h-px flex-1 bg-line" /> ou <span className="h-px flex-1 bg-line" />
+        </p>
+        <button type="button" onClick={() => setWithEmail(true)} className={`${btn.secondary} w-full rounded-[10px]`}>
+          Criar com e-mail e senha
+        </button>
+        <p className="text-center text-[13px] text-fg-2">
+          Já tem conta?{" "}
+          <Link href={signInHref} className="font-semibold text-accent underline-offset-4 hover:underline">
+            Entrar
+          </Link>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
       <form onSubmit={onSubmit} noValidate className="relative space-y-8">
         <input type="hidden" name="plan" value={planQuery} />
-        <input
-          type="hidden"
-          name="acceptTerms"
-          value={values.acceptTerms ? "on" : ""}
-        />
-        <input
-          type="hidden"
-          name="marketing"
-          value={values.marketing ? "on" : ""}
-        />
+        <input type="hidden" name="acceptTerms" value={values.acceptTerms ? "on" : ""} />
+        <input type="hidden" name="marketing" value={values.marketing ? "on" : ""} />
         {/* só robô preenche (fora da tela e da leitura) */}
-        <div
-          aria-hidden="true"
-          className="absolute -left-[10000px] h-px w-px overflow-hidden"
-        >
+        <div aria-hidden="true" className="absolute -left-[10000px] h-px w-px overflow-hidden">
           <label>
             Site
-            <input
-              type="text"
-              name="website"
-              tabIndex={-1}
-              autoComplete="off"
-              defaultValue=""
-            />
+            <input type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
           </label>
         </div>
 
         <fieldset className="space-y-4">
           <legend className="title text-lg text-fg">Você</legend>
-          {!account && (
-            <div className="space-y-3">
-              <button
-                type="submit"
-                form={googleFormId}
-                disabled={openingGoogle || pending}
-                className={`${btn.secondary} w-full rounded-[10px]`}
-              >
-                <GoogleMark />{" "}
-                {openingGoogle ? "Abrindo o Google…" : "Continuar com Google"}
-              </button>
-              {googleError && (
-                <p className="text-[13px] text-error-fg">{googleError}</p>
-              )}
-              <p
-                className="flex items-center gap-3 text-[12.5px] text-fg-2"
-                aria-hidden
-              >
-                <span className="h-px flex-1 bg-line" /> ou com e-mail e senha{" "}
-                <span className="h-px flex-1 bg-line" />
-              </p>
-            </div>
-          )}
           <Field
             id={fid("fullName")}
             label="Nome completo"
@@ -233,14 +175,7 @@ export function CheckoutForm({
             required
           />
           {account ? (
-            <Field
-              id={fid("email")}
-              label="E-mail"
-              value={account.email}
-              onChange={() => {}}
-              readOnly
-              hint="A assinatura fica nesta conta."
-            />
+            <Field id={fid("email")} label="E-mail" value={account.email} onChange={() => {}} readOnly hint="A assinatura fica nesta conta." />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
@@ -272,40 +207,21 @@ export function CheckoutForm({
                   <button
                     type="button"
                     onClick={() => setShowPassword((s) => !s)}
-                    aria-label={
-                      showPassword ? "Esconder a senha" : "Mostrar a senha"
-                    }
+                    aria-label={showPassword ? "Esconder a senha" : "Mostrar a senha"}
                     aria-pressed={showPassword}
                     className="inline-flex size-9 items-center justify-center rounded-control text-fg-2 transition-colors hover:text-fg"
                   >
-                    {showPassword ? (
-                      <EyeOff size={17} aria-hidden />
-                    ) : (
-                      <Eye size={17} aria-hidden />
-                    )}
+                    {showPassword ? <EyeOff size={17} aria-hidden /> : <Eye size={17} aria-hidden />}
                   </button>
                 }
                 hint={
                   values.password ? (
-                    <ul
-                      className="flex flex-wrap gap-x-3 gap-y-0.5"
-                      aria-label="A senha precisa ter"
-                    >
+                    <ul className="flex flex-wrap gap-x-3 gap-y-0.5" aria-label="A senha precisa ter">
                       {passwordChecklist(values.password).map((r) => (
-                        <li
-                          key={r.id}
-                          className={`inline-flex items-center gap-1 ${r.ok ? "text-accent" : ""}`}
-                        >
-                          <Check
-                            size={12}
-                            strokeWidth={3}
-                            aria-hidden
-                            className={r.ok ? "" : "opacity-30"}
-                          />
+                        <li key={r.id} className={`inline-flex items-center gap-1 ${r.ok ? "text-accent" : ""}`}>
+                          <Check size={12} strokeWidth={3} aria-hidden className={r.ok ? "" : "opacity-30"} />
                           {r.label}
-                          <span className="sr-only">
-                            {r.ok ? " (ok)" : " (falta)"}
-                          </span>
+                          <span className="sr-only">{r.ok ? " (ok)" : " (falta)"}</span>
                         </li>
                       ))}
                     </ul>
@@ -330,11 +246,7 @@ export function CheckoutForm({
             error={errors.company}
             maxLength={80}
             required
-            hint={
-              workspaceName
-                ? `Nome na fatura. O workspace continua "${workspaceName}".`
-                : "Vira o nome do seu workspace no VYZ."
-            }
+            hint={workspaceName ? `Nome na fatura. O workspace continua "${workspaceName}".` : "Vira o nome do seu workspace no VYZ."}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
@@ -381,30 +293,18 @@ export function CheckoutForm({
           >
             Li e aceito os Termos de Uso e a Política de Privacidade da VYZ.
           </Consent>
-          <Consent
-            id={fid("marketing")}
-            checked={values.marketing}
-            onChange={(v) => set("marketing", v)}
-          >
-            Quero receber novidades e dicas da VYZ por e-mail e WhatsApp
-            (opcional).
+          <Consent id={fid("marketing")} checked={values.marketing} onChange={(v) => set("marketing", v)}>
+            Quero receber novidades e dicas da VYZ por e-mail e WhatsApp (opcional).
           </Consent>
         </div>
 
         {failure && (
-          <div
-            role="alert"
-            className="rounded-control border border-error/40 bg-error-soft px-4 py-3 text-[14px] text-error-fg"
-          >
+          <div role="alert" className="rounded-control border border-error/40 bg-error-soft px-4 py-3 text-[14px] text-error-fg">
             {failure.message}
-            {(failure.code === "checkout:email_exists" ||
-              failure.code === "auth:required") && (
+            {(failure.code === "checkout:email_exists" || failure.code === "auth:required") && (
               <>
                 {" "}
-                <Link
-                  href={signInHref}
-                  className="font-semibold underline underline-offset-4"
-                >
+                <Link href={signInHref} className="font-semibold underline underline-offset-4">
                   Entrar e continuar
                 </Link>
               </>
@@ -413,11 +313,7 @@ export function CheckoutForm({
         )}
 
         <div>
-          <button
-            type="submit"
-            disabled={pending}
-            className={`${btn.primary} w-full rounded-[10px]`}
-          >
+          <button type="submit" disabled={pending} className={`${btn.primary} w-full rounded-[10px]`}>
             {pending ? (
               <>
                 <LoaderCircle size={18} aria-hidden className="animate-spin" />
@@ -430,13 +326,9 @@ export function CheckoutForm({
               </>
             )}
           </button>
-          <p className="mt-3 text-center text-[12.5px] text-fg-2">
-            No próximo passo você confere o total e paga.
-          </p>
+          <p className="mt-3 text-center text-[12.5px] text-fg-2">No próximo passo você confere o total e paga.</p>
         </div>
       </form>
-      {/* fora do formulário principal (form não pode ficar dentro de form) */}
-      <form id={googleFormId} action={googleAction} hidden />
     </>
   );
 }

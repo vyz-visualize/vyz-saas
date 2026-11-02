@@ -28,62 +28,23 @@ import {
   TRANSACTION_KIND_LABEL,
   TRANSACTION_STATUS_LABEL,
 } from "@/features/checkout/labels";
-import {
-  planChangeBlocker,
-  quotePlanChange,
-  samePlan,
-  type PlanSelection,
-  type PlanUsage,
-} from "@/features/checkout/plan-change";
-import {
-  ENTITLEMENTS,
-  LIMIT_ROWS,
-  TIER_LABEL,
-  TIERS,
-  type Tier,
-} from "@/features/pricing/entitlements";
-import {
-  LP_PLAN_PAGES,
-  MAX_ACCOUNTS_IN_PLAN,
-  lpMonthly,
-  lpSetup,
-  type Period,
-  type PlanId,
-} from "@/features/pricing/pricing";
+import { planChangeBlocker, quotePlanChange, samePlan, type PlanSelection, type PlanUsage } from "@/features/checkout/plan-change";
+import { ENTITLEMENTS, LIMIT_ROWS, TIER_LABEL, TIERS, type Tier } from "@/features/pricing/entitlements";
+import { LP_PLAN_PAGES, MAX_ACCOUNTS_IN_PLAN, lpMonthly, lpSetup, type Period, type PlanId } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";
 import { msgUpgrade, waLink } from "@/lib/whatsapp";
-import {
-  cancelSubscription,
-  changePlan,
-  resumeSubscription,
-} from "@/server/billing/actions";
+import { cancelSubscription, changePlan, resumeSubscription } from "@/server/billing/actions";
 import type { BillingOverview } from "@/server/billing/queries";
 import { useWorkspaceSession } from "./WorkspaceProvider";
 
 const PLAN_IDS: PlanId[] = ["base", "pro", "avancado"];
-const toPeriod = (interval: "month" | "year"): Period =>
-  interval === "year" ? "anual" : "mensal";
+const toPeriod = (interval: "month" | "year"): Period => (interval === "year" ? "anual" : "mensal");
 
 type Subscription = NonNullable<BillingOverview["subscription"]>;
 
-function Section({
-  id,
-  title,
-  aside,
-  children,
-  className = "",
-}: {
-  id: string;
-  title: string;
-  aside?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}) {
+function Section({ id, title, aside, children, className = "" }: { id: string; title: string; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section
-      className={`space-y-4 rounded-card border border-line bg-card p-5 ${className}`}
-      aria-labelledby={id}
-    >
+    <section className={`space-y-4 rounded-card border border-line bg-card p-5 ${className}`} aria-labelledby={id}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id={id} className="title text-lg">
           {title}
@@ -105,24 +66,14 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const statusTone = (s: string) =>
-  s === "active" ||
-  s === "trialing" ||
-  s === "paid" ||
-  s === "succeeded" ||
-  s === "delivered"
+  s === "active" || s === "trialing" || s === "paid" || s === "succeeded" || s === "delivered"
     ? "bg-accent-soft text-fg"
     : s === "failed" || s === "past_due" || s === "unpaid"
       ? "bg-error-soft text-error-fg"
       : "border border-line text-fg-2";
 
 function StatusChip({ status, label }: { status: string; label: string }) {
-  return (
-    <span
-      className={`inline-flex rounded-chip px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${statusTone(status)}`}
-    >
-      {label}
-    </span>
-  );
+  return <span className={`inline-flex rounded-chip px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap ${statusTone(status)}`}>{label}</span>;
 }
 
 // ---- troca de plano ---------------------------------------------------------------
@@ -146,11 +97,7 @@ function ChangePlan({
     accounts: sub.accountsQuantity,
   };
   // "Liberar no Padrão" (vitrine do painel) já abre com o plano escolhido
-  const [next, setNext] = useState<PlanSelection>(
-    unlock && PLAN_IDS.indexOf(unlock) > PLAN_IDS.indexOf(sub.tier)
-      ? { ...current, tier: unlock }
-      : current,
-  );
+  const [next, setNext] = useState<PlanSelection>(unlock && PLAN_IDS.indexOf(unlock) > PLAN_IDS.indexOf(sub.tier) ? { ...current, tier: unlock } : current);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const unchanged = samePlan(current, next);
@@ -227,21 +174,10 @@ function ChangePlan({
       />
 
       {!unchanged && (
-        <dl
-          className="grid gap-3 rounded-control border border-line bg-bg p-4 text-[13.5px] sm:grid-cols-3"
-          aria-live="polite"
-        >
-          <Fact
-            label={`Novo valor (${INTERVAL_LABEL[next.period === "anual" ? "year" : "month"]})`}
-          >
-            {brl(quote.recurringCents)}
-          </Fact>
+        <dl className="grid gap-3 rounded-control border border-line bg-bg p-4 text-[13.5px] sm:grid-cols-3" aria-live="polite">
+          <Fact label={`Novo valor (${INTERVAL_LABEL[next.period === "anual" ? "year" : "month"]})`}>{brl(quote.recurringCents)}</Fact>
           <Fact label="Cobrado agora">{brl(quote.prorationCents)}</Fact>
-          <Fact label={quote.resetsPeriod ? "Novo ciclo até" : "Crédito"}>
-            {quote.resetsPeriod
-              ? formatDate(quote.periodEnd)
-              : brl(quote.creditCents)}
-          </Fact>
+          <Fact label={quote.resetsPeriod ? "Novo ciclo até" : "Crédito"}>{quote.resetsPeriod ? formatDate(quote.periodEnd) : brl(quote.creditCents)}</Fact>
           <p className="text-[12px] text-fg-2 sm:col-span-3">
             {quote.resetsPeriod
               ? "Trocar o período recomeça o ciclo hoje; o que sobrou do ciclo atual vira desconto."
@@ -251,43 +187,21 @@ function ChangePlan({
       )}
 
       {(blocker || error) && (
-        <p
-          role="alert"
-          className="rounded-control bg-error-soft px-3 py-2 text-[13px] text-error-fg"
-        >
+        <p role="alert" className="rounded-control bg-error-soft px-3 py-2 text-[13px] text-error-fg">
           {error ?? blocker?.message}
         </p>
       )}
-      <button
-        type="button"
-        className={btn.small}
-        disabled={unchanged || !!blocker || pending}
-        onClick={submit}
-      >
-        {pending
-          ? "Trocando…"
-          : quote.prorationCents > 0 && !unchanged
-            ? `Trocar e pagar ${brl(quote.prorationCents)}`
-            : "Trocar plano"}
+      <button type="button" className={btn.small} disabled={unchanged || !!blocker || pending} onClick={submit}>
+        {pending ? "Trocando…" : quote.prorationCents > 0 && !unchanged ? `Trocar e pagar ${brl(quote.prorationCents)}` : "Trocar plano"}
       </button>
     </div>
   );
 }
 
 /** Plano de landing pages: as páginas novas são feitas pelo time, então a troca passa por ele. */
-function LpChangePlan({
-  current,
-  unlock,
-}: {
-  current: PlanId;
-  unlock: PlanId | null;
-}) {
+function LpChangePlan({ current, unlock }: { current: PlanId; unlock: PlanId | null }) {
   const [pick, setPick] = useState<PlanId>(
-    unlock && unlock !== current
-      ? unlock
-      : current === "avancado"
-        ? "avancado"
-        : PLAN_IDS[PLAN_IDS.indexOf(current) + 1],
+    unlock && unlock !== current ? unlock : current === "avancado" ? "avancado" : PLAN_IDS[PLAN_IDS.indexOf(current) + 1],
   );
   const pages = LP_PLAN_PAGES[pick] - LP_PLAN_PAGES[current];
   return (
@@ -303,15 +217,10 @@ function LpChangePlan({
           >
             <span className="title block text-[15px]">
               {TIER_LABEL[t]}
-              {t === current && (
-                <span className="ml-1.5 text-[11px] font-medium text-fg-2">
-                  atual
-                </span>
-              )}
+              {t === current && <span className="ml-1.5 text-[11px] font-medium text-fg-2">atual</span>}
             </span>
             <span className="block text-[13px] text-fg-2">
-              {LP_PLAN_PAGES[t]} {LP_PLAN_PAGES[t] === 1 ? "página" : "páginas"}{" "}
-              · {brl(lpMonthly(t))}/mês
+              {LP_PLAN_PAGES[t]} {LP_PLAN_PAGES[t] === 1 ? "página" : "páginas"} · {brl(lpMonthly(t))}/mês
             </span>
           </button>
         ))}
@@ -324,13 +233,7 @@ function LpChangePlan({
         </p>
       )}
       <a
-        href={waLink(
-          msgUpgrade(
-            TIER_LABEL[current],
-            TIER_LABEL[pick],
-            "Quero trocar o plano de landing pages.",
-          ),
-        )}
+        href={waLink(msgUpgrade(TIER_LABEL[current], TIER_LABEL[pick], "Quero trocar o plano de landing pages."))}
         target="_blank"
         rel="noopener noreferrer"
         aria-disabled={pick === current}
@@ -342,13 +245,7 @@ function LpChangePlan({
   );
 }
 
-function CancelControls({
-  sub,
-  onDone,
-}: {
-  sub: Subscription;
-  onDone: (msg: string) => void;
-}) {
+function CancelControls({ sub, onDone }: { sub: Subscription; onDone: (msg: string) => void }) {
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -365,27 +262,13 @@ function CancelControls({
     <div className="space-y-2">
       {sub.cancelAtPeriodEnd ? (
         <>
-          <p className="text-[13.5px] text-fg-2">
-            O cancelamento está agendado para {formatDate(sub.currentPeriodEnd)}
-            . Até lá tudo continua funcionando.
-          </p>
-          <button
-            type="button"
-            className={btn.small}
-            disabled={pending}
-            onClick={() =>
-              run(resumeSubscription, () => "Assinatura retomada.")
-            }
-          >
+          <p className="text-[13.5px] text-fg-2">O cancelamento está agendado para {formatDate(sub.currentPeriodEnd)}. Até lá tudo continua funcionando.</p>
+          <button type="button" className={btn.small} disabled={pending} onClick={() => run(resumeSubscription, () => "Assinatura retomada.")}>
             {pending ? "Retomando…" : "Retomar assinatura"}
           </button>
         </>
       ) : (
-        <button
-          type="button"
-          className={`${btn.ghost} h-9 border border-line text-fg-2`}
-          onClick={() => setConfirm(true)}
-        >
+        <button type="button" className={`${btn.ghost} h-9 border border-line text-fg-2`} onClick={() => setConfirm(true)}>
           Cancelar assinatura
         </button>
       )}
@@ -394,17 +277,11 @@ function CancelControls({
           {error}
         </p>
       )}
-      <Modal
-        open={confirm}
-        onClose={() => setConfirm(false)}
-        title="Cancelar a assinatura"
-      >
+      <Modal open={confirm} onClose={() => setConfirm(false)} title="Cancelar a assinatura">
         <div className="space-y-4 text-[14px]">
           <p>
-            A assinatura fica ativa até{" "}
-            <strong>{formatDate(sub.currentPeriodEnd)}</strong> e não renova. Os
-            dashboards, as contas e o histórico continuam guardados; dá para
-            retomar antes dessa data.
+            A assinatura fica ativa até <strong>{formatDate(sub.currentPeriodEnd)}</strong> e não renova. Os dashboards, as contas e o histórico continuam
+            guardados; dá para retomar antes dessa data.
           </p>
           {error && (
             <p role="alert" className="text-[13px] text-error-fg">
@@ -416,20 +293,11 @@ function CancelControls({
               type="button"
               className={`${btn.small} bg-error`}
               disabled={pending}
-              onClick={() =>
-                run(
-                  cancelSubscription,
-                  (end) => `Cancelamento agendado para ${end}.`,
-                )
-              }
+              onClick={() => run(cancelSubscription, (end) => `Cancelamento agendado para ${end}.`)}
             >
               {pending ? "Cancelando…" : "Cancelar no fim do período"}
             </button>
-            <button
-              type="button"
-              className={`${btn.ghost} h-9`}
-              onClick={() => setConfirm(false)}
-            >
+            <button type="button" className={`${btn.ghost} h-9`} onClick={() => setConfirm(false)}>
               Manter assinatura
             </button>
           </div>
@@ -441,19 +309,8 @@ function CancelControls({
 
 // ---- histórico ----------------------------------------------------------------------
 
-function Table({
-  caption,
-  head,
-  children,
-  empty,
-}: {
-  caption: string;
-  head: string[];
-  children: ReactNode[];
-  empty: string;
-}) {
-  if (children.length === 0)
-    return <p className="text-[13.5px] text-fg-2">{empty}</p>;
+function Table({ caption, head, children, empty }: { caption: string; head: string[]; children: ReactNode[]; empty: string }) {
+  if (children.length === 0) return <p className="text-[13.5px] text-fg-2">{empty}</p>;
   return (
     <div className="-mx-5 overflow-x-auto px-5">
       <table className="w-full min-w-[560px] text-left text-[13.5px]">
@@ -461,11 +318,7 @@ function Table({
         <thead>
           <tr className="border-b border-line text-[12.5px] text-fg-2">
             {head.map((h, i) => (
-              <th
-                key={h}
-                scope="col"
-                className={`py-2 pr-4 font-medium ${i === head.length - 1 ? "pr-0 text-right" : ""}`}
-              >
+              <th key={h} scope="col" className={`py-2 pr-4 font-medium ${i === head.length - 1 ? "pr-0 text-right" : ""}`}>
                 {h}
               </th>
             ))}
@@ -481,25 +334,13 @@ function History({ overview }: { overview: BillingOverview }) {
   const { invoices, transactions, timeline, serviceOrders } = overview;
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <Section
-        id="h-faturas"
-        title="Faturas"
-        aside={<Receipt size={18} aria-hidden className="text-fg-2" />}
-      >
-        <Table
-          caption="Faturas"
-          head={["Data", "Descrição", "Status", "Total"]}
-          empty="Nenhuma fatura ainda."
-        >
+      <Section id="h-faturas" title="Faturas" aside={<Receipt size={18} aria-hidden className="text-fg-2" />}>
+        <Table caption="Faturas" head={["Data", "Descrição", "Status", "Total"]} empty="Nenhuma fatura ainda.">
           {invoices.map((i) => (
             <tr key={i.id}>
-              <td className="py-2.5 pr-4 whitespace-nowrap tnum">
-                {formatDate(i.paidAt ?? i.createdAt)}
-              </td>
+              <td className="py-2.5 pr-4 whitespace-nowrap tnum">{formatDate(i.paidAt ?? i.createdAt)}</td>
               <td className="py-2.5 pr-4">
-                <span className="block">
-                  {invoiceDescription(i.description) ?? i.lines[0]?.label ?? "Fatura"}
-                </span>
+                <span className="block">{invoiceDescription(i.description) ?? i.lines[0]?.label ?? "Fatura"}</span>
                 {i.periodStart && i.periodEnd && (
                   <span className="text-[12px] text-fg-2">
                     {formatDate(i.periodStart)} a {formatDate(i.periodEnd)}
@@ -507,73 +348,40 @@ function History({ overview }: { overview: BillingOverview }) {
                 )}
               </td>
               <td className="py-2.5 pr-4">
-                <StatusChip
-                  status={i.status}
-                  label={INVOICE_STATUS_LABEL[i.status]}
-                />
+                <StatusChip status={i.status} label={INVOICE_STATUS_LABEL[i.status]} />
               </td>
-              <td className="py-2.5 text-right font-semibold whitespace-nowrap tnum">
-                {brl(i.totalCents)}
-              </td>
+              <td className="py-2.5 text-right font-semibold whitespace-nowrap tnum">{brl(i.totalCents)}</td>
             </tr>
           ))}
         </Table>
       </Section>
-      <Section
-        id="h-pagamentos"
-        title="Pagamentos"
-        aside={<CreditCard size={18} aria-hidden className="text-fg-2" />}
-      >
-        <Table
-          caption="Pagamentos"
-          head={["Data", "Forma", "Status", "Valor"]}
-          empty="Nenhum pagamento ainda."
-        >
+      <Section id="h-pagamentos" title="Pagamentos" aside={<CreditCard size={18} aria-hidden className="text-fg-2" />}>
+        <Table caption="Pagamentos" head={["Data", "Forma", "Status", "Valor"]} empty="Nenhum pagamento ainda.">
           {transactions.map((t) => (
             <tr key={t.id}>
-              <td className="py-2.5 pr-4 whitespace-nowrap tnum">
-                {formatDate(t.processedAt ?? t.createdAt)}
-              </td>
+              <td className="py-2.5 pr-4 whitespace-nowrap tnum">{formatDate(t.processedAt ?? t.createdAt)}</td>
               <td className="py-2.5 pr-4">
                 <span className="block">
-                  {t.cardBrand
-                    ? `${CARD_BRAND_LABEL[t.cardBrand]} •••• ${t.cardLast4 ?? ""}`
-                    : t.method
-                      ? PAYMENT_METHOD_LABEL[t.method]
-                      : "—"}
+                  {t.cardBrand ? `${CARD_BRAND_LABEL[t.cardBrand]} •••• ${t.cardLast4 ?? ""}` : t.method ? PAYMENT_METHOD_LABEL[t.method] : "—"}
                 </span>
-                <span className="text-[12px] text-fg-2">
-                  {t.failureMessage ?? TRANSACTION_KIND_LABEL[t.kind]}
-                </span>
+                <span className="text-[12px] text-fg-2">{t.failureMessage ?? TRANSACTION_KIND_LABEL[t.kind]}</span>
               </td>
               <td className="py-2.5 pr-4">
-                <StatusChip
-                  status={t.status}
-                  label={TRANSACTION_STATUS_LABEL[t.status]}
-                />
+                <StatusChip status={t.status} label={TRANSACTION_STATUS_LABEL[t.status]} />
               </td>
-              <td className="py-2.5 text-right font-semibold whitespace-nowrap tnum">
-                {brl(t.kind === "charge" ? t.amountCents : -t.amountCents)}
-              </td>
+              <td className="py-2.5 text-right font-semibold whitespace-nowrap tnum">{brl(t.kind === "charge" ? t.amountCents : -t.amountCents)}</td>
             </tr>
           ))}
         </Table>
       </Section>
-      <Section
-        id="h-linha"
-        title="Linha do tempo da assinatura"
-        aside={<CalendarClock size={18} aria-hidden className="text-fg-2" />}
-      >
+      <Section id="h-linha" title="Linha do tempo da assinatura" aside={<CalendarClock size={18} aria-hidden className="text-fg-2" />}>
         {timeline.length === 0 ? (
           <p className="text-[13.5px] text-fg-2">Nada registrado ainda.</p>
         ) : (
           <ol className="space-y-3 border-l border-line pl-4">
             {timeline.map((t) => (
               <li key={t.id} className="relative text-[13.5px]">
-                <span
-                  className="absolute top-1.5 -left-[21px] size-2 rounded-full bg-accent"
-                  aria-hidden
-                />
+                <span className="absolute top-1.5 -left-[21px] size-2 rounded-full bg-accent" aria-hidden />
                 <span className="block font-medium">{t.label}</span>
                 <span className="text-[12px] text-fg-2">
                   {formatDate(t.createdAt)}
@@ -586,17 +394,11 @@ function History({ overview }: { overview: BillingOverview }) {
       </Section>
       <Section id="h-servicos" title="Pedidos de serviço">
         {serviceOrders.length === 0 ? (
-          <p className="text-[13.5px] text-fg-2">
-            Nenhum pedido de serviço (landing page feita pelo time, dashboard
-            sob medida).
-          </p>
+          <p className="text-[13.5px] text-fg-2">Nenhum pedido de serviço (landing page feita pelo time, dashboard sob medida).</p>
         ) : (
           <ul className="divide-y divide-line">
             {serviceOrders.map((o) => (
-              <li
-                key={o.id}
-                className="flex items-center justify-between gap-3 py-2.5 text-[13.5px]"
-              >
+              <li key={o.id} className="flex items-center justify-between gap-3 py-2.5 text-[13.5px]">
                 <span className="min-w-0">
                   <span className="block font-medium">
                     {o.label}
@@ -604,15 +406,10 @@ function History({ overview }: { overview: BillingOverview }) {
                   </span>
                   <span className="text-[12px] text-fg-2">
                     Pedido em {formatDate(o.createdAt)}
-                    {o.deliveredAt
-                      ? ` · entregue em ${formatDate(o.deliveredAt)}`
-                      : ""}
+                    {o.deliveredAt ? ` · entregue em ${formatDate(o.deliveredAt)}` : ""}
                   </span>
                 </span>
-                <StatusChip
-                  status={o.status}
-                  label={SERVICE_ORDER_STATUS_LABEL[o.status]}
-                />
+                <StatusChip status={o.status} label={SERVICE_ORDER_STATUS_LABEL[o.status]} />
               </li>
             ))}
           </ul>
@@ -662,49 +459,29 @@ export function PlanPage({
     <div className="space-y-8">
       <PageHeader
         eyebrow="Plano"
-        title={
-          tier
-            ? `Plano ${TIER_LABEL[tier]}${lp ? " · Landing pages" : ""}`
-            : "Sem plano ativo"
-        }
+        title={tier ? `Plano ${TIER_LABEL[tier]}${lp ? " · Landing pages" : ""}` : "Sem plano ativo"}
         text={subtitle}
         actions={
           overview?.provider === "mock" ? (
-            <PendingChip
-              label="Pagamento simulado"
-              detail="Nenhum valor é cobrado. A cobrança real entra com a Stripe."
-            />
+            <PendingChip label="Pagamento simulado" detail="Nenhum valor é cobrado. A cobrança real entra com a Stripe." />
           ) : undefined
         }
       />
 
       {inactive && !tier && (
-        <p
-          role="status"
-          className="rounded-card bg-error-soft px-4 py-3 text-[14px]"
-        >
-          Para abrir essa página o workspace precisa de uma assinatura ativa. Os
-          dados continuam guardados.
+        <p role="status" className="rounded-card bg-error-soft px-4 py-3 text-[14px]">
+          Para abrir essa página o workspace precisa de uma assinatura ativa. Os dados continuam guardados.
         </p>
       )}
 
       {!tier && (
         <Section id="h-assinar" title="Assinar">
           <p className="text-[14px] text-fg-2">
-            {role === "owner"
-              ? "Assine um dos planos. O pagamento libera o painel na hora."
-              : "Peça ao dono do workspace para assinar um plano."}
+            {role === "owner" ? "Assine um dos planos. O pagamento libera o painel na hora." : "Peça ao dono do workspace para assinar um plano."}
           </p>
           {role === "owner" && (
             <div className="flex flex-wrap gap-2">
-              <Link
-                href={
-                  lp
-                    ? "/assinar?produto=lp&plano=pro&periodo=mensal"
-                    : "/assinar?plano=pro&periodo=anual&meta=1&google=0"
-                }
-                className={btn.small}
-              >
+              <Link href={lp ? "/assinar?produto=lp&plano=pro&periodo=mensal" : "/assinar?plano=pro&periodo=anual&meta=1&google=0"} className={btn.small}>
                 Assinar o {TIER_LABEL.pro}
               </Link>
               <Link
@@ -725,35 +502,20 @@ export function PlanPage({
               <>
                 <dl className="grid grid-cols-2 gap-4 text-[14px]">
                   <Fact label="Status">
-                    <StatusChip
-                      status={sub.status}
-                      label={SUBSCRIPTION_STATUS_LABEL[sub.status]}
-                    />
+                    <StatusChip status={sub.status} label={SUBSCRIPTION_STATUS_LABEL[sub.status]} />
                   </Fact>
-                  <Fact
-                    label={sub.cancelAtPeriodEnd ? "Termina em" : "Renova em"}
-                  >
-                    {formatDate(sub.currentPeriodEnd)}
-                  </Fact>
+                  <Fact label={sub.cancelAtPeriodEnd ? "Termina em" : "Renova em"}>{formatDate(sub.currentPeriodEnd)}</Fact>
                   <Fact label="Período">{INTERVAL_LABEL[sub.interval]}</Fact>
-                  <Fact
-                    label={`Valor por ${sub.interval === "year" ? "ano" : "mês"}`}
-                  >
-                    {brl(sub.recurringCents)}
-                  </Fact>
+                  <Fact label={`Valor por ${sub.interval === "year" ? "ano" : "mês"}`}>{brl(sub.recurringCents)}</Fact>
                 </dl>
                 <ul className="divide-y divide-line border-t border-line text-[13.5px]">
                   {sub.items.map((i) => (
                     <li key={i.id} className="flex justify-between gap-3 py-2">
                       <span>
                         {i.label}
-                        {i.kind === "extra" && i.quantity > 1
-                          ? ` × ${i.quantity}`
-                          : ""}
+                        {i.kind === "extra" && i.quantity > 1 ? ` × ${i.quantity}` : ""}
                       </span>
-                      <span className="shrink-0 text-fg-2 tnum">
-                        {brl(i.monthlyCents)}/mês
-                      </span>
+                      <span className="shrink-0 text-fg-2 tnum">{brl(i.monthlyCents)}/mês</span>
                     </li>
                   ))}
                 </ul>
@@ -770,27 +532,12 @@ export function PlanPage({
           </Section>
           <Section id="h-uso" title="Uso atual">
             {lp ? (
-              <UsageBar
-                used={usage.publishedLandingPages}
-                limit={ent.maxLandingPages}
-                label="Landing pages publicadas"
-              />
+              <UsageBar used={usage.publishedLandingPages} limit={ent.maxLandingPages} label="Landing pages publicadas" />
             ) : (
               <>
-                <UsageBar
-                  used={usage.billableAccounts}
-                  limit={access.accountsQuantity}
-                  label="Contas ativas"
-                />
-                <UsageBar
-                  used={usage.dashboards}
-                  limit={ent.maxDashboards}
-                  label="Dashboards"
-                />
-                <p className="text-[12.5px] text-fg-2">
-                  Cada Business Manager do Meta conta como uma conta, com
-                  quantas contas de anúncio tiver.
-                </p>
+                <UsageBar used={usage.billableAccounts} limit={access.accountsQuantity} label="Contas ativas" />
+                <UsageBar used={usage.dashboards} limit={ent.maxDashboards} label="Dashboards" />
+                <p className="text-[12.5px] text-fg-2">Cada Business Manager do Meta conta como uma conta, com quantas contas de anúncio tiver.</p>
               </>
             )}
           </Section>
@@ -805,14 +552,7 @@ export function PlanPage({
             </Section>
           ) : (
             <Section id="h-trocar" title="Trocar plano, período ou contas">
-              <ChangePlan
-                key={`${sub.tier}:${sub.interval}:${sub.accountsQuantity}`}
-                sub={sub}
-                usage={usage}
-                now={now}
-                onDone={toast.show}
-                unlock={unlock}
-              />
+              <ChangePlan key={`${sub.tier}:${sub.interval}:${sub.accountsQuantity}`} sub={sub} usage={usage} now={now} onDone={toast.show} unlock={unlock} />
             </Section>
           )}
           <Section id="h-cancelar" title="Cancelamento">
@@ -820,11 +560,7 @@ export function PlanPage({
           </Section>
         </div>
       )}
-      {sub && !canManage && overview && (
-        <p className="text-[13.5px] text-fg-2">
-          Só o dono do workspace troca o plano ou cancela a assinatura.
-        </p>
-      )}
+      {sub && !canManage && overview && <p className="text-[13.5px] text-fg-2">Só o dono do workspace troca o plano ou cancela a assinatura.</p>}
 
       {overview && <History overview={overview} />}
 
@@ -841,17 +577,9 @@ export function PlanPage({
                     &nbsp;
                   </th>
                   {TIERS.map((t) => (
-                    <th
-                      key={t}
-                      scope="col"
-                      className={`px-4 py-3 font-semibold ${t === tier ? "bg-accent-soft" : ""}`}
-                    >
+                    <th key={t} scope="col" className={`px-4 py-3 font-semibold ${t === tier ? "bg-accent-soft" : ""}`}>
                       {TIER_LABEL[t]}
-                      {t === tier && (
-                        <span className="ml-1.5 text-[11px] font-medium text-fg-2">
-                          atual
-                        </span>
-                      )}
+                      {t === tier && <span className="ml-1.5 text-[11px] font-medium text-fg-2">atual</span>}
                     </th>
                   ))}
                 </tr>
@@ -859,17 +587,11 @@ export function PlanPage({
               <tbody className="divide-y divide-line">
                 {LIMIT_ROWS.map((r) => (
                   <tr key={r.label}>
-                    <th
-                      scope="row"
-                      className="px-4 py-2.5 font-medium text-fg-2"
-                    >
+                    <th scope="row" className="px-4 py-2.5 font-medium text-fg-2">
                       {r.label}
                     </th>
                     {TIERS.map((t) => (
-                      <td
-                        key={t}
-                        className={`px-4 py-2.5 ${t === tier ? "bg-accent-soft/60 font-semibold" : ""}`}
-                      >
+                      <td key={t} className={`px-4 py-2.5 ${t === tier ? "bg-accent-soft/60 font-semibold" : ""}`}>
                         {r.value(t)}
                       </td>
                     ))}
@@ -881,12 +603,7 @@ export function PlanPage({
                     <td key={t} className="px-4 py-3">
                       {t === "personalizado" && !custom && (
                         <a
-                          href={waLink(
-                            msgUpgrade(
-                              tier ? TIER_LABEL[tier] : "sem plano",
-                              TIER_LABEL[t],
-                            ),
-                          )}
+                          href={waLink(msgUpgrade(tier ? TIER_LABEL[tier] : "sem plano", TIER_LABEL[t]))}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={`${btn.small} h-8 px-3 text-[12.5px]`}
@@ -900,10 +617,7 @@ export function PlanPage({
               </tbody>
             </table>
           </div>
-          <p className="text-[12.5px] text-fg-2">
-            Os limites de dashboards e de landing pages publicadas são
-            provisórios.
-          </p>
+          <p className="text-[12.5px] text-fg-2">Os limites de dashboards e de landing pages publicadas são provisórios.</p>
         </section>
       )}
       {toast.node}

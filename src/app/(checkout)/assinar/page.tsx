@@ -70,7 +70,7 @@ async function Checkout({ searchParams }: { searchParams: Promise<SearchParams> 
         <p className="mt-4 max-w-xl text-[15px] text-fg-2">
           {viewer.user
             ? "Confira seus dados e siga para o pagamento."
-            : "Seus dados, depois o pagamento. Ao terminar, você já entra no painel com este e-mail e esta senha."}
+            : "Crie a conta com o Google ou com e-mail, depois o pagamento. Ao terminar, você já entra no painel."}
         </p>
 
         {viewer.user && <AccountNotice viewer={viewer} />}
