@@ -26,6 +26,7 @@ import { hitRateLimit, type RateRule } from "@/server/security/rate-limit";
 import { appError, toActionError, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 import { createCheckoutSession, payCheckoutSession } from "./checkout";
+import { CHECKOUT_CLOSED_MESSAGE, canCheckout } from "@/server/env";
 import { getCheckoutViewer } from "./queries";
 import { changeSubscriptionPlan, setSubscriptionCancel } from "./subscription";
 
@@ -84,6 +85,8 @@ export async function startCheckout(_prev: CheckoutFormState, formData: FormData
     });
     if (!parsed.success) throw appError("validation", undefined, fieldErrors(parsed.error.issues));
     const input = parsed.data;
+    // pagamento simulado em produção: só os e-mails liberados (antes de criar a conta)
+    if (!canCheckout(viewer.user?.email ?? input.email)) throw appError("billing:closed", CHECKOUT_CLOSED_MESSAGE);
 
     let userId: string;
     let email: string;
@@ -163,6 +166,7 @@ export async function payCheckout(checkoutId: string, input: PaymentInput): Prom
 
     const user = await getSessionUser();
     if (!user) throw appError("auth:required");
+    if (!canCheckout(user.email)) throw appError("billing:closed", CHECKOUT_CLOSED_MESSAGE);
     const ctx = await requestContext();
     await limit("checkout_ip", ctx.ip, user.email);
 

@@ -22,6 +22,11 @@ const Schema = z
     BILLING_PROVIDER: z.enum(["mock", "stripe"]).default("mock"),
     INTEGRATIONS_MODE: z.enum(["mock", "live"]).default("mock"),
     ALLOW_MOCKS_IN_PRODUCTION: z.enum(["true", "false"]).default("false"),
+    /**
+     * Pagamento simulado em produção: só estes e-mails (separados por vírgula)
+     * assinam sem pagar. Vazio = ninguém. Fora de produção, todos.
+     */
+    BILLING_FREE_EMAILS: z.string().default(""),
     /** Bearer da sincronização agendada (/api/cron/sync). */
     CRON_SECRET: z
       .string()
@@ -85,4 +90,18 @@ export function serverEnv(): ServerEnv {
 }
 
 export const isMockBilling = () => serverEnv().BILLING_PROVIDER === "mock";
+
+/**
+ * Este e-mail pode concluir um pedido? Com cobrança real, sempre. Com o
+ * pagamento simulado em produção, só quem está em BILLING_FREE_EMAILS (o
+ * acesso de teste; o resto do público vê "pagamento em breve").
+ */
+export function canCheckout(email: string | null | undefined): boolean {
+  const env = serverEnv();
+  if (env.BILLING_PROVIDER !== "mock" || env.NODE_ENV !== "production") return true;
+  const list = env.BILLING_FREE_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return !!email && list.includes(email.trim().toLowerCase());
+}
+
+export const CHECKOUT_CLOSED_MESSAGE = "O pagamento online abre em breve. Fale com um especialista no WhatsApp para assinar agora.";
 export const isMockIntegrations = () => serverEnv().INTEGRATIONS_MODE === "mock";
