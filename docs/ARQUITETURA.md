@@ -1,119 +1,217 @@
-# VYZ · Arquitetura (fase 1: só front-end)
+# VYZ · Arquitetura
 
-Um repositório Next.js 16 (App Router, `src/`, Tailwind v4, Cache Components) com três áreas isoladas: a landing page de vendas, o painel (SaaS) e as páginas públicas. Nesta fase não existe backend: tudo que depende de servidor funciona localmente, no navegador, e aparece marcado com um aviso discreto (`<PendingChip>`). A lista do que falta está em `docs/PENDENCIAS.md`.
+Como o projeto está organizado: produtos, rotas, pastas, banco, segurança e os caminhos do usuário. Documentos irmãos:
 
-## Princípios
+| Documento | Assunto |
+|---|---|
+| `docs/BANCO.md` | tabelas, RLS, histórico, jobs e como mexer no banco |
+| `docs/TEMPLATES.md` | como criar templates de dashboard e de landing page |
+| `docs/MOBILE.md` | app nativo (iOS e Android), compras na loja e envio |
+| `docs/PENDENCIAS.md` | o que ainda depende de credencial ou decisão |
 
-1. **Áreas isoladas.** A LP e o painel não compartilham layout, estado nem motion. O motion pesado (Lenis, intro, tilt, cursor magnético, revelações) só existe em `(marketing)`. O ESLint (`no-restricted-imports`) impede que outra área importe `features/marketing` ou `components/motion`.
-2. **Uma fonte de verdade por assunto.**
-   - `features/pricing`: preços (em centavos) **e** limites por plano (`entitlements.ts`). A LP e o painel chamam as mesmas funções.
-   - `features/templates`: cadastro dos 20 templates de dashboard, da biblioteca de páginas e dos 10 templates de LP.
-   - `features/metrics`: definições de métrica (rótulo, formato, se "maior é melhor") e as regras de cálculo (venda deduplicada, CTR ponderado, dias em maturação), mais a `DataSource`.
-   - `components/charts`: gráficos em SVG feitos à mão, sem biblioteca.
-3. **O mock é o produto.** O gerador do hero, o passo 2 de "Como funciona", a galeria, o painel e o link público renderizam os mesmos widgets (`features/dashboards/widgets`). Só muda a fonte de dados.
-4. **Persistência atrás de uma interface.** `lib/store` define `Store`. Hoje existe só `LocalStore` (localStorage, prefixo `vyz:v1:`, tudo em try/catch); depois entra um `SupabaseStore` com a mesma interface. Nenhum componente acessa `localStorage` direto (a única exceção é a preferência de tema, em `components/ui/ThemeToggle`, e a sessão da intro e o estado da sidebar do painel, que são do navegador e não do produto).
-5. **Dados de anúncio vêm de uma `DataSource`.** Hoje `MockSource` (determinística, com seed por dashboard); depois `DbSource`, alimentada pelas conexões OAuth.
-
-## Rotas
+## 1. Visão geral
 
 ```
-src/app/
-  layout.tsx                          raiz mínima: Inter, tokens, script de tema
-  (marketing)/layout.tsx + page.tsx   LP em /, com Lenis, intro e motion
-  (auth)/entrar/page.tsx              entrar (pág. 17 do brand book); sem backend, só avisa
-  (painel)/painel/layout.tsx          app shell: sidebar em aba (recolhível com "["), conteúdo num painel
-    page.tsx                          Início
-    dashboards/page.tsx               meus dashboards
-    dashboards/novo/page.tsx          galeria + fluxo guiado (5 passos)
-    dashboards/[id]/page.tsx          visualização
-    landing-pages/page.tsx
-    landing-pages/novo/page.tsx       galeria + fluxo guiado (4 passos)
-    landing-pages/[id]/page.tsx       editor com preview
-    contas/page.tsx
-    compartilhar/page.tsx
-    plano/page.tsx
-    configuracoes/page.tsx
-  (publico)/r/[id]/page.tsx           dashboard compartilhado, só leitura
-  (publico)/p/[id]/page.tsx           LP publicada (preview)
+                      vyzualize.com.br (Next.js na Vercel)
+   ┌──────────────┬───────────────┬──────────────┬───────────────┬──────────────┐
+   │ site e planos│   checkout    │    painel    │ páginas       │ API do app   │
+   │ (marketing)  │  (checkout)   │   (painel)   │ públicas      │ /api/v1      │
+   └──────┬───────┴───────┬───────┴──────┬───────┴───────┬───────┴──────┬───────┘
+          │               │              │               │              │
+          └───────────────┴──── Supabase (Postgres + Auth + Storage + Vault) ┘
+                                         │
+              cobrança (mock → Stripe) · OAuth Meta/Google · RevenueCat (lojas)
+                                         │
+                        apps/mobile (Expo, iOS e Android) usa a mesma API
 ```
 
-As rotas com `[id]` não têm `generateStaticParams` (os ids nascem no navegador). Com Cache Components, o acesso a `params` fica dentro de `<Suspense>` e o conteúdo é um componente cliente que lê o `Store`. O resto do painel é pré-renderizado como casca estática.
+- **Stack:** Next.js 16 (App Router, Cache Components, `proxy.ts`), React 19, Tailwind v4, Supabase (Postgres, Auth, Storage, Vault, pg_cron), zod 4, vitest. App: Expo SDK 58 com `ios/` e `android/` (sem EAS).
+- **Um repositório:** site, painel, API, banco (`supabase/migrations`), app (`apps/mobile`) e tipos compartilhados (`packages/shared`).
 
-## Pastas
+## 2. Dois produtos
+
+O VYZ vende dois produtos separados, cada um com 3 planos (Básico, Padrão, Avançado):
+
+| | Dashboards | Landing pages |
+|---|---|---|
+| Plano no banco | `base`, `pro`, `avancado` (+ `personalizado`) | `lp_base`, `lp_pro`, `lp_avancado` |
+| Preço | por contas conectadas, mensal ou anual | por página: R$ 950 de criação + R$ 99/mês de hospedagem cada (1, 3 ou 5 páginas) |
+| Depois do pagamento | onboarding (`/comecar`) e o primeiro dashboard | popup de boas-vindas com a galeria de templates |
+| Endereço | `dash.vyzualize.com.br/<cliente>` | `lps.vyzualize.com.br/<cliente>` |
+| Menu do painel | Início, Dashboards, Contas, Compartilhar, Plano, Configurações | Landing pages, Leads, Plano, Configurações |
+
+**O caminho do usuário fica salvo no banco** (`product_line`: `dash` | `lp`):
+
+- `plans.product` é a fonte.
+- `checkout_sessions.product` guarda o que a pessoa escolheu na página de preços. Uma trigger confere com o plano.
+- `subscriptions.product` é copiado do plano. A troca de plano só acontece dentro do mesmo produto (`plan:product_mismatch`).
+- `workspaces.product` diz o lado da plataforma. Cada produto tem o seu workspace: comprar LP não mexe no workspace de dashboards.
+- `profiles.product` é o último produto em que o usuário entrou.
+- `product_events` é o histórico (só cresce) de quem entrou em qual produto, por checkout, loja ou troca.
+
+No código: `Product` e as funções de plano em `features/pricing/pricing.ts` (`planDbId`, `parsePlanDbId`, `PRODUCT_HOME`), e `session.workspace.product` em toda tela do painel.
+
+## 3. Rotas (`src/app`)
+
+Grupos de rota isolados: cada um tem o próprio layout, e nenhum importa o motion, o layout ou o estado de outro (regra de ESLint `no-restricted-imports`).
+
+```
+(marketing)/page.tsx                    site: hero, como funciona, Inteligência, planos (toggle Dashboards/LP)
+(checkout)/assinar                      1. dados (Google ou e-mail) → pagamento/[id] → concluido/[id]
+(auth)/entrar, recuperar-senha,         login (e-mail e senha ou Google), senha, convite de equipe
+       redefinir-senha, convite/[token]
+(onboarding)/comecar                    negócio → plataformas → conectar contas → primeiro dashboard (só dashboards)
+(painel)/painel/...                     o SaaS (menu por produto)
+  page.tsx                              Início (dashboards) · LP vai para /painel/landing-pages
+  dashboards, dashboards/novo, [id], [id]/editar
+  landing-pages, novo, [id] (editor), leads
+  contas, compartilhar, plano, configuracoes
+  w/[slug]/route.ts                     entrada do cliente: abre o workspace e leva ao produto dele
+(publico)/p/[slug]                      landing page publicada
+(publico)/r/[token]                     dashboard compartilhado (só leitura)
+(legal)/termos, privacidade
+(mock)/integracoes/simulacao/[provider] consentimento simulado de Meta/Google (sem credenciais reais)
+auth/callback, auth/confirm             volta do OAuth e dos links de e-mail (Supabase, PKCE)
+api/v1/...                              API do app nativo (Bearer do Supabase, mesmo RLS)
+api/billing/webhook                     cobrança (Stripe, quando ligar)
+api/webhooks/revenuecat                 compras nas lojas (créditos e planos)
+api/integrations/[provider]/start|callback   OAuth das plataformas de anúncio
+api/landing-pages/leads                 formulário das LPs publicadas
+api/cron/sync                           sincronização agendada das contas
+```
+
+`src/proxy.ts` (o antigo middleware): renova a sessão, manda quem não está logado para `/entrar`, devolve 404 de verdade para `/p` e `/r` inexistentes e, nos subdomínios `dash.`/`lps.`, reescreve `/<cliente>` para `/painel/w/<cliente>`.
+
+## 4. Pastas
 
 ```
 src/
+  app/                rotas (acima)
+  proxy.ts
   components/
-    brand/      Wordmark, Icon, geometria do logo
-    ui/         botões, Segmented, Stepper, Toast, ThemeToggle, Odometer, PendingChip, Modal, campos e
-                controles próprios (nada nativo): Select, Menu, Tooltip (Radix), Checkbox/Radio/Switch,
-                NumberStepper, PeriodPicker, FileInput, ColorField. Dentro de Modal, os popovers montam
-                no próprio <dialog> (portal.ts)
-    charts/     LineChart, Funnel, Scatter, BarList, Sparkline: desenhados sempre em px reais (useSize mede o
-                contêiner; viewBox = tamanho medido), texto de 11 a 12 px, ticks pela largura (axis.ts).
-                Só as miniaturas das galerias são escaladas (ScaledPreview). O PDF mede o A4 (277 mm)
-    motion/     só para (marketing): CutReveal, Reveal, Magnetic, SmoothScroll, ScrollProgress, SectionWipe, MotionRoot
-  features/
-    pricing/        pricing.ts (preços), entitlements.ts (limites)
-    metrics/        definitions.ts, compute.ts, source.ts (DataSource + MockSource)
-    templates/      dashboards.ts (20), pages.ts (biblioteca de páginas), landing-pages.ts (10)
-    dashboards/     widgets/, DashboardView, fluxo "Novo dashboard", miniaturas
-    landing-pages/  LandingRenderer, fluxo e editor
-    accounts/       plataformas, validação de IDs, tela de contas
-    share/          codificação do link (base64url + deflate), PDF, relatórios
-    workspace/      plano simulado, marca própria, app shell
-    agent/          assistente VYZ (só no painel): motor, drawer, mascote, voz
-    marketing/      seções da LP, gerador do hero, intro
-  lib/
-    store/      Store, LocalStore, hooks (useCollection, useDoc)
-    format.ts   moeda e números pt-BR
-    whatsapp.ts links e mensagens
-    ids.ts      geração de ids
+    brand/            Wordmark, geometria do logo
+    ui/               botões, Modal, campos, Segmented, Toast, Paywall (recurso borrado + "Liberar no …")
+    charts/           gráficos em SVG feitos à mão
+    motion/           só para o site (Lenis, reveals, intro)
+  features/           domínio + UI, código que roda no navegador ou é puro
+    pricing/          preços (pricing.ts), itens de cobrança (catalog.ts), limites por plano (entitlements.ts)
+    templates/        catálogos de dashboard e de LP, um arquivo por template (docs/TEMPLATES.md)
+    metrics/          definições de métrica e regras de cálculo
+    analytics/        dashboards com dados reais (Meta e Google), agregação e formatos
+    dashboards/       widgets, galeria, fluxo de novo dashboard, visualização
+    landing-pages/    galeria, editor, renderizador, leads
+    checkout/         pedido (order.ts), formulário, pagamento, troca de plano, rótulos
+    onboarding/       passos do /comecar
+    workspace/        app shell, Início, Plano, Configurações, vitrine (Upsell), boas-vindas
+    accounts/         plataformas e contas de anúncio
+    agent/            assistente VYZ (só no painel): motor, drawer, mascote, voz
+    marketing/        seções do site, estado do plano escolhido
+    auth/, share/, integrations/, sync/, catalog/, legal/
+  server/             só servidor ("server-only"): ações, consultas, integrações
+    auth/             sessão, workspace atual (requireWorkspace/authorize), Google, Bearer do app
+    billing/          checkout, provedor (mock/Stripe), assinatura, loja (RevenueCat)
+    dashboards/, landing-pages/, onboarding/, workspace/, share/
+    integrations/     OAuth Meta/Google, tokens no Vault
+    sync/, analytics/ sincronização das contas e leitura do armazém de métricas
+    agent/            contexto e ações do assistente
+    history/          logs de auditoria e atividade
+    security/         rate limit
+    supabase/         clientes (usuário e admin) e tradução de erros do banco
+    env.ts            variáveis validadas (zod)
+  lib/                utilitários sem domínio: format, whatsapp, ids, hooks, product-hosts, supabase/cookies
+packages/shared/      tipos e regras usados pelo site e pelo app (API, créditos, planos da loja, termos proibidos no iOS)
+apps/mobile/          app Expo (docs/MOBILE.md)
+supabase/migrations/  o banco, em ordem (docs/BANCO.md)
+scripts/
+  db/                 gen-types (tipos do banco), sync-catalog (planos, preços, templates)
+  dev/                conta de teste (--product dash|lp), cookie de sessão
+  store/              lista dos produtos das lojas
+docs/                 esta pasta
 ```
 
-## Limites por plano (`features/pricing/entitlements.ts`)
+**Regras de organização**
+1. **Uma fonte por assunto.** Preço e limite: `features/pricing`. Templates: `features/templates`. Métrica: `features/metrics`. O banco recebe uma cópia pelo `npm run db:catalog`; o código é a verdade.
+2. **`features` não acessa o banco.** Leitura e escrita ficam em `server/` (Server Actions, consultas e Route Handlers). As páginas chamam `server/` e passam os dados prontos.
+3. **O banco repete as regras.** Limites, papéis e produto são conferidos no servidor **e** no Postgres (RLS e triggers). A tela é só a primeira barreira.
+4. **Um arquivo por template** (docs/TEMPLATES.md).
+5. **Mock atrás de interface.** Cobrança (`server/billing/provider.ts`) e OAuth (`server/integrations/providers`) têm a versão simulada e a real com a mesma interface; a variável de ambiente escolhe.
 
-| | Base | Pro | Avançado | Personalizado |
-|---|---|---|---|---|
-| Templates de dashboard | 5 | 10 | 20 | 20 + sob medida |
-| Templates de LP | 3 | 6 | 10 | 10 |
-| Plataformas | Meta, Google Ads, GA4 | todas | todas | todas |
-| Páginas do dashboard | essenciais | + Pro | todas | todas |
-| Marca própria (white-label) | não | não | não | sim |
-| Análise por áudio | não | não | em breve | em breve |
-| Assistente VYZ | chat | chat | chat + voz | chat + voz |
+## 5. Fluxo do cliente
 
-Os limites de quantidade (dashboards e LPs criadas) e as contas contratadas também vivem nesse arquivo. As contas contratadas vêm do plano simulado (padrão: 2, como na LP).
+```
+Site (/#planos)
+  toggle Dashboards | Landing pages  →  "Assinar o Padrão"
+        │  /assinar?produto=lp&plano=pro&periodo=mensal
+        ▼
+Checkout
+  sem conta: Criar conta com Google (volta ao pedido logado) ou com e-mail e senha
+  com conta: só empresa e aceite
+  → checkout_sessions + checkout_items (o servidor recalcula o preço; o navegador nunca manda valor)
+        ▼
+Pagamento (mock hoje: só os e-mails de BILLING_FREE_EMAILS em produção)
+  → fulfill_checkout (banco, numa transação): workspace, assinatura, itens, fatura, transação
+  → triggers: produto no workspace e no perfil, product_events, onboarding pulado em LP
+        ▼
+Concluído → entrada do produto (dash.…/<cliente> ou lps.…/<cliente>, ou /painel/w/<cliente>)
+  dashboards: /comecar (onboarding) → primeiro dashboard
+  landing pages: /painel/landing-pages?bemvindo=1 → popup "escolha o template" → editor
+```
 
-## Assistente VYZ (`features/agent`)
+Dentro do painel, os recursos de planos acima aparecem borrados com "Liberar no <plano>" (`components/ui/Paywall.tsx`, `features/workspace/Upsell.tsx`), e a troca leva à tela Plano já com o plano escolhido (`/painel/plano?liberar=pro`). O outro produto aparece como oferta no fim do Início.
 
-Só existe no painel: o `AgentProvider` envolve o `AppShell`, e o ESLint proíbe a LP, as páginas públicas e o `/entrar` de importar `features/agent`.
+## 6. Banco (resumo)
 
-- **Motor:** interface `VyzEngine.ask(pergunta, contexto) → { texto, card?, grafico?, acao?, alvo? }` (`engine/types.ts`). Hoje `LocalEngine` (`engine/local.ts`): intenções por palavra-chave em PT-BR, sem API. O ponto de troca é `engine/index.ts` (`createEngine`); um `LlmEngine` futuro chama um route handler no servidor com a mesma interface.
-- **Contexto:** `engine/context.ts` lê o `Store` (workspace, dashboards, contas, LPs) e os mesmos dados de amostra do painel (`datasetFor`), no mês até hoje contra o período anterior de mesmo tamanho. O motor só responde com o que está no contexto; sem dado, diz "não tenho esse dado".
-- **Números:** sempre pt-BR via `Intl` (`engine/format.ts`), com o período explícito ("em outubro até hoje").
-- **Ações:** trocar tema, abrir Dashboards, Landing pages, Contas, Plano e "Novo dashboard".
-- **Mostrar no painel:** cada KPI tem `data-vyz-metric`. O botão só aparece quando o KPI está na primeira página do dashboard alvo; se o usuário estiver em outra página, o painel navega até o dashboard e só então rola e destaca (`.vyz-highlight`).
-- **Entradas:** botão do mascote no topo (ao lado do tema), barra "Pergunte ao VYZ…" quando cabe, e ⌘K / Ctrl+K (único atalho com essa tecla no painel).
-- **Voz (`voice.ts`, Web Speech API, pt-BR):** só nos planos com `agentVoice` (Avançado e Personalizado), que liberam o microfone **e** a leitura em voz alta com a legenda flutuante. Nos outros, a resposta é só texto e os dois botões aparecem com cadeado, levando ao Plano. O microfone só escuta com o drawer aberto e depois do clique; "Olá, Vyz" / "Oi, Vyz" no começo da frase é aceito e retirado. Sem suporte, o microfone some.
-- **Conversa:** só na memória da aba ("limpar" zera).
+Detalhes em `docs/BANCO.md`. Migrations em ordem:
 
-## Dados e métricas
+| Migration | O quê |
+|---|---|
+| foundation, catalog, identity | extensões, catálogo (planos, preços, plataformas, templates), perfis, workspaces, membros, convites |
+| billing | checkout, assinaturas, itens, faturas, transações, pedidos de serviço, `fulfill_checkout` |
+| integrations, insights | conexões OAuth (tokens no Vault), contas de anúncio, armazém de métricas diárias |
+| dashboards, landing_pages | dashboards e páginas, LPs, versões, leads, links compartilhados |
+| entitlements | limites por plano aplicados por trigger (com lock) |
+| history, housekeeping | logs particionados por mês (auditoria, login, atividade), limpeza e jobs (pg_cron) |
+| hardening, billing_followups | revisão de segurança, troca de plano atômica, renovação simulada |
+| native_app, public_link_exists | créditos e eventos das lojas, push, exclusão de conta; checagem de links públicos |
+| store_plans_and_seats | planos vendidos nas lojas, usuários por plano |
+| product_lines | os dois produtos e o caminho do usuário |
 
-- **Venda confirmada (deduplicada):** o topo usa a venda confirmada no GA4 (ou no CRM). O que Meta e Google atribuem aparece ao lado, e a soma das plataformas passa das confirmadas.
-- **CTR do período:** cliques ÷ impressões somados no período inteiro, nunca média de médias.
-- **Dias em maturação:** os últimos 3 dias do período ficam marcados nas séries diárias.
-- **ROAS de equilíbrio:** 1 ÷ margem, configurada no dashboard.
-- `MockSource.load(spec)` gera um `Dataset` completo (dias, campanhas, criativos, funis, públicos, empreendimentos, produtos, etapas do CRM, pacing) a partir de uma seed (`hash(dashboard + cliente + template)`), do perfil do template e do período. O mesmo input gera sempre os mesmos números.
+Segurança: RLS em todas as tabelas (negado por padrão), funções `security definer` com `search_path` vazio no schema `private`, erros no formato `grupo:motivo` traduzidos em `server/supabase/errors.ts`.
 
-## Compartilhamento sem backend
+## 7. Autenticação
 
-- **Link:** `/r/[id]#<payload>`. O payload é a configuração do dashboard em JSON compacto, comprimida com `CompressionStream("deflate-raw")` e codificada em base64url. Vai no fragmento (`#`), que não sai do navegador. A página pública decodifica, confere a expiração e renderiza com `MockSource`, só leitura, com a marca do cliente no Personalizado.
-- **PDF:** folha de impressão (`@media print`) + `window.print()`. A4 paisagem, capa, uma página do dashboard por folha e cores forçadas para o modo claro.
-- **Relatórios agendados:** salvos no `Store`. O envio depende de backend.
+- Supabase Auth com cookies `httpOnly` (o navegador nunca lê o token). `NEXT_PUBLIC_COOKIE_DOMAIN=.vyzualize.com.br` faz a mesma sessão valer no site e nos subdomínios.
+- E-mail e senha, Google (site: OAuth com PKCE; app: idToken nativo) e Apple (app iOS). Mesmo e-mail confirmado: o Supabase liga as identidades numa conta só.
+- App nativo: `Authorization: Bearer <jwt>` em `/api/v1`, com o mesmo RLS (`server/auth/bearer.ts`).
 
-## Motion
+## 8. Cobrança
 
-- LP: como na fase anterior (corte, odômetro, Lenis, intro).
-- Painel: só transições de 150 a 250 ms e a varredura do scanner (CSS) ao gerar um dashboard. Sem Lenis, intro, tilt ou cursor magnético.
-- `prefers-reduced-motion` desliga tudo nos dois lados.
+- `BILLING_PROVIDER=mock` hoje (sem Stripe). Em produção, o mock só aceita os e-mails de `BILLING_FREE_EMAILS`; o resto vê "pagamento em breve" (`server/env.ts`, `canCheckout`).
+- Itens: plano (por contas, dashboards) ou plano de LP (hospedagem) + itens únicos (criação de LP, dashboard sob medida). Tudo recalculado no servidor (`features/checkout/order.ts`) e conferido de novo no banco.
+- App: assinaturas e créditos pela loja (RevenueCat), mesma regra de plano do site (docs/MOBILE.md).
+
+## 9. Variáveis de ambiente
+
+Lista completa e comentada em `.env.example`. As que mudam o comportamento:
+
+| Variável | Efeito |
+|---|---|
+| `BILLING_PROVIDER`, `INTEGRATIONS_MODE` | `mock` ou real |
+| `ALLOW_MOCKS_IN_PRODUCTION` | permite o mock em produção (sem ela, o build recusa) |
+| `BILLING_FREE_EMAILS` | quem assina sem pagar enquanto o mock estiver em produção |
+| `NEXT_PUBLIC_DASH_HOST`, `NEXT_PUBLIC_LPS_HOST` | ligam os subdomínios (só depois do DNS) |
+| `NEXT_PUBLIC_COOKIE_DOMAIN` | sessão compartilhada entre subdomínios |
+| `REVENUECAT_*` | compras nas lojas |
+
+## 10. Comandos
+
+| Comando | Para quê |
+|---|---|
+| `npm run dev` | site e painel local |
+| `npm test` / `npx tsc --noEmit` / `npx eslint .` | testes, tipos e lint |
+| `npm run db:push` | aplica as migrations no Supabase |
+| `npm run db:types` | regenera `src/lib/supabase/database.types.ts` |
+| `npm run db:catalog` | copia planos, preços e templates do código para o banco |
+| `npx tsx scripts/dev/create-test-account.ts --email … [--product lp]` | conta de teste paga (simulada) |
+
+Commits e push sempre pela conta GitHub Vyzualize.

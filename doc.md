@@ -1,5 +1,7 @@
 # VYZ · O que já está feito
 
+> **Histórico da fase 1.** A arquitetura atual (backend, dois produtos, checkout, app) está em [docs/ARQUITETURA.md](docs/ARQUITETURA.md); templates em [docs/TEMPLATES.md](docs/TEMPLATES.md).
+
 Situação em 27/10/2026 (último commit: `c4ab882`). Fase 1: **só front-end**, sem backend. Tudo que depende de servidor funciona no navegador e aparece marcado com o aviso `PendingChip`.
 
 Detalhes técnicos: [docs/ARQUITETURA.md](docs/ARQUITETURA.md). O que falta: [docs/PENDENCIAS.md](docs/PENDENCIAS.md).

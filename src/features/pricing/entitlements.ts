@@ -1,6 +1,9 @@
 // Limites por plano. A LP (cartões de planos) e o painel (bloqueios) usam as
 // mesmas funções daqui.
 
+import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
+import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
+
 export type Tier = "base" | "pro" | "avancado" | "personalizado";
 
 export const TIERS: Tier[] = ["base", "pro", "avancado", "personalizado"];
@@ -35,11 +38,17 @@ export type Entitlements = {
   maxMembers: number;
 };
 
+// Quantos templates cada plano libera: contados no catálogo (src/features/templates),
+// então template novo já aparece nos números dos planos.
+const RANK_OF = (t: Tier) => ({ base: 0, pro: 1, avancado: 2, personalizado: 3 })[t];
+const dashCount = (t: Tier) => ALL_DASHBOARD_TEMPLATES.filter((x) => RANK_OF(x.tier) <= RANK_OF(t)).length;
+const lpCount = (t: Tier) => LANDING_TEMPLATES.filter((x) => RANK_OF(x.tier) <= RANK_OF(t)).length;
+
 export const ENTITLEMENTS: Record<Tier, Entitlements> = {
-  base: { dashboardTemplates: 5, landingTemplates: 3, platforms: "core", pages: "base", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, maxDashboards: 2, maxLandingPages: 1, maxMembers: 1 },
-  pro: { dashboardTemplates: 10, landingTemplates: 6, platforms: "all", pages: "pro", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, maxDashboards: 10, maxLandingPages: 3, maxMembers: 2 },
-  avancado: { dashboardTemplates: 20, landingTemplates: 10, platforms: "all", pages: "avancado", whiteLabel: false, audio: "soon", customDashboards: false, agentChat: true, agentVoice: true, maxDashboards: 20, maxLandingPages: 10, maxMembers: 5 },
-  personalizado: { dashboardTemplates: 20, landingTemplates: 10, platforms: "all", pages: "avancado", whiteLabel: true, audio: "soon", customDashboards: true, agentChat: true, agentVoice: true, maxDashboards: 50, maxLandingPages: 10, maxMembers: 10 },
+  base: { dashboardTemplates: dashCount("base"), landingTemplates: lpCount("base"), platforms: "core", pages: "base", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, maxDashboards: 2, maxLandingPages: 1, maxMembers: 1 },
+  pro: { dashboardTemplates: dashCount("pro"), landingTemplates: lpCount("pro"), platforms: "all", pages: "pro", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, maxDashboards: 10, maxLandingPages: 3, maxMembers: 2 },
+  avancado: { dashboardTemplates: dashCount("avancado"), landingTemplates: lpCount("avancado"), platforms: "all", pages: "avancado", whiteLabel: false, audio: "soon", customDashboards: false, agentChat: true, agentVoice: true, maxDashboards: 20, maxLandingPages: 10, maxMembers: 5 },
+  personalizado: { dashboardTemplates: dashCount("personalizado"), landingTemplates: lpCount("personalizado"), platforms: "all", pages: "avancado", whiteLabel: true, audio: "soon", customDashboards: true, agentChat: true, agentVoice: true, maxDashboards: 50, maxLandingPages: 10, maxMembers: 10 },
 };
 
 /** O plano `tier` cobre o que exige `required`? */
@@ -66,7 +75,7 @@ export function nextTier(tier: Tier): Tier | null {
 
 /** Linhas da tabela de limites (página Plano e documentação). */
 export const LIMIT_ROWS: { label: string; value: (t: Tier) => string }[] = [
-  { label: "Templates de dashboard", value: (t) => (t === "personalizado" ? "20 + sob medida" : String(ENTITLEMENTS[t].dashboardTemplates)) },
+  { label: "Templates de dashboard", value: (t) => (t === "personalizado" ? `${ENTITLEMENTS[t].dashboardTemplates} + sob medida` : String(ENTITLEMENTS[t].dashboardTemplates)) },
   { label: "Templates de landing page", value: (t) => String(ENTITLEMENTS[t].landingTemplates) },
   { label: "Plataformas", value: (t) => (ENTITLEMENTS[t].platforms === "core" ? "Meta, Google Ads, GA4" : "todas as 27") },
   {
