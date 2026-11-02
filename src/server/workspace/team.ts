@@ -11,7 +11,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { canRemoveMember, checkRoleChange, INVITE_MAX_PENDING, INVITE_ROLES, INVITE_TTL_DAYS, invitePath, isInviteToken, normalizeEmail } from "@/features/workspace/team";
 import type { MemberRole } from "@/features/workspace/session";
-import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
+import { ACTIVE_WORKSPACE_COOKIE, WORKSPACE_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
 import { getSessionUser } from "@/server/auth/session";
 import { authorize } from "@/server/auth/workspace";
 import { logActivity } from "@/server/history/log";
@@ -210,13 +210,7 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
     const supabase = await createServerSupabase();
     const workspaceId = unwrap(await supabase.rpc("accept_workspace_invitation", { p_token: token }));
     if (!workspaceId) throw appError("invitation:invalid");
-    (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, workspaceId, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 365,
-    });
+    (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, workspaceId, WORKSPACE_COOKIE_OPTIONS);
     await supabase.from("profiles").update({ default_workspace_id: workspaceId }).eq("id", user.id);
     await logActivity({ workspaceId, actorId: user.id, event: "team.invitation_accepted", entityType: "workspace", entityId: workspaceId });
   } catch (err) {

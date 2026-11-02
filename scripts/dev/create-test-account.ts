@@ -4,13 +4,13 @@
 //
 //   npx tsx scripts/dev/create-test-account.ts --email teste@vyz.dev --password Teste12345 \
 //     [--plan base|pro|avancado] [--period mensal|anual] [--accounts 2] [--company "Loja Teste"] \
-//     [--onboarding pending|done]
+//     [--onboarding pending|done] [--product dash|lp]
 //   npx tsx scripts/dev/create-test-account.ts --delete --email teste@vyz.dev
 
 import { parseArgs } from "node:util";
 import { createClient } from "@supabase/supabase-js";
-import { INTERVAL, planPriceId } from "@/features/pricing/catalog";
-import { DEFAULT_STATE, quote, type Period, type PlanId, type PlanState } from "@/features/pricing/pricing";
+import { buildOrder, normalizeState } from "@/features/checkout/order";
+import { type Period, type PlanId } from "@/features/pricing/pricing";
 import type { Database } from "@/lib/supabase/database.types";
 
 process.loadEnvFile?.(".env.local");
@@ -20,6 +20,7 @@ const { values } = parseArgs({
     email: { type: "string" },
     password: { type: "string", default: "Teste12345" },
     plan: { type: "string", default: "pro" },
+    product: { type: "string", default: "dash" },
     period: { type: "string", default: "anual" },
     accounts: { type: "string", default: "2" },
     company: { type: "string", default: "Loja Teste" },
@@ -77,9 +78,9 @@ async function create() {
     userId = data.user.id;
   }
 
-  const state: PlanState = { ...DEFAULT_STATE, plano: plan, periodo: period, meta: accounts, google: 0, ga4: 0, outras: 0, nicho: "ecommerce" };
-  const q = quote(state);
-  const amountNow = (period === "anual" ? q.yearly : q.monthly) + q.oneTime;
+  const product = values.product === "lp" ? "lp" : "dash";
+  const state = normalizeState({ produto: product, plano: plan, periodo: period, meta: accounts, google: 0, ga4: 0, outras: 0, nicho: "ecommerce" });
+  const order = buildOrder(state);
 
   const { data: checkout, error: cErr } = await admin
     .from("checkout_sessions")
@@ -89,28 +90,32 @@ async function create() {
       email: email!,
       full_name: values.name!,
       company_name: values.company!,
-      plan_id: plan,
-      interval: INTERVAL[period],
-      accounts_quantity: q.accountsBilled,
+      plan_id: order.planDbId,
+      product: order.product,
+      interval: order.interval,
+      accounts_quantity: order.accountsQuantity,
       business_type_id: "ecommerce",
       selection: state,
-      quote: q,
-      amount_due_now_cents: amountNow,
-      recurring_cents: period === "anual" ? q.yearly : q.monthly,
+      quote: order.quote,
+      amount_due_now_cents: order.amountDueNowCents,
+      recurring_cents: order.recurringCents,
     })
     .select("id")
     .single();
   if (cErr) throw cErr;
 
-  const { error: iErr } = await admin.from("checkout_items").insert({
-    checkout_session_id: checkout.id,
-    kind: "recurring",
-    plan_price_id: planPriceId(plan, period),
-    quantity: q.accountsBilled,
-    amount_cents: q.planMonthly,
-    label: `Plano ${plan}`,
-    position: 0,
-  });
+  const { error: iErr } = await admin.from("checkout_items").insert(
+    order.items.map((i, position) => ({
+      checkout_session_id: checkout.id,
+      kind: i.kind,
+      plan_price_id: i.planPriceId ?? null,
+      billing_item_id: i.billingItemId ?? null,
+      quantity: i.quantity,
+      amount_cents: i.amountCents,
+      label: i.label,
+      position,
+    })),
+  );
   if (iErr) throw iErr;
 
   const { data: workspaceId, error: fErr } = await admin.rpc("fulfill_checkout", {
@@ -130,7 +135,7 @@ async function create() {
     if (error) throw error;
   }
 
-  console.log(JSON.stringify({ email, password: values.password, userId, workspaceId, plan, period, accounts: q.accountsBilled, onboarding: values.onboarding }, null, 2));
+  console.log(JSON.stringify({ email, password: values.password, userId, workspaceId, product, plan, period, accounts: order.accountsQuantity, onboarding: values.onboarding }, null, 2));
 }
 
 (values.delete ? remove() : create()).catch((err) => {

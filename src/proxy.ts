@@ -5,6 +5,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { HOST_RESERVED, productFromHost } from "@/lib/product-hosts";
 import { AUTH_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
 
 const PROTECTED = ["/painel", "/comecar", "/integracoes", "/convite", "/assinar/pagamento", "/assinar/concluido"];
@@ -56,7 +57,29 @@ function notFoundPage(share: boolean) {
   return new NextResponse(html, { status: 404, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }
 
+/**
+ * dash.vyzualize.com.br/<slug> e lps.vyzualize.com.br/<slug>: a entrada do
+ * cliente no produto dele (reescrita para /painel/w/<slug>). A raiz do
+ * subdomínio volta para o site.
+ */
+function productHostRoute(request: NextRequest): NextResponse | null {
+  if (!productFromHost(request.headers.get("host"))) return null;
+  const parts = request.nextUrl.pathname.split("/").filter(Boolean);
+  if (parts.length === 0) {
+    const site = process.env.NEXT_PUBLIC_SITE_URL;
+    return site ? NextResponse.redirect(site) : null;
+  }
+  if (parts.length === 1 && !HOST_RESERVED.has(parts[0]) && /^[a-z0-9][a-z0-9-]{1,62}$/i.test(parts[0])) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/painel/w/${parts[0].toLowerCase()}`;
+    return NextResponse.rewrite(url);
+  }
+  return null;
+}
+
 export async function proxy(request: NextRequest) {
+  const hostRoute = productHostRoute(request);
+  if (hostRoute) return hostRoute;
   if (await publicLinkMissing(request)) return notFoundPage(request.nextUrl.pathname.startsWith("/r/"));
 
   let response = NextResponse.next({ request });
@@ -112,5 +135,7 @@ export const config = {
     "/api/:path*",
     "/p/:path*",
     "/r/:path*",
+    // subdomínios dos produtos: a raiz e /<slug> do cliente
+    { source: "/:slug?", has: [{ type: "header", key: "host", value: "(dash|lps)\\..*" }] },
   ],
 };

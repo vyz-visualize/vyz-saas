@@ -10,7 +10,7 @@ import { OrderSummary } from "@/features/checkout/OrderSummary";
 import { PaymentForm } from "@/features/checkout/PaymentForm";
 import { toQuery } from "@/features/pricing/pricing";
 import { getSessionUser } from "@/server/auth/session";
-import { getCheckout, type CheckoutView } from "@/server/billing/queries";
+import { getCheckout, getCheckoutReceipt, type CheckoutView } from "@/server/billing/queries";
 import { isMockBilling } from "@/server/env";
 
 export const metadata: Metadata = { title: "Pagamento" };
@@ -36,7 +36,10 @@ async function Payment({ params }: { params: PageProps<"/assinar/pagamento/[id]"
 
   const checkout = await getCheckout(id);
   if (!checkout) notFound();
-  if (checkout.status === "completed") redirect(checkout.planId ? PRODUCT_HOME[checkout.product] : "/painel/plano");
+  if (checkout.status === "completed") {
+    if (!checkout.planId) redirect("/painel/plano");
+    redirect((await getCheckoutReceipt(checkout)).entryUrl ?? PRODUCT_HOME[checkout.product]);
+  }
   if (checkout.status !== "open") return <Closed checkout={checkout} />;
 
   // validade de exemplo para o cartão de teste: dezembro, daqui a 4 anos

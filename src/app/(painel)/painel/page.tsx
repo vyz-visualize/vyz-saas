@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { HomePage } from "@/features/workspace/HomePage";
 import { PageSkeleton } from "@/features/workspace/PageSkeleton";
@@ -17,6 +18,8 @@ export default function Page() {
 
 // Sessão e banco são dados da requisição: dentro do Suspense.
 async function Inicio() {
-  await requireWorkspace({ next: "/painel" });
+  const session = await requireWorkspace({ next: "/painel" });
+  // o início do produto de landing pages é a lista de LPs
+  if (session.workspace.product === "lp") redirect("/painel/landing-pages");
   return <HomePage data={await getHomeData()} />;
 }

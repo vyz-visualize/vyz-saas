@@ -10,7 +10,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { normalizePhone } from "@/features/checkout/phone";
 import { LOGO_MAX_BYTES, LOGO_MESSAGES, sniffLogo } from "@/features/workspace/logo";
-import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
+import { ACTIVE_WORKSPACE_COOKIE, WORKSPACE_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
 import { BRAND_BUCKET, publicAssetUrl } from "@/lib/supabase/storage";
 import { getSessionUser } from "@/server/auth/session";
 import { authorize, getViewer } from "@/server/auth/workspace";
@@ -190,13 +190,7 @@ export async function switchWorkspace(workspaceId: string) {
   const viewer = await getViewer();
   if (!viewer) redirect("/entrar");
   if (!z.uuid().safeParse(workspaceId).success || !viewer.memberships.some((m) => m.workspace.id === workspaceId)) redirect("/painel");
-  (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, workspaceId, {
-    path: "/",
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+  (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, workspaceId, WORKSPACE_COOKIE_OPTIONS);
   const supabase = await createServerSupabase();
   await supabase.from("profiles").update({ default_workspace_id: workspaceId }).eq("id", viewer.user.id);
   redirect("/painel");

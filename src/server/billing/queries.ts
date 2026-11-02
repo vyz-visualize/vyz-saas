@@ -5,6 +5,7 @@ import "server-only";
 // Devolvem DTOs no formato da tela, nunca as linhas cruas.
 
 import { PLAN_LABEL, parsePlanDbId, type Product } from "@/features/pricing/pricing";
+import { productEntryUrl } from "@/lib/product-hosts";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { z } from "zod";
@@ -161,16 +162,18 @@ export async function getCheckout(id: string): Promise<CheckoutView | null> {
 
 export type CheckoutReceipt = {
   workspaceName: string | null;
+  /** Endereço de entrada no produto (dash.…/<slug> ou lps.…/<slug>). */
+  entryUrl: string | null;
   payment: { method: PaymentMethod | null; cardBrand: CardBrand | null; cardLast4: string | null; amountCents: number; processedAt: string | null } | null;
   subscription: { currentPeriodEnd: string } | null;
 };
 
 /** Comprovante do pedido concluído (tela de sucesso). */
 export async function getCheckoutReceipt(checkout: CheckoutView): Promise<CheckoutReceipt> {
-  if (checkout.status !== "completed" || !checkout.workspaceId) return { workspaceName: null, payment: null, subscription: null };
+  if (checkout.status !== "completed" || !checkout.workspaceId) return { workspaceName: null, entryUrl: null, payment: null, subscription: null };
   const supabase = await createServerSupabase();
   const [workspace, payment, subscription] = await Promise.all([
-    supabase.from("workspaces").select("name").eq("id", checkout.workspaceId).maybeSingle(),
+    supabase.from("workspaces").select("name, slug, product").eq("id", checkout.workspaceId).maybeSingle(),
     supabase
       .from("payment_transactions")
       .select("method, card_brand, card_last4, amount_cents, processed_at")
@@ -184,6 +187,7 @@ export async function getCheckoutReceipt(checkout: CheckoutView): Promise<Checko
   const p = payment.data;
   return {
     workspaceName: workspace.data?.name ?? null,
+    entryUrl: workspace.data ? productEntryUrl(workspace.data.product, workspace.data.slug, "?bemvindo=1") : null,
     payment: p
       ? {
           method: (p.method as PaymentMethod | null) ?? null,

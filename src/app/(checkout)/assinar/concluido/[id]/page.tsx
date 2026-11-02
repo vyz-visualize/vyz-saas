@@ -97,7 +97,7 @@ async function Done({ params }: { params: PageProps<"/assinar/concluido/[id]">["
               </li>
             ))}
           </ol>
-          <Link href={PRODUCT_HOME[checkout.product]} className={`${btn.primary} mt-7 w-full rounded-[10px] sm:w-auto`}>
+          <Link href={receipt.entryUrl ?? PRODUCT_HOME[checkout.product]} className={`${btn.primary} mt-7 w-full rounded-[10px] sm:w-auto`}>
             Começar
             <ArrowRight size={17} aria-hidden />
           </Link>

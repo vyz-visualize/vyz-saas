@@ -7,7 +7,7 @@
 // fica no <html data-sidebar>, aplicado antes da primeira pintura. O topo
 // mostra o plano real da sessão e, quando há, o aviso da assinatura.
 
-import { AlertTriangle, BarChart3, Check, ChevronsUpDown, Gem, Home, Info, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PanelsTopLeft, Plug, Settings, Share2 } from "lucide-react";
+import { AlertTriangle, BarChart3, Check, ChevronsUpDown, Gem, Home, Inbox, Info, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PanelsTopLeft, Plug, Settings, Share2 } from "lucide-react";
 import { LazyMotion, m, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -24,21 +24,37 @@ import { Caption } from "@/features/agent/Caption";
 import { TIER_LABEL } from "@/features/pricing/entitlements";
 import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
+import type { Product } from "@/features/pricing/pricing";
 import { subscriptionNotice } from "./notice";
 import { ROLE_LABEL } from "./session";
 import { useWorkspaceSession } from "./WorkspaceProvider";
 
-const NAV = [
-  { href: "/painel", label: "Início", icon: Home },
-  { href: "/painel/dashboards", label: "Dashboards", icon: BarChart3 },
-  { href: "/painel/landing-pages", label: "Landing pages", icon: PanelsTopLeft, short: "LPs" },
-  { href: "/painel/contas", label: "Contas", icon: Plug },
-  { href: "/painel/compartilhar", label: "Compartilhar", icon: Share2 },
-  { href: "/painel/plano", label: "Plano", icon: Gem },
-  { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
-] as const;
+type NavItem = { href: string; label: string; icon: typeof Home; short?: string };
 
-const isActive = (path: string | null, href: string) => (href === "/painel" ? path === "/painel" : !!path?.startsWith(href));
+// cada produto tem o seu menu: dashboards não vê LPs e vice-versa
+const NAVS: Record<Product, NavItem[]> = {
+  dash: [
+    { href: "/painel", label: "Início", icon: Home },
+    { href: "/painel/dashboards", label: "Dashboards", icon: BarChart3 },
+    { href: "/painel/contas", label: "Contas", icon: Plug },
+    { href: "/painel/compartilhar", label: "Compartilhar", icon: Share2 },
+    { href: "/painel/plano", label: "Plano", icon: Gem },
+    { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
+  ],
+  lp: [
+    { href: "/painel/landing-pages", label: "Landing pages", icon: PanelsTopLeft, short: "LPs" },
+    { href: "/painel/landing-pages/leads", label: "Leads", icon: Inbox },
+    { href: "/painel/plano", label: "Plano", icon: Gem },
+    { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
+  ],
+};
+
+function useNav(): NavItem[] {
+  return NAVS[useWorkspaceSession().workspace.product];
+}
+
+const isActive = (path: string | null, href: string) =>
+  href === "/painel" ? path === "/painel" : href === "/painel/landing-pages" ? !!path?.startsWith(href) && !path.startsWith("/painel/landing-pages/leads") : !!path?.startsWith(href);
 
 // layoutId precisa das features de layout; chegam depois da primeira pintura
 const loadFeatures = () => import("motion/react").then((r) => r.domMax);
@@ -88,9 +104,10 @@ function useSidebarShortcut() {
 const fade = "whitespace-nowrap transition-[opacity,transform] duration-200 delay-150 ease-brand sb-closed:pointer-events-none sb-closed:-translate-x-1.5 sb-closed:opacity-0 sb-closed:delay-0 sb-closed:duration-100";
 
 function SideNav({ path, collapsed }: { path: string | null; collapsed: boolean }) {
+  const nav = useNav();
   return (
     <ul className="space-y-1">
-      {NAV.map(({ href, label, icon: I }) => {
+      {nav.map(({ href, label, icon: I }) => {
         const active = isActive(path, href);
         return (
           <li key={href} className="relative">
@@ -232,8 +249,9 @@ function Sidebar() {
 // ---- barra de baixo (celular) ------------------------------------------------
 
 function BottomNav({ path, onMore }: { path: string | null; onMore: () => void }) {
-  const items = NAV.slice(0, 4);
-  const moreActive = NAV.slice(4).some((n) => isActive(path, n.href));
+  const nav = useNav();
+  const items = nav.slice(0, 4);
+  const moreActive = nav.slice(4).some((n) => isActive(path, n.href));
   const cell = (active: boolean, I: typeof Home, label: string) => (
     <>
       <span className={`inline-flex h-8 w-14 items-center justify-center rounded-chip transition-colors duration-200 ${active ? "bg-[var(--panel)] text-accent" : ""}`}>
@@ -249,7 +267,7 @@ function BottomNav({ path, onMore }: { path: string | null; onMore: () => void }
         return (
           <li key={n.href}>
             <Link href={n.href} aria-current={active ? "page" : undefined} className="flex flex-col items-center gap-0.5 text-[11px] text-[var(--sidebar-muted)] outline-none focus-visible:text-[var(--sidebar-fg)]">
-              {cell(active, n.icon, "short" in n ? n.short : n.label)}
+              {cell(active, n.icon, n.short ?? n.label)}
             </Link>
           </li>
         );
@@ -352,6 +370,7 @@ function SubscriptionBanner() {
 
 export function AppShell({ children, simulatedBilling = false }: { children: ReactNode; simulatedBilling?: boolean }) {
   const [more, setMore] = useState(false);
+  const nav = useNav();
   return (
     <LazyMotion features={loadFeatures} strict>
       <MotionConfig reducedMotion="user">
@@ -388,7 +407,7 @@ export function AppShell({ children, simulatedBilling = false }: { children: Rea
               </nav>
               <Modal open={more} onClose={() => setMore(false)} title="Mais">
                 <ul className="space-y-1" onClick={() => setMore(false)}>
-                  {NAV.slice(4).map(({ href, label, icon: I }) => (
+                  {nav.slice(4).map(({ href, label, icon: I }) => (
                     <li key={href}>
                       <Link href={href} className="flex items-center gap-3 rounded-control px-3 py-3 text-[15px] hover:bg-accent-soft">
                         <I size={18} aria-hidden /> {label}
