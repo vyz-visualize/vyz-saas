@@ -28,5 +28,6 @@ async function Plano({ searchParams }: { searchParams: PageProps<"/painel/plano"
     publishedLandingPages: session.usage.publishedLandingPages,
     enabledPlatforms: [...new Set(accounts.filter((a) => a.isEnabled).map((a) => a.platformId))],
   };
-  return <PlanPage overview={overview} usage={usage} now={new Date().toISOString()} inactive={query.status === "inativo"} />;
+  const unlock = query.liberar === "base" || query.liberar === "pro" || query.liberar === "avancado" ? query.liberar : null;
+  return <PlanPage overview={overview} usage={usage} now={new Date().toISOString()} inactive={query.status === "inativo"} unlock={unlock} />;
 }

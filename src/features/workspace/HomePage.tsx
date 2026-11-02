@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BarChart3, Check, PanelsTopLeft, RefreshCw } from "lucide-react";
+import { AlertTriangle, BarChart3, Check, RefreshCw, Share2 } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui/kit";
 import { UsageBar } from "@/features/accounts/AccountsPage";
@@ -75,11 +75,11 @@ export function HomePage({ data }: { data: HomeData }) {
             <span className="text-[13.5px]">Meta Ads e Google Ads com os dados das suas contas</span>
           </span>
         </Link>
-        <Link href="/painel/landing-pages/novo?novo=1" className="flex items-center gap-4 rounded-card border border-line bg-card p-5 hover:border-accent">
-          <PanelsTopLeft size={28} aria-hidden className="text-accent" />
+        <Link href="/painel/compartilhar" className="flex items-center gap-4 rounded-card border border-line bg-card p-5 hover:border-accent">
+          <Share2 size={28} aria-hidden className="text-accent" />
           <span>
-            <span className="title block text-lg">Nova landing page</span>
-            <span className="text-[13.5px] text-fg-2">Template, textos, GTM e preview</span>
+            <span className="title block text-lg">Compartilhar com o cliente</span>
+            <span className="text-[13.5px] text-fg-2">Link só de leitura ou PDF do dashboard</span>
           </span>
         </Link>
       </div>
@@ -114,7 +114,6 @@ export function HomePage({ data }: { data: HomeData }) {
             </h2>
             <UsageBar used={usage.billableAccounts} limit={access.accountsQuantity} label="Contas" />
             <UsageBar used={usage.dashboards} limit={ent.maxDashboards} label="Dashboards" />
-            <UsageBar used={usage.publishedLandingPages} limit={ent.maxLandingPages} label="Landing pages publicadas" />
             <Link href="/painel/plano" className="inline-block text-[13.5px] font-semibold text-accent">
               Ver limites do plano →
             </Link>

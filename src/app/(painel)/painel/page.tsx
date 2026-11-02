@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { HomePage } from "@/features/workspace/HomePage";
+import { Upsell } from "@/features/workspace/Upsell";
 import { PageSkeleton } from "@/features/workspace/PageSkeleton";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { getHomeData } from "@/server/workspace/queries";
@@ -21,5 +22,10 @@ async function Inicio() {
   const session = await requireWorkspace({ next: "/painel" });
   // o início do produto de landing pages é a lista de LPs
   if (session.workspace.product === "lp") redirect("/painel/landing-pages");
-  return <HomePage data={await getHomeData()} />;
+  return (
+    <div className="space-y-10">
+      <HomePage data={await getHomeData()} />
+      <Upsell />
+    </div>
+  );
 }

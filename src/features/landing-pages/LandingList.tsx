@@ -16,6 +16,7 @@ import { useDoc } from "@/lib/store/hooks";
 import { MSG_LP_TEAM, waLink } from "@/lib/whatsapp";
 import { deleteLandingPage } from "@/server/landing-pages/actions";
 import { LandingRenderer } from "./LandingRenderer";
+import { useWorkspaceSession } from "@/features/workspace/WorkspaceProvider";
 import { LANDING_STATUS_LABEL, type LandingPageDTO } from "./model";
 
 function TeamCard() {
@@ -51,6 +52,8 @@ function StatusChip({ p }: { p: LandingPageDTO }) {
 type Props = { pages: LandingPageDTO[]; published: number; limit: number; canEdit: boolean };
 
 export function LandingList({ pages, published, limit, canEdit }: Props) {
+  // no produto de landing pages o time já faz as páginas do plano
+  const lpProduct = useWorkspaceSession().workspace.product === "lp";
   const draft = useDoc<LandingDraft>("draft:landing");
   const [removing, setRemoving] = useState<LandingPageDTO | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -155,7 +158,7 @@ export function LandingList({ pages, published, limit, canEdit }: Props) {
             </li>
           );
         })}
-        <TeamCard />
+        {!lpProduct && <TeamCard />}
       </ul>
       <Modal open={!!removing} onClose={() => !pending && setRemoving(null)} title="Apagar landing page?">
         {removing && (

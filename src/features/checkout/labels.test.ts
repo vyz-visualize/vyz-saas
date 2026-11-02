@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeSubscriptionChange, formatDate } from "./labels";
+import { describeSubscriptionChange, formatDate, invoiceDescription } from "./labels";
 
 describe("linha do tempo da assinatura", () => {
   it("descreve cada mudança em português", () => {
@@ -24,5 +24,13 @@ describe("linha do tempo da assinatura", () => {
     expect(formatDate("2026-12-01T01:00:00Z")).toBe("30/11/2026");
     expect(formatDate(null)).toBe("—");
     expect(formatDate("ontem")).toBe("—");
+  });
+});
+
+describe("planos de landing pages nos textos", () => {
+  it("lp_pro vira Padrão (landing pages)", () => {
+    expect(invoiceDescription("Assinatura lp_pro")).toBe("Assinatura Padrão (landing pages)");
+    expect(invoiceDescription("Assinatura pro")).toBe("Assinatura Padrão");
+    expect(invoiceDescription("Pedido avulso")).toBe("Pedido avulso");
   });
 });

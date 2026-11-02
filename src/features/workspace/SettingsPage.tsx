@@ -12,18 +12,17 @@ import { FileInput } from "@/components/ui/FileInput";
 import { LockBadge, PageHeader, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { useToast } from "@/components/ui/Toast";
-import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { ChangePasswordForm, SignOutEverywhereButton } from "@/features/auth/AccountSecurity";
 import { formatPhone } from "@/features/checkout/phone";
 import { relativeTime } from "@/features/integrations/sync-label";
-import { availableIn, TIER_LABEL } from "@/features/pricing/entitlements";
-import { msgUpgrade, waLink } from "@/lib/whatsapp";
+import { availableIn } from "@/features/pricing/entitlements";
 import { removeBrandLogo, updateProfile, updateWorkspace, uploadBrandLogo } from "@/server/workspace/actions";
 import type { AccessEvent, ActivityItem, SettingsData } from "./dto";
 import { LOGO_ACCEPT, LOGO_HINT, logoProblem } from "./logo";
 import { hasRole, ROLE_LABEL } from "./session";
 import { TeamSection } from "./TeamSection";
 import { useWorkspaceSession } from "./WorkspaceProvider";
+import { Paywall } from "@/components/ui/Paywall";
 
 type Notify = (msg: string) => void;
 
@@ -251,7 +250,6 @@ export function SettingsPage({ data }: { data: SettingsData }) {
   const toast = useToast();
   const admin = hasRole(role, "admin");
   const white = !!access.entitlements?.whiteLabel && access.hasAccess;
-  const tierLabel = access.tier ? TIER_LABEL[access.tier] : "Base";
   const tz = workspace.timezone;
 
   return (
@@ -268,18 +266,13 @@ export function SettingsPage({ data }: { data: SettingsData }) {
       </div>
 
       <Section id="h-marca" title="Marca própria (white-label)" aside={!white && <LockBadge label={availableIn("personalizado")} />}>
+        <p className="-mt-2 text-[14px] text-fg-2">Seu logo e suas cores no dashboard, no link e no PDF, sem a marca VYZ.</p>
         {white ? (
-          <>
-            <p className="-mt-2 text-[14px] text-fg-2">Vale como padrão para os novos dashboards: logo e cor no dashboard, no link e no PDF.</p>
-            <BrandForm canEdit={admin} notify={toast.show} />
-          </>
+          <BrandForm canEdit={admin} notify={toast.show} />
         ) : (
-          <div className="flex flex-col gap-3 text-[14px] sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-fg-2">Seu logo e suas cores no dashboard, no link e no PDF, sem a marca VYZ. Para agências que entregam como se fosse delas.</p>
-            <a href={waLink(msgUpgrade(tierLabel, "Personalizado", "Quero a marca própria."))} target="_blank" rel="noopener noreferrer" className={`${btn.small} shrink-0`}>
-              <WhatsAppIcon size={16} /> Falar com especialista
-            </a>
-          </div>
+          <Paywall current={access.hasAccess ? access.tier : null} required="personalizado" feature="Marca própria" text="Para agências que entregam o dashboard como se fosse delas.">
+            <BrandForm canEdit={false} notify={toast.show} />
+          </Paywall>
         )}
       </Section>
 

@@ -145,8 +145,9 @@ const initials = (name: string) =>
     .join("") || "V";
 
 /** "Pro · 2 contas" ou "Sem plano ativo". */
-function planLine(access: ReturnType<typeof useWorkspaceSession>["access"]) {
+function planLine(access: ReturnType<typeof useWorkspaceSession>["access"], product: Product) {
   if (!access.hasAccess || !access.tier) return "Sem plano ativo";
+  if (product === "lp") return `${TIER_LABEL[access.tier]} · Landing pages`;
   const n = access.accountsQuantity;
   return `${TIER_LABEL[access.tier]} · ${n} ${n === 1 ? "conta" : "contas"}`;
 }
@@ -156,7 +157,7 @@ function WorkspaceMenu({ collapsed }: { collapsed: boolean }) {
   const { workspace: ws, access, memberships } = useWorkspaceSession();
   const router = useRouter();
   const [switching, startSwitch] = useTransition();
-  const sub = switching ? "Abrindo…" : planLine(access);
+  const sub = switching ? "Abrindo…" : planLine(access, ws.product);
   return (
     <DropMenu>
       <Tooltip content={ws.name} disabled={!collapsed}>
@@ -322,7 +323,7 @@ function MobileWorkspaces() {
 
 /** Plano da sessão no topo (link para Plano) e o selo do pagamento simulado. */
 function PlanBadge({ simulatedBilling }: { simulatedBilling: boolean }) {
-  const { access } = useWorkspaceSession();
+  const { access, workspace } = useWorkspaceSession();
   return (
     <div className="flex min-w-0 items-center gap-2">
       <Link
@@ -330,7 +331,7 @@ function PlanBadge({ simulatedBilling }: { simulatedBilling: boolean }) {
         className="inline-flex min-w-0 items-center gap-1.5 rounded-chip bg-accent-soft px-2.5 py-1 text-[12px] font-medium whitespace-nowrap text-fg outline-none hover:bg-[color-mix(in_srgb,var(--accent-soft)_80%,var(--accent))] focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span className={`size-1.5 shrink-0 rounded-full ${access.hasAccess ? "bg-accent" : "bg-error"}`} aria-hidden />
-        <span className="truncate">{planLine(access)}</span>
+        <span className="truncate">{planLine(access, workspace.product)}</span>
       </Link>
       {simulatedBilling && (
         <PendingChip

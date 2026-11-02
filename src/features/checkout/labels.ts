@@ -52,7 +52,12 @@ export const SERVICE_ORDER_STATUS_LABEL: Record<ServiceOrderStatus, string> = {
 export const INTERVAL_LABEL: Record<"month" | "year", string> = { month: "mensal", year: "anual" };
 
 const isTier = (v: string | null): v is Tier => !!v && (TIERS as string[]).includes(v);
-const tier = (v: string | null) => (isTier(v) ? TIER_LABEL[v] : (v ?? "—"));
+const tier = (v: string | null) => {
+  if (isTier(v)) return TIER_LABEL[v];
+  // planos de landing pages: "lp_pro" → "Padrão (landing pages)"
+  if (v?.startsWith("lp_") && isTier(v.slice(3))) return `${TIER_LABEL[v.slice(3) as Tier]} (landing pages)`;
+  return v ?? "—";
+};
 const interval = (v: string | null) => (v === "month" || v === "year" ? INTERVAL_LABEL[v] : (v ?? "—"));
 const status = (v: string | null) => (v && v in SUBSCRIPTION_STATUS_LABEL ? SUBSCRIPTION_STATUS_LABEL[v as SubscriptionStatus] : (v ?? "—"));
 const accounts = (v: string | null) => `${v ?? "?"} ${v === "1" ? "conta" : "contas"}`;
@@ -88,4 +93,10 @@ export function describeSubscriptionChange(c: { change: SubscriptionChange; from
     case "renewed":
       return `Renovada até ${formatDate(c.toValue)}`;
   }
+}
+
+/** Descrição da fatura gravada pelo banco ("Assinatura lp_pro") no texto da tela. */
+export function invoiceDescription(text: string | null): string | null {
+  const m = text?.match(/^Assinatura (\S+)$/);
+  return m ? `Assinatura ${tier(m[1])}` : text;
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LandingList } from "@/features/landing-pages/LandingList";
+import { Upsell } from "@/features/workspace/Upsell";
 import { WelcomeModal } from "@/features/workspace/WelcomeModal";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
@@ -20,7 +21,7 @@ async function Lista() {
   const session = await requireWorkspace({ next: "/painel/landing-pages" });
   const pages = await listLandingPages();
   return (
-    <>
+    <div className="space-y-10">
       {session.workspace.product === "lp" && <WelcomeModal />}
       <LandingList
         pages={pages}
@@ -28,7 +29,8 @@ async function Lista() {
         limit={session.access.entitlements?.maxLandingPages ?? 0}
         canEdit={hasRole(session.role, "member")}
       />
-    </>
+      {session.workspace.product === "lp" && <Upsell />}
+    </div>
   );
 }
 
