@@ -8,6 +8,10 @@ export type PlanChoice = PlanId | "sem";
 export type Period = "mensal" | "anual";
 export type Nicho = "ecommerce" | "imobiliario";
 export type CustomBilling = "unico" | "recorrente";
+/** Linha de produto: SaaS de dashboards ou SaaS de landing pages. */
+export type Product = "dash" | "lp";
+export const PRODUCTS: Product[] = ["dash", "lp"];
+export const PRODUCT_LABEL: Record<Product, string> = { dash: "Dashboards", lp: "Landing pages" };
 
 export const PLAN: Record<PlanId, Record<Period, number>> = {
   base: { mensal: 4166, anual: 2833 }, // 1ª conta
@@ -36,8 +40,8 @@ export const MAX_PER_PLATFORM = 99;
 export const MAX_EXTRA = 10;
 
 export const PLAN_LABEL: Record<PlanChoice, string> = {
-  base: "Base",
-  pro: "Pro",
+  base: "Básico",
+  pro: "Padrão",
   avancado: "Avançado",
   sem: "Sem plano",
 };
@@ -49,7 +53,33 @@ export const NICHO_LABEL: Record<Nicho, string> = {
   imobiliario: "Imobiliário",
 };
 
+// ---- Landing pages (produto lp) ----------------------------------------------
+// Pacote: cada LP é feita pelo time (LP_TEAM_PRICE, uma vez) e tem hospedagem
+// e ajustes por mês (LP_CARE_MONTHLY). Só mensal. Plano no banco: lp_<tier>.
+
+export const LP_PLAN_PAGES: Record<PlanId, number> = { base: 1, pro: 3, avancado: 5 };
+
+/** Id do plano no banco: dash usa o tier ("pro"); lp usa "lp_pro". */
+export const planDbId = (product: Product, plan: PlanId) => (product === "lp" ? `lp_${plan}` : plan);
+
+/** Plano do banco → produto e tier. null = desconhecido. */
+export function parsePlanDbId(id: string | null | undefined): { product: Product; tier: PlanId | "personalizado" } | null {
+  if (!id) return null;
+  const lp = id.startsWith("lp_");
+  const tier = lp ? id.slice(3) : id;
+  if (tier !== "base" && tier !== "pro" && tier !== "avancado" && (lp || tier !== "personalizado")) return null;
+  return { product: lp ? "lp" : "dash", tier: tier as PlanId | "personalizado" };
+}
+
+/** Para onde o cliente vai depois de pagar: cada produto tem o seu caminho. */
+export const PRODUCT_HOME: Record<Product, string> = { dash: "/comecar", lp: "/painel/landing-pages?bemvindo=1" };
+
+export const lpMonthly = (plan: PlanId) => LP_PLAN_PAGES[plan] * LP_CARE_MONTHLY;
+export const lpSetup = (plan: PlanId) => LP_PLAN_PAGES[plan] * LP_TEAM_PRICE;
+
 export type PlanState = {
+  /** Produto escolhido na página de preços. */
+  produto: Product;
   plano: PlanChoice;
   periodo: Period;
   meta: number;
@@ -69,6 +99,7 @@ export type PlanState = {
 };
 
 export const DEFAULT_STATE: PlanState = {
+  produto: "dash",
   plano: "pro",
   periodo: "anual",
   meta: 1,
@@ -141,6 +172,7 @@ export function startingPrice(plan: PlanId, period: Period): number {
 }
 
 export function quote(s: PlanState): Quote {
+  if (s.produto === "lp") return quoteLp(s);
   const hasPlan = s.plano !== "sem";
   const accountsTotal = s.meta + s.google + s.ga4 + s.outras;
   const accountsAccepted = hasPlan ? acceptedAccounts(s) : 0;
@@ -229,6 +261,38 @@ export function quote(s: PlanState): Quote {
   };
 }
 
+/** Plano de landing pages: pacote de LPs (uma vez) + hospedagem mensal. Sem anual. */
+function quoteLp(s: PlanState): Quote {
+  const lines: QuoteLine[] = [];
+  let monthly = 0;
+  let oneTime = 0;
+  if (s.plano !== "sem") {
+    const plan = s.plano;
+    const pages = LP_PLAN_PAGES[plan];
+    monthly = lpMonthly(plan);
+    oneTime = lpSetup(plan);
+    lines.push({ id: "plan", label: `Plano ${PLAN_LABEL[plan]} · ${pages} ${pages === 1 ? "landing page" : "landing pages"}`, detail: `${pages} × ${brl(LP_CARE_MONTHLY)} · hospedagem e ajustes`, amount: monthly, kind: "monthly" });
+    lines.push({ id: "lp", label: "Criação pelo time", detail: `${pages} × ${brl(LP_TEAM_PRICE)} · já com o GTM`, qty: pages, amount: oneTime, kind: "once" });
+  }
+  return {
+    accountsTotal: 0,
+    accountsAccepted: 0,
+    accountsBilled: s.plano === "sem" ? 0 : 1,
+    accountsOutside: 0,
+    overLimit: false,
+    planMonthly: monthly,
+    extrasMonthly: 0,
+    monthly,
+    monthlyMensal: monthly,
+    monthlyAnual: monthly,
+    yearly: monthly * 12,
+    annualSaving: 0,
+    oneTime,
+    twelveMonths: monthly * 12 + oneTime,
+    lines,
+  };
+}
+
 // ---- URL ----------------------------------------------------------------
 
 const PLAN_CHOICES: PlanChoice[] = ["base", "pro", "avancado", "sem"];
@@ -236,6 +300,7 @@ const NUM_KEYS = ["meta", "google", "ga4", "outras", "lp", "sob", "dash"] as con
 
 export function toQuery(s: PlanState): string {
   const p = new URLSearchParams();
+  if (s.produto === "lp") p.set("produto", "lp");
   p.set("plano", s.plano);
   p.set("periodo", s.periodo);
   for (const k of NUM_KEYS) p.set(k, String(s[k]));
@@ -248,6 +313,8 @@ export function toQuery(s: PlanState): string {
 export function fromQuery(params: { get(key: string): string | null }): Partial<PlanState> | null {
   if (!params.get("plano") && !params.get("periodo")) return null;
   const out: Partial<PlanState> = {};
+  const produto = params.get("produto");
+  if (produto === "dash" || produto === "lp") out.produto = produto;
   const plano = params.get("plano");
   if (plano && (PLAN_CHOICES as string[]).includes(plano)) out.plano = plano as PlanChoice;
   const periodo = params.get("periodo");

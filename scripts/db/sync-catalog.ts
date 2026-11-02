@@ -13,7 +13,7 @@ import { BUSINESS_TYPES, type BusinessTypeId } from "@/features/catalog/business
 import type { Profile } from "@/features/metrics/definitions";
 import { BILLING_ITEMS, INTERVAL, planPriceId } from "@/features/pricing/catalog";
 import { ENTITLEMENTS, TIER_LABEL, TIERS } from "@/features/pricing/entitlements";
-import { AUDIO_ADDON, EXTRA_ACCOUNT, PLAN, type Period, type PlanId } from "@/features/pricing/pricing";
+import { AUDIO_ADDON, EXTRA_ACCOUNT, LP_PLAN_PAGES, PLAN, PLAN_LABEL, lpMonthly, planDbId, type Period, type PlanId } from "@/features/pricing/pricing";
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
@@ -52,13 +52,16 @@ async function main() {
 
   await sql.begin(async (tx) => {
     // planos
-    const plans = TIERS.map((id, rank) => ({ id, name: TIER_LABEL[id], rank, self_serve: id !== "personalizado", is_active: true }));
+    const plans = [
+      ...TIERS.map((id, rank) => ({ id, name: TIER_LABEL[id], rank, self_serve: id !== "personalizado", is_active: true, product: "dash" })),
+      ...PRICED.map((tier, i) => ({ id: planDbId("lp", tier), name: `LP ${PLAN_LABEL[tier]}`, rank: 10 + i, self_serve: true, is_active: true, product: "lp" })),
+    ];
     await tx`insert into public.plans ${tx(plans)}
-      on conflict (id) do update set name = excluded.name, rank = excluded.rank, self_serve = excluded.self_serve, is_active = true`;
-    await tx`update public.plans set is_active = false where id <> all(${TIERS})`;
+      on conflict (id) do update set name = excluded.name, rank = excluded.rank, self_serve = excluded.self_serve, is_active = true, product = excluded.product`;
+    await tx`update public.plans set is_active = false where id <> all(${plans.map((p) => p.id)})`;
     counts.plans = plans.length;
 
-    const entitlements = TIERS.map((id) => {
+    const entitlements: Record<string, unknown>[] = TIERS.map((id) => {
       const e = ENTITLEMENTS[id];
       return {
         plan_id: id,
@@ -76,6 +79,22 @@ async function main() {
         max_members: e.maxMembers,
       };
     });
+    // landing pages: sem dashboards nem contas; LPs do pacote e templates por tier
+    for (const tier of PRICED) {
+      const e = ENTITLEMENTS[tier];
+      entitlements.push({
+        ...entitlements[TIERS.indexOf(tier)],
+        plan_id: planDbId("lp", tier),
+        dashboard_templates: 0,
+        platforms: "core",
+        custom_dashboards: false,
+        audio: "none",
+        agent_voice: false,
+        max_dashboards: 0,
+        max_landing_pages: LP_PLAN_PAGES[tier],
+        landing_templates: e.landingTemplates,
+      });
+    }
     await tx`insert into public.plan_entitlements ${tx(entitlements)}
       on conflict (plan_id) do update set
         dashboard_templates = excluded.dashboard_templates, landing_templates = excluded.landing_templates,
@@ -85,7 +104,7 @@ async function main() {
         max_members = excluded.max_members`;
     counts.plan_entitlements = entitlements.length;
 
-    const prices = PRICED.flatMap((plan) =>
+    const prices: Record<string, unknown>[] = PRICED.flatMap((plan) =>
       PERIODS.map((period) => ({
         id: planPriceId(plan, period),
         plan_id: plan,
@@ -97,12 +116,24 @@ async function main() {
         is_active: true,
       })),
     );
+    for (const tier of PRICED) {
+      prices.push({
+        id: `${planDbId("lp", tier)}_month`,
+        plan_id: planDbId("lp", tier),
+        interval: "month",
+        currency: "BRL",
+        first_account_cents: lpMonthly(tier),
+        extra_account_cents: 0,
+        addon_cents: 0,
+        is_active: true,
+      });
+    }
     await tx`insert into public.plan_prices ${tx(prices)}
       on conflict (id) do update set
         plan_id = excluded.plan_id, interval = excluded.interval, currency = excluded.currency,
         first_account_cents = excluded.first_account_cents, extra_account_cents = excluded.extra_account_cents,
         addon_cents = excluded.addon_cents, is_active = true`;
-    await tx`update public.plan_prices set is_active = false where id <> all(${prices.map((p) => p.id)})`;
+    await tx`update public.plan_prices set is_active = false where id <> all(${prices.map((p) => p.id as string)})`;
     counts.plan_prices = prices.length;
 
     const items = Object.values(BILLING_ITEMS).map((i) => ({ id: i.id, name: i.name, kind: i.kind, unit_cents: i.unitCents, currency: "BRL", is_active: true }));

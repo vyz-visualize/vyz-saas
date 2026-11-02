@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { BILLING_ITEMS } from "@/features/pricing/catalog";
-import { DEFAULT_STATE, fromQuery, type PlanState } from "@/features/pricing/pricing";
+import { DEFAULT_STATE, fromQuery, toQuery, type PlanState } from "@/features/pricing/pricing";
 import { buildOrder, normalizeState } from "./order";
 
 const s = (patch: Partial<PlanState>): PlanState => normalizeState(patch);
 const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
 
 describe("pedido", () => {
-  it("Pro anual com 2 BMs e 1 Google (a query da LP completa com o padrão)", () => {
+  it("Padrão anual com 2 BMs e 1 Google (a query da LP completa com o padrão)", () => {
     const order = buildOrder(normalizeState(fromQuery(new URLSearchParams("plano=pro&periodo=anual&meta=2"))));
     expect(order.planId).toBe("pro");
     expect(order.interval).toBe("year");
     expect(order.accountsQuantity).toBe(3);
-    expect(order.items).toEqual([{ kind: "recurring", planPriceId: "pro_year", quantity: 3, amountCents: 8500 + 2 * 10199, label: "Plano Pro · 3 contas" }]);
+    expect(order.items).toEqual([{ kind: "recurring", planPriceId: "pro_year", quantity: 3, amountCents: 8500 + 2 * 10199, label: "Plano Padrão · 3 contas" }]);
     expect(order.recurringCents).toBe((8500 + 2 * 10199) * 12);
     expect(order.amountDueNowCents).toBe(order.recurringCents);
     expect(order.blocked).toBeUndefined();
   });
 
-  it("Base mensal 1+1 cobra um mês: R$ 141,65", () => {
+  it("Básico mensal 1+1 cobra um mês: R$ 141,65", () => {
     const order = buildOrder(s({ plano: "base", periodo: "mensal" }));
     expect(order.items[0]).toMatchObject({ planPriceId: "base_month", quantity: 2, amountCents: 14165 });
     expect(order.recurringCents).toBe(14165);
@@ -68,7 +68,7 @@ describe("pedido", () => {
     expect(order.items.some((i) => i.billingItemId === "dash_custom_monthly")).toBe(false);
   });
 
-  it("o Base não cobra as outras plataformas", () => {
+  it("o Básico não cobra as outras plataformas", () => {
     const order = buildOrder(s({ plano: "base", meta: 1, google: 1, outras: 3 }));
     expect(order.accountsQuantity).toBe(2);
     expect(order.quote.accountsOutside).toBe(3);
@@ -125,5 +125,25 @@ describe("normalização", () => {
   it("hospedagem só com landing page", () => {
     expect(normalizeState({ lp: 0, lpcare: true }).lpcare).toBe(false);
     expect(normalizeState({ lp: 1, lpcare: true }).lpcare).toBe(true);
+  });
+});
+
+describe("pedido de landing pages", () => {
+  it("Padrão: 3 LPs feitas pelo time + hospedagem mensal, sem anual nem contas", () => {
+    const state = normalizeState(fromQuery(new URLSearchParams("produto=lp&plano=pro&periodo=anual&meta=4")));
+    expect(state).toMatchObject({ produto: "lp", plano: "pro", periodo: "mensal", meta: 0, google: 0 });
+    const order = buildOrder(state);
+    expect(order).toMatchObject({ product: "lp", planId: "pro", planDbId: "lp_pro", interval: "month", accountsQuantity: 1 });
+    expect(order.items.map((i) => [i.kind, i.planPriceId ?? i.billingItemId, i.quantity, i.amountCents])).toEqual([
+      ["recurring", "lp_pro_month", 1, 29700],
+      ["one_time", "lp_team", 3, 285000],
+    ]);
+    expect(order.amountDueNowCents).toBe(29700 + 285000);
+    expect(order.recurringCents).toBe(29700);
+  });
+
+  it("a query guarda o produto", () => {
+    expect(toQuery({ ...normalizeState({ produto: "lp", plano: "base" }) })).toContain("produto=lp");
+    expect(fromQuery(new URLSearchParams("plano=base"))?.produto).toBeUndefined();
   });
 });

@@ -3,7 +3,7 @@
 // servidor recalcula tudo daqui; o navegador nunca manda preço.
 
 import { BILLING_ITEMS, INTERVAL, planPriceId, type BillingItemId } from "@/features/pricing/catalog";
-import { DEFAULT_STATE, PLAN_LABEL, quote, type Period, type PlanId, type PlanState, type Quote } from "@/features/pricing/pricing";
+import { DEFAULT_STATE, LP_PLAN_PAGES, PLAN_LABEL, lpMonthly, planDbId, quote, type Period, type PlanId, type PlanState, type Product, type Quote } from "@/features/pricing/pricing";
 
 export type OrderItem = {
   kind: "recurring" | "one_time";
@@ -21,7 +21,11 @@ export type OrderItem = {
 export type OrderBlock = "over_limit" | "recurring_without_plan" | "empty";
 
 export type Order = {
+  product: Product;
+  /** Tier escolhido (base/pro/avancado), igual nos dois produtos. */
   planId: PlanId | null;
+  /** Id do plano no banco ("pro" ou "lp_pro"). */
+  planDbId: string | null;
   period: Period;
   interval: "month" | "year";
   /** Contas contratadas (0 sem plano). */
@@ -47,6 +51,11 @@ export const BLOCK_MESSAGE: Record<OrderBlock, string> = {
  */
 export function normalizeState(patch: Partial<PlanState> | null | undefined): PlanState {
   const s: PlanState = { ...DEFAULT_STATE, ...patch };
+  // landing pages: só o pacote do plano, mensal, sem contas nem extras
+  if (s.produto === "lp") {
+    if (s.plano === "sem") s.plano = DEFAULT_STATE.plano;
+    return { ...DEFAULT_STATE, produto: "lp", plano: s.plano, periodo: "mensal", meta: 0, google: 0, nicho: s.nicho };
+  }
   if (s.plano === "sem") Object.assign(s, { meta: 0, google: 0, ga4: 0, outras: 0, dash: 0 });
   if (s.lp === 0) s.lpcare = false;
   return s;
@@ -59,6 +68,7 @@ export function planItemLabel(plan: PlanId, accounts: number): string {
 }
 
 export function buildOrder(state: PlanState): Order {
+  if (state.produto === "lp") return buildLpOrder(state);
   const q = quote(state);
   const planId = state.plano === "sem" ? null : state.plano;
   const items: OrderItem[] = [];
@@ -96,7 +106,9 @@ export function buildOrder(state: PlanState): Order {
         : undefined;
 
   return {
+    product: "dash",
     planId,
+    planDbId: planId,
     period: state.periodo,
     interval: INTERVAL[state.periodo],
     accountsQuantity: planId ? q.accountsBilled : 0,
@@ -105,5 +117,35 @@ export function buildOrder(state: PlanState): Order {
     recurringCents,
     quote: q,
     ...(blocked ? { blocked } : {}),
+  };
+}
+
+/** Plano de landing pages: hospedagem mensal (item do plano) + criação das LPs (uma vez). */
+function buildLpOrder(state: PlanState): Order {
+  const q = quote(state);
+  const plan = state.plano === "sem" ? "pro" : state.plano;
+  const pages = LP_PLAN_PAGES[plan];
+  const team = BILLING_ITEMS.lp_team;
+  const items: OrderItem[] = [
+    {
+      kind: "recurring",
+      planPriceId: `${planDbId("lp", plan)}_month`,
+      quantity: 1,
+      amountCents: lpMonthly(plan),
+      label: `Plano ${PLAN_LABEL[plan]} · ${pages} ${pages === 1 ? "landing page" : "landing pages"} · hospedagem e ajustes`,
+    },
+    { kind: "one_time", billingItemId: "lp_team", quantity: pages, amountCents: pages * team.unitCents, label: team.name },
+  ];
+  return {
+    product: "lp",
+    planId: plan,
+    planDbId: planDbId("lp", plan),
+    period: "mensal",
+    interval: "month",
+    accountsQuantity: 1,
+    items,
+    amountDueNowCents: q.monthly + q.oneTime,
+    recurringCents: q.monthly,
+    quote: q,
   };
 }

@@ -52,7 +52,7 @@ async function Checkout({ searchParams }: { searchParams: Promise<SearchParams> 
   const state = normalizeState(fromQuery(toParams(await searchParams)));
   const order = buildOrder(state);
   const query = toQuery(state);
-  const viewer = await getCheckoutViewer();
+  const viewer = await getCheckoutViewer(state.produto);
   const editHref = `/?${query}#monte-seu-plano`;
 
   if (order.blocked) return <Blocked order={order} state={state} query={query} editHref={editHref} />;

@@ -4,6 +4,7 @@ import "server-only";
 // criou; assinatura, faturas e transações, de owner e admin do workspace.
 // Devolvem DTOs no formato da tela, nunca as linhas cruas.
 
+import { PLAN_LABEL, parsePlanDbId, type Product } from "@/features/pricing/pricing";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { z } from "zod";
@@ -44,12 +45,14 @@ export type CheckoutViewer = {
 };
 
 /** Para o /assinar e para startCheckout: decide se o pedido cria um workspace, assina um existente ou não cabe. */
-export const getCheckoutViewer = cache(async (): Promise<CheckoutViewer> => {
+/** Quem está no checkout e qual workspace dele recebe o produto escolhido. */
+export const getCheckoutViewer = cache(async (product: Product = "dash"): Promise<CheckoutViewer> => {
   const viewer = await getViewer();
   if (!viewer) return { user: null, subscribed: null, target: null, memberElsewhere: false };
 
   const supabase = await createServerSupabase();
-  const owned = viewer.memberships.filter((m) => m.role === "owner").map((m) => m.workspace);
+  // cada produto tem o seu workspace: comprar LP não mexe no workspace de dashboards
+  const owned = viewer.memberships.filter((m) => m.role === "owner" && m.workspace.product === product).map((m) => m.workspace);
   const [profile, access] = await Promise.all([
     supabase.from("profiles").select("phone").eq("id", viewer.user.id).maybeSingle(),
     owned.length > 0
@@ -95,6 +98,8 @@ export type CheckoutView = {
   fullName: string;
   companyName: string;
   planId: PlanId | null;
+  /** Produto do pedido: decide para onde o cliente vai depois de pagar. */
+  product: Product;
   interval: "month" | "year";
   accountsQuantity: number;
   amountDueNowCents: number;
@@ -121,7 +126,7 @@ export async function getCheckout(id: string): Promise<CheckoutView | null> {
   const { data, error } = await supabase
     .from("checkout_sessions")
     .select(
-      "id, status, email, full_name, company_name, plan_id, interval, accounts_quantity, amount_due_now_cents, recurring_cents, currency, selection, quote, workspace_id, expires_at, completed_at, checkout_items(kind, label, quantity, amount_cents, position)",
+      "id, status, email, full_name, company_name, plan_id, product, interval, accounts_quantity, amount_due_now_cents, recurring_cents, currency, selection, quote, workspace_id, expires_at, completed_at, checkout_items(kind, label, quantity, amount_cents, position)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -136,7 +141,8 @@ export async function getCheckout(id: string): Promise<CheckoutView | null> {
     email: data.email,
     fullName: data.full_name,
     companyName: data.company_name,
-    planId: isPlanId(data.plan_id) ? data.plan_id : null,
+    planId: checkoutTier(data.plan_id),
+    product: data.product,
     interval: data.interval,
     accountsQuantity: data.accounts_quantity,
     amountDueNowCents: data.amount_due_now_cents,
@@ -202,6 +208,7 @@ export type BillingOverview = {
   subscription: {
     id: string;
     tier: PlanId;
+    product: Product;
     status: SubscriptionStatus;
     interval: "month" | "year";
     accountsQuantity: number;
@@ -313,14 +320,16 @@ export async function getBillingOverview(): Promise<BillingOverview> {
     return a ? a.full_name || a.email : null;
   };
 
-  const s = sub.data && isPlanId(sub.data.plan_id) ? sub.data : null;
+  const s = sub.data && checkoutTier(sub.data.plan_id) ? sub.data : null;
+  const sTier = s ? (checkoutTier(s.plan_id) as PlanId) : null;
+  const sLp = !!s && s.plan_id.startsWith("lp_");
   const items = s
     ? [...s.subscription_items]
         .sort((a, b) => Number(!!a.billing_item_id) - Number(!!b.billing_item_id) || a.created_at.localeCompare(b.created_at))
         .map((i) => ({
           id: i.id,
           kind: i.billing_item_id ? ("extra" as const) : ("plan" as const),
-          label: i.billing_item_id ? (billingItem(i.billing_item_id)?.name ?? i.billing_item_id) : planItemLabel(s.plan_id as PlanId, i.quantity),
+          label: i.billing_item_id ? (billingItem(i.billing_item_id)?.name ?? i.billing_item_id) : sLp ? `Plano ${PLAN_LABEL[sTier!]} · landing pages` : planItemLabel(sTier!, i.quantity),
           quantity: i.quantity,
           monthlyCents: i.amount_cents,
         }))
@@ -335,7 +344,8 @@ export async function getBillingOverview(): Promise<BillingOverview> {
     subscription: s
       ? {
           id: s.id,
-          tier: s.plan_id as PlanId,
+          tier: sTier!,
+          product: (sLp ? "lp" : "dash") as Product,
           status: s.status,
           interval: s.interval,
           accountsQuantity: s.accounts_quantity,
@@ -398,4 +408,10 @@ export async function getBillingOverview(): Promise<BillingOverview> {
       deliveredAt: o.delivered_at,
     })),
   };
+}
+
+/** Plano do pedido ("pro" ou "lp_pro") → tier exibido. */
+function checkoutTier(planId: string | null): PlanId | null {
+  const parsed = parsePlanDbId(planId);
+  return parsed && parsed.tier !== "personalizado" ? parsed.tier : null;
 }

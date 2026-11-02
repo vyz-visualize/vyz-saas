@@ -7,12 +7,12 @@ const s = (patch: Partial<PlanState>): PlanState => ({ ...DEFAULT_STATE, ...patc
 const oneClient = { meta: 1, google: 1, ga4: 0, outras: 0 };
 
 describe("casos que precisam bater", () => {
-  it("Base, 1 BM + 1 Google: R$ 96,32 no anual e R$ 141,65 no mensal", () => {
+  it("Básico, 1 BM + 1 Google: R$ 96,32 no anual e R$ 141,65 no mensal", () => {
     expect(quote(s({ plano: "base", periodo: "anual", ...oneClient })).monthly).toBe(9632);
     expect(quote(s({ plano: "base", periodo: "mensal", ...oneClient })).monthly).toBe(14165);
   });
 
-  it("Pro, 1 BM + 1 Google: R$ 186,99 no anual e R$ 274,99 no mensal", () => {
+  it("Padrão, 1 BM + 1 Google: R$ 186,99 no anual e R$ 274,99 no mensal", () => {
     expect(quote(s({ plano: "pro", periodo: "anual", ...oneClient })).monthly).toBe(18699);
     expect(quote(s({ plano: "pro", periodo: "mensal", ...oneClient })).monthly).toBe(27499);
   });
@@ -40,7 +40,7 @@ describe("casos que precisam bater", () => {
     expect(q.monthly).toBe(19800);
   });
 
-  it("Pro anual 1+1 + 1 sob medida recorrente: R$ 385,99/mês + R$ 990", () => {
+  it("Padrão anual 1+1 + 1 sob medida recorrente: R$ 385,99/mês + R$ 990", () => {
     const q = quote(s({ plano: "pro", periodo: "anual", ...oneClient, sob: 1, sobm: "recorrente" }));
     expect(brl(q.monthly)).toBe("R$ 385,99");
     expect(q.oneTime).toBe(99000);
@@ -54,11 +54,11 @@ describe("casos que precisam bater", () => {
 });
 
 describe("regras", () => {
-  it("o estado inicial é Pro, anual, 1 BM + 1 Google", () => {
+  it("o estado inicial é Padrão, anual, 1 BM + 1 Google", () => {
     expect(quote(DEFAULT_STATE).monthly).toBe(18699);
   });
 
-  it("o preço de entrada do Base anual é R$ 28,33", () => {
+  it("o preço de entrada do Básico anual é R$ 28,33", () => {
     expect(brl(startingPrice("base", "anual"))).toBe("R$ 28,33");
   });
 
@@ -68,14 +68,14 @@ describe("regras", () => {
     expect(q.monthly).toBe(8500);
   });
 
-  it("o Base ignora outras plataformas", () => {
+  it("o Básico ignora outras plataformas", () => {
     const q = quote(s({ plano: "base", periodo: "anual", ...oneClient, outras: 3 }));
     expect(q.accountsAccepted).toBe(2);
     expect(q.accountsOutside).toBe(3);
     expect(q.monthly).toBe(9632);
   });
 
-  it("o Pro conta outras plataformas", () => {
+  it("o Padrão conta outras plataformas", () => {
     const q = quote(s({ plano: "pro", periodo: "anual", ...oneClient, outras: 1 }));
     expect(q.accountsBilled).toBe(3);
     expect(q.monthly).toBe(8500 + 2 * 10199);
@@ -113,7 +113,7 @@ describe("regras", () => {
     expect(q.overLimit).toBe(false);
   });
 
-  it("Pro e Avançado mostram o tracking incluso a R$ 0", () => {
+  it("Padrão e Avançado mostram o tracking incluso a R$ 0", () => {
     expect(quote(s({ plano: "pro" })).lines.find((l) => l.id === "tracking")?.amount).toBe(0);
     expect(quote(s({ plano: "base" })).lines.some((l) => l.id === "tracking")).toBe(false);
   });
@@ -146,7 +146,7 @@ describe("mensagem do WhatsApp", () => {
     expect(buildPlanMessage(state, quote(state), url)).toBe(
       [
         "Olá, VYZ! Montei meu plano no site:",
-        "• Plano Pro, anual",
+        "• Plano Padrão, anual",
         "• 2 contas (1 BM do Meta e 1 conta do Google Ads)",
         "• Tipo de negócio: E-commerce",
         "• Extras: 1× Landing page feita pelo time",

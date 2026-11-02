@@ -9,7 +9,7 @@ import { btn } from "@/components/ui/styles";
 import { CARD_BRAND_LABEL } from "@/features/checkout/card";
 import { CheckoutSteps } from "@/features/checkout/CheckoutSteps";
 import { INTERVAL_LABEL, PAYMENT_METHOD_LABEL, formatDate } from "@/features/checkout/labels";
-import { PLAN_LABEL } from "@/features/pricing/pricing";
+import { PLAN_LABEL, PRODUCT_HOME } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";
 import { getSessionUser } from "@/server/auth/session";
 import { getCheckout, getCheckoutReceipt, type CheckoutReceipt, type CheckoutView } from "@/server/billing/queries";
@@ -22,6 +22,13 @@ const NEXT_STEPS = [
   { title: "Plataformas", text: "Meta Ads, Google Ads e as outras do plano." },
   { title: "Conectar as contas", text: "Login na plataforma, sem copiar ID." },
   { title: "Escolher o dashboard", text: "Ele nasce com as métricas das contas." },
+];
+
+const LP_NEXT_STEPS = [
+  { title: "Escolher o template", text: "A primeira página já nasce com o GTM." },
+  { title: "Ajustar textos e cores", text: "Do jeito da sua marca." },
+  { title: "Publicar", text: "No link lps.vyzualize.com.br, pronto para anúncio." },
+  { title: "Receber os leads", text: "Tudo cai no painel, com a origem do clique." },
 ];
 
 export default function Page({ params }: PageProps<"/assinar/concluido/[id]">) {
@@ -60,7 +67,9 @@ async function Done({ params }: { params: PageProps<"/assinar/concluido/[id]">["
           </h1>
           <p className="mt-3 text-[15px] text-fg-2">
             {checkout.planId
-              ? `O plano ${PLAN_LABEL[checkout.planId]} já está valendo. Agora é conectar as contas e escolher o primeiro dashboard.`
+              ? checkout.product === "lp"
+                ? `O plano ${PLAN_LABEL[checkout.planId]} de landing pages já está valendo. Agora é escolher o template da primeira página.`
+                : `O plano ${PLAN_LABEL[checkout.planId]} já está valendo. Agora é conectar as contas e escolher o primeiro dashboard.`
               : "O time da VYZ chama você no WhatsApp para começar os serviços contratados."}
           </p>
         </div>
@@ -78,7 +87,7 @@ async function Done({ params }: { params: PageProps<"/assinar/concluido/[id]">["
         <>
           <h2 className="title mt-8 text-lg text-fg">Próximos passos</h2>
           <ol className="mt-3 grid gap-2 sm:grid-cols-2">
-            {NEXT_STEPS.map((step, i) => (
+            {(checkout.product === "lp" ? LP_NEXT_STEPS : NEXT_STEPS).map((step, i) => (
               <li key={step.title} className="flex gap-3 rounded-control border border-line px-3.5 py-3">
                 <span className="label-caps pt-0.5 text-accent tnum">0{i + 1}</span>
                 <span>
@@ -88,7 +97,7 @@ async function Done({ params }: { params: PageProps<"/assinar/concluido/[id]">["
               </li>
             ))}
           </ol>
-          <Link href="/comecar" className={`${btn.primary} mt-7 w-full rounded-[10px] sm:w-auto`}>
+          <Link href={PRODUCT_HOME[checkout.product]} className={`${btn.primary} mt-7 w-full rounded-[10px] sm:w-auto`}>
             Começar
             <ArrowRight size={17} aria-hidden />
           </Link>
@@ -117,7 +126,7 @@ function Receipt({ checkout, receipt }: { checkout: CheckoutView; receipt: Check
   const rows: [string, string][] = [];
   if (receipt.workspaceName) rows.push(["Workspace", receipt.workspaceName]);
   if (checkout.planId) {
-    const accounts = checkout.accountsQuantity === 1 ? "1 conta" : `${checkout.accountsQuantity} contas`;
+    const accounts = checkout.product === "lp" ? "landing pages" : checkout.accountsQuantity === 1 ? "1 conta" : `${checkout.accountsQuantity} contas`;
     rows.push(["Plano", `${PLAN_LABEL[checkout.planId]} · ${INTERVAL_LABEL[checkout.interval]} · ${accounts}`]);
   }
   const method =

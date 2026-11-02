@@ -6,8 +6,8 @@ export type Tier = "base" | "pro" | "avancado" | "personalizado";
 export const TIERS: Tier[] = ["base", "pro", "avancado", "personalizado"];
 
 export const TIER_LABEL: Record<Tier, string> = {
-  base: "Base",
-  pro: "Pro",
+  base: "Básico",
+  pro: "Padrão",
   avancado: "Avançado",
   personalizado: "Personalizado",
 };

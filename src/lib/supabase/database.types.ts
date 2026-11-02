@@ -617,6 +617,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           updated_at: string
+          product: Database["public"]["Enums"]["product_line"]
         }
         Insert: {
           id?: string
@@ -643,6 +644,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           updated_at?: string
+          product?: Database["public"]["Enums"]["product_line"]
         }
         Update: {
           id?: string
@@ -669,6 +671,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           updated_at?: string
+          product?: Database["public"]["Enums"]["product_line"]
         }
         Relationships: [
           {
@@ -2164,6 +2167,7 @@ export type Database = {
           stripe_product_id: string | null
           created_at: string
           updated_at: string
+          product: Database["public"]["Enums"]["product_line"]
         }
         Insert: {
           id: string
@@ -2174,6 +2178,7 @@ export type Database = {
           stripe_product_id?: string | null
           created_at?: string
           updated_at?: string
+          product?: Database["public"]["Enums"]["product_line"]
         }
         Update: {
           id?: string
@@ -2184,6 +2189,7 @@ export type Database = {
           stripe_product_id?: string | null
           created_at?: string
           updated_at?: string
+          product?: Database["public"]["Enums"]["product_line"]
         }
         Relationships: []
       }
@@ -2237,6 +2243,51 @@ export type Database = {
           },
         ]
       }
+      product_events: {
+        Row: {
+          id: number
+          user_id: string
+          workspace_id: string | null
+          product: Database["public"]["Enums"]["product_line"]
+          source: string
+          checkout_session_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: never
+          user_id: string
+          workspace_id?: string | null
+          product: Database["public"]["Enums"]["product_line"]
+          source: string
+          checkout_session_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: never
+          user_id?: string
+          workspace_id?: string | null
+          product?: Database["public"]["Enums"]["product_line"]
+          source?: string
+          checkout_session_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_events_checkout_session_id_fkey"
+            columns: ["checkout_session_id"]
+            isOneToOne: false
+            referencedRelation: "checkout_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           id: string
@@ -2247,6 +2298,7 @@ export type Database = {
           default_workspace_id: string | null
           created_at: string
           updated_at: string
+          product: Database["public"]["Enums"]["product_line"] | null
         }
         Insert: {
           id: string
@@ -2257,6 +2309,7 @@ export type Database = {
           default_workspace_id?: string | null
           created_at?: string
           updated_at?: string
+          product?: Database["public"]["Enums"]["product_line"] | null
         }
         Update: {
           id?: string
@@ -2267,6 +2320,7 @@ export type Database = {
           default_workspace_id?: string | null
           created_at?: string
           updated_at?: string
+          product?: Database["public"]["Enums"]["product_line"] | null
         }
         Relationships: [
           {
@@ -2777,6 +2831,7 @@ export type Database = {
           metadata: Json
           created_at: string
           updated_at: string
+          product: Database["public"]["Enums"]["product_line"]
         }
         Insert: {
           id?: string
@@ -2797,6 +2852,7 @@ export type Database = {
           metadata?: Json
           created_at?: string
           updated_at?: string
+          product?: Database["public"]["Enums"]["product_line"]
         }
         Update: {
           id?: string
@@ -2817,6 +2873,7 @@ export type Database = {
           metadata?: Json
           created_at?: string
           updated_at?: string
+          product?: Database["public"]["Enums"]["product_line"]
         }
         Relationships: [
           {
@@ -3046,6 +3103,7 @@ export type Database = {
           created_by: string | null
           created_at: string
           updated_at: string
+          product: Database["public"]["Enums"]["product_line"]
         }
         Insert: {
           id?: string
@@ -3062,6 +3120,7 @@ export type Database = {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          product?: Database["public"]["Enums"]["product_line"]
         }
         Update: {
           id?: string
@@ -3078,6 +3137,7 @@ export type Database = {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          product?: Database["public"]["Enums"]["product_line"]
         }
         Relationships: [
           {
@@ -3124,6 +3184,7 @@ export type Database = {
           hide_vyz_brand_effective: boolean | null
           max_members: number | null
           provider: Database["public"]["Enums"]["billing_provider"] | null
+          product: Database["public"]["Enums"]["product_line"] | null
         }
         Relationships: []
       }
@@ -3313,6 +3374,7 @@ export type Database = {
       landing_status: "draft" | "published" | "archived"
       member_role: "viewer" | "member" | "admin" | "owner"
       onboarding_step: "business" | "platforms" | "connect" | "dashboard" | "done"
+      product_line: "dash" | "lp"
       report_format: "pdf" | "whatsapp"
       report_frequency: "weekly" | "monthly"
       service_order_status: "pending" | "in_progress" | "delivered" | "canceled"
@@ -3346,6 +3408,7 @@ export const Constants = {
       landing_status: ["draft", "published", "archived"],
       member_role: ["viewer", "member", "admin", "owner"],
       onboarding_step: ["business", "platforms", "connect", "dashboard", "done"],
+      product_line: ["dash", "lp"],
       report_format: ["pdf", "whatsapp"],
       report_frequency: ["weekly", "monthly"],
       service_order_status: ["pending", "in_progress", "delivered", "canceled"],

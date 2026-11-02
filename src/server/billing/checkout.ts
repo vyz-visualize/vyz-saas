@@ -65,7 +65,8 @@ export async function createCheckoutSession(input: {
       company_name: customer.companyName,
       phone: customer.phone,
       tax_id: customer.taxId,
-      plan_id: order.planId,
+      plan_id: order.planDbId,
+      product: order.product,
       interval: order.interval,
       accounts_quantity: order.accountsQuantity,
       // só tipos de negócio já disponíveis no onboarding (o nicho fica na seleção)

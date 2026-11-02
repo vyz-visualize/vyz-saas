@@ -116,14 +116,14 @@ describe("uso atual no plano novo", () => {
   it("dashboards e LPs publicadas acima do plano novo", () => {
     expect(planChangeBlocker({ tier: "base", period: "anual", accounts: 2 }, { ...usage, dashboards: 5 })?.code).toBe("limit:dashboards_in_use");
     expect(planChangeBlocker({ tier: "base", period: "anual", accounts: 2 }, { ...usage, publishedLandingPages: 2 })?.message).toBe(
-      "O Base permite até 1 landing page publicada e você tem 2. Despublique antes de trocar.",
+      "O Básico permite até 1 landing page publicada e você tem 2. Despublique antes de trocar.",
     );
   });
 
   it("plataforma que o plano novo não tem", () => {
     const tiktok = { ...usage, enabledPlatforms: ["meta", "tiktok"] };
     expect(planChangeBlocker({ tier: "base", period: "anual", accounts: 2 }, tiktok)?.message).toBe(
-      "TikTok Ads é do plano Pro. Desative essas contas antes de trocar para o Base.",
+      "TikTok Ads é do plano Padrão. Desative essas contas antes de trocar para o Básico.",
     );
     expect(planChangeBlocker({ tier: "pro", period: "anual", accounts: 2 }, tiktok)).toBeNull();
   });

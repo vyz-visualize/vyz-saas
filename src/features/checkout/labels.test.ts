@@ -4,12 +4,12 @@ import { describeSubscriptionChange, formatDate } from "./labels";
 describe("linha do tempo da assinatura", () => {
   it("descreve cada mudança em português", () => {
     expect(describeSubscriptionChange({ change: "created", fromValue: null, toValue: "pro · year · 2 conta(s)" })).toBe(
-      "Assinatura criada: Pro, anual, 2 contas",
+      "Assinatura criada: Padrão, anual, 2 contas",
     );
     expect(describeSubscriptionChange({ change: "created", fromValue: null, toValue: "base · month · 1 conta(s)" })).toBe(
-      "Assinatura criada: Base, mensal, 1 conta",
+      "Assinatura criada: Básico, mensal, 1 conta",
     );
-    expect(describeSubscriptionChange({ change: "plan_changed", fromValue: "base", toValue: "avancado" })).toBe("Plano: Base → Avançado");
+    expect(describeSubscriptionChange({ change: "plan_changed", fromValue: "base", toValue: "avancado" })).toBe("Plano: Básico → Avançado");
     expect(describeSubscriptionChange({ change: "quantity_changed", fromValue: "2", toValue: "5" })).toBe("Contas contratadas: 2 → 5");
     expect(describeSubscriptionChange({ change: "interval_changed", fromValue: "month", toValue: "year" })).toBe("Período: mensal → anual");
     expect(describeSubscriptionChange({ change: "status_changed", fromValue: "active", toValue: "past_due" })).toBe("Situação: Ativa → Pagamento atrasado");

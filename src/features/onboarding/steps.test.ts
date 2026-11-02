@@ -33,7 +33,7 @@ describe("plataformas", () => {
     const base = platformOptions("base");
     expect(base.filter((o) => o.available).map((o) => o.id)).toEqual(["meta", "google"]);
     expect(base.find((o) => o.id === "ga4")?.reason).toBe("Em breve");
-    expect(base.find((o) => o.id === "tiktok")?.reason).toBe("Disponível no Pro");
+    expect(base.find((o) => o.id === "tiktok")?.reason).toBe("Disponível no Padrão");
     expect(platformOptions("pro").find((o) => o.id === "tiktok")?.reason).toBe("Em breve");
     expect(base.some((o) => o.id === "crm")).toBe(false);
   });

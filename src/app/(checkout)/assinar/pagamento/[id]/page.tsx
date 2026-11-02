@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PRODUCT_HOME } from "@/features/pricing/pricing";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
@@ -35,7 +36,7 @@ async function Payment({ params }: { params: PageProps<"/assinar/pagamento/[id]"
 
   const checkout = await getCheckout(id);
   if (!checkout) notFound();
-  if (checkout.status === "completed") redirect(checkout.planId ? "/comecar" : "/painel/plano");
+  if (checkout.status === "completed") redirect(checkout.planId ? PRODUCT_HOME[checkout.product] : "/painel/plano");
   if (checkout.status !== "open") return <Closed checkout={checkout} />;
 
   // validade de exemplo para o cartão de teste: dezembro, daqui a 4 anos

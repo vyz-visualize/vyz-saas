@@ -9,6 +9,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
+import { parsePlanDbId } from "@/features/pricing/pricing";
 import { TIERS, type Entitlements, type Tier } from "@/features/pricing/entitlements";
 import { hasRole, type MemberRole, type OnboardingStep, type SubscriptionStatus, type WorkspaceSession } from "@/features/workspace/session";
 import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
@@ -19,10 +20,12 @@ import { createServerSupabase } from "@/server/supabase/server";
 import { getSessionUser, type SessionUser } from "./session";
 
 const isTier = (v: unknown): v is Tier => typeof v === "string" && (TIERS as string[]).includes(v);
+/** "pro" e "lp_pro" → "pro": o tier é o mesmo nos dois produtos. */
+const tierOf = (planId: string | null | undefined): Tier | null => parsePlanDbId(planId)?.tier ?? null;
 
 type WorkspaceRow = Pick<
   Tables<"workspaces">,
-  "id" | "name" | "slug" | "business_type_id" | "brand_color" | "brand_logo_path" | "hide_vyz_brand" | "onboarding_step" | "onboarding_completed_at" | "timezone" | "currency"
+  "id" | "name" | "slug" | "business_type_id" | "brand_color" | "brand_logo_path" | "hide_vyz_brand" | "onboarding_step" | "onboarding_completed_at" | "timezone" | "currency" | "product"
 >;
 
 export type Viewer = {
@@ -40,7 +43,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     supabase.from("profiles").select("id, email, full_name, avatar_url, default_workspace_id").eq("id", user.id).maybeSingle(),
     supabase
       .from("workspace_members")
-      .select("role, workspace:workspaces!inner(id, name, slug, business_type_id, brand_color, brand_logo_path, hide_vyz_brand, onboarding_step, onboarding_completed_at, timezone, currency)")
+      .select("role, workspace:workspaces!inner(id, name, slug, business_type_id, brand_color, brand_logo_path, hide_vyz_brand, onboarding_step, onboarding_completed_at, timezone, currency, product)")
       .eq("user_id", user.id)
       .order("created_at"),
   ]);
@@ -112,11 +115,12 @@ export const getWorkspaceSession = cache(async (): Promise<WorkspaceSession | nu
       onboardingCompletedAt: w.onboarding_completed_at,
       timezone: w.timezone,
       currency: w.currency,
+      product: w.product,
     },
     role: current.role,
     access: {
       hasAccess: !!a?.has_access,
-      tier: isTier(a?.plan_id) ? a.plan_id : null,
+      tier: tierOf(a?.plan_id),
       status: (a?.subscription_status as SubscriptionStatus | null) ?? null,
       interval: a?.interval ?? null,
       accountsQuantity: a?.accounts_quantity ?? 0,

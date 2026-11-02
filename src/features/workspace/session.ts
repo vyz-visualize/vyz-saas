@@ -2,6 +2,7 @@
 // (src/server/auth/workspace.ts monta; WorkspaceProvider distribui). Só tipos
 // e funções puras: pode ser importado no navegador.
 
+import type { Product } from "@/features/pricing/pricing";
 import type { Entitlements, Tier } from "@/features/pricing/entitlements";
 
 export type MemberRole = "viewer" | "member" | "admin" | "owner";
@@ -52,6 +53,8 @@ export type WorkspaceSession = {
     onboardingCompletedAt: string | null;
     timezone: string;
     currency: string;
+    /** Lado da plataforma: dashboards ou landing pages. */
+    product: Product;
   };
   role: MemberRole;
   access: WorkspaceAccess;

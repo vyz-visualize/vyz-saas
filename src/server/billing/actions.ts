@@ -69,7 +69,7 @@ export async function startCheckout(_prev: CheckoutFormState, formData: FormData
     const order = buildOrder(state);
     if (order.blocked) throw appError(`checkout:${order.blocked}`, BLOCK_MESSAGE[order.blocked]);
 
-    const viewer = await getCheckoutViewer();
+    const viewer = await getCheckoutViewer(state.produto);
     if (viewer.subscribed) throw appError("checkout:already_subscribed", "Este workspace já tem uma assinatura ativa. Troque de plano em Plano, no painel.");
 
     const parsed = checkoutFormSchema({ newAccount: !viewer.user }).safeParse({
