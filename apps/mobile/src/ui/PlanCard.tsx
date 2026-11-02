@@ -11,7 +11,7 @@ import { buyPlan, manageSubscription, planProduct } from "@/lib/purchases";
 import { Button, Card, Notice } from "./kit";
 import { useTheme } from "./theme";
 
-const TIER_LABEL: Record<StorePlanTier, string> = { base: "Base", pro: "Pro", avancado: "Avançado" };
+const TIER_LABEL: Record<StorePlanTier, string> = { base: "Básico", pro: "Padrão", avancado: "Avançado" };
 const PERIOD_LABEL: Record<StorePlanPeriod, string> = { mensal: "Mensal", anual: "Anual" };
 
 type Workspace = MeResponse["workspaces"][number];
