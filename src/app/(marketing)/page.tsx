@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { ComoFunciona } from "@/features/marketing/sections/ComoFunciona";
 import { Footer } from "@/features/marketing/sections/Footer";
+import { Inteligencia } from "@/features/marketing/sections/Inteligencia";
 import { Hero } from "@/features/marketing/sections/Hero";
 import { Intro } from "@/features/marketing/sections/Intro";
 import { Navbar } from "@/features/marketing/sections/Navbar";
@@ -34,6 +35,9 @@ export default function Home() {
         </Suspense>
         <Suspense>
           <ComoFunciona />
+        </Suspense>
+        <Suspense>
+          <Inteligencia />
         </Suspense>
         <Suspense>
           <Planos />

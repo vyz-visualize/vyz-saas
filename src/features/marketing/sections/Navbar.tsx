@@ -13,6 +13,7 @@ import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 
 const LINKS = [
   { id: "como-funciona", label: "Como funciona" },
+  { id: "inteligencia", label: "Inteligência" },
   { id: "planos", label: "Planos" },
 ];
 
