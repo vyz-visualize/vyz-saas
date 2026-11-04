@@ -47,7 +47,7 @@ export function LockedGallery({ tier }: { tier: Tier }) {
 const ROWS = [
   ["CTR do link", "1,8%", "1,3%"],
   ["Custo por resultado", "R$ 12,40", "R$ 18,90"],
-  ["Frequência", "1,4", "1,7"],
+  ["Frequência média por dia", "1,4", "1,7"],
 ];
 
 /** Padrão: o comparativo do Avançado. */

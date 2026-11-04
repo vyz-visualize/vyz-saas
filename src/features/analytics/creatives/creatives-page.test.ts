@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sampleDashboardData } from "../preview";
 import type { CreativesData, MetaView } from "../types";
 import { cutCreatives, type CreativesAccess } from "./access";
+import { defaultAds } from "./compare";
 import { CompareView } from "./CompareView";
 import { CreativesPage } from "./CreativesPage";
 
@@ -78,9 +79,40 @@ describe("comparativo", () => {
   const [a, b] = data.compare;
   const withAds = (ids: string[], hide = false) => ({ ...(hide ? cut({ tier: "avancado", tab: "comparativo" }, true) : data), initialAds: ids });
 
-  it("sem escolha, pede 2 anúncios", async () => {
+  it("sem anúncios na URL: abre com os 2 de maior investimento e atualiza a URL", async () => {
+    window.history.replaceState(null, "", "/painel/dashboards/d1?criativos=comparativo");
     await mount(createElement(CompareView, { data: withAds([]) }));
+    const [top1, top2] = defaultAds(data.compare);
+    const names = [...host.querySelectorAll("article")].map((e) => e.getAttribute("aria-label"));
+    expect(names).toEqual([top1, top2].map((id) => data.compare.find((x) => x.id === id)!.name));
+    expect(window.location.search).toContain(`anuncios=${top1},${top2}`);
+    expect(host.textContent).toContain("Destaque por objetivo");
+  });
+
+  it("dá para remover os pré-selecionados, e a URL acompanha", async () => {
+    window.history.replaceState(null, "", "/painel/dashboards/d1?criativos=comparativo");
+    await mount(createElement(CompareView, { data: withAds([]) }));
+    const [top1, top2] = defaultAds(data.compare);
+    await click(host.querySelector('button[title="Remover card"]'));
     expect(host.textContent).toContain("Escolha pelo menos 2 anúncios");
+    expect(window.location.search).toContain(`anuncios=${top2}`);
+    expect(window.location.search).not.toContain(top1);
+  });
+
+  it("com anúncios na URL, não troca nem reescreve", async () => {
+    window.history.replaceState(null, "", `/painel/dashboards/d1?anuncios=${b.id},${a.id}`);
+    await mount(createElement(CompareView, { data: withAds([b.id, a.id]) }));
+    expect([...host.querySelectorAll("article")].map((e) => e.getAttribute("aria-label"))).toEqual([b.name, a.name]);
+    expect(window.location.search).toBe(`?anuncios=${b.id},${a.id}`);
+  });
+
+  it("a coluna de métricas fica com 35% e as outras dividem o resto", async () => {
+    await mount(createElement(CompareView, { data: withAds([a.id, b.id]) }));
+    const cols = [...host.querySelectorAll("table colgroup col")] as HTMLElement[];
+    expect(cols).toHaveLength(3);
+    expect(cols[0].style.width).toBe("35%");
+    expect(cols[1].style.width).toBe("");
+    expect(host.querySelector("table")!.className).toContain("table-fixed");
   });
 
   it("com 2 da URL: cards, tabela, destaque e análise", async () => {
@@ -128,7 +160,12 @@ describe("comparativo", () => {
 
   it("anúncio de outra conta na URL é ignorado", async () => {
     await mount(createElement(CompareView, { data: withAds(["nao-existe", a.id]) }));
-    expect(host.querySelectorAll("article")).toHaveLength(1);
+    expect([...host.querySelectorAll("article")].map((e) => e.getAttribute("aria-label"))).toEqual([a.name]);
+  });
+
+  it("URL só com anúncio inválido cai no padrão", async () => {
+    await mount(createElement(CompareView, { data: withAds(["nao-existe"]) }));
+    expect(host.querySelectorAll("article")).toHaveLength(2);
   });
 
   it("investimento oculto: nada de custo na tela nem na análise", async () => {
@@ -143,6 +180,6 @@ describe("comparativo", () => {
 
   it("as escolhas de Personalizar não entram: mostra todas as métricas", async () => {
     await mount(createElement(CompareView, { data: withAds([a.id, b.id]) }));
-    for (const term of ["CTR (todos)", "CPC (todos)", "Alcance médio por dia", "Engajamento com a publicação"]) expect(host.textContent).toContain(term);
+    for (const term of ["CTR (todos)", "CPC (todos)", "Alcance médio por dia", "Engajamento no post"]) expect(host.textContent).toContain(term);
   });
 });

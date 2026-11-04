@@ -6,7 +6,7 @@
 //   * alcance é sempre média diária: somar dias não dá pessoas únicas;
 //   * o melhor valor só existe com 2 anúncios ou mais com dado e valores diferentes.
 
-import { decimal, int } from "@/lib/format";
+import { decimal, int, pct } from "@/lib/format";
 import { fatigueOf } from "../aggregate";
 import { formatValue } from "../format";
 import type { CompareAd, ValueFormat } from "../types";
@@ -150,7 +150,7 @@ export const COMPARE_METRICS: CompareMetric[] = [
   { id: "avgWatch", label: "Tempo médio de reprodução", group: "video", format: "seconds", better: "up", additive: false, value: (s) => per(s.watchSeconds, s.videoViews) },
   count("profileVisits", "Visitas ao perfil", "video", (s) => s.profileVisits),
 
-  count("engagement", "Engajamento com a publicação", "engagement", (s) => s.engagement),
+  count("engagement", "Engajamento no post", "engagement", (s) => s.engagement),
   rate("engagementRate", "Taxa de engajamento", "engagement", (s) => per(s.engagement, s.impressions)),
   count("reactions", "Reações", "engagement", (s) => s.reactions),
   count("comments", "Comentários", "engagement", (s) => s.comments),
@@ -329,6 +329,57 @@ export function evolution(ads: readonly Pick<CompareAd, "days">[], metric: Compa
     }),
   );
   return { blocked, labels, series };
+}
+
+/** Volumes começam em 0. Taxas, custos e médias se ajustam aos valores, para a variação aparecer. */
+export const axisFromZero = (metric: Pick<CompareMetric, "additive" | "format">) => metric.additive || metric.format === "int";
+
+const AXIS_MARGIN = 0.12;
+
+/** Faixa do eixo Y do gráfico de evolução. Nunca abaixo de 0. */
+export function chartRange(values: readonly (number | null)[], metric: Pick<CompareMetric, "additive" | "format">): { min: number; max: number } {
+  const present = values.filter((v): v is number => v != null && Number.isFinite(v));
+  if (!present.length) return { min: 0, max: 1 };
+  const lo = Math.min(...present);
+  const hi = Math.max(...present);
+  if (axisFromZero(metric)) return { min: 0, max: hi > 0 ? hi : 1 };
+  const margin = hi > lo ? (hi - lo) * AXIS_MARGIN : Math.abs(hi) * AXIS_MARGIN || 1;
+  return { min: Math.max(0, lo - margin), max: hi + margin };
+}
+
+/** Casas decimais que o passo do eixo pede: sem isso, 1,15 e 1,20 viram dois "1,2". */
+function stepDigits(step: number): number {
+  for (let d = 0; d <= 4; d++) {
+    const scaled = step * 10 ** d;
+    if (Math.abs(scaled - Math.round(scaled)) < 1e-6) return d;
+  }
+  return 4;
+}
+
+/** Rótulo do eixo Y, com a precisão do passo. */
+export function axisLabel(metric: CompareMetric, value: number, step: number, currency: string): string {
+  const d = stepDigits(step);
+  switch (metric.format) {
+    case "pct":
+      return pct(value, stepDigits(step * 100));
+    case "money":
+      return formatValue(value, "money", currency);
+    case "seconds":
+      return `${decimal(value, d)} s`;
+    case "int":
+      return d ? decimal(value, d) : int(value);
+    default:
+      return decimal(value, d);
+  }
+}
+
+/** Os anúncios que já abrem escolhidos: os de maior investimento (sem investimento à vista, os de mais impressões). */
+export function defaultAds(pool: readonly CompareAd[], count = 2): string[] {
+  const total = (ad: CompareAd, pick: (d: Day) => number | null) => ad.days.reduce((acc, d) => acc + Number(pick(d) ?? 0), 0);
+  return [...pool]
+    .sort((a, b) => total(b, (d) => d.spend) - total(a, (d) => d.spend) || total(b, (d) => d.impressions) - total(a, (d) => d.impressions))
+    .slice(0, count)
+    .map((a) => a.id);
 }
 
 export const EVOLUTION_BLOCK_NOTE = `Mais de ${BLOCK_AFTER_DAYS} dias de veiculação: cada ponto é um bloco de ${BLOCK_DAYS} dias. Contagens aparecem como média por dia do bloco; taxas e custos são calculados sobre o bloco inteiro.`;

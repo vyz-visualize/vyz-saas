@@ -8,7 +8,19 @@ import { widest, xTickIndices, yTicks } from "@/components/charts/axis";
 
 const FS = 11;
 
-export function CompareChart({ labels, series, colors, format, summary, height = 240 }: { labels: string[]; series: (number | null)[][]; colors: readonly string[]; format: (v: number) => string; summary: string; height?: number }) {
+type Props = {
+  labels: string[];
+  series: (number | null)[][];
+  colors: readonly string[];
+  /** Faixa do eixo Y: volumes começam em 0; taxas e custos se ajustam aos valores. */
+  range: { min: number; max: number };
+  /** Rótulo do eixo Y, com a precisão do passo. */
+  format: (value: number, step: number) => string;
+  summary: string;
+  height?: number;
+};
+
+export function CompareChart({ labels, series, colors, range, format, summary, height = 240 }: Props) {
   return (
     <FitChart height={height}>
       {({ width: W, height: H }) => {
@@ -18,10 +30,9 @@ export function CompareChart({ labels, series, colors, format, summary, height =
         const xLabelH = FS + 10;
         const top = 8;
         const plotH = Math.max(40, H - top - xLabelH);
-        const min = Math.min(0, ...all);
-        const max = Math.max(...all);
-        const { lo, hi, ticks } = yTicks(min, max === min ? min + 1 : max, plotH);
-        const yLabels = ticks.map(format);
+        const { lo, hi, ticks } = yTicks(range.min, range.max > range.min ? range.max : range.min + 1, plotH);
+        const step = ticks.length > 1 ? ticks[1] - ticks[0] : 1;
+        const yLabels = ticks.map((t) => format(t, step));
         const left = widest(yLabels, FS) + 10;
         const plotW = Math.max(40, W - left - 12);
         const x = (i: number) => left + (labels.length <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);

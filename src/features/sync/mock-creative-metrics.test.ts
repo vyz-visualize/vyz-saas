@@ -10,7 +10,11 @@ const gen = (platform: "meta" | "google", id: string, name: string) => generateA
 function fingerprint(d: ReturnType<typeof gen>) {
   const ad = d.adDaily.map((r) => AD_KEYS.map((k) => r[k]));
   // só números: o texto dos termos de pesquisa pode mudar de redação
-  const terms = d.searchTermDaily.map(({ searchTerm: _text, ...r }) => r);
+  const terms = d.searchTermDaily.map((r) => {
+    const numbers: Partial<typeof r> = { ...r };
+    delete numbers.searchTerm;
+    return numbers;
+  });
   return createHash("sha256")
     .update(JSON.stringify([d.accountDaily, d.campaignDaily, ad, d.breakdownDaily, terms, d.productDaily]))
     .digest("hex");

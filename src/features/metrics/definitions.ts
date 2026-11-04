@@ -89,7 +89,7 @@ const BASE: Record<MetricId, MetricDef> = {
   views: { id: "views", label: "Visualizações", format: "int", better: "up" },
   cpv: { id: "cpv", label: "Custo por visualização", format: "brl", better: "down" },
   viewRate: { id: "viewRate", label: "Taxa de visualização", format: "pct", better: "up" },
-  frequency: { id: "frequency", label: "Frequência", format: "decimal", better: "neutral" },
+  frequency: { id: "frequency", label: "Frequência média por dia", format: "decimal", better: "neutral" },
 };
 
 /** Definição da métrica com o rótulo do perfil (ex.: conversões → "Matrículas"). */

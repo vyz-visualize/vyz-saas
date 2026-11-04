@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { creativeAnalysis } from "@/features/agent/engine/creative-analysis";
 import { pct } from "@/lib/format";
 import type { CompareAd } from "../types";
-import { adStats, bestOf, BLOCK_DAYS, compareTable, deliveryDays, diffLabel, diffVsBest, evolution, formatMetric, metricById, metricValue, COMPARE_METRICS, objectiveHighlights, objectivesDiffer, objectiveWarning, sumsOf } from "./compare";
+import { adStats, axisFromZero, axisLabel, bestOf, BLOCK_DAYS, chartRange, defaultAds, compareTable, deliveryDays, diffLabel, diffVsBest, evolution, formatMetric, metricById, metricValue, COMPARE_METRICS, objectiveHighlights, objectivesDiffer, objectiveWarning, sumsOf } from "./compare";
 import { objectiveKey, objectiveResult } from "./objectives";
 
 type Day = CompareAd["days"][number];
@@ -201,6 +201,55 @@ describe("evolução por dia de veiculação", () => {
     const unique = days.map((d, i) => ({ ...d, date: new Date(Date.UTC(2026, 7, i + 1)).toISOString().slice(0, 10) }));
     const e = evolution([ad("a", unique)], m("ctr"));
     expect(e.series[0][0]).toBeCloseTo((9 + 40) / (900 + 400));
+  });
+});
+
+describe("eixo do gráfico", () => {
+  it("volumes começam em 0", () => {
+    for (const id of ["spend", "impressions", "clicks", "linkClicks", "conversions", "value", "reach", "thruplays", "engagement"]) {
+      expect([id, axisFromZero(m(id))]).toEqual([id, true]);
+      expect(chartRange([500, 800], m(id)).min).toBe(0);
+    }
+  });
+
+  it("taxas e custos se ajustam aos valores, com margem", () => {
+    for (const id of ["ctr", "linkCtr", "cpm", "cpc", "cpcLink", "cpa", "cpl", "frequency", "roas", "costPerThruplay"]) expect([id, axisFromZero(m(id))]).toEqual([id, false]);
+    const r = chartRange([0.012, 0.016], m("linkCtr"));
+    expect(r.min).toBeGreaterThan(0);
+    expect(r.min).toBeLessThan(0.012);
+    expect(r.max).toBeGreaterThan(0.016);
+  });
+
+  it("nunca fica abaixo de 0, aceita valor único e ignora vazios", () => {
+    expect(chartRange([0, 0.02], m("ctr")).min).toBe(0);
+    const single = chartRange([2, null, 2], m("roas"));
+    expect(single.min).toBeLessThan(2);
+    expect(single.max).toBeGreaterThan(2);
+    expect(chartRange([null], m("ctr"))).toEqual({ min: 0, max: 1 });
+  });
+
+  it("os rótulos não se repetem quando o eixo é estreito", () => {
+    const labels = [1.1, 1.15, 1.2, 1.25].map((v) => axisLabel(m("frequency"), v, 0.05, "BRL"));
+    expect(new Set(labels).size).toBe(4);
+    const pcts = [0.012, 0.014, 0.016].map((v) => axisLabel(m("linkCtr"), v, 0.002, "BRL"));
+    expect(new Set(pcts).size).toBe(3);
+  });
+});
+
+describe("anúncios que já abrem escolhidos", () => {
+  it("os 2 de maior investimento", () => {
+    const pool = [ad("a", range(1, 2, { spend: 10 })), ad("b", range(1, 2, { spend: 90 })), ad("c", range(1, 2, { spend: 50 }))];
+    expect(defaultAds(pool)).toEqual(["b", "c"]);
+  });
+
+  it("sem investimento à vista, os de mais impressões", () => {
+    const pool = [ad("a", range(1, 2, { spend: null as never, impressions: 10 })), ad("b", range(1, 2, { spend: null as never, impressions: 90 })), ad("c", range(1, 2, { spend: null as never, impressions: 50 }))];
+    expect(defaultAds(pool)).toEqual(["b", "c"]);
+  });
+
+  it("com menos de 2 anúncios, devolve o que tem", () => {
+    expect(defaultAds([ad("a", range(1, 2))])).toEqual(["a"]);
+    expect(defaultAds([])).toEqual([]);
   });
 });
 

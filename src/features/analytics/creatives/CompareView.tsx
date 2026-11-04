@@ -15,7 +15,7 @@ import { creativeAnalysis, type CreativeAnalysis } from "@/features/agent/engine
 import type { CompareAd, CreativesData } from "../types";
 import { Chip, NoData, Panel, Thumb } from "../ui";
 import { CompareChart } from "./CompareChart";
-import { adStats, compareTable, COMPARE_METRICS, diffLabel, evolution, EVOLUTION_BLOCK_NOTE, formatMetric, objectiveHighlights, objectiveWarning, type AdStats, type CompareMode, type CompareGroup } from "./compare";
+import { adStats, axisLabel, chartRange, compareTable, COMPARE_METRICS, defaultAds, diffLabel, evolution, EVOLUTION_BLOCK_NOTE, formatMetric, objectiveHighlights, objectiveWarning, type AdStats, type CompareMode, type CompareGroup } from "./compare";
 import { MAX_COMPARE, MIN_COMPARE } from "./limits";
 import { OBJECTIVE_LABEL, objectiveKey } from "./objectives";
 import { setQueryParam } from "./query";
@@ -29,8 +29,10 @@ const postPlace = (url: string) => (/instagram/i.test(url) ? "Instagram" : /face
 
 export function CompareView({ data }: { data: Pick<CreativesData, "compare" | "initialAds" | "hideSpend" | "currency"> }) {
   const { compare: pool, hideSpend, currency } = data;
+  // sem anúncios na URL, já abre comparando os 2 de maior investimento
+  const [preselected] = useState(() => !data.initialAds.some((id) => pool.some((a) => a.id === id)));
   const [slots, setSlots] = useState<(string | null)[]>(() => {
-    const ok = data.initialAds.filter((id) => pool.some((a) => a.id === id)).slice(0, MAX_COMPARE);
+    const ok = preselected ? defaultAds(pool, MIN_COMPARE) : data.initialAds.filter((id) => pool.some((a) => a.id === id)).slice(0, MAX_COMPARE);
     return ok.length >= MIN_COMPARE ? ok : [...ok, ...Array<null>(MIN_COMPARE - ok.length).fill(null)];
   });
   const [mode, setMode] = useState<CompareMode>("day");
@@ -40,12 +42,13 @@ export function CompareView({ data }: { data: Pick<CreativesData, "compare" | "i
   const first = useRef(true);
 
   useEffect(() => {
+    // a URL já diz o que está aberto, a não ser que a escolha tenha vindo do padrão
     if (first.current) {
       first.current = false;
-      return;
+      if (!preselected) return;
     }
     setQueryParam("anuncios", key || null);
-  }, [key]);
+  }, [key, preselected]);
 
   const stats = useMemo(() => key.split(",").flatMap((id) => (byId.has(id) ? [adStats(byId.get(id)!)] : [])), [byId, key]);
   const colorOf = (id: string) => COLORS[slots.indexOf(id)] ?? COLORS[0];
@@ -235,11 +238,17 @@ function CompareTable({ stats, colors, mode, hideSpend, currency }: { stats: AdS
   return (
     // a única rolagem horizontal da página: tabela de 3 anúncios no celular, com a coluna de métricas fixa
     <div className="-mx-4 overflow-x-auto px-4 contain-paint">
-      <table className="w-full border-separate border-spacing-0 text-[12.5px] tnum" style={{ minWidth: 142 + stats.length * 128 }}>
+      <table className="w-full table-fixed border-separate border-spacing-0 text-[12.5px] tnum" style={{ minWidth: Math.max(430, (stats.length * 110) / 0.65) }}>
         <caption className="sr-only">Comparativo de {stats.length} anúncios</caption>
+        <colgroup>
+          <col style={{ width: "35%" }} />
+          {stats.map((s) => (
+            <col key={s.ad.id} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
-            <th scope="col" className={`${label} w-[142px] border-b border-line text-[11px] font-medium text-fg-2`}>
+            <th scope="col" className={`${label} border-b border-line text-[11px] font-medium text-fg-2`}>
               Métrica
             </th>
             {stats.map((s, i) => (
@@ -292,7 +301,7 @@ function CompareTable({ stats, colors, mode, hideSpend, currency }: { stats: AdS
               {open &&
                 g.rows.map((r) => (
                   <tr key={r.metric.id}>
-                    <th scope="row" className={`${label} border-b border-line/60 font-normal text-fg-2`}>
+                    <th scope="row" className={`${label} border-b border-line/60 font-normal text-fg-2 @[480px]:whitespace-nowrap`}>
                       {r.metric.label}
                       {r.metric.better === "down" && <span className="block text-[10.5px] text-fg-2/80">menor é melhor</span>}
                     </th>
@@ -341,7 +350,7 @@ function EvolutionPanel({ stats, colors, hideSpend, currency }: { stats: AdStats
           </li>
         ))}
       </ul>
-      <CompareChart labels={ev.labels} series={ev.series} colors={colors} format={(v) => formatMetric(metric, v, currency)} summary={`${metric.label} por dia de veiculação`} />
+      <CompareChart labels={ev.labels} series={ev.series} colors={colors} range={chartRange(ev.series.flat(), metric)} format={(v, step) => axisLabel(metric, v, step, currency)} summary={`${metric.label} por dia de veiculação`} />
       {ev.blocked && <p className="mt-2 text-[12px] leading-snug text-fg-2">{EVOLUTION_BLOCK_NOTE}</p>}
     </Panel>
   );
