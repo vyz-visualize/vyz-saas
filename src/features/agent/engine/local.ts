@@ -9,6 +9,9 @@ import type { AgentAnswer, AgentContext, ClientData, VyzEngine } from "./types";
 export const SUGGESTIONS = ["Quanto investi esse mês?", "Qual cliente teve o melhor CPA?", "Quantos dashboards ainda posso criar?", "Ativar modo escuro"];
 const NO_DATA = "Não tenho esse dado";
 
+/** O período da resposta: o mês até hoje ou, com filtros, o período aberto no dashboard. */
+const when = (ctx: AgentContext) => ctx.focus?.period ?? periodLabel(ctx.now);
+
 /** Minúsculas, sem acento, sem pontuação e sem o "olá, vyz" do começo. */
 export function normalize(q: string): string {
   return q
@@ -51,6 +54,14 @@ const target = (c: ClientData, id: MetricId) => (c.kpis.includes(id) ? { dashboa
 
 // ---- intenções ----------------------------------------------------------------
 
+/** Resposta sobre números com filtros ativos: diz qual é o recorte. */
+function withFocus(a: AgentAnswer, ctx: AgentContext): AgentAnswer {
+  if (!ctx.focus) return a;
+  const many = ctx.focus.label.includes(", ");
+  const text = `Com ${many ? "os filtros" : "o filtro"} **${ctx.focus.label}**, ${a.text[0].toLowerCase()}${a.text.slice(1)}`;
+  return { ...a, text, spoken: strip(text) };
+}
+
 function noDashboards(): AgentAnswer {
   return answer({
     text: `${NO_DATA} ainda: não há nenhum dashboard nesta conta. Crie o primeiro e eu passo a responder com os números dele.`,
@@ -61,14 +72,14 @@ function noDashboards(): AgentAnswer {
 
 function spend(ctx: AgentContext): AgentAnswer {
   const list = ctx.dashboards.filter((d) => d.cur.spend > 0);
-  if (!list.length) return ctx.dashboards.length ? answer({ text: `${NO_DATA}: os dashboards não têm investimento registrado ${periodLabel(ctx.now)}.` }) : noDashboards();
+  if (!list.length) return ctx.dashboards.length ? answer({ text: `${NO_DATA}: os dashboards não têm investimento registrado ${when(ctx)}.` }) : noDashboards();
   const cur = list.reduce((a, d) => a + d.cur.spend, 0);
   const prev = list.reduce((a, d) => a + d.prev.spend, 0);
   const d = prev ? cur / prev - 1 : null;
   const many = list.length > 1;
   return answer({
-    text: `Você investiu **${money(cur)}** ${periodLabel(ctx.now)}${many ? `, somando ${count(list.length)} clientes` : ` em ${list[0].client}`}.${d !== null ? ` Isso é **${change(d)}** em relação ao período anterior de mesmo tamanho.` : ""}`,
-    card: { label: `Investimento · ${periodLabel(ctx.now)}`, value: money(cur), delta: d !== null ? { text: `${change(d)} vs anterior`, good: null } : undefined },
+    text: `Você investiu **${money(cur)}** ${when(ctx)}${many ? `, somando ${count(list.length)} clientes` : ` em ${list[0].client}`}.${d !== null ? ` Isso é **${change(d)}** em relação ao período anterior de mesmo tamanho.` : ""}`,
+    card: { label: `Investimento · ${when(ctx)}`, value: money(cur), delta: d !== null ? { text: `${change(d)} vs anterior`, good: null } : undefined },
     chart: many ? { title: "Por cliente", items: [...list].sort((a, b) => b.cur.spend - a.cur.spend).map((c) => ({ label: c.client, value: c.cur.spend, display: money(c.cur.spend) })) } : undefined,
     target: many ? undefined : target(list[0], "spend"),
   });
@@ -77,13 +88,13 @@ function spend(ctx: AgentContext): AgentAnswer {
 function totalOf(ctx: AgentContext, id: "conversions" | "leads"): AgentAnswer {
   const list = ctx.dashboards.filter((d) => d.cur[id] > 0);
   const word = id === "conversions" ? "vendas confirmadas" : "leads";
-  if (!list.length) return ctx.dashboards.length ? answer({ text: `${NO_DATA}: nenhum dashboard registra ${word} ${periodLabel(ctx.now)}.` }) : noDashboards();
+  if (!list.length) return ctx.dashboards.length ? answer({ text: `${NO_DATA}: nenhum dashboard registra ${word} ${when(ctx)}.` }) : noDashboards();
   const cur = list.reduce((a, d) => a + d.cur[id], 0);
   const prev = list.reduce((a, d) => a + d.prev[id], 0);
   const d = prev ? cur / prev - 1 : null;
   return answer({
-    text: `Foram **${count(cur)} ${word}** ${periodLabel(ctx.now)}${list.length > 1 ? `, em ${count(list.length)} clientes` : ` em ${list[0].client}`}.${d !== null ? ` Variação de **${change(d)}** sobre o período anterior.` : ""}`,
-    card: { label: `${word[0].toUpperCase()}${word.slice(1)} · ${periodLabel(ctx.now)}`, value: count(cur), delta: d !== null ? { text: `${change(d)} vs anterior`, good: d >= 0 } : undefined },
+    text: `Foram **${count(cur)} ${word}** ${when(ctx)}${list.length > 1 ? `, em ${count(list.length)} clientes` : ` em ${list[0].client}`}.${d !== null ? ` Variação de **${change(d)}** sobre o período anterior.` : ""}`,
+    card: { label: `${word[0].toUpperCase()}${word.slice(1)} · ${when(ctx)}`, value: count(cur), delta: d !== null ? { text: `${change(d)} vs anterior`, good: d >= 0 } : undefined },
     chart: list.length > 1 ? { title: "Por cliente", items: [...list].sort((a, b) => b.cur[id] - a.cur[id]).map((c) => ({ label: c.client, value: c.cur[id], display: count(c.cur[id]) })) } : undefined,
     target: list.length === 1 ? target(list[0], id) : undefined,
   });
@@ -98,7 +109,7 @@ function compare(q: string, ctx: AgentContext): AgentAnswer | null {
   const label = metric(m.id, "ecommerce").label;
   // no meio da frase: "custo por venda" (siglas ficam como estão)
   const inline = label === label.toUpperCase() ? label : label[0].toLowerCase() + label.slice(1);
-  if (!list.length) return answer({ text: `${NO_DATA}: nenhum dos seus dashboards mede ${inline} ${periodLabel(ctx.now)}.` });
+  if (!list.length) return answer({ text: `${NO_DATA}: nenhum dos seus dashboards mede ${inline} ${when(ctx)}.` });
   const ranked = rank(m.id, list, best);
   const top = ranked[0];
   const d = top.prev[m.id] ? top.cur[m.id] / top.prev[m.id] - 1 : null;
@@ -107,8 +118,8 @@ function compare(q: string, ctx: AgentContext): AgentAnswer | null {
   const alone = list.length === 1;
   return answer({
     text: alone
-      ? `Só ${top.client} tem ${inline} nos seus dashboards: **${format(m.id, top.cur[m.id])}** ${periodLabel(ctx.now)}.`
-      : `${best ? "O melhor" : "O pior"} ${inline} ${periodLabel(ctx.now)} é de **${top.client}**: **${format(m.id, top.cur[m.id])}**.`,
+      ? `Só ${top.client} tem ${inline} nos seus dashboards: **${format(m.id, top.cur[m.id])}** ${when(ctx)}.`
+      : `${best ? "O melhor" : "O pior"} ${inline} ${when(ctx)} é de **${top.client}**: **${format(m.id, top.cur[m.id])}**.`,
     card: { label: `${label} · ${top.client}`, value: format(m.id, top.cur[m.id]), delta: d !== null ? { text: `${change(d)} vs anterior`, good } : undefined, hint: lowerIsBetter ? "menor é melhor" : undefined },
     chart: alone ? undefined : { title: `${label} por cliente`, items: ranked.map((c) => ({ label: c.client, value: c.cur[m.id], display: format(m.id, c.cur[m.id]) })) },
     target: target(top, m.id),
@@ -183,12 +194,12 @@ export function respond(question: string, ctx: AgentContext): AgentAnswer {
     });
   }
   const cmp = has(q, "melhor", "pior", "menor", "maior", "mais barato", "mais caro", "qual cliente", "quem") ? compare(q, ctx) : null;
-  if (cmp) return cmp;
-  if (has(q, "invest*", "gast*", "verba*", "spend")) return spend(ctx);
-  if (has(q, "venda*", "conversao", "conversoes", "compra*")) return totalOf(ctx, "conversions");
-  if (has(q, "lead*")) return totalOf(ctx, "leads");
+  if (cmp) return withFocus(cmp, ctx);
+  if (has(q, "invest*", "gast*", "verba*", "spend")) return withFocus(spend(ctx), ctx);
+  if (has(q, "venda*", "conversao", "conversoes", "compra*")) return withFocus(totalOf(ctx, "conversions"), ctx);
+  if (has(q, "lead*")) return withFocus(totalOf(ctx, "leads"), ctx);
   const metricQ = compare(q, ctx);
-  if (metricQ) return metricQ;
+  if (metricQ) return withFocus(metricQ, ctx);
 
   return answer({
     understood: false,

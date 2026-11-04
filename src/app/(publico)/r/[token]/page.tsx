@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { parseCreativesQuery } from "@/features/analytics/creatives/query";
+import { parseFilters } from "@/features/analytics/filters";
 import { sampleCreatives, sampleExtras } from "@/features/analytics/creatives/sample";
 import { LiveDashboard, LiveDashboardSkeleton } from "@/features/analytics/LiveDashboard";
 import { periodFromQuery } from "@/features/dashboards/model";
@@ -32,6 +33,7 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
   const d = shared.dashboard;
   const { period, customDays } = periodFromQuery(query, d.settings);
   const q = parseCreativesQuery(query);
+  const filters = parseFilters(query);
   // o link mostra o que o plano do dono cobre, sem oferta de plano para o cliente final
   const access = { tier: shared.tier, tab: q.tab, ads: q.ads, upsell: false };
   const note = d.live ? "Somente leitura · dados das contas conectadas" : "Somente leitura · dados de exemplo";
@@ -49,6 +51,7 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
             creatives={access}
             metricPrefs={d.metricPrefs}
             hideSpend={shared.hideSpend}
+            filters={filters}
             db={shared.db}
             toolbar={<PeriodNav period={period} customDays={customDays} />}
           />
@@ -65,8 +68,9 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
         brand={{ color: shared.brand.color ?? "", logo: undefined, hideVyz: true }}
         hideSpend={shared.hideSpend}
         initialPage={q.page}
-        creatives={template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays, hideSpend: shared.hideSpend }) : undefined}
-        extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays, hideSpend: shared.hideSpend }) : undefined}
+        initialFilters={filters}
+        creatives={template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays, hideSpend: shared.hideSpend, filters }) : undefined}
+        extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays, hideSpend: shared.hideSpend, filters }) : undefined}
       />
     </PublicShell>
   );

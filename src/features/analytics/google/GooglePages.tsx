@@ -11,7 +11,8 @@ import { useColumnVisible } from "@/features/dashboards/metric-prefs-context";
 import { CHANNEL_LABEL } from "../aggregate";
 import { formatValue, HIDDEN, MATCH_LABEL, money, moneyCompact } from "../format";
 import { GOOGLE_EXTRA_METRICS } from "../live-metrics";
-import { extraColumns, useExtraColumnsWidth, hiddenOr, HeroChart, StatusCell, TopCampaigns, type PageProps } from "../shared";
+import { useDashFilters } from "../filter-context";
+import { CAMPAIGN_ROW_FILTER, extraColumns, maturingPoints, useExtraColumnsWidth, hiddenOr, HeroChart, StatusCell, TopCampaigns, type PageProps } from "../shared";
 import type { CampaignRowVM, GoogleView, ProductVM, SearchTermVM } from "../types";
 import { Chip, DataTable, InlineBar, KpiGrid, NoData, Panel, Roas, SliceBars, Thumb } from "../ui";
 
@@ -21,9 +22,10 @@ const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export function GoogleOverview({ data }: PageProps) {
   const view = google(data);
+  const filters = useDashFilters();
   return (
     <div className="space-y-3">
-      <KpiGrid platform={view.platform} kpis={view.kpis} extra={view.extraKpis} currency={data.currency} maturing={data.maturingFrom ? 3 : 0} hideSpend={data.hideSpend} />
+      <KpiGrid platform={view.platform} kpis={view.kpis} extra={view.extraKpis} currency={data.currency} maturing={maturingPoints(data, filters?.filters.days)} hideSpend={data.hideSpend} />
       <div className="grid gap-3 @[1040px]:grid-cols-3">
         <div className="min-w-0 @[1040px]:col-span-2">
           <HeroChart data={data} spendLabel="Custo" valueLabel="Valor de conversão" />
@@ -32,7 +34,7 @@ export function GoogleOverview({ data }: PageProps) {
       </div>
       <div className="grid gap-3 @[900px]:grid-cols-2">
         <ChannelsPanel data={data} />
-        <Panel title="Dispositivos" subtitle={data.hideSpend ? "Participação no valor de conversão." : "Participação no valor de conversão e ROAS."}>
+        <Panel section="breakdown" title="Dispositivos" subtitle={data.hideSpend ? "Participação no valor de conversão." : "Participação no valor de conversão e ROAS."}>
           <SliceBars items={view.devices} breakEven={view.breakEvenRoas} label="Dispositivos" />
         </Panel>
       </div>
@@ -157,6 +159,7 @@ function HourPanel({ view, data }: { view: GoogleView; data: PageProps["data"] }
   const hours = Array.from({ length: 24 }, (_, h) => `${h}h`);
   return (
     <Panel
+      section="breakdown"
       title="Quando as conversões acontecem"
       subtitle="Dia da semana × hora (fuso da conta), somando o período."
       aside={
@@ -195,6 +198,7 @@ export function GoogleCampaigns({ data }: PageProps) {
         <DataTable<CampaignRowVM>
           rows={view.campaigns}
           rowKey={(c) => c.id}
+          rowFilter={CAMPAIGN_ROW_FILTER}
           caption="Campanhas do Google Ads no período"
           initialSort={{ key: "spend", dir: "desc" }}
           minWidth={1040 + extraWidth}
@@ -393,7 +397,7 @@ export function GoogleProducts({ data }: PageProps) {
         ))}
       </ul>
       <div className="grid gap-3 @[1040px]:grid-cols-[3fr_1fr]">
-        <Panel title="Ranking de produtos" subtitle="Shopping e Performance Max. Conversões aproximam as unidades vendidas.">
+        <Panel section="products" title="Ranking de produtos" subtitle="Shopping e Performance Max. Conversões aproximam as unidades vendidas.">
           <DataTable<ProductVM>
             rows={view.products}
             rowKey={(p) => p.id}
@@ -442,7 +446,7 @@ export function GoogleProducts({ data }: PageProps) {
             ]}
           />
         </Panel>
-        <Panel title="Categorias" subtitle={hideSpend ? "Participação no valor." : "Participação no valor e ROAS."}>
+        <Panel section="products" title="Categorias" subtitle={hideSpend ? "Participação no valor." : "Participação no valor e ROAS."}>
           <SliceBars items={view.productCategories} breakEven={view.breakEvenRoas} label="Categorias de produto" />
         </Panel>
       </div>

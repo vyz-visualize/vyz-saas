@@ -1,6 +1,7 @@
 // DataSource: de onde vêm os números dos widgets. Hoje só existe a MockSource
 // (determinística, com seed); a DbSource entra quando houver conexões reais.
 
+import { apportion } from "@/features/sync/apportion";
 import { isAdPlatform, type PlatformId } from "@/features/accounts/platforms";
 import { hash, rng, type Rng } from "@/lib/random";
 import type { Profile } from "./definitions";
@@ -43,7 +44,7 @@ export type DayRow = {
   maturing: boolean;
 };
 
-export type Campaign = { name: string; platform: PlatformId; spend: number; impressions: number; clicks: number; conversions: number; revenue: number };
+export type Campaign = { /** Estável no mesmo modelo: é o que vai na URL do filtro. */ id: string; name: string; platform: PlatformId; spend: number; impressions: number; clicks: number; conversions: number; revenue: number };
 export type Creative = { id: string; name: string; format: string; platform: PlatformId; spend: number; impressions: number; clicks: number; conversions: number; frequency: number; tone: number };
 export type FunnelStep = { label: string; pct: number };
 export type Project = { name: string; invest: number; cpl: number; bad?: boolean };
@@ -199,6 +200,53 @@ function emptyDay(ago: number): DayRow {
   return { ago, spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0, leads: 0, qualified: 0, visits: 0, calls: 0, sessions: 0, views: 0, byPlatform: {}, maturing: false };
 }
 
+type CampaignTotals = Pick<Campaign, "spend" | "impressions" | "clicks" | "conversions" | "revenue">;
+
+/** Reparte um total pelos pesos, com pelo menos 1 para cada quando dá (nenhuma campanha fica sem conversão). */
+function shareOut(total: number, weights: readonly number[], atLeastOne = false): number[] {
+  const whole = Math.round(total);
+  if (!atLeastOne || whole < weights.length) return apportion(whole, weights);
+  return apportion(whole - weights.length, weights).map((v) => v + 1);
+}
+
+/**
+ * As campanhas somam exatamente o que o modelo mostra: com uma plataforma de anúncios, os
+ * totais dos cards; com mais de uma, a parte de cada plataforma (a mesma de platformPart).
+ * Os cards não mudam: quem se ajusta é a campanha.
+ */
+function closeCampaigns(raw: readonly Campaign[], current: readonly DayRow[], adPlatforms: readonly PlatformId[]): Campaign[] {
+  const sum = (pick: (d: DayRow) => number) => current.reduce((a, d) => a + pick(d), 0);
+  const attributed = adPlatforms.reduce((a, id) => a + sum((d) => d.byPlatform[id]?.conv ?? 0), 0);
+  const target = (id: PlatformId): CampaignTotals => {
+    if (adPlatforms.length <= 1 || !adPlatforms.includes(id)) {
+      return { spend: sum((d) => d.spend), impressions: sum((d) => d.impressions), clicks: sum((d) => d.clicks), conversions: sum((d) => d.conversions), revenue: sum((d) => d.revenue) };
+    }
+    const conversions = sum((d) => d.byPlatform[id]?.conv ?? 0);
+    return {
+      spend: sum((d) => d.byPlatform[id]?.spend ?? 0),
+      impressions: sum((d) => d.byPlatform[id]?.impressions ?? 0),
+      clicks: sum((d) => d.byPlatform[id]?.clicks ?? 0),
+      conversions,
+      revenue: attributed > 0 ? (sum((d) => d.revenue) * conversions) / attributed : 0,
+    };
+  };
+  const out = [...raw];
+  for (const id of new Set(raw.map((c) => c.platform))) {
+    const idx = raw.flatMap((c, i) => (c.platform === id ? [i] : []));
+    const t = target(id);
+    const of = (pick: (c: Campaign) => number) => idx.map((i) => pick(raw[i]));
+    const spend = shareOut(t.spend, of((c) => c.spend));
+    const impressions = shareOut(t.impressions, of((c) => c.impressions));
+    const clicks = shareOut(t.clicks, of((c) => c.clicks));
+    const conversions = shareOut(t.conversions, of((c) => c.conversions), true);
+    const revenue = shareOut(t.revenue, of((c) => c.revenue));
+    idx.forEach((i, k) => {
+      out[i] = { ...raw[i], spend: spend[k], impressions: impressions[k], clicks: clicks[k], conversions: conversions[k], revenue: revenue[k] };
+    });
+  }
+  return out;
+}
+
 export const MockSource: DataSource = {
   load(spec) {
     const r = rng(hash(`${spec.seed}|${spec.profile}|${[...spec.sources].sort().join(",")}`));
@@ -301,15 +349,17 @@ export const MockSource: DataSource = {
     const names = CAMPAIGNS[spec.profile];
     const cshares = names.map(() => r.range(0.6, 1.4));
     const csum = cshares.reduce((a, b) => a + b, 0);
-    const campaigns: Campaign[] = names.map((name, i) => {
+    const rawCampaigns = names.map((name, i) => {
       const share = cshares[i] / csum;
       const eff = r.range(0.55, 1.6);
       const spend = Math.round(totalSpend * share);
       const impressions = Math.round(current.reduce((a, d) => a + d.impressions, 0) * share * r.range(0.8, 1.2));
       const clicks = Math.round(current.reduce((a, d) => a + d.clicks, 0) * share * r.range(0.7, 1.3));
       const conversions = Math.max(1, Math.round(totalConv * share * eff));
-      return { name, platform: adPlatforms[i % Math.max(1, adPlatforms.length)] ?? "ga4", spend, impressions, clicks, conversions, revenue: Math.round(conversions * (ticket || siteTicket) * r.range(0.85, 1.15)) };
+      return { id: `c${i}`, name, platform: adPlatforms[i % Math.max(1, adPlatforms.length)] ?? "ga4", spend, impressions, clicks, conversions, revenue: Math.round(conversions * (ticket || siteTicket) * r.range(0.85, 1.15)) };
     });
+
+    const campaigns = closeCampaigns(rawCampaigns, current, adPlatforms);
 
     const creatives: Creative[] = CREATIVES.map(([name, format], i) => {
       const spend = Math.round((totalSpend / CREATIVES.length) * r.range(0.4, 1.8));

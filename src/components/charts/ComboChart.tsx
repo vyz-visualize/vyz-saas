@@ -3,6 +3,7 @@
 import { useState, type KeyboardEvent, type PointerEvent } from "react";
 import { widest, xTickIndices, yTicks } from "./axis";
 import { FitChart } from "./FitChart";
+import { useRangeSelect, type IndexRange } from "./range-select";
 
 export type ComboPoint = {
   /** Rótulo do eixo X ("29/10"). */
@@ -27,6 +28,10 @@ type ComboChartProps = {
   summary: string;
   height?: number;
   fontSize?: number;
+  /** Trecho filtrado: fica em destaque, e o resto esmaece. */
+  selection?: IndexRange | null;
+  /** Arrastar seleciona um trecho; clicar ou tocar, um dia; no teclado, Enter e Shift + setas. */
+  onSelectRange?: (from: number, to: number) => void;
 };
 
 /**
@@ -55,8 +60,9 @@ export function ComboChart({ height = 260, ...props }: ComboChartProps) {
   );
 }
 
-function ComboSvg({ points, formatY, tooltip, summary, fontSize: fs = 11, W, H, barLabel, lineLabel }: Omit<ComboChartProps, "height"> & { W: number; H: number }) {
+function ComboSvg({ points, formatY, tooltip, summary, fontSize: fs = 11, W, H, barLabel, lineLabel, selection, onSelectRange }: Omit<ComboChartProps, "height"> & { W: number; H: number }) {
   const [active, setActive] = useState<number | null>(null);
+  const range = useRangeSelect(points.length, onSelectRange);
   const n = Math.max(1, points.length);
   const values = points.flatMap((p) => [p.bar, p.line]).filter((v): v is number => v != null && Number.isFinite(v));
   const top = 10;
@@ -81,18 +87,33 @@ function ComboSvg({ points, formatY, tooltip, summary, fontSize: fs = 11, W, H, 
     line += `${line && points[i - 1]?.line != null ? "L" : "M"}${cx(i).toFixed(1)},${y(p.line).toFixed(1)}`;
   });
 
-  const pick = (e: PointerEvent<SVGSVGElement>) => {
+  const indexAt = (e: PointerEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const i = Math.floor((e.clientX - rect.left - pad.l) / slot);
-    setActive(i >= 0 && i < n ? i : null);
+    return i >= 0 && i < n ? i : null;
+  };
+  const pick = (e: PointerEvent<SVGSVGElement>) => {
+    const i = indexAt(e);
+    setActive(i);
+    range.move(i);
   };
   const onKey = (e: KeyboardEvent<SVGSVGElement>) => {
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
       const step = e.key === "ArrowRight" ? 1 : -1;
-      setActive((a) => Math.min(n - 1, Math.max(0, (a ?? (step > 0 ? -1 : n)) + step)));
-    } else if (e.key === "Escape") setActive(null);
+      const next = Math.min(n - 1, Math.max(0, (active ?? (step > 0 ? -1 : n)) + step));
+      setActive(next);
+      range.keyMove(active ?? next, next, e.shiftKey);
+    } else if (e.key === "Escape") {
+      setActive(null);
+      range.cancel();
+    } else if ((e.key === "Enter" || e.key === " ") && onSelectRange && active != null) {
+      e.preventDefault();
+      range.keyCommit(active);
+    }
   };
+  const band = range.preview ?? selection ?? null;
+  const dimmed = (i: number) => !!band && (i < band.from || i > band.to);
 
   const tip = active != null ? tooltip(active) : null;
   const tipLeft = active != null ? Math.min(Math.max(cx(active) + 12, 0), W - 188) : 0;
@@ -105,12 +126,18 @@ function ComboSvg({ points, formatY, tooltip, summary, fontSize: fs = 11, W, H, 
         width={W}
         height={H}
         role="img"
-        aria-label={`${summary} Use as setas para ver cada dia.`}
+        aria-label={`${summary} Use as setas para ver cada dia.${onSelectRange ? " Enter filtra o dia; Shift e as setas selecionam um trecho." : ""}`}
         tabIndex={0}
+        onPointerDown={(e) => range.down(e, indexAt(e))}
         onPointerMove={pick}
+        onPointerUp={(e) => range.up(e, indexAt(e))}
+        onPointerCancel={range.cancel}
         onKeyDown={onKey}
-        onBlur={() => setActive(null)}
-        className="block touch-pan-y rounded-[6px]"
+        onBlur={() => {
+          setActive(null);
+          range.cancel();
+        }}
+        className={`block touch-pan-y rounded-[6px] ${onSelectRange ? "cursor-crosshair select-none" : ""}`}
       >
         <title>{summary}</title>
         {firstMaturing >= 0 && (
@@ -118,6 +145,7 @@ function ComboSvg({ points, formatY, tooltip, summary, fontSize: fs = 11, W, H, 
             <rect x={pad.l + slot * firstMaturing} y={top} width={slot * (n - firstMaturing)} height={plotH} fill="var(--accent)" opacity="0.09" rx="4" />
           </g>
         )}
+        {band && <rect data-chart-selection x={pad.l + slot * band.from} y={top} width={slot * (band.to - band.from + 1)} height={plotH} fill="var(--accent)" opacity="0.16" rx="4" />}
         {ticks.map((t, i) => (
           <g key={t}>
             <line x1={pad.l} x2={pad.l + plotW} y1={y(t)} y2={y(t)} stroke="var(--line)" strokeWidth="1" strokeDasharray={t === 0 ? undefined : "2 4"} />
@@ -136,7 +164,7 @@ function ComboSvg({ points, formatY, tooltip, summary, fontSize: fs = 11, W, H, 
               height={Math.max(1, base - y(p.bar))}
               rx={Math.min(3, barW / 3)}
               fill={active === i ? "var(--fg-2)" : "var(--muted)"}
-              opacity={p.maturing ? 0.6 : 1}
+              opacity={dimmed(i) ? 0.3 : p.maturing ? 0.6 : 1}
             />
           ),
         )}

@@ -20,6 +20,9 @@ export function PeriodNav({ period, customDays }: { period: PeriodId; customDays
     q.delete("periodo");
     q.delete("dias");
     q.delete("novo");
+    // o trecho de dias só vale dentro do período
+    q.delete("de");
+    q.delete("ate");
     const rest = q.toString();
     start(() => router.push(`${pathname}?${periodQuery({ period: next, customDays: days })}${rest ? `&${rest}` : ""}`, { scroll: false }));
   }

@@ -3,6 +3,7 @@
 // que a tela desenha. A agregação (aggregate.ts) liga um ao outro.
 
 import type { Tier } from "@/features/pricing/entitlements";
+import type { FilterDim, FilterInfo } from "./filters";
 import type { AdCreativeMetrics, BreakdownDimension, CampaignExtraMetrics } from "@/features/sync/dataset";
 
 export type LivePlatform = "meta" | "google";
@@ -92,6 +93,8 @@ export type Kpi = {
   help?: string;
   /** Envolve investimento (some com hideSpend). */
   spendBased?: boolean;
+  /** Filtros ativos que este card não consegue respeitar: ele mostra o total, com o selo. */
+  unfiltered?: FilterDim[];
 };
 
 export type DailyPoint = {
@@ -211,6 +214,9 @@ export type SampleExtraMetric = { id: string; label: string; format: ValueFormat
 export type CreativesTab = "galeria" | "comparativo";
 export type CreativesLevel = "list" | "gallery" | "compare";
 
+/** Os anúncios filtrados somados, na escala do modelo: os cards das amostras leem daqui. */
+export type SampleAdSelection = { spend: number; impressions: number; clicks: number; conversions: number; revenue: number };
+
 /** O que a página de Criativos recebe: só o que o plano cobre. */
 export type CreativesData = {
   level: CreativesLevel;
@@ -224,6 +230,8 @@ export type CreativesData = {
   breakEvenRoas: number | null;
   /** Plano para a amostra com blur. null = sem oferta (link compartilhado, prévias). */
   upsellTier: Tier | null;
+  /** Amostras com filtro de anúncio. */
+  selection?: SampleAdSelection;
 };
 
 export type SliceVM = { key: string; label: string; spend: number | null; spendShare: number; value: number; valueShare: number; conversions: number; roas: number | null; cpa: number | null; ctr: number | null };
@@ -284,6 +292,8 @@ type ViewBase = {
   breakEvenRoas: number | null;
   /** Há dados no período atual. */
   hasData: boolean;
+  /** Filtros aplicados pelo servidor. Sem isso, o dashboard está sem filtro. */
+  filterInfo?: FilterInfo;
 };
 
 export type MetaView = ViewBase & {

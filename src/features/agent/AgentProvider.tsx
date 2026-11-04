@@ -8,6 +8,7 @@
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { setTheme } from "@/components/ui/ThemeToggle";
+import { hasFilters, parseFilters } from "@/features/analytics/filters";
 import { useWorkspace } from "@/features/workspace/workspace";
 import { getAgentContext } from "@/server/agent/actions";
 import { createEngine, type AgentAnswer, type AgentContext, type AgentTarget, type VyzEngine } from "./engine";
@@ -44,11 +45,18 @@ export function useAgent() {
   return v;
 }
 
+/** Pergunta feita num dashboard com filtros: lido na hora, da URL (é ela que guarda os filtros). */
+function dashboardFocus() {
+  const dashboardId = /^\/painel\/dashboards\/([0-9a-f-]{36})\/?$/.exec(window.location.pathname)?.[1];
+  const { search } = window.location;
+  return dashboardId && hasFilters(parseFilters(new URLSearchParams(search))) ? { dashboardId, search } : undefined;
+}
+
 /** Contexto do servidor (plano, uso e números dos dashboards) e a resposta do motor. */
 async function answerFor(engine: VyzEngine, question: string): Promise<AgentAnswer> {
   let result: Awaited<ReturnType<typeof getAgentContext>>;
   try {
-    result = await getAgentContext();
+    result = await getAgentContext(dashboardFocus());
   } catch {
     result = { ok: false, error: { code: "unknown", message: "Não consegui falar com o servidor. Confira a conexão e tente de novo." } };
   }

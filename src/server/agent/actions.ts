@@ -7,11 +7,11 @@
 import { unstable_rethrow } from "next/navigation";
 import type { AgentContext } from "@/features/agent/engine";
 import { toActionError, type ActionResult } from "@/server/supabase/errors";
-import { loadAgentContext } from "./context";
+import { loadAgentContext, type AgentFocus } from "./context";
 
-export async function getAgentContext(): Promise<ActionResult<AgentContext>> {
+export async function getAgentContext(focus?: AgentFocus): Promise<ActionResult<AgentContext>> {
   try {
-    return { ok: true, data: await loadAgentContext() };
+    return { ok: true, data: await loadAgentContext(new Date(), focus) };
   } catch (err) {
     unstable_rethrow(err);
     return toActionError(err);

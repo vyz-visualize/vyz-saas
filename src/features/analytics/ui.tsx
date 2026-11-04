@@ -11,6 +11,8 @@ import { decimal, pct } from "@/lib/format";
 import { EmptySlots, RemoveColumnButton, RemoveMetricButton, useKpiDropRow, useMetricEditor } from "@/features/dashboards/metric-edit-context";
 import { HideMetricButton } from "@/features/dashboards/MetricActions";
 import { useColumnVisible, useMetricVisibility, useVisibleColumns } from "@/features/dashboards/metric-prefs-context";
+import { filterAria, filterTone, NotFilteredBadge, SectionBadge, useDashFilters } from "./filter-context";
+import { notFilteredText, rangeLabel, type FilterDim, type FilterSection } from "./filters";
 import { deltaText, deltaTone, FORMAT_LABEL, formatValue, HIDDEN, STATUS_LABEL } from "./format";
 import { kpiMetric } from "./metrics";
 import type { Kpi, LivePlatform, SliceVM } from "./types";
@@ -22,6 +24,7 @@ export function Panel({
   children,
   className = "",
   bodyClassName = "",
+  section,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -29,6 +32,8 @@ export function Panel({
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
+  /** Parte do dashboard que alguns filtros não alcançam: mostra o selo quando for o caso. */
+  section?: FilterSection;
 }) {
   return (
     <section className={`min-w-0 rounded-card border border-line bg-card ${className}`} aria-label={title}>
@@ -36,6 +41,11 @@ export function Panel({
         <div className="min-w-0">
           <h3 className="text-[14px] leading-snug font-semibold text-fg">{title}</h3>
           {subtitle && <p className="mt-0.5 text-[12px] leading-snug text-fg-2">{subtitle}</p>}
+          {section && (
+            <p className="empty:hidden mt-1">
+              <SectionBadge section={section} />
+            </p>
+          )}
         </div>
         {aside && <div className="shrink-0 text-[12px] text-fg-2">{aside}</div>}
       </header>
@@ -66,6 +76,9 @@ export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, 
   const hidden = hideSpend && kpi.spendBased;
   const value = hidden ? HIDDEN : formatValue(kpi.value, kpi.format, currency);
   const tone = deltaTone(kpi.delta, kpi.better);
+  const filters = useDashFilters();
+  // com um trecho de dias, a comparação diz qual trecho é
+  const compared = filters?.compared && !kpi.unfiltered?.length ? `vs ${rangeLabel(filters.compared)}` : undefined;
   return (
     <article
       className={`group/kpi relative flex min-w-0 flex-col rounded-card border p-3.5 ${featured ? "border-accent/40 bg-accent-soft/50" : "border-line bg-card"}`}
@@ -77,9 +90,14 @@ export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, 
       <h3 className="label-caps truncate text-[10.5px] text-fg-2">{kpi.label}</h3>
       <p className={`mt-1.5 leading-none font-bold tracking-[-0.02em] tnum text-fg ${value.length > 11 ? "text-[19px]" : "text-[23px]"}`}>{value}</p>
       <div className="mt-2 flex min-h-[20px] flex-wrap items-center gap-x-2 gap-y-1">
-        {!hidden && <DeltaBadge delta={kpi.delta} better={kpi.better} />}
+        {!hidden && <DeltaBadge delta={kpi.delta} better={kpi.better} suffix={compared} />}
         {kpi.note && <span className="text-[11px] text-fg-2">{kpi.note}</span>}
       </div>
+      {kpi.unfiltered?.length ? (
+        <p className="mt-1.5">
+          <NotFilteredBadge text={notFilteredText(kpi.unfiltered)} />
+        </p>
+      ) : null}
       {!hidden && <TrendSpark values={kpi.spark} maturing={maturing} tone={tone === "bad" ? "bad" : "good"} className="mt-2.5 h-8" />}
       {onHide && <HideMetricButton label={kpi.label} onClick={onHide} />}
       {onRemove && <RemoveMetricButton label={kpi.label} onClick={onRemove} />}
@@ -301,6 +319,7 @@ export function DataTable<T>({
   limit,
   minWidth = 720,
   rowClassName,
+  rowFilter,
 }: {
   rows: T[];
   columns: Column<T>[];
@@ -311,7 +330,11 @@ export function DataTable<T>({
   limit?: number;
   minWidth?: number;
   rowClassName?: (row: T) => string;
+  /** Dashboard interativo: clicar na linha filtra por este item. */
+  rowFilter?: { dim: FilterDim; id: (row: T) => string; name: (row: T) => string };
 }) {
+  const filters = useDashFilters();
+  const clickable = filters?.interactive ? rowFilter : undefined;
   const columns = useVisibleColumns(allColumns);
   const editor = useMetricEditor();
   const [sort, setSort] = useState(initialSort);
@@ -370,25 +393,55 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {shown.map((r) => (
-              <tr key={rowKey(r)} className={`group ${rowClassName?.(r) ?? ""}`}>
-                {columns.map((c) =>
+            {shown.map((r) => {
+              const tone = rowFilter ? filterTone(filters, rowFilter.dim, rowFilter.id(r)) : null;
+              const cell = (c: Column<T>, i: number) =>
+                clickable && i === 0 ? (
+                  <button
+                    type="button"
+                    data-filter-item={clickable.id(r)}
+                    aria-pressed={tone === "selected"}
+                    aria-label={filterAria(clickable.dim, clickable.name(r))}
+                    onClick={(e) => filters!.toggle(clickable.dim, clickable.id(r), clickable.name(r), e)}
+                    className="block w-full min-w-0 cursor-pointer rounded-[4px] text-left outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    {c.render(r)}
+                  </button>
+                ) : (
+                  c.render(r)
+                );
+              return (
+              <tr
+                key={rowKey(r)}
+                data-filter-tone={tone ?? undefined}
+                onClick={
+                  clickable
+                    ? (e) => {
+                        if ((e.target as Element).closest("a, button, input")) return;
+                        filters!.toggle(clickable.dim, clickable.id(r), clickable.name(r), e);
+                      }
+                    : undefined
+                }
+                className={`group ${clickable ? "cursor-pointer" : ""} ${tone === "selected" ? "[&>*]:bg-accent-soft/70" : tone === "dimmed" ? "[&>td]:opacity-45 [&>th>*]:opacity-45" : ""} ${rowClassName?.(r) ?? ""}`}
+              >
+                {columns.map((c, i) =>
                   c.sticky ? (
                     <th
                       key={c.key}
                       scope="row"
                       className={`sticky left-0 z-[1] border-b border-line/60 bg-card py-2 pr-3 text-left font-normal group-hover:bg-bg group-last:border-0 ${c.className ?? ""}`}
                     >
-                      {c.render(r)}
+                      {cell(c, i)}
                     </th>
                   ) : (
                     <td key={c.key} className={`border-b border-line/60 px-2 py-2 group-hover:bg-bg group-last:border-0 ${c.align === "right" ? "text-right" : ""} ${c.className ?? ""}`}>
-                      {c.render(r)}
+                      {cell(c, i)}
                     </td>
                   ),
                 )}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

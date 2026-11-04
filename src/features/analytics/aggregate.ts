@@ -243,7 +243,7 @@ function campaignExtras(platform: WarehouseRows["platform"], c: WarehouseRows["c
   return { extra, resultLabel: result.label };
 }
 
-function campaignTable(rows: WarehouseRows, breakEven: number | null): CampaignRowVM[] {
+export function campaignTable(rows: WarehouseRows, breakEven: number | null): CampaignRowVM[] {
   const cur = rows.campaignDaily.filter((r) => inRange(r.date, rows.current));
   const byCampaign = groupBy(cur, (r) => r.campaignId);
   const campaignOfAd = new Map(rows.ads.map((a) => [a.id, a.campaignId]));
@@ -391,7 +391,7 @@ function funnelByStage(rows: WarehouseRows): FunnelByStage[] {
 export const FATIGUE_THRESHOLD = 0.15;
 const FATIGUE_MIN_IMPRESSIONS = 2000;
 
-function creatives(rows: WarehouseRows): CreativeVM[] {
+export function creatives(rows: WarehouseRows): CreativeVM[] {
   const cur = rows.adDaily.filter((r) => inRange(r.date, rows.current));
   const byAd = groupBy(cur, (r) => r.adId);
   const campaigns = nameOf(rows);
@@ -430,7 +430,7 @@ function creatives(rows: WarehouseRows): CreativeVM[] {
 }
 
 /** Lista simples: nome, campanha, investimento e o resultado principal do objetivo. */
-function creativeList(rows: WarehouseRows): CreativeListVM[] {
+export function creativeList(rows: WarehouseRows): CreativeListVM[] {
   const byAd = groupBy(
     rows.adDaily.filter((r) => inRange(r.date, rows.current)),
     (r) => r.adId,
@@ -468,7 +468,7 @@ function withoutAdId(row: AdDayRow): CompareAd["days"][number] {
 }
 
 /** Os dias de cada anúncio com entrega no período, para o comparativo. */
-function creativeDays(rows: WarehouseRows): CompareAd[] {
+export function creativeDays(rows: WarehouseRows): CompareAd[] {
   const byAd = groupBy(
     rows.adDaily.filter((r) => inRange(r.date, rows.current)),
     (r) => r.adId,
@@ -614,6 +614,11 @@ function productCategories(rows: WarehouseRows): SliceVM[] {
 }
 
 // ---- montagem ---------------------------------------------------------------------------------
+
+/** Os pontos por dia do período inteiro destas linhas. */
+export function periodDaily(rows: WarehouseRows, opts: Pick<AggregateOptions, "maturingDays">): DailyPoint[] {
+  return dailySeries(rows.accountDaily, rows.current, maturingStart(rows.current, opts.maturingDays ?? MATURING_DAYS)).points;
+}
 
 export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions): DashboardView {
   const maturingFrom = maturingStart(rows.current, opts.maturingDays ?? MATURING_DAYS);

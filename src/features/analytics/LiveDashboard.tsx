@@ -14,7 +14,9 @@ import { saveDashboardMetricPrefs } from "@/server/dashboards/actions";
 import { AppError } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
 import type { CreativesAccess } from "./creatives/access";
-import { LiveDashboardError, LiveDashboardView } from "./LiveDashboardView";
+import type { DashFilters } from "./filters";
+import { FilterableLiveDashboard } from "./FilterableLiveDashboard";
+import { LiveDashboardError } from "./LiveDashboardView";
 import type { LiveDashboardData } from "./types";
 
 export type LiveDashboardProps = {
@@ -42,21 +44,23 @@ export type LiveDashboardProps = {
   metricPrefs?: unknown;
   /** Mostra o botão "Personalizar". */
   canCustomize?: boolean;
+  /** Dashboard interativo: os filtros da URL. Valem também no link compartilhado. */
+  filters?: DashFilters;
   /** Cliente que confere o acesso. Padrão: sessão (RLS). Link público: admin, DEPOIS de validar o token. */
   db?: DB;
 };
 
-export async function LiveDashboard({ dashboardId, period, customDays, pageIds, hideSpend, initialPage, actions, toolbar, logo, metricPrefs, canCustomize, creatives, db }: LiveDashboardProps) {
+export async function LiveDashboard({ dashboardId, period, customDays, pageIds, hideSpend, initialPage, actions, toolbar, logo, metricPrefs, canCustomize, creatives, filters, db }: LiveDashboardProps) {
   let data: LiveDashboardData;
   try {
-    data = await loadLiveDashboard(dashboardId, { period, customDays, hideSpend, db, creatives });
+    data = await loadLiveDashboard(dashboardId, { period, customDays, hideSpend, db, creatives, filters });
   } catch (err) {
     unstable_rethrow(err);
     if (err instanceof AppError) return <LiveDashboardError message={err.message} />;
     console.error("[analytics] falha ao carregar o dashboard", dashboardId, err);
     return <LiveDashboardError message="Tente de novo em alguns instantes. Se continuar, fale com o suporte." />;
   }
-  return <LiveDashboardView data={data} pageIds={pageIds} initialPage={initialPage} actions={actions} toolbar={toolbar} logo={logo} metricPrefs={metricPrefs} canCustomize={canCustomize} saveMetrics={canCustomize ? saveDashboardMetricPrefs : undefined} />;
+  return <FilterableLiveDashboard data={data} pageIds={pageIds} initialPage={initialPage} actions={actions} toolbar={toolbar} logo={logo} metricPrefs={metricPrefs} canCustomize={canCustomize} saveMetrics={canCustomize ? saveDashboardMetricPrefs : undefined} />;
 }
 
 export { LiveDashboardSkeleton } from "./ui";

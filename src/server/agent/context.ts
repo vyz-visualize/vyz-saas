@@ -8,17 +8,23 @@ import "server-only";
 // painel desenha (datasetFor), para a resposta bater com a tela.
 
 import type { AgentContext, ClientData } from "@/features/agent/engine/types";
+import { sampleFocus } from "@/features/analytics/creatives/sample";
+import { filterSummary, hasFilters, parseFilters, rangeLabel } from "@/features/analytics/filters";
 import { kpiMetric } from "@/features/analytics/metrics";
+import type { Totals as ViewTotals } from "@/features/analytics/types";
 import { monthToDate, periodTotals, type WarehouseDay } from "@/features/agent/engine/warehouse";
 import { datasetFor, pageLayout, sampleDefaultKpis } from "@/features/dashboards/data";
 import { GOOGLE_CATALOG, META_CATALOG, pageKpiIds, parseMetricPrefs, sampleCatalog, visibleIds } from "@/features/dashboards/metric-prefs";
 import type { MetricId } from "@/features/metrics/definitions";
-import { currentTotals, previousTotals } from "@/features/metrics/compute";
+import { periodFromQuery } from "@/features/dashboards/model";
+import { currentTotals, previousTotals, totals, type Totals } from "@/features/metrics/compute";
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
 import { localDate } from "@/features/sync/dates";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { LIVE_TEMPLATES } from "@/features/templates/live";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
+import { periodDays, type PeriodId } from "@/features/workspace/types";
+import { loadLiveDashboard } from "@/server/analytics/queries";
 import { authorize } from "@/server/auth/workspace";
 import { unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
@@ -26,7 +32,35 @@ import { landingPagesEnabledFor } from "@/lib/flags";
 
 const PAGE_SIZE = 1000;
 
-export async function loadAgentContext(now = new Date()): Promise<AgentContext> {
+/** Pergunta feita num dashboard com filtros ativos: o endereço dele guarda os filtros. */
+export type AgentFocus = { dashboardId: string; search: string };
+
+/** Os totais da tela (em reais) no formato do motor (em centavos). */
+function engineTotals(t: ViewTotals): Totals {
+  return totals(
+    [
+      {
+        ago: 0,
+        spend: Math.round((t.spend ?? 0) * 100),
+        impressions: t.impressions,
+        clicks: t.clicks,
+        conversions: t.conversions,
+        revenue: Math.round(t.value * 100),
+        leads: 0,
+        qualified: 0,
+        visits: 0,
+        calls: 0,
+        sessions: 0,
+        views: 0,
+        byPlatform: {},
+        maturing: false,
+      },
+    ],
+    t.frequency ?? 0,
+  );
+}
+
+export async function loadAgentContext(now = new Date(), focus?: AgentFocus): Promise<AgentContext> {
   const session = await authorize("viewer", { access: false });
   const ws = session.workspace.id;
   const tier = session.access.tier ?? "base";
@@ -36,7 +70,7 @@ export async function loadAgentContext(now = new Date()): Promise<AgentContext> 
     unwrap(
       await supabase
         .from("dashboards")
-        .select("id, name, client_name, template_id, goal_cents, margin, monthly_budget_cents, metric_prefs, pages:dashboard_pages!dashboard_pages_workspace_id_dashboard_id_fkey(page_type_id, position)")
+        .select("id, name, client_name, template_id, goal_cents, margin, monthly_budget_cents, period, custom_days, metric_prefs, pages:dashboard_pages!dashboard_pages_workspace_id_dashboard_id_fkey(page_type_id, position)")
         .eq("workspace_id", ws)
         .order("updated_at", { ascending: false })
         .limit(50),
@@ -105,12 +139,40 @@ export async function loadAgentContext(now = new Date()): Promise<AgentContext> 
     return [{ dashboardId: d.id, dashboardName: d.name, client, profile: t.profile, cur: currentTotals(ds), prev: previousTotals(ds), kpis: visibleSampleKpis(t, pages.map((p) => p.page_type_id as PageId), first, d.metric_prefs) }];
   });
 
+  // com filtros ativos, a resposta é só sobre o recorte aberto na tela
+  let scoped: { client: ClientData; focus: NonNullable<AgentContext["focus"]> } | null = null;
+  const open = focus && dashboards.find((d) => d.id === focus.dashboardId);
+  const openClient = open && clients.find((c) => c.dashboardId === open.id);
+  if (focus && open && openClient) {
+    const params = new URLSearchParams(focus.search);
+    const filters = parseFilters(params);
+    const { period, customDays } = periodFromQuery(Object.fromEntries(params), { period: open.period as PeriodId, customDays: open.custom_days ?? 14 });
+    const days = periodDays({ period, customDays });
+    if (live.includes(open)) {
+      const { view } = await loadLiveDashboard(open.id, { period, customDays, filters });
+      const info = view.filterInfo;
+      if (info) {
+        const when = info.filters.days ? `nos dias ${rangeLabel(info.filters.days)}` : `no período aberto (${days} dias)`;
+        scoped = { client: { ...openClient, cur: engineTotals(view.totals), prev: engineTotals(view.previousTotals) }, focus: { label: filterSummary(info.filters, info.labels), period: when } };
+      }
+    } else if (hasFilters(filters)) {
+      const t = dashboardTemplate(open.template_id);
+      if (t) {
+        const ds = datasetFor({ templateId: open.template_id, name: open.name, client: open.client_name, settings: { goal: open.goal_cents ?? 0, margin: open.margin ?? 0, budget: open.monthly_budget_cents ?? 0 } }, days);
+        const cut = sampleFocus(t, ds, { period, customDays }, filters);
+        const when = filters.days ? `nos dias ${rangeLabel(filters.days)}` : `no período aberto (${days} dias)`;
+        scoped = { client: { ...openClient, cur: currentTotals(cut.ds), prev: previousTotals(cut.ds) }, focus: { label: filterSummary(filters, cut.labels), period: when } };
+      }
+    }
+  }
+
   return {
     now,
+    focus: scoped?.focus,
     tier,
     tierLabel: TIER_LABEL[tier],
     ent: session.access.entitlements ?? ENTITLEMENTS[tier],
-    dashboards: clients,
+    dashboards: scoped ? [scoped.client] : clients,
     landingPages: landingPagesEnabledFor(session.workspace.product),
     counts: {
       dashboards: session.usage.dashboards,

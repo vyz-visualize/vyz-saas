@@ -18,6 +18,8 @@ import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
 import { GoogleCampaigns, GoogleOverview, GoogleProducts, GoogleTerms } from "./google/GooglePages";
 import { MetaCreatives } from "./creatives/CreativesPage";
+import { FilterBar, FilterProvider, useFilterState } from "./filter-context";
+import { hasFilters, NO_FILTERS, rangeLabel } from "./filters";
 import { setQueryParam } from "./creatives/query";
 import { MetaAudience, MetaCampaigns, MetaFunnel, MetaOverview } from "./meta/MetaPages";
 import { formatValue } from "./format";
@@ -54,6 +56,8 @@ export type LiveDashboardViewProps = {
   /** Mostra o botão "Personalizar" (member+ no painel; nunca no link). */
   canCustomize?: boolean;
   saveMetrics?: SaveMetricPrefs;
+  /** Dashboard interativo: troca os filtros na URL. Sem isso (prévias), nada é clicável. */
+  filterNavigate?: (search: string) => void;
 };
 
 const CATALOG: Record<LivePlatform, readonly CatalogMetric[]> = { meta: META_CATALOG, google: GOOGLE_CATALOG };
@@ -84,7 +88,7 @@ const RESULT_METRIC_ROWS = META_CATALOG.filter((m) => RESULT_IDS.has(m.id));
 /** A única aba com fileira de cards nos dashboards com dados reais. */
 const KPI_PAGE: PageId = "visao-geral";
 
-export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar, logo, metricPrefs, canCustomize = false, saveMetrics }: LiveDashboardViewProps) {
+export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar, logo, metricPrefs, canCustomize = false, saveMetrics, filterNavigate }: LiveDashboardViewProps) {
   // tipos de resultado diferentes no período: o card sai da conta (e do contador), mas a escolha salva fica
   const resultsMixed = data.view.platform === "meta" && !!data.view.resultsMixed;
   const liveCatalog = useMemo(() => (resultsMixed ? CATALOG[data.platform].map((m) => (RESULT_IDS.has(m.id) ? { ...m, kpi: undefined } : m)) : CATALOG[data.platform]), [data.platform, resultsMixed]);
@@ -114,9 +118,14 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
     goToCards: pages.includes(KPI_PAGE) && active !== KPI_PAGE ? () => setPage(KPI_PAGE) : undefined,
   });
   const editing = metrics.open;
+  const info = data.view.filterInfo;
+  const filterState = useFilterState({ initial: info?.filters ?? NO_FILTERS, labels: info?.labels, periodDays: data.current.days, navigate: filterNavigate, suspended: editing });
+  const filters = filterNavigate ? filterState : null;
+  const shownDays = info?.filters.days;
 
   return (
     <MetricEditProvider value={edit.editor}>
+    <FilterProvider value={filters}>
     <div data-metric-editing={editing ? edit.section : undefined} className={`@container space-y-4 ${editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
       {canCustomize && <MetricEditBar state={edit} />}
       <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
@@ -162,9 +171,13 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
         </div>
       )}
 
+      <FilterBar />
+
       <p className="flex flex-wrap gap-x-2 text-[12.5px] text-fg-2">
         <span className="tnum">
-          {ddmm(data.current.from)} a {ddmmyyyyIso(data.current.to)} · {data.current.days} {data.current.days === 1 ? "dia" : "dias"}, comparado com {ddmm(data.previous.from)} a {ddmm(data.previous.to)}
+          {shownDays && info?.compared
+            ? `Trecho ${rangeLabel(shownDays)}, dentro de ${ddmm(data.current.from)} a ${ddmmyyyyIso(data.current.to)}, comparado com ${rangeLabel(info.compared)}`
+            : `${ddmm(data.current.from)} a ${ddmmyyyyIso(data.current.to)} · ${data.current.days} ${data.current.days === 1 ? "dia" : "dias"}, comparado com ${ddmm(data.previous.from)} a ${ddmm(data.previous.to)}`}
         </span>
         {data.maturingFrom && <span>· a partir de {ddmm(data.maturingFrom)} as conversões ainda estão chegando (em maturação)</span>}
         {last && !data.sample && <span>· atualizado em {syncedAt(last, data.timeZone)}</span>}
@@ -181,6 +194,16 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
               </Link>
             }
           />
+        ) : data.status === "no_data" && filters && hasFilters(filters.filters) ? (
+          <EmptyState
+            title="Nada com esses filtros"
+            text="Esse recorte não teve veiculação no período. Tire um dos filtros para ver os números."
+            action={
+              <button type="button" onClick={filters.clear} className={btn.small}>
+                Limpar filtros
+              </button>
+            }
+          />
         ) : data.status === "no_data" ? (
           <EmptyState title="Os dados ainda estão chegando" text="A primeira importação leva alguns instantes. Se a conta não teve veiculação neste período, escolha um período maior." />
         ) : (
@@ -192,6 +215,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
       {canCustomize && <MetricTray state={edit} />}
       {canCustomize && <MetricNoticeBar notice={metrics.notice} onUndo={metrics.undo} onDismiss={metrics.dismiss} />}
     </div>
+    </FilterProvider>
     </MetricEditProvider>
   );
 }

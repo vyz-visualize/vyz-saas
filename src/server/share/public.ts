@@ -14,7 +14,7 @@ import { isShareToken, linkStatus } from "@/features/share/links";
 import { publicAssetUrl } from "@/lib/supabase/storage";
 import { fromJoined, DASHBOARD_SELECT, type JoinedDashboard } from "@/server/dashboards/queries";
 import { logActivity } from "@/server/history/log";
-import { requestContext } from "@/server/http/request";
+import { isInPageNavigation, requestContext } from "@/server/http/request";
 import { hitRateLimit } from "@/server/security/rate-limit";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import type { DB } from "@/server/supabase/server";
@@ -66,6 +66,10 @@ export async function openSharedDashboard(token: string): Promise<SharedDashboar
     hideVyz: !!access.data.hide_vyz_brand_effective || (whiteLabel && !!dashboard.brand?.hideVyz),
   };
 
+  const base = { kind: "ok" as const, db: admin, linkId: link.id, hideSpend: link.hide_spend, dashboard, brand, tier: parsePlanDbId(access.data.plan_id)?.tier ?? null };
+  // clicar para filtrar não é uma visita nova; o limite por IP lá em cima continua valendo
+  if (await isInPageNavigation()) return base;
+
   // Contador (batimento do servidor, sem auditoria) e histórico: depois da resposta
   after(async () => {
     const { error: e } = await admin.from("share_links").update({ view_count: link.view_count + 1, last_viewed_at: new Date().toISOString() }).eq("id", link.id);
@@ -73,5 +77,5 @@ export async function openSharedDashboard(token: string): Promise<SharedDashboar
   });
   await logActivity({ workspaceId: link.workspace_id, event: "share_link.viewed", entityType: "share_link", entityId: link.id, metadata: { dashboard_id: dashboard.id } });
 
-  return { kind: "ok", db: admin, linkId: link.id, hideSpend: link.hide_spend, dashboard, brand, tier: parsePlanDbId(access.data.plan_id)?.tier ?? null };
+  return base;
 }

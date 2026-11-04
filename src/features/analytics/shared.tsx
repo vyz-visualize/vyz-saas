@@ -6,6 +6,8 @@
 import { ComboChart } from "@/components/charts/ComboChart";
 import { useMetricVisibility } from "@/features/dashboards/metric-prefs-context";
 import { brl, brlCompact, decimal } from "@/lib/format";
+import { useDashFilters } from "./filter-context";
+import type { DashFilters, DayRange, FilterDim } from "./filters";
 import { formatValue, HIDDEN, money } from "./format";
 import { ddmm } from "./ranges";
 import type { CampaignRowVM, LiveDashboardData, ValueFormat } from "./types";
@@ -13,11 +15,35 @@ import { DataTable, InlineBar, Panel, Roas, StatusDot, type Column } from "./ui"
 
 export type PageProps = { data: LiveDashboardData };
 
+/** Clique numa linha de campanha filtra o dashboard. */
+export const CAMPAIGN_ROW_FILTER: { dim: FilterDim; id: (c: CampaignRowVM) => string; name: (c: CampaignRowVM) => string } = { dim: "campaigns", id: (c) => c.id, name: (c) => c.name };
+
+/** Quantos pontos do fim da sparkline estão em maturação, considerando o trecho filtrado. */
+export function maturingPoints(data: LiveDashboardData, days: DayRange | null | undefined): number {
+  if (!data.maturingFrom) return 0;
+  if (!days) return 3;
+  if (days.to < data.maturingFrom) return 0;
+  const from = days.from > data.maturingFrom ? days.from : data.maturingFrom;
+  return Math.round((Date.parse(days.to) - Date.parse(from)) / 86_400_000) + 1;
+}
+
+const indexOfDay = (dates: readonly string[], day: string) => dates.indexOf(day);
+
+/** O trecho filtrado em posições do gráfico. */
+export function selectionIn(dates: readonly string[], f: DashFilters | undefined): { from: number; to: number } | null {
+  if (!f?.days) return null;
+  const from = indexOfDay(dates, f.days.from);
+  const to = indexOfDay(dates, f.days.to);
+  return from >= 0 && to >= 0 ? { from, to } : null;
+}
+
 /** Rótulo curto do eixo em reais (os valores já estão em reais). */
 const axisMoney = (cur: string) => (v: number) => (cur === "BRL" ? (Math.abs(v) >= 10_000 ? brlCompact(v * 100) : brl(v * 100, { decimals: false })) : decimal(v, 0));
 
 export function HeroChart({ data, spendLabel, valueLabel }: PageProps & { spendLabel: string; valueLabel: string }) {
   const { view, currency, hideSpend } = data;
+  const filters = useDashFilters();
+  const dates = view.daily.map((d) => d.date);
   const points = view.daily.map((d) => ({ label: ddmm(d.date), bar: hideSpend ? null : d.spend, line: d.value, maturing: d.maturing }));
   const total = view.totals;
   const settled = view.daily.filter((d) => !d.maturing);
@@ -41,6 +67,8 @@ export function HeroChart({ data, spendLabel, valueLabel }: PageProps & { spendL
         lineLabel={valueLabel}
         formatY={axisMoney(currency)}
         summary={summary}
+        selection={selectionIn(dates, filters?.filters)}
+        onSelectRange={filters?.interactive ? (from, to) => filters.selectDays({ from: dates[from], to: dates[to] }) : undefined}
         tooltip={(i) => {
           const d = view.daily[i];
           return [
@@ -58,11 +86,17 @@ export function HeroChart({ data, spendLabel, valueLabel }: PageProps & { spendL
 /** As campanhas que mais investem, com participação e ROAS. */
 export function TopCampaigns({ data, limit = 6, kindLabel }: PageProps & { limit?: number; kindLabel: (kind: string | null) => string }) {
   const { view, currency, hideSpend } = data;
+  const filters = useDashFilters();
+  // a campanha escolhida continua à vista, mesmo fora das primeiras
+  const chosen = filters?.filters.campaigns ?? [];
+  const top = view.campaigns.slice(0, limit);
+  const rows = [...top, ...view.campaigns.slice(limit).filter((c) => chosen.includes(c.id))];
   return (
     <Panel title="Campanhas que mais investem" subtitle={hideSpend ? "Participação de cada campanha no período." : `ROAS em vermelho fica abaixo do equilíbrio${view.breakEvenRoas ? ` (${decimal(view.breakEvenRoas, 1)})` : " (1,0)"}.`}>
       <DataTable<CampaignRowVM>
-        rows={view.campaigns.slice(0, limit)}
+        rows={rows}
         rowKey={(c) => c.id}
+        rowFilter={CAMPAIGN_ROW_FILTER}
         caption="Campanhas que mais investem no período"
         minWidth={520}
         columns={[

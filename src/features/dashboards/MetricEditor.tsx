@@ -11,7 +11,7 @@ import { TrendSpark } from "@/components/charts/TrendSpark";
 import { Modal } from "@/components/ui/kit";
 import { Segmented } from "@/components/ui/Segmented";
 import { btn } from "@/components/ui/styles";
-import { DRAG_TYPE, type MetricEditor } from "./metric-edit-context";
+import { DRAG_TYPE, markLeaveGuardSettling, type MetricEditor } from "./metric-edit-context";
 import { flipChange } from "./metric-flip";
 import { METRIC_GROUP_LABEL, METRIC_GROUPS, sectionMax, toggleBlock, visibleIds, type CatalogMetric, type MetricGroup, type MetricSection } from "./metric-prefs";
 import type { useMetricPrefsState } from "./metric-prefs-context";
@@ -77,7 +77,18 @@ function useLeaveGuard(active: boolean, onDiscard: () => void) {
       // (a aba pode ter mudado no modo edição: o endereço de agora fica valendo)
       if (guarded.current && !passing.current) {
         const href = window.location.href;
-        window.addEventListener("popstate", () => window.history.replaceState(window.history.state, "", href), { once: true });
+        markLeaveGuardSettling(
+          new Promise((done) => {
+            window.addEventListener(
+              "popstate",
+              () => {
+                window.history.replaceState(window.history.state, "", href);
+                done();
+              },
+              { once: true },
+            );
+          }),
+        );
         window.history.back();
       }
       guarded.current = false;

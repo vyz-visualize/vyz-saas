@@ -97,3 +97,30 @@ describe("LocalEngine", () => {
     expect(a.suggestions?.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("com filtros ativos no dashboard aberto", () => {
+  const focused = (): AgentContext => ({ ...ctx([LOJA]), focus: { label: "Campanha Prospecção", period: "no período aberto (30 dias)" } });
+
+  it("diz o filtro e o período na resposta sobre números", () => {
+    const a = respond("Quanto investi?", focused());
+    expect(a.text).toContain("Com o filtro **Campanha Prospecção**, você investiu");
+    expect(a.text).toContain("no período aberto (30 dias)");
+    expect(a.spoken).toContain("Com o filtro Campanha Prospecção");
+    expect(respond("Quantas vendas?", focused()).text).toContain("Com o filtro");
+    expect(respond("Qual o ROAS?", focused()).text).toContain("Com o filtro");
+  });
+
+  it("vários filtros", () => {
+    const a = respond("Quanto investi?", { ...focused(), focus: { label: "Campanha A, Dias 10–15/10", period: "nos dias 10–15/10" } });
+    expect(a.text).toContain("Com os filtros **Campanha A, Dias 10–15/10**");
+    expect(a.text).toContain("nos dias 10–15/10");
+  });
+
+  it("o que não é sobre números não cita filtro", () => {
+    expect(respond("Qual é o meu plano?", focused()).text).not.toContain("filtro");
+  });
+
+  it("sem filtro, a resposta é a de sempre", () => {
+    expect(respond("Quanto investi?", ctx([LOJA])).text).not.toContain("filtro");
+  });
+});

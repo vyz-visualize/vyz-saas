@@ -6,6 +6,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { DashFilters } from "@/features/analytics/filters";
 import type { CreativesData, SampleExtraMetric } from "@/features/analytics/types";
 import type { PageId } from "@/features/templates/types";
 import type { Brand } from "@/features/workspace/workspace";
@@ -27,9 +28,11 @@ type Props = {
   /** Métricas novas do Personalizar, na escala do modelo. */
   extraMetrics?: readonly SampleExtraMetric[];
   initialPage?: PageId;
+  /** Filtros que vieram na URL. */
+  initialFilters?: DashFilters;
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, hideSpend, assemble, creatives, extraMetrics, initialPage }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -56,12 +59,16 @@ export function SampleDashboard({ dashboard, brand, canEdit, hideSpend, assemble
       creatives={creatives}
       extraMetrics={extraMetrics}
       initialPage={initialPage}
+      initialFilters={initialFilters}
+      onFilterNavigate={creatives || extraMetrics?.length ? (search) => router.replace(`${pathname}${search}`, { scroll: false }) : undefined}
       onPeriodChange={
         creatives || extraMetrics?.length
           ? (period, customDays) => {
               const q = new URLSearchParams(params?.toString() ?? "");
               q.delete("periodo");
               q.delete("dias");
+              q.delete("de");
+              q.delete("ate");
               const rest = q.toString();
               router.push(`${pathname}?${periodQuery({ period, customDays })}${rest ? `&${rest}` : ""}`, { scroll: false });
             }

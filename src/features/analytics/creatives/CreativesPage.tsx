@@ -8,6 +8,8 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useDashFilters } from "../filter-context";
+import { hasFilters } from "../filters";
 import type { CreativesData, LiveDashboardData, MetaView } from "../types";
 import type { PageProps } from "../shared";
 import { CreativeList } from "./CreativeList";
@@ -32,6 +34,7 @@ const TABS = [
 
 function CompareLevel({ data }: { data: CreativesData }) {
   const search = useSearchParams()?.toString() ?? "";
+  const filters = useDashFilters();
   return (
     <div className="space-y-3">
       <nav aria-label="Criativos" className="inline-flex rounded-chip border border-line p-0.5">
@@ -41,6 +44,7 @@ function CompareLevel({ data }: { data: CreativesData }) {
           </Link>
         ))}
       </nav>
+      {data.tab === "comparativo" && filters && hasFilters(filters.filters) && <p className="text-[12.5px] text-fg-2">O comparativo não usa os filtros do dashboard: só o período vale.</p>}
       {data.tab === "comparativo" ? <CompareView data={data} /> : <CreativeGallery data={data} compareHref={(ads) => creativesHref(search, "comparativo", ads)} />}
     </div>
   );

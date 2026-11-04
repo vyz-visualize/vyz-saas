@@ -6,6 +6,7 @@ import { LockedPages } from "@/features/dashboards/LockedPages";
 import { EmptyState } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { parseCreativesQuery } from "@/features/analytics/creatives/query";
+import { hasFilters, parseFilters } from "@/features/analytics/filters";
 import { sampleCreatives, sampleExtras } from "@/features/analytics/creatives/sample";
 import { LiveDashboard, LiveDashboardSkeleton } from "@/features/analytics/LiveDashboard";
 import { brandVars } from "@/features/dashboards/brand";
@@ -18,6 +19,7 @@ import { anyDashboardTemplate } from "@/features/templates/live";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { getDashboard } from "@/server/dashboards/queries";
+import { isInPageNavigation } from "@/server/http/request";
 import { logActivity } from "@/server/history/log";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -51,14 +53,18 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
     );
 
   const { period, customDays } = periodFromQuery(query, d.settings);
-  await logActivity({
-    workspaceId: session.workspace.id,
-    actorId: session.user.id,
-    event: "dashboard.viewed",
-    entityType: "dashboard",
-    entityId: d.id,
-    metadata: { period, live: d.live },
-  });
+  const filters = parseFilters(query);
+  // clicar para filtrar não é abrir o dashboard de novo
+  if (!(hasFilters(filters) && (await isInPageNavigation()))) {
+    await logActivity({
+      workspaceId: session.workspace.id,
+      actorId: session.user.id,
+      event: "dashboard.viewed",
+      entityType: "dashboard",
+      entityId: d.id,
+      metadata: { period, live: d.live },
+    });
+  }
   const canEdit = hasRole(session.role, "member");
   const ws = session.workspace;
   const whiteLabel = !!session.access.entitlements?.whiteLabel;
@@ -83,6 +89,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
             initialPage={q.page}
             creatives={access}
             metricPrefs={d.metricPrefs}
+            filters={filters}
             canCustomize={canEdit}
             actions={actions}
             toolbar={<PeriodNav period={period} customDays={customDays} />}
@@ -111,10 +118,11 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
         canEdit={canEdit}
         assemble={query.novo === "1"}
         initialPage={q.page}
+        initialFilters={filters}
         creatives={
-          template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays }) : undefined
+          template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays, filters }) : undefined
         }
-        extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays }) : undefined}
+        extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays, filters }) : undefined}
       />
       {upsell}
     </>

@@ -10,7 +10,8 @@ import { decimal, int, pct } from "@/lib/format";
 import { FUNNEL_STAGE_LABEL } from "../aggregate";
 import { formatValue, money, moneyCompact } from "../format";
 import { META_EXTRA_METRICS } from "../live-metrics";
-import { extraColumns, hiddenOr, useExtraColumnsWidth, HeroChart, StatusCell, TopCampaigns, type PageProps } from "../shared";
+import { useDashFilters } from "../filter-context";
+import { CAMPAIGN_ROW_FILTER, extraColumns, hiddenOr, maturingPoints, useExtraColumnsWidth, HeroChart, StatusCell, TopCampaigns, type PageProps } from "../shared";
 import type { CampaignRowVM, FunnelStep, MetaView } from "../types";
 import { DataTable, InlineBar, KpiGrid, NoData, Panel, Roas, SliceBars } from "../ui";
 
@@ -19,14 +20,15 @@ const meta = (data: PageProps["data"]) => data.view as MetaView;
 
 export function MetaOverview({ data }: PageProps) {
   const view = meta(data);
+  const filters = useDashFilters();
   return (
     <div className="space-y-3">
-      <KpiGrid platform={view.platform} kpis={view.kpis} extra={view.extraKpis} currency={data.currency} maturing={data.maturingFrom ? 3 : 0} hideSpend={data.hideSpend} />
+      <KpiGrid platform={view.platform} kpis={view.kpis} extra={view.extraKpis} currency={data.currency} maturing={maturingPoints(data, filters?.filters.days)} hideSpend={data.hideSpend} />
       <div className="grid gap-3 @[1040px]:grid-cols-3">
         <div className="min-w-0 @[1040px]:col-span-2">
           <HeroChart data={data} spendLabel="Investimento" valueLabel="Receita" />
         </div>
-        <Panel title="Do clique à compra" subtitle="Passagem entre as etapas do período.">
+        <Panel title="Do clique à compra" subtitle="Passagem entre as etapas do período." section="funnel">
           <FunnelSteps steps={view.funnel.slice(1)} compact currency={data.currency} />
         </Panel>
       </div>
@@ -54,6 +56,7 @@ export function MetaCampaigns({ data }: PageProps) {
         <DataTable<CampaignRowVM>
           rows={view.campaigns}
           rowKey={(c) => c.id}
+          rowFilter={CAMPAIGN_ROW_FILTER}
           caption="Campanhas do Meta Ads no período"
           initialSort={{ key: "spend", dir: "desc" }}
           minWidth={980 + extraWidth}
@@ -154,19 +157,20 @@ export function MetaFunnel({ data }: PageProps) {
   const view = meta(data);
   const { currency, hideSpend } = data;
   const [imp, click, , , , buy] = view.funnel;
+  const filters = useDashFilters();
   return (
     <div className="space-y-3">
       <div className="grid gap-3 @[900px]:grid-cols-[3fr_2fr]">
-        <Panel title="Funil de compra" subtitle={hideSpend ? "Das impressões à compra, somando todas as campanhas." : "Das impressões à compra, somando todas as campanhas. O custo por etapa divide o investimento pela etapa."}>
+        <Panel section="funnel" title="Funil de compra" subtitle={hideSpend ? "Das impressões à compra, somando todas as campanhas." : "Das impressões à compra, somando todas as campanhas. O custo por etapa divide o investimento pela etapa."}>
           <FunnelSteps steps={view.funnel} currency={currency} />
         </Panel>
         <div className="grid content-start gap-3">
           <Stat label="Taxa de conversão do clique" value={formatValue(click && buy ? buy.count / Math.max(1, click.count) : null, "pct")} note="Compras ÷ cliques no link" />
           <Stat label="CTR do link" value={formatValue(imp && click ? click.count / Math.max(1, imp.count) : null, "pct")} note="Cliques no link ÷ impressões" />
-          {!hideSpend && <Stat label="Custo por compra" value={money(buy?.cost ?? null, currency)} note={`Investimento ${moneyCompact(view.totals.spend, currency)}`} />}
+          {!hideSpend && <Stat label="Custo por compra" value={money(buy?.cost ?? null, currency)} note={filters?.filters.ads.length ? "Sem o filtro de anúncio" : `Investimento ${moneyCompact(view.totals.spend, currency)}`} />}
         </div>
       </div>
-      <Panel title="Funil por etapa da campanha" subtitle="Prospecção traz gente nova; remarketing e retenção convertem quem já conhece a loja.">
+      <Panel section="funnel" title="Funil por etapa da campanha" subtitle="Prospecção traz gente nova; remarketing e retenção convertem quem já conhece a loja.">
         <DataTable
           rows={view.funnelByStage}
           rowKey={(s) => s.stage}
@@ -215,6 +219,7 @@ export function MetaAudience({ data }: PageProps) {
     <div className="space-y-3">
       <div className="grid gap-3 @[1040px]:grid-cols-[3fr_2fr]">
         <Panel
+          section="breakdown"
           title="Idade × gênero"
           subtitle={metric === "value" ? "Participação na receita. Mais escuro = mais receita." : "ROAS por grupo. Vermelho = abaixo do equilíbrio."}
           aside={
@@ -234,7 +239,7 @@ export function MetaAudience({ data }: PageProps) {
         >
           {view.ageGender.length ? <AgeGenderMatrix view={view} metric={metric} genders={genders} hideSpend={hideSpend} /> : <NoData />}
         </Panel>
-        <Panel title="Gênero" subtitle="Participação na receita do período.">
+        <Panel section="breakdown" title="Gênero" subtitle="Participação na receita do período.">
           {genderTotals.length ? (
             <div>
               <div className="flex h-3 gap-[2px] overflow-hidden rounded-full" aria-hidden>
@@ -262,13 +267,13 @@ export function MetaAudience({ data }: PageProps) {
         </Panel>
       </div>
       <div className="grid gap-3 @[900px]:grid-cols-3">
-        <Panel title="Posicionamentos" subtitle={hideSpend ? "Participação no investimento." : "Participação no investimento e ROAS."}>
+        <Panel section="breakdown" title="Posicionamentos" subtitle={hideSpend ? "Participação no investimento." : "Participação no investimento e ROAS."}>
           <SliceBars items={view.placements} breakEven={view.breakEvenRoas} basis="spend" label="Posicionamentos" />
         </Panel>
-        <Panel title="Dispositivos" subtitle={hideSpend ? "Participação na receita." : "Participação na receita e ROAS."}>
+        <Panel section="breakdown" title="Dispositivos" subtitle={hideSpend ? "Participação na receita." : "Participação na receita e ROAS."}>
           <SliceBars items={view.devices} breakEven={view.breakEvenRoas} label="Dispositivos" />
         </Panel>
-        <Panel title="Estados que mais vendem" subtitle="Top 10 por receita.">
+        <Panel section="breakdown" title="Estados que mais vendem" subtitle="Top 10 por receita.">
           <SliceBars items={[...view.regions].sort((a, b) => b.value - a.value)} limit={10} breakEven={view.breakEvenRoas} label="Estados" />
         </Panel>
       </div>

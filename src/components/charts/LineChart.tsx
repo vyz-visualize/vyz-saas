@@ -1,9 +1,10 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { widest, xTickIndices, yTicks } from "./axis";
 import { FitChart } from "./FitChart";
 import { textWidth } from "./labels";
+import { useRangeSelect, type IndexRange } from "./range-select";
 
 type LineChartProps = {
   /** Série diária (contexto, em neutro). */
@@ -34,6 +35,10 @@ type LineChartProps = {
   fontSize?: number;
   /** Legenda em cima (desligue quando ela vem de fora). */
   showLegend?: boolean;
+  /** Trecho filtrado, em destaque. */
+  selection?: IndexRange | null;
+  /** Arrastar seleciona um trecho; clicar ou tocar, um dia; no teclado, Enter e Shift + setas. */
+  onSelectRange?: (from: number, to: number) => void;
 };
 
 /**
@@ -83,7 +88,11 @@ function LineSvg({
   fontSize: fs = 11,
   W,
   H,
+  selection,
+  onSelectRange,
 }: Omit<LineChartProps, "width" | "height" | "showLegend"> & { W: number; H: number }) {
+  const range = useRangeSelect(values.length, onSelectRange);
+  const [cursor, setCursor] = useState<number | null>(null);
   const n = Math.max(2, values.length);
   const finite = (v: number[]) => v.filter(Number.isFinite);
   // a escala ignora os dias em maturação (o custo do dia dispara enquanto as
@@ -120,9 +129,49 @@ function LineSvg({
   const goalY = goal !== undefined ? y(goal) : 0;
   const tagY = Math.min(plotBottom - tagH, Math.max(pad.t, goalY - tagH / 2));
 
+  const indexAt = (e: PointerEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const i = Math.round(((e.clientX - rect.left - pad.l) / plotW) * (n - 1));
+    return i >= 0 && i < values.length ? i : null;
+  };
+  const onKey = (e: KeyboardEvent<SVGSVGElement>) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      const step = e.key === "ArrowRight" ? 1 : -1;
+      const next = Math.min(values.length - 1, Math.max(0, (cursor ?? (step > 0 ? -1 : values.length)) + step));
+      setCursor(next);
+      range.keyMove(cursor ?? next, next, e.shiftKey);
+    } else if (e.key === "Escape") {
+      setCursor(null);
+      range.cancel();
+    } else if ((e.key === "Enter" || e.key === " ") && cursor != null) {
+      e.preventDefault();
+      range.keyCommit(cursor);
+    }
+  };
+  const band = range.preview ?? selection ?? null;
+  const step = plotW / (n - 1);
+  const bandX = band ? Math.max(pad.l, x(band.from) - step / 2) : 0;
+  const interactive = onSelectRange
+    ? {
+        tabIndex: 0,
+        onPointerDown: (e: PointerEvent<SVGSVGElement>) => range.down(e, indexAt(e)),
+        onPointerMove: (e: PointerEvent<SVGSVGElement>) => range.move(indexAt(e)),
+        onPointerUp: (e: PointerEvent<SVGSVGElement>) => range.up(e, indexAt(e)),
+        onPointerCancel: range.cancel,
+        onKeyDown: onKey,
+        onBlur: () => {
+          setCursor(null);
+          range.cancel();
+        },
+      }
+    : {};
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label={summary} className="block">
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label={onSelectRange ? `${summary} Use as setas para escolher o dia: Enter filtra; Shift e as setas selecionam um trecho.` : summary} className={`block ${onSelectRange ? "cursor-crosshair touch-pan-y rounded-[6px] select-none" : ""}`} {...interactive}>
       <title>{summary}</title>
+      {band && <rect data-chart-selection x={bandX} y={pad.t} width={Math.min(plotRight, x(band.to) + step / 2) - bandX} height={plotH} fill="var(--accent)" opacity="0.16" rx="3" />}
+      {cursor != null && <line x1={x(cursor)} x2={x(cursor)} y1={pad.t} y2={plotBottom} stroke="var(--fg-2)" strokeWidth="1" strokeDasharray="3 3" />}
       {ticks.map((t, i) => (
         <g key={t}>
           <line x1={pad.l} x2={plotRight} y1={y(t)} y2={y(t)} stroke="var(--line)" strokeWidth="1" />

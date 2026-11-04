@@ -4,12 +4,16 @@
 // resultado principal do objetivo. Serve também ao PDF.
 
 import { int } from "@/lib/format";
+import { useDashFilters } from "../filter-context";
+import { hasFilters } from "../filters";
 import { moneyCompact } from "../format";
 import type { CreativeListVM } from "../types";
 import { Chip, DataTable, NoData, Panel, type Column } from "../ui";
 
 export function CreativeList({ rows, currency, hideSpend }: { rows: CreativeListVM[]; currency: string; hideSpend: boolean }) {
-  if (!rows.length) return <NoData text="Nenhum anúncio veiculou no período." />;
+  const filters = useDashFilters();
+  const filtered = !!filters && hasFilters(filters.filters);
+  if (!rows.length) return <NoData text={filtered ? "Nenhum anúncio com esses filtros." : "Nenhum anúncio veiculou no período."} />;
   const columns: Column<CreativeListVM>[] = [
     {
       key: "name",
@@ -40,7 +44,7 @@ export function CreativeList({ rows, currency, hideSpend }: { rows: CreativeList
   ];
   return (
     <Panel title="Criativos do período" subtitle={`${rows.length} anúncios com entrega`}>
-      <DataTable rows={rows} columns={columns} rowKey={(r) => r.id} caption="Criativos do período" initialSort={{ key: hideSpend ? "result" : "spend", dir: "desc" }} minWidth={0} />
+      <DataTable rows={rows} columns={columns} rowKey={(r) => r.id} rowFilter={{ dim: "ads", id: (r) => r.id, name: (r) => r.name }} caption="Criativos do período" initialSort={{ key: hideSpend ? "result" : "spend", dir: "desc" }} minWidth={0} />
     </Panel>
   );
 }

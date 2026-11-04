@@ -10,6 +10,8 @@ import { TrendSpark } from "@/components/charts/TrendSpark";
 import { Segmented } from "@/components/ui/Segmented";
 import { btn } from "@/components/ui/styles";
 import { decimal, int, pct } from "@/lib/format";
+import { filterAria, filterTone, useDashFilters } from "../filter-context";
+import { hasFilters } from "../filters";
 import { formatValue, moneyCompact } from "../format";
 import type { CreativeVM, CreativesData } from "../types";
 import { Chip, NoData, Roas, Thumb } from "../ui";
@@ -25,6 +27,8 @@ type Props = {
 
 export function CreativeGallery({ data, compareHref }: Props) {
   const { gallery, hideSpend } = data;
+  const dashFilters = useDashFilters();
+  const filtered = !!dashFilters && hasFilters(dashFilters.filters);
   const [sort, setSort] = useState<CreativeSort>(hideSpend ? "ctr" : "spend");
   const [picked, setPicked] = useState<string[]>([]);
   const list = useMemo(() => {
@@ -33,7 +37,7 @@ export function CreativeGallery({ data, compareHref }: Props) {
   }, [gallery, sort]);
   const tired = gallery.filter((c) => c.fatigue);
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < MAX_COMPARE ? [...p, id] : p));
-  if (!gallery.length) return <NoData text="Nenhum anúncio veiculou no período." />;
+  if (!gallery.length) return <NoData text={filtered ? "Nenhum anúncio com esses filtros." : "Nenhum anúncio veiculou no período."} />;
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -77,13 +81,34 @@ export function CreativeGallery({ data, compareHref }: Props) {
 
 function CreativeCard({ c, data, compare }: { c: CreativeVM; data: Props["data"]; compare?: { on: boolean; full: boolean; toggle: () => void } }) {
   const { currency, hideSpend, breakEvenRoas } = data;
+  const filters = useDashFilters();
+  const clickable = !!filters?.interactive;
+  const tone = filterTone(filters, "ads", c.id);
   return (
-    <article className={`flex h-full flex-col overflow-hidden rounded-card border bg-card ${c.fatigue ? "border-error/40" : "border-line"}`} aria-label={c.name}>
+    <article
+      data-filter-tone={tone ?? undefined}
+      onClick={
+        clickable
+          ? (e) => {
+              if ((e.target as Element).closest("a, button")) return;
+              filters.toggle("ads", c.id, c.name, e);
+            }
+          : undefined
+      }
+      className={`flex h-full flex-col overflow-hidden rounded-card border bg-card ${clickable ? "cursor-pointer" : ""} ${tone === "selected" ? "border-accent ring-2 ring-accent" : c.fatigue ? "border-error/40" : "border-line"} ${tone === "dimmed" ? "opacity-45" : ""}`}
+      aria-label={c.name}
+    >
       <Thumb seed={c.id} url={c.thumbnailUrl} label={c.headline ?? c.name} badge={c.format} className="aspect-[16/10]" />
       <div className="flex flex-1 flex-col p-3">
         <div className="flex items-start justify-between gap-2">
           <h4 className="line-clamp-2 text-[13px] leading-snug font-semibold text-fg" title={c.name}>
-            {c.name}
+            {clickable ? (
+              <button type="button" data-filter-item={c.id} aria-pressed={tone === "selected"} aria-label={filterAria("ads", c.name)} onClick={(e) => filters.toggle("ads", c.id, c.name, e)} className="cursor-pointer rounded-[4px] text-left outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                {c.name}
+              </button>
+            ) : (
+              c.name
+            )}
           </h4>
           {c.status !== "active" && <Chip>{c.status === "paused" ? "Pausado" : c.status}</Chip>}
         </div>

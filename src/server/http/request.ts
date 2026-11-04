@@ -25,6 +25,14 @@ async function requestHeaders(): Promise<Headers | null> {
   }
 }
 
+/**
+ * O pedido veio de dentro da página (clique que troca a URL), não de abrir o endereço.
+ * O navegador é quem manda este cabeçalho; sem ele, conta como abertura.
+ */
+export async function isInPageNavigation(): Promise<boolean> {
+  return (await requestHeaders())?.get("sec-fetch-dest") === "empty";
+}
+
 export async function requestContext(): Promise<RequestContext> {
   const h = await requestHeaders();
   if (!h) return { ip: null, userAgent: null, forwardHeaders: {} };

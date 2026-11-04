@@ -10,9 +10,13 @@ import { PLATFORMS } from "@/features/accounts/platforms";
 import { CreativeList } from "@/features/analytics/creatives/CreativeList";
 import { CreativesPage } from "@/features/analytics/creatives/CreativesPage";
 import { setQueryParam } from "@/features/analytics/creatives/query";
+import { chipsOf, filterAria, filterTone, FilterBar, FilterProvider, useFilterState } from "@/features/analytics/filter-context";
+import { filterSummary, NO_FILTERS, type DashFilters } from "@/features/analytics/filters";
 import type { CreativesData, SampleExtraMetric } from "@/features/analytics/types";
 import { formatValue as formatLive } from "@/features/analytics/format";
-import { currentTotals, platformPart, series } from "@/features/metrics/compute";
+import { currentTotals, platformPart, series, totals } from "@/features/metrics/compute";
+import { filterDataset } from "@/features/metrics/filter-dataset";
+import { DEFAULT_TIME_ZONE, localDate } from "@/features/sync/dates";
 import { formatValue as formatMetricValue, metric as metricDefinition } from "@/features/metrics/definitions";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
@@ -66,6 +70,10 @@ type BodyProps = {
   extraMetrics?: readonly SampleExtraMetric[];
   /** A página de Criativos vem do servidor: trocar o período precisa navegar. */
   onPeriodChange?: (period: PeriodId, customDays: number) => void;
+  /** Filtros que vieram na URL. */
+  initialFilters?: DashFilters;
+  /** Galeria e métricas novas vêm do servidor: filtrar precisa navegar. Sem isso, só troca o endereço. */
+  onFilterNavigate?: (search: string) => void;
 };
 
 /** Os cards de uma aba do exemplo: os dela que seguem visíveis e, depois, os adicionados. */
@@ -76,7 +84,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, creatives, extraMetrics = [], initialPage, onPeriodChange }: BodyProps) {
+export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
@@ -121,18 +129,35 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
     goToCards: pagesWithCards[0] ? () => setPage(pagesWithCards[0]) : undefined,
   });
   const editing = metrics.open;
+  const filterLabels = useMemo(
+    () => ({
+      campaigns: Object.fromEntries(ds.campaigns.map((c) => [c.id, c.name])),
+      ads: { ...Object.fromEntries(ds.creatives.map((c) => [c.id, c.name])), ...Object.fromEntries((creatives?.list ?? []).map((c) => [c.id, c.name])) },
+      platforms: Object.fromEntries(ds.adPlatforms.map((id) => [id, PLATFORMS[id].name])),
+    }),
+    [creatives, ds],
+  );
+  const filterState = useFilterState({ initial: initialFilters, labels: filterLabels, periodDays: days, navigate: onFilterNavigate, suspended: editing });
+  const today = useMemo(() => localDate(new Date(), DEFAULT_TIME_ZONE), []);
+  const filtered = useMemo(() => filterDataset(ds, filterState.filters, { today, adSelection: creatives?.selection }), [creatives?.selection, ds, filterState.filters, today]);
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
-  const ctx = makeContext(ds, { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns });
+  const ctxOptions = { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns, today };
+  const baseCtx = makeContext(ds, ctxOptions);
+  const ctx = filtered.active ? makeContext(filtered.ds, { ...ctxOptions, base: baseCtx, chart: filtered.chart, platformsDs: filtered.platforms }) : baseCtx;
+  const chips = chipsOf(filterState.filters, filterState.labels, compare ? filterState.compared : null);
   // métrica nova sem valor do servidor não vira card: o contador e a tela continuam batendo
   const idsOf = (p: PageId) => pageKpiIds(catalog, pageLayout(t, p).kpis.map((k) => k.metric), metrics.prefs?.kpis, { hideSpend }).filter((id) => isSampleMetric(id) || extraById.has(id));
   const layoutOf = (p: PageId) => sampleLayout(pageLayout(t, p), idsOf(p).filter(isSampleMetric));
   const extrasOf = (p: PageId) => idsOf(p).flatMap((id) => extraById.get(id) ?? []);
-  const creativesCtx = creatives && ds.adPlatforms.length > 1 && ds.adPlatforms.includes("meta") ? { ...ctx, cur: platformPart(ds, "meta", "current"), prev: platformPart(ds, "meta", "previous"), labelSuffix: " · Meta" } : ctx;
+  // recorte sem a Meta (campanha ou plataforma de outra): a parte dela é zero
+  const metaIn = (when: "current" | "previous") => (ctx.ds.adPlatforms.includes("meta") ? platformPart(ctx.ds, "meta", when) : totals([]));
+  const creativesCtx = creatives && ds.adPlatforms.length > 1 && ds.adPlatforms.includes("meta") ? { ...ctx, cur: metaIn("current"), prev: metaIn("previous"), labelSuffix: " · Meta" } : ctx;
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? "";
   const attribution = ATTRIBUTIONS.find((a) => a.value === spec.settings.attribution)?.label;
 
   return (
     <MetricEditProvider value={edit.editor}>
+    <FilterProvider value={filterState}>
     <div style={brandStyle(spec.brand)} data-metric-editing={editing ? edit.section : undefined} className={`space-y-4 ${editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
       {customizeId && <MetricEditBar state={edit} />}
       <div className="@container space-y-4 print:hidden">
@@ -145,11 +170,26 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
               <h1 className="title truncate text-[1.6rem]">{spec.name}</h1>
               <p className="text-[14px] text-fg-2">{spec.client}</p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                {t.sources.map((s) => (
-                  <span key={s} className="rounded-chip border border-line px-2 py-0.5 text-[11.5px] text-fg-2">
-                    {PLATFORMS[s].name}
-                  </span>
-                ))}
+                {t.sources.map((s) =>
+                  // com mais de uma plataforma de anúncios, a fonte também filtra
+                  ds.adPlatforms.length > 1 && ds.adPlatforms.includes(s) && !editing ? (
+                    <button
+                      key={s}
+                      type="button"
+                      data-filter-item={s}
+                      aria-pressed={filterTone(filterState, "platforms", s) === "selected"}
+                      aria-label={filterAria("platforms", PLATFORMS[s].name)}
+                      onClick={(e) => filterState.toggle("platforms", s, PLATFORMS[s].name, e)}
+                      className={`cursor-pointer rounded-chip border px-2 py-0.5 text-[11.5px] outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent ${filterTone(filterState, "platforms", s) === "selected" ? "border-accent bg-accent-soft text-fg" : filterTone(filterState, "platforms", s) === "dimmed" ? "border-line text-fg-2 opacity-45" : "border-line text-fg-2"}`}
+                    >
+                      {PLATFORMS[s].name}
+                    </button>
+                  ) : (
+                    <span key={s} className="rounded-chip border border-line px-2 py-0.5 text-[11.5px] text-fg-2">
+                      {PLATFORMS[s].name}
+                    </span>
+                  ),
+                )}
                 <span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium text-fg">Amostra · dados fictícios</span>
                 {actions && <PendingChip label="Modelo com dados de exemplo" detail="Os números são fictícios. Para os números das suas contas, crie um dashboard Meta Ads ou Google Ads · E-commerce." />}
               </div>
@@ -180,6 +220,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                 maxDays={60}
                 onChange={(p, r) => {
                   setPeriod(p);
+                  // o trecho de dias só vale dentro do período
+                  if (filterState.filters.days) filterState.remove("days");
                   if (r) {
                     setRange(r);
                     setCustomDays(Math.max(3, rangeDays(r)));
@@ -208,6 +250,10 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
             )}
           </div>
         </div>
+      </div>
+
+      <div className="print:hidden">
+        <FilterBar compare={compare} />
       </div>
 
       <p className="text-[12.5px] text-fg-2 print:hidden">
@@ -256,6 +302,12 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                 <dd className="font-semibold">Amostra · dados fictícios</dd>
               </div>
             </dl>
+            {chips.length > 0 && (
+              <p data-print-filters className="mt-6 text-[14px]">
+                <span className="text-fg-2">Filtros ativos: </span>
+                <span className="font-semibold">{chips.map((c) => c.text).join(" · ")}</span>
+              </p>
+            )}
           </section>
           {spec.pages.map((p) => (
             <section key={p} className="print-page">
@@ -265,6 +317,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                   {spec.client} · {periodLabel}
                 </span>
               </p>
+              {chips.length > 0 && <p className="mb-3 text-[12px] text-fg-2">Filtros ativos: {filterSummary(filterState.filters, filterState.labels)}</p>}
               {p === "criativos" && creatives ? (
                 <div className="space-y-2">
                   <PageView layout={{ ...layoutOf(p), widgets: [] }} ctx={creativesCtx} extraCards={extrasOf(p)} />
@@ -280,6 +333,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
       {customizeId && <MetricTray state={edit} />}
       {customizeId && <MetricNoticeBar notice={metrics.notice} onUndo={metrics.undo} onDismiss={metrics.dismiss} />}
     </div>
+    </FilterProvider>
     </MetricEditProvider>
   );
 }

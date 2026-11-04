@@ -15,6 +15,9 @@ import type { KpiSpec, WidgetSpec } from "@/features/templates/types";
 import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
 import { formatValue as formatLive } from "@/features/analytics/format";
 import type { SampleExtraMetric } from "@/features/analytics/types";
+import { filterAria, filterTone, NotFilteredBadge, useDashFilters, type FilterApi } from "@/features/analytics/filter-context";
+import { activeDims, notFilteredText, rangeLabel, type DashFilters, type FilterDim } from "@/features/analytics/filters";
+import { sampleRowDate } from "@/features/metrics/filter-dataset";
 import { HideMetricButton } from "../MetricActions";
 import { RemoveColumnButton, RemoveMetricButton, useMetricEditor } from "../metric-edit-context";
 import { isSampleSpendDerived } from "../metric-prefs";
@@ -38,6 +41,14 @@ export type WidgetContext = {
   showPrevious?: boolean;
   /** Colunas visíveis das tabelas ("Personalizar"). Sem valor, todas. */
   visibleColumns?: ReadonlySet<string>;
+  /** Com filtro: os números sem filtro, para o que o filtro não alcança. */
+  base?: WidgetContext;
+  /** Com filtro: o gráfico por dia mostra o período inteiro e destaca o trecho. */
+  chart?: Pick<Dataset, "current" | "previous">;
+  /** Com filtro: cartões e barras por plataforma, sem o próprio filtro. */
+  platformsDs?: Dataset;
+  /** Dia de hoje (YYYY-MM-DD): dá a data de cada ponto do gráfico. */
+  today?: string;
 };
 
 export function makeContext(ds: Dataset, opts: Partial<WidgetContext> = {}): WidgetContext {
@@ -47,7 +58,7 @@ export function makeContext(ds: Dataset, opts: Partial<WidgetContext> = {}): Wid
 const HIDDEN = "•••";
 const short = (id: PlatformId) => PLATFORMS[id].short;
 
-export function Card({ title, children, delay = 440, className = "", aside }: { title?: string; children: ReactNode; delay?: number; className?: string; aside?: ReactNode }) {
+export function Card({ title, children, delay = 440, className = "", aside, note }: { title?: string; children: ReactNode; delay?: number; className?: string; aside?: ReactNode; /** Selo "não filtrado por". */ note?: string | null }) {
   return (
     <section className={`m-in min-w-0 rounded-[10px] border border-line bg-card p-3 ${className}`} style={{ "--d": `${delay}ms` } as CSSProperties}>
       {(title || aside) && (
@@ -55,6 +66,11 @@ export function Card({ title, children, delay = 440, className = "", aside }: { 
           {title && <h3 className="text-[11.5px] leading-snug font-semibold text-fg">{title}</h3>}
           {aside}
         </header>
+      )}
+      {note && (
+        <p className="mb-2">
+          <NotFilteredBadge text={note} />
+        </p>
       )}
       {children}
     </section>
@@ -84,11 +100,15 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
   const raw = formatValue(cur[spec.metric], def.format);
   const value = hidden ? HIDDEN : ctx.zero ? zeroed(raw) : raw;
   const strong = spec.highlight;
+  const filters = useDashFilters();
+  const filtered = !!ctx.base;
+  // a frequência do modelo vem dos criativos, não das linhas: fica no total
+  const unfiltered = filtered && filters && spec.metric === "frequency" ? notFilteredText(activeDims(filters.filters)) : null;
 
   let sub: ReactNode = null;
   switch (spec.sub) {
     case "delta":
-      sub = ctx.compare ? <Delta cur={cur[spec.metric]} prev={prev[spec.metric]} id={spec.metric} profile={profile} suffix=" vs anterior" /> : "no período";
+      sub = ctx.compare ? <Delta cur={cur[spec.metric]} prev={prev[spec.metric]} id={spec.metric} profile={profile} suffix={filters?.compared ? ` vs ${rangeLabel(filters.compared)}` : " vs anterior"} /> : "no período";
       break;
     case "split": {
       const parts = byPlatform(ds).map((p) => `${short(p.id)} ${int(p.conv)}`);
@@ -102,7 +122,8 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
       sub = `de ${int(cur.leads || cur.conversions)} leads`;
       break;
     case "budget":
-      sub = hidden ? "da verba do mês" : `${pct(ds.budget.spent / ds.budget.monthly, 0)} da verba do mês`;
+      // a verba do mês é da conta inteira: não dá para comparar com um recorte
+      sub = filtered ? "no recorte" : hidden ? "da verba do mês" : `${pct(ds.budget.spent / ds.budget.monthly, 0)} da verba do mês`;
       break;
     case "goal":
       sub = `meta ${brl(ds.goal, { decimals: false })}`;
@@ -122,6 +143,11 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
         <Odometer value={value} />
       </p>
       <p className={`mt-1.5 leading-tight ${lg ? "text-[12px]" : "text-[10px]"} ${strong ? "[&_span]:text-inherit" : "text-fg-2"}`}>{sub}</p>
+      {unfiltered && (
+        <p className="mt-1">
+          <NotFilteredBadge text={unfiltered} />
+        </p>
+      )}
       {onHide && <HideMetricButton label={label} onClick={onHide} />}
       {onRemove && <RemoveMetricButton label={label} onClick={onRemove} />}
     </div>
@@ -154,7 +180,24 @@ export function ExtraKpi({ m, ctx, delay, onHide, onRemove }: { m: SampleExtraMe
 
 // ---- widgets ----------------------------------------------------------------
 
-export function Widget({ spec, ctx, delay }: { spec: WidgetSpec; ctx: WidgetContext; delay: number }) {
+/** Widgets do modelo sem campanha, anúncio nem dia: ficam no total, com o selo. */
+const NO_DIMENSIONS: ReadonlySet<WidgetSpec["type"]> = new Set(["funnel", "scatter", "split", "goals", "audience", "compare", "crm", "alerts"]);
+
+const isFixed = (spec: WidgetSpec) => NO_DIMENSIONS.has(spec.type) || (spec.type === "table" && spec.source !== "campaigns") || (spec.type === "bars" && spec.source !== "campaigns" && spec.source !== "platforms");
+
+/** O que o widget não consegue respeitar, entre os filtros ativos. */
+function widgetUnfiltered(spec: WidgetSpec, f: DashFilters): (FilterDim | "days")[] {
+  const on = activeDims(f);
+  if (isFixed(spec)) return on;
+  if (spec.type === "table" || spec.type === "bars" || spec.type === "platforms") return on.filter((d) => d === "ads");
+  if (spec.type === "creatives") return on.filter((d) => d === "campaigns" || d === "days");
+  return [];
+}
+
+export function Widget({ spec, ctx: shown, delay }: { spec: WidgetSpec; ctx: WidgetContext; delay: number }) {
+  const filters = useDashFilters();
+  const ctx = isFixed(spec) && shown.base ? shown.base : shown;
+  const note = filters ? notFilteredText(widgetUnfiltered(spec, filters.filters)) : null;
   const { ds, cur } = ctx;
   const title = spec.title;
 
@@ -168,26 +211,26 @@ export function Widget({ spec, ctx, delay }: { spec: WidgetSpec; ctx: WidgetCont
     case "line": {
       const d = lineData(spec, ctx);
       return (
-        <Card title={title} delay={delay}>
-          <LineChart {...d} previous={ctx.showPrevious && ds.previous.length === d.values.length ? series(ds.previous, spec.metric) : undefined} markGoal={ctx.markGoal} />
+        <Card title={title} delay={delay} note={note}>
+          <LineChart {...d} {...lineSelection(ctx, filters)} previous={ctx.showPrevious && prevRows(ctx).length === d.values.length ? series(prevRows(ctx), spec.metric) : undefined} markGoal={ctx.markGoal} />
         </Card>
       );
     }
     case "funnel":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <Funnel steps={ds.funnel} title={title ?? "Funil"} />
         </Card>
       );
     case "scatter":
       return (
-        <Card title={title} delay={delay} aside={<span className="text-[11px] text-fg-2">1 ponto = 1 empreendimento</span>}>
+        <Card title={title} delay={delay} note={note} aside={<span className="text-[11px] text-fg-2">1 ponto = 1 empreendimento</span>}>
           <Scatter points={ds.projects} />
         </Card>
       );
     case "bars":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <BarsWidget spec={spec} ctx={ctx} />
         </Card>
       );
@@ -196,7 +239,7 @@ export function Widget({ spec, ctx, delay }: { spec: WidgetSpec; ctx: WidgetCont
       const total = plats.reduce((a, p) => a + p.conv, 0);
       const max = Math.max(total, cur.conversions) || 1;
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <div className="space-y-2 text-[10.5px]" role="img" aria-label={`Plataformas atribuem ${int(total)}; confirmadas ${int(cur.conversions)}.`}>
             <div aria-hidden>
               <p className="mb-1 flex justify-between text-fg-2">
@@ -223,43 +266,43 @@ export function Widget({ spec, ctx, delay }: { spec: WidgetSpec; ctx: WidgetCont
     }
     case "platforms":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <PlatformCards ctx={ctx} />
         </Card>
       );
     case "table":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <TableWidget source={spec.source} ctx={ctx} />
         </Card>
       );
     case "creatives":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <Creatives ctx={ctx} />
         </Card>
       );
     case "goals":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <Goals ctx={ctx} />
         </Card>
       );
     case "audience":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <Audience ctx={ctx} />
         </Card>
       );
     case "compare":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <Compare ctx={ctx} />
         </Card>
       );
     case "crm":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <ul className="space-y-2" aria-label="Etapas do CRM">
             {ds.crm.map((s, i) => (
               <li key={s.stage} className="grid grid-cols-[5rem_1fr_auto] items-center gap-2 text-[11px]">
@@ -276,7 +319,7 @@ export function Widget({ spec, ctx, delay }: { spec: WidgetSpec; ctx: WidgetCont
       );
     case "alerts":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <ul className="space-y-2">
             {ds.alerts.map((a) => (
               <li key={a.title} className="flex gap-2.5 rounded-[8px] border border-line bg-bg p-2.5">
@@ -292,7 +335,7 @@ export function Widget({ spec, ctx, delay }: { spec: WidgetSpec; ctx: WidgetCont
       );
     case "audio":
       return (
-        <Card title={title} delay={delay}>
+        <Card title={title} delay={delay} note={note}>
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <div className="flex h-10 items-center gap-[3px] text-accent" aria-hidden>
               {Array.from({ length: 24 }, (_, i) => (
@@ -318,12 +361,12 @@ export function barData(spec: BarsSpec, ctx: WidgetContext) {
   if (spec.source === "campaigns") {
     items = ds.campaigns.map((c) => {
       const v = spec.metric === "roas" ? c.revenue / c.spend : spec.metric === "cpa" ? c.spend / c.conversions : spec.metric === "conversions" ? c.conversions : c.spend;
-      return { label: c.name, value: v, display: fmt(v) };
+      return { id: c.id, label: c.name, value: v, display: fmt(v) };
     });
   } else if (spec.source === "platforms") {
-    items = byPlatform(ds).map((p) => {
+    items = byPlatform(ctx.platformsDs ?? ds).map((p) => {
       const v = spec.metric === "cpa" ? p.cpa : spec.metric === "conversions" ? p.conv : p.spend;
-      return { label: PLATFORMS[p.id].name, value: v, display: fmt(v) };
+      return { id: p.id, label: PLATFORMS[p.id].name, value: v, display: fmt(v) };
     });
   } else {
     items = ds.clients.map((c) => {
@@ -343,8 +386,38 @@ export function barData(spec: BarsSpec, ctx: WidgetContext) {
   return { items, reference, better, summary };
 }
 
+const lineRows = (ctx: WidgetContext) => ctx.chart?.current ?? ctx.ds.current;
+const prevRows = (ctx: WidgetContext) => ctx.chart?.previous ?? ctx.ds.previous;
+
+/** Arrastar no gráfico filtra o trecho; o trecho filtrado aparece em destaque. */
+function lineSelection(ctx: WidgetContext, filters: FilterApi | null) {
+  const { today } = ctx;
+  if (!filters || !today) return {};
+  const dates = lineRows(ctx).map((r) => sampleRowDate(today, r.ago));
+  const days = filters.filters.days;
+  const from = days ? dates.indexOf(days.from) : -1;
+  const to = days ? dates.indexOf(days.to) : -1;
+  return {
+    selection: from >= 0 && to >= 0 ? { from, to } : null,
+    onSelectRange: filters.interactive ? (a: number, b: number) => filters.selectDays({ from: dates[a], to: dates[b] }) : undefined,
+  };
+}
+
 function BarsWidget({ spec, ctx }: { spec: BarsSpec; ctx: WidgetContext }) {
-  return <BarList {...barData(spec, ctx)} />;
+  const filters = useDashFilters();
+  const data = barData(spec, ctx);
+  const dim: FilterDim | null = spec.source === "campaigns" ? "campaigns" : spec.source === "platforms" && ctx.ds.spec.sources.length > 1 ? "platforms" : null;
+  if (!filters?.interactive || !dim) return <BarList {...data} />;
+  return (
+    <BarList
+      {...data}
+      action={{
+        label: (it) => filterAria(dim, it.label),
+        tone: (it) => filterTone(filters, dim, it.id ?? ""),
+        onClick: (it, e) => filters.toggle(dim, it.id ?? "", it.label, e),
+      }}
+    />
+  );
 }
 
 /** Dados da linha diária + média móvel (mesmo cálculo no painel e na LP). */
@@ -366,24 +439,40 @@ function axisFormat(format: MetricDef["format"]): (v: number) => string {
 
 export function lineData(spec: Extract<WidgetSpec, { type: "line" }>, ctx: WidgetContext) {
   const { ds, profile } = ctx;
-  const values = series(ds.current, spec.metric);
-  const avg = maturedAverage(ds.current, spec.metric);
+  const rows = ctx.chart?.current ?? ds.current;
+  const values = series(rows, spec.metric);
+  const avg = maturedAverage(rows, spec.metric);
   const def = metric(spec.metric, profile);
   const goal = spec.goal ? ds.goal : undefined;
   const last = avg.filter(Number.isFinite).at(-1) ?? 0;
   const summary = `${def.label} diário dos últimos ${values.length} dias, com média móvel de 7 dias em ${formatValue(last, def.format)}${goal ? `, meta de ${brl(goal)}` : ""}. Os últimos 3 dias estão em maturação.`;
-  return { values, avg, goal, goalLabel: goal ? brl(goal, { decimals: false }) : undefined, maturingDays: 3, summary, ago: ds.current.map((r) => r.ago), formatY: axisFormat(def.format) };
+  return { values, avg, goal, goalLabel: goal ? brl(goal, { decimals: false }) : undefined, maturingDays: 3, summary, ago: rows.map((r) => r.ago), formatY: axisFormat(def.format) };
 }
 
 function PlatformCards({ ctx }: { ctx: WidgetContext }) {
   const { ds, cur } = ctx;
-  const plats = byPlatform(ds);
+  const plats = byPlatform(ctx.platformsDs ?? ds);
   const hasGa4 = ds.spec.sources.includes("ga4");
+  const filters = useDashFilters();
+  const clickable = !!filters?.interactive && plats.length > 1;
   return (
     <div className="grid gap-2 @[460px]:grid-cols-2 @[900px]:grid-cols-3">
       {plats.map((p) => (
-        <div key={p.id} className="rounded-[8px] border border-line bg-bg p-2.5 text-[10.5px]">
-          <p className="mb-1.5 text-[11px] font-semibold">{PLATFORMS[p.id].name}</p>
+        <div
+          key={p.id}
+          data-filter-tone={filterTone(filters, "platforms", p.id) ?? undefined}
+          onClick={clickable ? (e) => !(e.target as Element).closest("button") && filters.toggle("platforms", p.id, PLATFORMS[p.id].name, e) : undefined}
+          className={`rounded-[8px] border bg-bg p-2.5 text-[10.5px] ${clickable ? "cursor-pointer" : ""} ${filterTone(filters, "platforms", p.id) === "selected" ? "border-accent ring-1 ring-accent" : "border-line"} ${filterTone(filters, "platforms", p.id) === "dimmed" ? "opacity-45" : ""}`}
+        >
+          <p className="mb-1.5 text-[11px] font-semibold">
+            {clickable ? (
+              <button type="button" data-filter-item={p.id} aria-pressed={filterTone(filters, "platforms", p.id) === "selected"} aria-label={filterAria("platforms", PLATFORMS[p.id].name)} onClick={(e) => filters.toggle("platforms", p.id, PLATFORMS[p.id].name, e)} className="cursor-pointer rounded-[4px] text-left outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                {PLATFORMS[p.id].name}
+              </button>
+            ) : (
+              PLATFORMS[p.id].name
+            )}
+          </p>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1 tnum">
             <dt className="text-fg-2">Investimento</dt>
             <dd className="text-right font-semibold">{ctx.hideSpend ? HIDDEN : brlCompact(p.spend)}</dd>
@@ -420,6 +509,7 @@ function PlatformCards({ ctx }: { ctx: WidgetContext }) {
 function TableWidget({ source, ctx }: { source: "campaigns" | "products" | "clients"; ctx: WidgetContext }) {
   const { ds, profile } = ctx;
   const editor = useMetricEditor();
+  const filters = useDashFilters();
   const show = (id: string) => (!ctx.hideSpend || !isSampleSpendDerived(id as MetricId)) && (!ctx.visibleColumns || ctx.visibleColumns.has(id));
   const money = profile === "ecommerce" || profile === "marketplace" || profile === "executivo" || profile === "infoproduto" || profile === "site";
   // os rótulos variam por nicho: o cabeçalho volta para a métrica por aqui, para o ✕ do modo personalizar
@@ -476,15 +566,31 @@ function TableWidget({ source, ctx }: { source: "campaigns" | "products" | "clie
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b border-line/60 last:border-0">
-              {r.map((cell, j) => (
-                <td key={j} className={`py-1.5 ${j ? "text-right" : "pr-2 font-medium text-fg"}`}>
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {rows.map((r, i) => {
+            const campaign = source === "campaigns" ? ds.campaigns[i] : undefined;
+            const tone = campaign ? filterTone(filters, "campaigns", campaign.id) : null;
+            const clickable = campaign && filters?.interactive ? campaign : null;
+            return (
+              <tr
+                key={i}
+                data-filter-tone={tone ?? undefined}
+                onClick={clickable ? (e) => !(e.target as Element).closest("button") && filters!.toggle("campaigns", clickable.id, clickable.name, e) : undefined}
+                className={`border-b border-line/60 last:border-0 ${clickable ? "cursor-pointer" : ""} ${tone === "selected" ? "bg-accent-soft/70" : tone === "dimmed" ? "opacity-45" : ""}`}
+              >
+                {r.map((cell, j) => (
+                  <td key={j} className={`py-1.5 ${j ? "text-right" : "pr-2 font-medium text-fg"}`}>
+                    {clickable && j === 0 ? (
+                      <button type="button" data-filter-item={clickable.id} aria-pressed={tone === "selected"} aria-label={filterAria("campaigns", clickable.name)} onClick={(e) => filters!.toggle("campaigns", clickable.id, clickable.name, e)} className="cursor-pointer rounded-[4px] text-left outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                        {cell}
+                      </button>
+                    ) : (
+                      cell
+                    )}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -495,13 +601,19 @@ const TONES = ["#8A9A5B", "#6E9BC6", "#D9A441", "#C8B9A0", "#A3A69C"];
 
 function Creatives({ ctx }: { ctx: WidgetContext }) {
   const { ds, profile } = ctx;
+  const filters = useDashFilters();
   return (
     <ul className="grid grid-cols-2 gap-2 @[600px]:grid-cols-4">
       {ds.creatives.map((c) => {
         const ctr = c.clicks / Math.max(1, c.impressions);
         const cpa = c.conversions ? c.spend / c.conversions : NaN;
         return (
-          <li key={c.id} className="overflow-hidden rounded-[8px] border border-line bg-bg">
+          <li
+            key={c.id}
+            data-filter-tone={filterTone(filters, "ads", c.id) ?? undefined}
+            onClick={filters?.interactive ? (e) => !(e.target as Element).closest("button") && filters.toggle("ads", c.id, c.name, e) : undefined}
+            className={`overflow-hidden rounded-[8px] border bg-bg ${filters?.interactive ? "cursor-pointer" : ""} ${filterTone(filters, "ads", c.id) === "selected" ? "border-accent ring-1 ring-accent" : "border-line"} ${filterTone(filters, "ads", c.id) === "dimmed" ? "opacity-45" : ""}`}
+          >
             {/* miniatura geométrica (amostra) */}
             <div className="relative aspect-[4/3]" style={{ background: TONES[c.tone] }} aria-hidden>
               <span className="absolute inset-x-[18%] top-[22%] h-[18%] rounded-[3px] bg-black/15" />
@@ -509,7 +621,15 @@ function Creatives({ ctx }: { ctx: WidgetContext }) {
               <span className="absolute bottom-2 left-2 rounded-chip bg-black/35 px-1.5 text-[9px] text-white">{c.format}</span>
             </div>
             <div className="p-2 text-[10px]">
-              <p className="truncate font-semibold text-fg">{c.name}</p>
+              <p className="truncate font-semibold text-fg">
+                {filters?.interactive ? (
+                  <button type="button" data-filter-item={c.id} aria-pressed={filterTone(filters, "ads", c.id) === "selected"} aria-label={filterAria("ads", c.name)} onClick={(e) => filters.toggle("ads", c.id, c.name, e)} className="max-w-full cursor-pointer truncate rounded-[3px] text-left outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                    {c.name}
+                  </button>
+                ) : (
+                  c.name
+                )}
+              </p>
               <dl className="mt-1 grid grid-cols-3 gap-1 tnum">
                 <div>
                   <dt className="text-fg-2">CTR</dt>

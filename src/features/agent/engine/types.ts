@@ -26,6 +26,8 @@ export type AgentContext = {
   dashboards: ClientData[];
   /** Este workspace usa o módulo de landing pages? (false = em breve, lista de espera) */
   landingPages: boolean;
+  /** Pergunta feita num dashboard com filtros ativos: a resposta é só sobre esse recorte, e diz isso. */
+  focus?: { label: string; period: string };
   counts: { dashboards: number; landingPublished: number; accounts: number; projects: number; contractedProjects: number };
 };
 

@@ -14,6 +14,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 import { aggregateDashboard, redactSpend } from "@/features/analytics/aggregate";
 import { cutCreatives, type CreativesAccess } from "@/features/analytics/creatives/access";
+import { aggregateFiltered } from "@/features/analytics/filtered";
+import { NO_FILTERS, type DashFilters } from "@/features/analytics/filters";
 import { TEMPLATE_PLATFORM } from "@/features/analytics/preview";
 import { dashboardRanges, isPeriodId, maturingStart } from "@/features/analytics/ranges";
 import type {
@@ -45,6 +47,8 @@ export type LoadLiveDashboardOptions = {
   hideSpend?: boolean;
   /** Página de Criativos: o que o plano cobre. Sem isso, só a lista (nunca manda o que não foi pedido). */
   creatives?: CreativesAccess;
+  /** Dashboard interativo: o recorte da URL. Só compara com as linhas destas contas. */
+  filters?: DashFilters;
   /**
    * Cliente que confere o acesso. Padrão: o da sessão (RLS). O link público
    * passa o admin DEPOIS de validar o token; scripts de teste também.
@@ -85,7 +89,7 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
   const breakEvenRoas = margin && margin > 0 ? Math.round((1 / margin) * 100) / 100 : null;
 
   let view = accounts.length
-    ? await readWarehouse({ dashboardId, platform, accountIds: accounts.map((a) => a.id), current, previous, breakEvenRoas })
+    ? await readWarehouse({ dashboardId, platform, accountIds: accounts.map((a) => a.id), current, previous, breakEvenRoas }, opts.filters ?? NO_FILTERS)
     : aggregateDashboard(emptyRows(platform, current, previous), { breakEvenRoas });
   if (opts.hideSpend) view = redactSpend(view);
   const currency = accounts[0]?.currency ?? "BRL";
@@ -121,15 +125,24 @@ type WarehouseQuery = {
   breakEvenRoas: number | null;
 };
 
-async function readWarehouse(q: WarehouseQuery): Promise<DashboardView> {
+/** Uma entrada por combinação de filtros; as linhas têm entrada própria, então filtrar não relê o armazém. */
+async function readWarehouse(q: WarehouseQuery, filters: DashFilters): Promise<DashboardView> {
   "use cache";
   // fora do Next (scripts de teste) não há cache: as marcações só valem lá dentro
   if (process.env.NEXT_RUNTIME) {
     cacheTag(dashboardTag(q.dashboardId), ...q.accountIds.map(insightsTag));
     cacheLife("hours");
   }
-  const rows = await fetchRows(createAdminSupabase(), q);
-  return aggregateDashboard(rows, { breakEvenRoas: q.breakEvenRoas });
+  return aggregateFiltered(await readRows(q), filters, { breakEvenRoas: q.breakEvenRoas });
+}
+
+async function readRows(q: WarehouseQuery): Promise<WarehouseRows> {
+  "use cache";
+  if (process.env.NEXT_RUNTIME) {
+    cacheTag(dashboardTag(q.dashboardId), ...q.accountIds.map(insightsTag));
+    cacheLife("hours");
+  }
+  return fetchRows(createAdminSupabase(), q);
 }
 
 function emptyRows(platform: LivePlatform, current: DateRange, previous: DateRange): WarehouseRows {

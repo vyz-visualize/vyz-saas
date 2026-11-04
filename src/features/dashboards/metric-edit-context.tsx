@@ -31,6 +31,19 @@ export const useMetricEditor = () => useContext(Ctx);
 
 export const DRAG_TYPE = "application/x-vyz-metric";
 
+// A guarda de saída desfaz uma entrada do histórico, e isso leva um instante. Quem precisa
+// trocar o endereço ao sair do modo espera aqui, senão a troca se perde.
+let settling: Promise<void> | null = null;
+export const markLeaveGuardSettling = (p: Promise<void>) => {
+  settling = p.finally(() => {
+    settling = null;
+  });
+};
+export const afterLeaveGuard = (run: () => void) => {
+  if (settling) void settling.then(run);
+  else run();
+};
+
 export function RemoveMetricButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
