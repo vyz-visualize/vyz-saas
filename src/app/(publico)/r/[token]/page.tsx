@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { parseCreativesQuery } from "@/features/analytics/creatives/query";
-import { sampleCreatives } from "@/features/analytics/creatives/sample";
+import { sampleCreatives, sampleExtras } from "@/features/analytics/creatives/sample";
 import { LiveDashboard, LiveDashboardSkeleton } from "@/features/analytics/LiveDashboard";
 import { periodFromQuery } from "@/features/dashboards/model";
 import { PeriodNav } from "@/features/dashboards/PeriodNav";
@@ -66,6 +66,7 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
         hideSpend={shared.hideSpend}
         initialPage={q.page}
         creatives={template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays, hideSpend: shared.hideSpend }) : undefined}
+        extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays, hideSpend: shared.hideSpend }) : undefined}
       />
     </PublicShell>
   );

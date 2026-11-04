@@ -15,8 +15,17 @@ function fingerprint(d: ReturnType<typeof gen>) {
     delete numbers.searchTerm;
     return numbers;
   });
+  // colunas novas de campanha ficam de fora: o gerador só pode acrescentar
+  const campaigns = d.campaignDaily.map((r) => {
+    const old: Partial<typeof r> = { ...r };
+    delete old.allConversions;
+    delete old.interactions;
+    delete old.topImpressionPct;
+    delete old.absoluteTopImpressionPct;
+    return old;
+  });
   return createHash("sha256")
-    .update(JSON.stringify([d.accountDaily, d.campaignDaily, ad, d.breakdownDaily, terms, d.productDaily]))
+    .update(JSON.stringify([d.accountDaily, campaigns, ad, d.breakdownDaily, terms, d.productDaily]))
     .digest("hex");
 }
 
@@ -73,6 +82,28 @@ describe("gerador: métricas por anúncio", () => {
     const d = gen(platform, id, name);
     const texts = JSON.stringify([d.campaigns, d.ads, d.products, [...new Set(d.searchTermDaily.map((r) => r.searchTerm))]]);
     expect(texts).not.toMatch(/gr[áa]tis/i);
+  });
+
+  it("cadastros: sequência própria, sem mexer nas outras métricas de anúncio", () => {
+    expect(meta.adDaily.some((r) => (r.registrations ?? 0) > 0)).toBe(true);
+    for (const r of meta.adDaily.slice(0, 400)) expect(r.registrations ?? 0).toBeLessThanOrEqual(r.linkClicks ?? 0);
+  });
+
+  it("Google: colunas novas por campanha, com o total coerente", () => {
+    const g = gen("google", "123-456-7890", "Loja Teste · Brasil");
+    const search = new Set(g.campaigns.filter((c) => c.channel === "search").map((c) => c.externalId));
+    expect(g.campaignDaily.length).toBeGreaterThan(50);
+    for (const r of g.campaignDaily) {
+      expect(r.allConversions!).toBeGreaterThanOrEqual(r.conversions);
+      expect(r.interactions!).toBeGreaterThanOrEqual(r.clicks);
+      expect(r.topImpressionPct != null).toBe(search.has(r.campaignExternalId));
+      if (r.topImpressionPct != null) {
+        expect(r.absoluteTopImpressionPct!).toBeLessThanOrEqual(r.topImpressionPct);
+        expect(r.topImpressionPct).toBeLessThanOrEqual(1);
+      }
+    }
+    // o total da conta segue sem as colunas novas: os cards leem as campanhas
+    expect(g.accountDaily[0]).not.toHaveProperty("interactions");
   });
 
   it("Google não ganha métrica de anúncio", () => {

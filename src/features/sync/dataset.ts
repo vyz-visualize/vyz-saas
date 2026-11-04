@@ -90,11 +90,21 @@ export type DailyMetrics = {
 
 export type AccountDay = DailyMetrics & { date: string };
 
-export type CampaignDay = DailyMetrics & { campaignExternalId: string; date: string };
+/** Google por campanha: Performance Max e Shopping não têm linha de anúncio. Os cards leem daqui, sem passar pelo total da conta. */
+export type CampaignExtraMetrics = {
+  allConversions?: number | null;
+  interactions?: number | null;
+  /** % das impressões no topo e no topo absoluto (0 a 1). */
+  topImpressionPct?: number | null;
+  absoluteTopImpressionPct?: number | null;
+};
+
+export type CampaignDay = DailyMetrics & CampaignExtraMetrics & { campaignExternalId: string; date: string };
 
 /** Métricas só do anúncio (página de Criativos). Sem o dado = null ou ausente: a tela esconde. */
 export type AdCreativeMetrics = {
   leads?: number | null;
+  registrations?: number | null;
   postEngagement?: number | null;
   postReactions?: number | null;
   postComments?: number | null;

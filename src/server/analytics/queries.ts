@@ -214,8 +214,16 @@ async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
       rows.map((r) => ({ id: r.id, name: r.name, objective: r.objective, status: r.status, channel: r.channel, funnelStage: r.funnel_stage, dailyBudget: opt(r.daily_budget) })),
     ),
     fetchAll((a, b) =>
-      db.from("insights_campaign_daily").select(`campaign_id, date, ${METRIC_COLUMNS}`).in("ad_account_id", ids).gte("date", prev.from).lte("date", cur.to).order("campaign_id").order("date").range(a, b),
-    ).then((rows): CampaignDayRow[] => rows.map((r) => ({ campaignId: r.campaign_id, date: r.date, ...metricRow(r) }))),
+      db.from("insights_campaign_daily").select(`campaign_id, date, ${METRIC_COLUMNS}, all_conversions, interactions, top_impression_pct, absolute_top_impression_pct`).in("ad_account_id", ids).gte("date", prev.from).lte("date", cur.to).order("campaign_id").order("date").range(a, b),
+    ).then((rows): CampaignDayRow[] => rows.map((r) => ({
+        campaignId: r.campaign_id,
+        date: r.date,
+        ...metricRow(r),
+        allConversions: opt(r.all_conversions),
+        interactions: opt(r.interactions),
+        topImpressionPct: opt(r.top_impression_pct),
+        absoluteTopImpressionPct: opt(r.absolute_top_impression_pct),
+      }))),
     meta
       ? fetchAll((a, b) => db.from("ads").select("id, campaign_id, name, format, status, headline, thumbnail_url, post_url").in("ad_account_id", ids).order("id").range(a, b)).then((rows) =>
           rows.map((r) => ({ id: r.id, campaignId: r.campaign_id, postUrl: r.post_url, name: r.name, format: r.format, status: r.status, headline: r.headline, thumbnailUrl: r.thumbnail_url })),
@@ -225,9 +233,10 @@ async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
       ? fetchAll((a, b) =>
           db
             .from("insights_ad_daily")
-            .select("ad_id, date, spend, impressions, reach, clicks, link_clicks, conversions, conversion_value, video_views, video_thruplays, leads, post_engagement, post_reactions, post_comments, post_shares, post_saves, profile_visits, video_p25, video_p50, video_p75, video_p95, video_p100, video_watch_seconds")
+            .select("ad_id, date, spend, impressions, reach, clicks, link_clicks, conversions, conversion_value, video_views, video_thruplays, leads, registrations, post_engagement, post_reactions, post_comments, post_shares, post_saves, profile_visits, video_p25, video_p50, video_p75, video_p95, video_p100, video_watch_seconds")
             .in("ad_account_id", ids)
-            .gte("date", cur.from)
+            // os dois períodos: os cards que vêm dos anúncios comparam com o anterior
+            .gte("date", prev.from)
             .lte("date", cur.to)
             .order("ad_id")
             .order("date")
@@ -246,6 +255,7 @@ async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
             videoViews: opt(r.video_views),
             videoThruplays: opt(r.video_thruplays),
             leads: opt(r.leads),
+            registrations: opt(r.registrations),
             postEngagement: opt(r.post_engagement),
             postReactions: opt(r.post_reactions),
             postComments: opt(r.post_comments),

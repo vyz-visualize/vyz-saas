@@ -115,6 +115,48 @@ export function byPlatform(ds: Dataset): PlatformTotals[] {
   });
 }
 
+/**
+ * Totais de uma plataforma num período (a parte dela nos cards). Só uma plataforma de
+ * anúncios: os próprios totais. O modelo só divide investimento, impressões, cliques e
+ * conversões; o resto vai na proporção das conversões que cada uma atribuiu a si.
+ */
+export function platformPart(ds: Dataset, id: PlatformId, when: "current" | "previous"): Totals {
+  const rows = ds[when];
+  const frequency = when === "current" ? frequencyOf(ds) : frequencyOf(ds) * 0.94;
+  if (ds.adPlatforms.length <= 1 || !ds.adPlatforms.includes(id)) return totals(rows, frequency);
+  const part = { spend: 0, impressions: 0, clicks: 0, conv: 0 };
+  let attributed = 0;
+  for (const d of rows) {
+    const p = d.byPlatform[id];
+    if (p) {
+      part.spend += p.spend;
+      part.impressions += p.impressions;
+      part.clicks += p.clicks;
+      part.conv += p.conv;
+    }
+    for (const other of ds.adPlatforms) attributed += d.byPlatform[other]?.conv ?? 0;
+  }
+  const share = attributed > 0 ? part.conv / attributed : 0;
+  const all = totals(rows, frequency);
+  const row: DayRow = {
+    ago: 0,
+    spend: part.spend,
+    impressions: part.impressions,
+    clicks: part.clicks,
+    conversions: part.conv,
+    revenue: all.revenue * share,
+    leads: all.leads * share,
+    qualified: all.qualified * share,
+    visits: all.visits * share,
+    calls: all.calls * share,
+    sessions: all.sessions * share,
+    views: all.views * share,
+    byPlatform: {},
+    maturing: false,
+  };
+  return totals([row], frequency);
+}
+
 /** Índice da etapa que recebe a maior queda relativa. */
 export function biggestDrop(steps: { pct: number }[]): number {
   let idx = 1;

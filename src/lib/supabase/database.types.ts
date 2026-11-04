@@ -1324,6 +1324,7 @@ export type Database = {
           video_p95: number | null
           video_p100: number | null
           video_watch_seconds: number | null
+          registrations: number | null
         }
         Insert: {
           workspace_id: string
@@ -1353,6 +1354,7 @@ export type Database = {
           video_p95?: number | null
           video_p100?: number | null
           video_watch_seconds?: number | null
+          registrations?: number | null
         }
         Update: {
           workspace_id?: string
@@ -1382,6 +1384,7 @@ export type Database = {
           video_p95?: number | null
           video_p100?: number | null
           video_watch_seconds?: number | null
+          registrations?: number | null
         }
         Relationships: [
           {
@@ -1465,6 +1468,10 @@ export type Database = {
           search_lost_is_budget: number | null
           search_lost_is_rank: number | null
           synced_at: string
+          all_conversions: number | null
+          interactions: number | null
+          top_impression_pct: number | null
+          absolute_top_impression_pct: number | null
         }
         Insert: {
           workspace_id: string
@@ -1487,6 +1494,10 @@ export type Database = {
           search_lost_is_budget?: number | null
           search_lost_is_rank?: number | null
           synced_at?: string
+          all_conversions?: number | null
+          interactions?: number | null
+          top_impression_pct?: number | null
+          absolute_top_impression_pct?: number | null
         }
         Update: {
           workspace_id?: string
@@ -1509,6 +1520,10 @@ export type Database = {
           search_lost_is_budget?: number | null
           search_lost_is_rank?: number | null
           synced_at?: string
+          all_conversions?: number | null
+          interactions?: number | null
+          top_impression_pct?: number | null
+          absolute_top_impression_pct?: number | null
         }
         Relationships: [
           {

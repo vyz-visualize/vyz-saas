@@ -6,7 +6,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { CreativesData } from "@/features/analytics/types";
+import type { CreativesData, SampleExtraMetric } from "@/features/analytics/types";
 import type { PageId } from "@/features/templates/types";
 import type { Brand } from "@/features/workspace/workspace";
 import { saveDashboardMetricPrefs } from "@/server/dashboards/actions";
@@ -24,10 +24,12 @@ type Props = {
   assemble?: boolean;
   /** Modelos que usam a Meta: a página de Criativos por plano. */
   creatives?: CreativesData;
+  /** Métricas novas do Personalizar, na escala do modelo. */
+  extraMetrics?: readonly SampleExtraMetric[];
   initialPage?: PageId;
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, hideSpend, assemble, creatives, initialPage }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, hideSpend, assemble, creatives, extraMetrics, initialPage }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -52,9 +54,10 @@ export function SampleDashboard({ dashboard, brand, canEdit, hideSpend, assemble
       assemble={assemble}
       printing={printing}
       creatives={creatives}
+      extraMetrics={extraMetrics}
       initialPage={initialPage}
       onPeriodChange={
-        creatives
+        creatives || extraMetrics?.length
           ? (period, customDays) => {
               const q = new URLSearchParams(params?.toString() ?? "");
               q.delete("periodo");

@@ -54,7 +54,8 @@ export const mockSource: SyncSource = {
 };
 
 // Pendente: Meta → GET /act_<id>/insights (level=ad, time_increment=1, breakdowns
-// por público/posicionamento/dispositivo/região, actions de compra) e
+// por público/posicionamento/dispositivo/região; eventos por readMetaActions, em
+// features/sync/meta-actions.ts: um campo por evento, sem contar em dobro) e
 // level=account só para o alcance da conta (accountDaily.reach: pessoas únicas,
 // não a soma das campanhas; a sincronização grava esse número depois do rollup); Google →
 // searchStream com GAQL (campaign, ad_group_ad, search_term_view,

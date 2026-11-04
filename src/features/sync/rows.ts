@@ -112,7 +112,16 @@ export function factRows(ds: AccountDataset, scope: RowScope, ids: EntityIds): F
   const base = { workspace_id: scope.workspaceId, ad_account_id: scope.adAccountId, synced_at: scope.syncedAt };
   return {
     insights_campaign_daily: uniqueBy(
-      ds.campaignDaily.map((r) => ({ ...base, campaign_id: ids.campaign(r.campaignExternalId), date: r.date, ...metricColumns(r) })),
+      ds.campaignDaily.map((r) => ({
+        ...base,
+        campaign_id: ids.campaign(r.campaignExternalId),
+        date: r.date,
+        ...metricColumns(r),
+        all_conversions: r.allConversions ?? null,
+        interactions: r.interactions ?? null,
+        top_impression_pct: r.topImpressionPct ?? null,
+        absolute_top_impression_pct: r.absoluteTopImpressionPct ?? null,
+      })),
       FACT_KEYS.insights_campaign_daily,
     ),
     insights_ad_daily: uniqueBy(
@@ -130,6 +139,7 @@ export function factRows(ds: AccountDataset, scope: RowScope, ids: EntityIds): F
         video_views: r.videoViews,
         video_thruplays: r.videoThruplays,
         leads: r.leads ?? null,
+        registrations: r.registrations ?? null,
         post_engagement: r.postEngagement ?? null,
         post_reactions: r.postReactions ?? null,
         post_comments: r.postComments ?? null,

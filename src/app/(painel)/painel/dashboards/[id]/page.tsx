@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { EmptyState } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { parseCreativesQuery } from "@/features/analytics/creatives/query";
-import { sampleCreatives } from "@/features/analytics/creatives/sample";
+import { sampleCreatives, sampleExtras } from "@/features/analytics/creatives/sample";
 import { LiveDashboard, LiveDashboardSkeleton } from "@/features/analytics/LiveDashboard";
 import { brandVars } from "@/features/dashboards/brand";
 import { DashboardActions } from "@/features/dashboards/DashboardActions";
@@ -79,6 +79,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
       assemble={query.novo === "1"}
       initialPage={q.page}
       creatives={template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays }) : undefined}
+      extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays }) : undefined}
     />
   );
 }

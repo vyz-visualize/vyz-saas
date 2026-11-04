@@ -123,6 +123,6 @@ export async function loadAgentContext(now = new Date()): Promise<AgentContext> 
 
 /** Cards que aparecem na primeira página de um dashboard de exemplo (alvos do "Mostrar no painel"). */
 function visibleSampleKpis(t: DashboardTemplate, pages: PageId[], first: PageId, raw: unknown): MetricId[] {
-  const catalog = sampleCatalog(t.profile, sampleDefaultKpis(t, pages));
+  const catalog = sampleCatalog(t.profile, sampleDefaultKpis(t, pages), t.sources);
   return pageKpiIds(catalog, pageLayout(t, first).kpis.map((k) => k.metric), parseMetricPrefs(raw).sample?.kpis) as MetricId[];
 }

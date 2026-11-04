@@ -10,7 +10,7 @@
 //   * "Pesquisa · Marca" domina a própria marca (parcela ~90%) com ROAS alto.
 
 import { apportion } from "../apportion";
-import type { AdDay, AdEntity, BreakdownDay, CampaignDay, CampaignEntity, ProductDay, SearchTermDay } from "../dataset";
+import type { CampaignExtraMetrics, AdDay, AdEntity, BreakdownDay, CampaignDay, CampaignEntity, ProductDay, SearchTermDay } from "../dataset";
 import { addDays } from "../dates";
 import { rollupAccountDaily } from "../rollup";
 import { conversionByWeekday, maturity, spendByWeekday, trendFactor, type Trend } from "./calendar";
@@ -142,6 +142,16 @@ function shareOfSearch(ctx: MockContext, c: Campaign, date: string): ShareOfSear
   return { searchImpressionShare: share, searchLostIsBudget: lostBudget, searchLostIsRank: round4(Math.max(0, 1 - share - lostBudget)) };
 }
 
+/** Todas as conversões, interações e posição no topo. Sequência própria: nenhum número que já existia muda. */
+function campaignExtras(ctx: MockContext, c: Campaign, date: string, total: FullUnits): CampaignExtraMetrics {
+  const r = stream(ctx.accountExternalId, "google", c.spec.key, date, "extras");
+  const allConversions = Math.round((total.conversions / SCALE) * r.range(1.12, 1.38) * 100) / 100;
+  const interactions = Math.round(total.clicks * r.range(1, 1.04)) + (total.videoViews ?? 0);
+  if (c.impressionShare === null) return { allConversions, interactions, topImpressionPct: null, absoluteTopImpressionPct: null };
+  const top = round4(clamp(c.impressionShare * r.range(0.95, 1.2), 0.12, 0.96));
+  return { allConversions, interactions, topImpressionPct: top, absoluteTopImpressionPct: round4(top * r.range(0.32, 0.6)) };
+}
+
 const termText = (spec: SearchTermSpec, brand: string) => spec.term.replace("{marca}", brand).slice(0, 300);
 
 /** Termos de pesquisa do dia: cobrem a maior parte (não tudo) da campanha, como no relatório do Google. */
@@ -230,7 +240,7 @@ export function generateGoogle(ctx: MockContext): MockAccountDataset {
 
       const total = sumFull(rows);
       if (total.impressions === 0 && total.spend === 0) continue;
-      campaignDaily.push({ campaignExternalId: c.id, date, ...toDailyMetrics(total, SCALE, shareOfSearch(ctx, c, date)) });
+      campaignDaily.push({ campaignExternalId: c.id, date, ...toDailyMetrics(total, SCALE, shareOfSearch(ctx, c, date)), ...campaignExtras(ctx, c, date, total) });
       searchTermDaily.push(...searchTermDays(ctx, c, date, total));
       accountUnits = addUnits(accountUnits, total);
       if (c.spec.products) productUnits = addUnits(productUnits, total);

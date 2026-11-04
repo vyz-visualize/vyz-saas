@@ -9,7 +9,8 @@ import { AGE_BUCKETS, GENDER_LABEL } from "@/features/sync/breakdowns";
 import { decimal, int, pct } from "@/lib/format";
 import { FUNNEL_STAGE_LABEL } from "../aggregate";
 import { formatValue, money, moneyCompact } from "../format";
-import { hiddenOr, HeroChart, StatusCell, TopCampaigns, type PageProps } from "../shared";
+import { META_EXTRA_METRICS } from "../live-metrics";
+import { extraColumns, hiddenOr, useExtraColumnsWidth, HeroChart, StatusCell, TopCampaigns, type PageProps } from "../shared";
 import type { CampaignRowVM, FunnelStep, MetaView } from "../types";
 import { DataTable, InlineBar, KpiGrid, NoData, Panel, Roas, SliceBars } from "../ui";
 
@@ -38,6 +39,7 @@ export function MetaCampaigns({ data }: PageProps) {
   const view = meta(data);
   const { currency, hideSpend } = data;
   const below = view.campaigns.filter((c) => c.belowBreakEven);
+  const extraWidth = useExtraColumnsWidth([...META_EXTRA_METRICS.map((m) => m.id), "results", "costPerResult"]);
   return (
     <div className="space-y-3">
       {below.length > 0 && (
@@ -54,7 +56,7 @@ export function MetaCampaigns({ data }: PageProps) {
           rowKey={(c) => c.id}
           caption="Campanhas do Meta Ads no período"
           initialSort={{ key: "spend", dir: "desc" }}
-          minWidth={980}
+          minWidth={980 + extraWidth}
           rowClassName={(c) => (c.belowBreakEven ? "[&>*]:bg-error-soft/30" : "")}
           columns={[
             { key: "name", label: "Campanha", sticky: true, className: "w-[15rem] max-w-[15rem]", sort: (c) => c.name, render: (c) => <StatusCell name={c.name} status={c.status} sub={stageLabel(c.kind)} /> },
@@ -77,6 +79,23 @@ export function MetaCampaigns({ data }: PageProps) {
             { key: "ctr", metric: "linkCtr", label: "CTR do link", align: "right", sort: (c) => c.linkCtr, render: (c) => formatValue(c.linkCtr, "pct") },
             { key: "cpm", metric: "cpm", label: "CPM", align: "right", sort: (c) => c.cpm, render: (c) => money(c.cpm, currency) },
             { key: "freq", metric: "frequency", label: "Freq. média", align: "right", sort: (c) => c.frequency, render: (c) => (c.frequency == null ? "—" : decimal(c.frequency, 2)) },
+            ...extraColumns(META_EXTRA_METRICS, currency),
+            {
+              key: "results",
+              metric: "results",
+              label: "Resultados",
+              align: "right",
+              sort: (c) => c.extra?.results ?? null,
+              render: (c) =>
+                c.extra?.results == null ? (
+                  "—"
+                ) : (
+                  <>
+                    {int(c.extra.results)} <span className="text-[11px] text-fg-2">{c.resultLabel}</span>
+                  </>
+                ),
+            },
+            { key: "costPerResult", metric: "costPerResult", label: "Custo por resultado", align: "right", sort: (c) => c.extra?.costPerResult ?? null, render: (c) => money(c.extra?.costPerResult, currency) },
           ]}
         />
       </Panel>

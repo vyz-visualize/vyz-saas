@@ -71,6 +71,7 @@ export function scaleAdRows(rows: WarehouseRows, model: ModelTotals): WarehouseR
       conversions: isSale(r) ? result : 0,
       conversionValue: value[i] / 100,
       leads: o === "leads" ? result : scaled(r.leads, clk),
+      registrations: scaled(r.registrations, clk),
       postEngagement: o === "engagement" ? result : scaled(r.postEngagement, imp),
       postReactions: scaled(r.postReactions, engagementFactor),
       postComments: scaled(r.postComments, engagementFactor),

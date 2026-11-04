@@ -13,11 +13,13 @@
 import { breakdownLabel, parseAgeGender } from "@/features/sync/breakdowns";
 import type { BreakdownDimension } from "@/features/sync/dataset";
 import { dateRange, weekday } from "@/features/sync/dates";
-import { objectiveResult } from "./creatives/objectives";
+import { objectiveKey, objectiveResult } from "./creatives/objectives";
+import { ADD_TO_CART_METRIC, EXTRA_SPEND_FIELDS, GOOGLE_EXTRA_METRICS, META_EXTRA_METRICS, RESULT_METRICS } from "./live-metrics";
 import { maturingStart, MATURING_DAYS } from "./ranges";
 import type {
   AccountDayRow,
   AdDayRow,
+  CampaignDayRow,
   CompareAd,
   CreativeListVM,
   AgeGenderCell,
@@ -160,7 +162,7 @@ function groupBy<T>(rows: readonly T[], key: (r: T) => string): Map<string, T[]>
 
 // ---- série diária e KPIs -----------------------------------------------------------------
 
-type DayMetric = (rows: AccountDayRow[]) => number | null;
+type DayMetric<T = AccountDayRow> = (rows: T[]) => number | null;
 
 function dailySeries(rows: readonly AccountDayRow[], range: DateRange, maturingFrom: string | null): { dates: string[]; byDate: Map<string, AccountDayRow[]>; points: DailyPoint[] } {
   const byDate = groupBy(
@@ -175,16 +177,16 @@ function dailySeries(rows: readonly AccountDayRow[], range: DateRange, maturingF
   return { dates, byDate, points };
 }
 
-function spark(dates: string[], byDate: Map<string, AccountDayRow[]>, metric: DayMetric): (number | null)[] {
+function spark<T>(dates: string[], byDate: Map<string, T[]>, metric: DayMetric<T>): (number | null)[] {
   return dates.map((d) => {
     const rows = byDate.get(d);
     return rows?.length ? metric(rows) : null;
   });
 }
 
-type KpiDef = Omit<Kpi, "value" | "previous" | "delta" | "spark"> & { pick: DayMetric };
+type KpiDef<T = AccountDayRow> = Omit<Kpi, "value" | "previous" | "delta" | "spark"> & { pick: DayMetric<T> };
 
-function buildKpis(defs: KpiDef[], cur: AccountDayRow[], prev: AccountDayRow[], dates: string[], byDate: Map<string, AccountDayRow[]>): Kpi[] {
+function buildKpis<T>(defs: KpiDef<T>[], cur: T[], prev: T[], dates: string[], byDate: Map<string, T[]>): Kpi[] {
   return defs.map(({ pick, ...def }) => {
     const value = cur.length ? pick(cur) : null;
     const previous = prev.length ? pick(prev) : null;
@@ -207,9 +209,49 @@ export function reachPerDay(rows: readonly { date: string; reach: number | null 
 
 // ---- campanhas -------------------------------------------------------------------------------
 
+/** Resultado principal do objetivo, para um conjunto de linhas de anúncio. */
+function resultOf(objective: string | null | undefined, list: readonly AdDayRow[]): { label: string; value: number } {
+  const tt = totalsOf(list as AdDayRow[]);
+  return objectiveResult(objective, {
+    conversions: tt.conversions,
+    leads: sumNullable(list, (r) => r.leads),
+    postEngagement: sumNullable(list, (r) => r.postEngagement),
+    linkClicks: tt.linkClicks,
+    clicks: tt.clicks,
+    impressions: tt.impressions,
+  });
+}
+
+const videoCampaigns = (rows: WarehouseRows) => {
+  const ids = new Set(rows.campaigns.filter((c) => c.channel === "video").map((c) => c.id));
+  return (id: string) => ids.has(id);
+};
+
+/** As colunas opcionais do Personalizar, por campanha. */
+function campaignExtras(platform: WarehouseRows["platform"], c: WarehouseRows["campaigns"][number], list: CampaignDayRow[], ads: AdDayRow[], isVideo: (id: string) => boolean): Pick<CampaignRowVM, "extra" | "resultLabel"> {
+  const extra: Record<string, number | null> = {};
+  if (platform === "google") {
+    for (const m of GOOGLE_EXTRA_METRICS) extra[m.id] = m.value(list, isVideo);
+    return { extra };
+  }
+  for (const m of META_EXTRA_METRICS) extra[m.id] = m.source === "ads" ? m.value(ads) : m.value(list);
+  if (!ads.length) return { extra };
+  const result = resultOf(c.objective, ads);
+  const spend = sumNullable(ads, (r) => r.spend);
+  extra.results = result.value;
+  extra.costPerResult = spend != null && result.value > 0 ? spend / result.value : null;
+  return { extra, resultLabel: result.label };
+}
+
 function campaignTable(rows: WarehouseRows, breakEven: number | null): CampaignRowVM[] {
   const cur = rows.campaignDaily.filter((r) => inRange(r.date, rows.current));
   const byCampaign = groupBy(cur, (r) => r.campaignId);
+  const campaignOfAd = new Map(rows.ads.map((a) => [a.id, a.campaignId]));
+  const adsByCampaign = groupBy(
+    rows.adDaily.filter((r) => inRange(r.date, rows.current)),
+    (r) => campaignOfAd.get(r.adId) ?? "",
+  );
+  const isVideo = videoCampaigns(rows);
   const totalSpend = money(cur.map((r) => r.spend));
   const threshold = breakEven ?? 1;
   const out: CampaignRowVM[] = [];
@@ -239,6 +281,7 @@ function campaignTable(rows: WarehouseRows, breakEven: number | null): CampaignR
       lostBudget: share.lostBudget,
       lostRank: share.lostRank,
       belowBreakEven: tt.spend > 0 && (tt.roas ?? 0) < threshold,
+      ...campaignExtras(rows.platform, c, list, adsByCampaign.get(c.id) ?? [], isVideo),
     });
   }
   return out.sort((a, b) => (b.spend ?? 0) - (a.spend ?? 0));
@@ -622,11 +665,13 @@ export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions):
       dates,
       byDate,
     );
+    const metaExtras = metaExtraKpis(rows, cur, prev, dates, byDate);
     const view: MetaView = {
       platform: "meta",
       ...base,
       kpis,
-      extraKpis,
+      extraKpis: [...extraKpis, ...metaExtras.kpis],
+      resultsMixed: metaExtras.resultsMixed,
       funnel: metaFunnel(cur, totals.spend ?? 0),
       funnelByStage: funnelByStage(rows),
       creatives: creatives(rows),
@@ -684,7 +729,7 @@ export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions):
   const view: GoogleView = {
     platform: "google",
     ...base,
-    extraKpis,
+    extraKpis: [...extraKpis, ...googleExtraKpis(rows, dates)],
     kpis,
     channels: channels(rows),
     devices: breakdownSlices(rows, "device"),
@@ -700,10 +745,70 @@ export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions):
   return view;
 }
 
+// ---- métricas opcionais do Personalizar --------------------------------------------------------
+
+const toKpiDef = <T,>(m: { id: string; label: string; help: string; format: Kpi["format"]; better: Kpi["better"]; spendDerived?: boolean }, pick: DayMetric<T>): KpiDef<T> => ({ id: m.id, label: m.label, help: m.help, format: m.format, better: m.better, spendBased: m.spendDerived, pick });
+
+function metaExtraKpis(rows: WarehouseRows, cur: AccountDayRow[], prev: AccountDayRow[], dates: string[], byDate: Map<string, AccountDayRow[]>): { kpis: Kpi[]; resultsMixed: boolean } {
+  const adCur = rows.adDaily.filter((r) => inRange(r.date, rows.current));
+  const adPrev = rows.adDaily.filter((r) => inRange(r.date, rows.previous));
+  const adByDate = groupBy(adCur, (r) => r.date);
+  const fromRows = buildKpis<AccountDayRow>(
+    META_EXTRA_METRICS.flatMap((m) => (m.source === "rows" ? [toKpiDef<AccountDayRow>(m, (r) => m.value(r))] : [])),
+    cur,
+    prev,
+    dates,
+    byDate,
+  );
+  const addToCart = buildKpis<AccountDayRow>([toKpiDef<AccountDayRow>(ADD_TO_CART_METRIC, (r) => ADD_TO_CART_METRIC.value(r))], cur, prev, dates, byDate);
+  const fromAds = buildKpis<AdDayRow>(
+    META_EXTRA_METRICS.flatMap((m) => (m.source === "ads" ? [toKpiDef<AdDayRow>(m, (r) => m.value(r))] : [])),
+    adCur,
+    adPrev,
+    dates,
+    adByDate,
+  );
+  // card de Resultados: só com um tipo de resultado no período
+  const campaignOfAd = new Map(rows.ads.map((a) => [a.id, a.campaignId]));
+  const objectives = new Map(rows.campaigns.map((c) => [c.id, c.objective ?? null]));
+  const kinds = new Set(adCur.map((r) => objectiveKey(objectives.get(campaignOfAd.get(r.adId) ?? "") ?? null)));
+  const resultsMixed = kinds.size > 1;
+  if (kinds.size !== 1) return { kpis: [...fromRows, ...addToCart, ...fromAds], resultsMixed };
+  const objective = objectives.get(campaignOfAd.get(adCur[0].adId) ?? "") ?? null;
+  const results = buildKpis<AdDayRow>(
+    [
+      toKpiDef<AdDayRow>(RESULT_METRICS[0], (r) => resultOf(objective, r).value),
+      toKpiDef<AdDayRow>(RESULT_METRICS[1], (r) => {
+        const spend = sumNullable(r, (x) => x.spend);
+        const value = resultOf(objective, r).value;
+        return spend != null && value > 0 ? spend / value : null;
+      }),
+    ],
+    adCur,
+    adPrev,
+    dates,
+    adByDate,
+  );
+  return { kpis: [...fromRows, ...addToCart, ...fromAds, ...results], resultsMixed };
+}
+
+function googleExtraKpis(rows: WarehouseRows, dates: string[]): Kpi[] {
+  const cur = rows.campaignDaily.filter((r) => inRange(r.date, rows.current));
+  const prev = rows.campaignDaily.filter((r) => inRange(r.date, rows.previous));
+  const isVideo = videoCampaigns(rows);
+  return buildKpis<CampaignDayRow>(
+    GOOGLE_EXTRA_METRICS.map((m) => toKpiDef<CampaignDayRow>(m, (r) => m.value(r, isVideo))),
+    cur,
+    prev,
+    dates,
+    groupBy(cur, (r) => r.date),
+  );
+}
+
 // ---- investimento oculto ----------------------------------------------------------------------
 
 /** Campos dos quais o investimento dá para recalcular (ex.: CPM × impressões, receita ÷ ROAS). */
-const SPEND_FIELDS = new Set(["spend", "roas", "cpa", "cpc", "cpm", "cost", "wastedSpend", "breakEvenRoas"]);
+export const SPEND_FIELDS = new Set(["spend", "roas", "cpa", "cpc", "cpm", "cost", "wastedSpend", "breakEvenRoas", ...EXTRA_SPEND_FIELDS]);
 
 function scrubSpend<T>(value: T): T {
   if (Array.isArray(value)) return value.map(scrubSpend) as T;

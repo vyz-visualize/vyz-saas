@@ -2,14 +2,16 @@
 // o que o usuário ocultou ou ligou. Funções puras (painel, link público e testes).
 // O banco guarda só a diferença para o padrão (dashboards.metric_prefs).
 
+import { isAdPlatform, type PlatformId } from "@/features/accounts/platforms";
+import { ADD_TO_CART_METRIC, GOOGLE_EXTRA_METRICS, META_EXTRA_METRICS, RESULT_METRICS } from "@/features/analytics/live-metrics";
 import { metric as baseMetric, type MetricId, type Profile } from "@/features/metrics/definitions";
 
-export type MetricGroup = "gerais" | "custos" | "taxas";
+export type MetricGroup = "gerais" | "conversoes" | "custos" | "taxas" | "video" | "engajamento";
 export type MetricSection = "kpis" | "columns";
 export type MetricScope = "meta" | "google" | "sample";
 
-export const METRIC_GROUP_LABEL: Record<MetricGroup, string> = { gerais: "Gerais", custos: "Custos", taxas: "Taxas" };
-export const METRIC_GROUPS: MetricGroup[] = ["gerais", "custos", "taxas"];
+export const METRIC_GROUP_LABEL: Record<MetricGroup, string> = { gerais: "Gerais", conversoes: "Conversões", custos: "Custos", taxas: "Taxas", video: "Vídeo", engajamento: "Engajamento" };
+export const METRIC_GROUPS: MetricGroup[] = ["gerais", "conversoes", "custos", "taxas", "video", "engajamento"];
 export const METRIC_SECTION_LABEL: Record<MetricSection, string> = { kpis: "Cards de KPI", columns: "Tabelas" };
 
 /** Quantos cards cabem sem quebrar a grade (2 linhas na largura maior). */
@@ -25,8 +27,8 @@ export type CatalogMetric = {
   spendDerived?: boolean;
   /** Como card: "default" já vem marcado; "optional" dá para ligar; sem valor, não vira card. */
   kpi?: "default" | "optional";
-  /** Existe como coluna nas tabelas (todas vêm marcadas). */
-  column?: boolean;
+  /** Como coluna nas tabelas: true já vem marcada; "optional" dá para ligar; sem valor, não vira coluna. */
+  column?: boolean | "optional";
 };
 
 export type SectionPrefs = { hidden: string[]; shown: string[] };
@@ -35,10 +37,15 @@ export type MetricPrefs = Partial<Record<MetricScope, ScopePrefs>>;
 
 const EMPTY: SectionPrefs = { hidden: [], shown: [] };
 
+/** Métrica nova: entra desligada nos cards e nas tabelas, sem mudar o padrão de ninguém. */
+function extraCatalog(m: { id: string; label: string; group: MetricGroup; help: string; spendDerived?: boolean }): CatalogMetric {
+  return { id: m.id, label: m.label, group: m.group, help: m.help, spendDerived: m.spendDerived, kpi: "optional", column: "optional" };
+}
+
 export const META_CATALOG: CatalogMetric[] = [
   { id: "spend", label: "Investimento", group: "gerais", help: "Quanto foi gasto em anúncios no período.", spendDerived: true, kpi: "default", column: true },
-  { id: "revenue", label: "Receita", group: "gerais", help: "Valor das compras atribuídas às campanhas no período.", kpi: "default", column: true },
-  { id: "purchases", label: "Compras", group: "gerais", help: "Resultados de compra atribuídos às campanhas.", kpi: "default", column: true },
+  { id: "revenue", label: "Receita", group: "conversoes", help: "Valor das compras atribuídas às campanhas no período.", kpi: "default", column: true },
+  { id: "purchases", label: "Compras", group: "conversoes", help: "Resultados de compra atribuídos às campanhas.", kpi: "default", column: true },
   { id: "impressions", label: "Impressões", group: "gerais", help: "Quantas vezes os anúncios apareceram.", kpi: "optional" },
   {
     id: "reach",
@@ -49,8 +56,8 @@ export const META_CATALOG: CatalogMetric[] = [
   },
   { id: "clicks", label: "Cliques", group: "gerais", help: "Todos os cliques nos anúncios.", kpi: "optional" },
   { id: "linkClicks", label: "Cliques no link", group: "gerais", help: "Cliques que levam para fora do anúncio.", kpi: "optional", column: true },
-  { id: "addToCart", label: "Carrinho", group: "gerais", help: "Quantas vezes adicionaram produto ao carrinho.", column: true },
-  { id: "ticket", label: "Ticket médio", group: "gerais", help: "Receita ÷ compras.", kpi: "default" },
+  { id: "addToCart", label: "Adicionar ao carrinho", group: "conversoes", help: "Quantas vezes adicionaram produto ao carrinho. Um só evento da Meta, sem contar em dobro.", kpi: "optional", column: true },
+  { id: "ticket", label: "Ticket médio", group: "conversoes", help: "Receita ÷ compras.", kpi: "default" },
   { id: "cpa", label: "Custo por compra", group: "custos", help: "Custo por resultado = investimento ÷ compras.", spendDerived: true, kpi: "default", column: true },
   { id: "cpm", label: "CPM", group: "custos", help: "Custo por mil impressões = investimento ÷ impressões × 1000.", spendDerived: true, kpi: "default", column: true },
   { id: "cpc", label: "CPC", group: "custos", help: "Custo por clique = investimento ÷ cliques.", spendDerived: true, kpi: "optional" },
@@ -66,12 +73,14 @@ export const META_CATALOG: CatalogMetric[] = [
     column: true,
   },
   { id: "convRate", label: "Conversão do clique", group: "taxas", help: "Compras ÷ cliques no link.", column: true },
+  ...META_EXTRA_METRICS.map(extraCatalog),
+  ...RESULT_METRICS.map(extraCatalog),
 ];
 
 export const GOOGLE_CATALOG: CatalogMetric[] = [
   { id: "spend", label: "Custo", group: "gerais", help: "Quanto foi gasto em anúncios no período.", spendDerived: true, kpi: "default", column: true },
-  { id: "value", label: "Valor de conversão", group: "gerais", help: "Valor das conversões atribuídas às campanhas.", kpi: "default", column: true },
-  { id: "conversions", label: "Conversões", group: "gerais", help: "O Google divide conversões entre cliques, por isso pode ter decimais.", kpi: "default", column: true },
+  { id: "value", label: "Valor de conversão", group: "conversoes", help: "Valor das conversões atribuídas às campanhas.", kpi: "default", column: true },
+  { id: "conversions", label: "Conversões", group: "conversoes", help: "O Google divide conversões entre cliques, por isso pode ter decimais.", kpi: "default", column: true },
   { id: "impressions", label: "Impressões", group: "gerais", help: "Quantas vezes os anúncios apareceram.", kpi: "optional", column: true },
   { id: "clicks", label: "Cliques", group: "gerais", help: "Cliques nos anúncios.", kpi: "optional", column: true },
   { id: "cpa", label: "CPA", group: "custos", help: "Custo por conversão = custo ÷ conversões.", spendDerived: true, kpi: "default", column: true },
@@ -87,6 +96,7 @@ export const GOOGLE_CATALOG: CatalogMetric[] = [
     kpi: "default",
     column: true,
   },
+  ...GOOGLE_EXTRA_METRICS.map(extraCatalog),
 ];
 
 /** Grupo, explicação e relação com o investimento de cada métrica dos dashboards de exemplo. */
@@ -94,15 +104,15 @@ const SAMPLE_INFO: Record<MetricId, { group: MetricGroup; help: string; spendDer
   spend: { group: "gerais", help: "Quanto foi gasto em anúncios no período.", spendDerived: true },
   impressions: { group: "gerais", help: "Quantas vezes os anúncios apareceram." },
   clicks: { group: "gerais", help: "Cliques nos anúncios." },
-  conversions: { group: "gerais", help: "Resultados confirmados no período." },
-  revenue: { group: "gerais", help: "Valor gerado pelas conversões." },
-  ticket: { group: "gerais", help: "Receita ÷ conversões." },
-  leads: { group: "gerais", help: "Contatos recebidos." },
-  qualified: { group: "gerais", help: "Leads que passaram pela qualificação." },
-  visits: { group: "gerais", help: "Visitas agendadas." },
-  calls: { group: "gerais", help: "Ligações recebidas." },
+  conversions: { group: "conversoes", help: "Resultados confirmados no período." },
+  revenue: { group: "conversoes", help: "Valor gerado pelas conversões." },
+  ticket: { group: "conversoes", help: "Receita ÷ conversões." },
+  leads: { group: "conversoes", help: "Contatos recebidos." },
+  qualified: { group: "conversoes", help: "Leads que passaram pela qualificação." },
+  visits: { group: "conversoes", help: "Visitas agendadas." },
+  calls: { group: "conversoes", help: "Ligações recebidas." },
   sessions: { group: "gerais", help: "Visitas ao site." },
-  views: { group: "gerais", help: "Visualizações dos vídeos." },
+  views: { group: "video", help: "Visualizações dos vídeos." },
   cpa: { group: "custos", help: "Custo por resultado = investimento ÷ conversões.", spendDerived: true },
   cpc: { group: "custos", help: "Custo por clique = investimento ÷ cliques.", spendDerived: true },
   cpm: { group: "custos", help: "Custo por mil impressões = investimento ÷ impressões × 1000.", spendDerived: true },
@@ -112,22 +122,47 @@ const SAMPLE_INFO: Record<MetricId, { group: MetricGroup; help: string; spendDer
   ctr: { group: "taxas", help: "Cliques ÷ impressões do período inteiro." },
   roas: { group: "taxas", help: "Retorno sobre o investimento = receita ÷ investimento.", spendDerived: true },
   convRate: { group: "taxas", help: "Conversões ÷ sessões." },
-  viewRate: { group: "taxas", help: "Visualizações ÷ impressões." },
+  viewRate: { group: "video", help: "Visualizações ÷ impressões." },
   frequency: { group: "taxas", help: "Quantas vezes, em média, cada pessoa viu o anúncio." },
 };
+
+export const isSampleMetric = (id: string): id is MetricId => id in SAMPLE_INFO;
+
+/**
+ * Métricas novas nas amostras: as da Meta nos modelos com Meta, e as do Google nos
+ * que só têm Google. Só como card: as tabelas das amostras vêm do simulador do modelo.
+ * Com outras plataformas de anúncios, a métrica vale só para a Meta e diz isso no nome.
+ */
+export function sampleExtraCatalog(sources: readonly PlatformId[]): CatalogMetric[] {
+  const ads = sources.filter(isAdPlatform);
+  const card = (m: { id: string; label: string; group: MetricGroup; help: string; spendDerived?: boolean }, onlyMeta: boolean): CatalogMetric => ({
+    id: m.id,
+    label: onlyMeta ? `${m.label} · Meta` : m.label,
+    group: m.group,
+    help: onlyMeta ? `${m.help} Só a parte da Meta neste dashboard.` : m.help,
+    spendDerived: m.spendDerived,
+    kpi: "optional",
+  });
+  if (ads.includes("meta")) {
+    const onlyMeta = ads.length > 1;
+    return [...META_EXTRA_METRICS, ADD_TO_CART_METRIC].filter((m) => !isSampleMetric(m.id)).map((m) => card(m, onlyMeta));
+  }
+  return ads.length === 1 && ads[0] === "google" ? GOOGLE_EXTRA_METRICS.filter((m) => !isSampleMetric(m.id)).map((m) => card(m, false)) : [];
+}
 
 /** Colunas das tabelas dos dashboards de exemplo. */
 const SAMPLE_COLUMNS: MetricId[] = ["spend", "ctr", "conversions", "cpa", "roas", "revenue"];
 
 /** Catálogo de um dashboard de exemplo: os cards padrão são os das páginas dele. */
-export function sampleCatalog(profile: Profile, defaultKpis: readonly MetricId[]): CatalogMetric[] {
-  return (Object.keys(SAMPLE_INFO) as MetricId[]).map((id) => ({
+export function sampleCatalog(profile: Profile, defaultKpis: readonly MetricId[], sources: readonly PlatformId[] = []): CatalogMetric[] {
+  const base: CatalogMetric[] = (Object.keys(SAMPLE_INFO) as MetricId[]).map((id) => ({
     id,
     label: baseMetric(id, profile).label,
     ...SAMPLE_INFO[id],
     kpi: defaultKpis.includes(id) ? ("default" as const) : ("optional" as const),
     column: SAMPLE_COLUMNS.includes(id),
   }));
+  return [...base, ...sampleExtraCatalog(sources)];
 }
 
 export const isSampleSpendDerived = (id: MetricId) => !!SAMPLE_INFO[id].spendDerived;
@@ -154,7 +189,7 @@ export function parseMetricPrefs(raw: unknown): MetricPrefs {
 }
 
 const inSection = (catalog: readonly CatalogMetric[], section: MetricSection) => catalog.filter((m) => (section === "kpis" ? !!m.kpi : !!m.column));
-const isDefault = (m: CatalogMetric, section: MetricSection) => (section === "kpis" ? m.kpi === "default" : !!m.column);
+const isDefault = (m: CatalogMetric, section: MetricSection) => (section === "kpis" ? m.kpi === "default" : m.column === true);
 
 /** Máximo da seção (cards padrão de um dashboard grande não ficam presos ao limite). */
 export function sectionMax(catalog: readonly CatalogMetric[], section: MetricSection): number | null {

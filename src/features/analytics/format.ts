@@ -36,6 +36,8 @@ export function formatValue(v: number | null | undefined, format: ValueFormat, c
       return decimal(v, 2);
     case "pct":
       return pct(v, v !== 0 && Math.abs(v) < 0.1 ? 2 : 1);
+    case "seconds":
+      return `${decimal(v, 1)} s`;
   }
 }
 

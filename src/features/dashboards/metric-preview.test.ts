@@ -103,6 +103,66 @@ describe("prévia não salva", () => {
     expect(counter()).toBe(sampleCards().length);
   });
 
+  it("métricas novas: ligar no painel desenha o card e o contador acompanha", async () => {
+    const extraMetrics = [
+      { id: "registrations", label: "Cadastros", format: "int" as const, better: "up" as const, value: 42, previous: 30 },
+      { id: "costPerRegistration", label: "Custo por cadastro", format: "money" as const, better: "down" as const, value: 12.5, previous: 15 },
+    ];
+    await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, extraMetrics }));
+    await openPanel();
+    await toggle("Cadastros");
+    expect(sampleCards()).toContain("registrations");
+    expect(counter()).toBe(sampleCards().length);
+    await toggle("Custo por cadastro");
+    expect(counter()).toBe(4 + 1);
+    expect(sampleCards()).toHaveLength(5);
+    expect(host.textContent).toContain("R$ 12,50");
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("métrica nova sem valor fica desligada, com o aviso", async () => {
+    await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, extraMetrics: [] }));
+    await openPanel();
+    const li = [...document.querySelectorAll('[role="dialog"] li')].find((l) => l.querySelector("label")?.textContent?.startsWith("Cadastros"))!;
+    expect(li.textContent).toContain("sem dados nesta conta");
+  });
+
+  it("dados reais: Resultados com tipos diferentes fica desligado, com o motivo, fora do contador", async () => {
+    const data = sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!;
+    await mount(createElement(LiveDashboardView, { data, initialPage: "visao-geral", canCustomize: true, saveMetrics: save, metricPrefs: { meta: { kpis: { hidden: [], shown: ["results"] } } } }));
+    expect(host.querySelectorAll("article")).toHaveLength(9);
+    await openPanel();
+    expect(counter()).toBe(9);
+    const li = [...document.querySelectorAll('[role="dialog"] li')].find((l) => l.querySelector("label")?.textContent?.startsWith("Resultados"))!;
+    expect(li.textContent).toContain("tipos de resultado diferentes no período");
+    expect(li.querySelector('[role="switch"]')?.hasAttribute("disabled")).toBe(true);
+  });
+
+  it("dados reais: card novo liga e aparece; coluna nova só depois de ligar", async () => {
+    const data = sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!;
+    await mount(createElement(LiveDashboardView, { data, initialPage: "visao-geral", canCustomize: true, saveMetrics: save }));
+    await openPanel();
+    await toggle("Cadastros");
+    expect(host.textContent).toContain("Cadastros");
+    expect(host.querySelectorAll("article")).toHaveLength(10);
+    expect(counter()).toBe(10);
+  });
+
+  it("os seis grupos aparecem no painel, e a busca acha pela explicação", async () => {
+    const data = sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!;
+    await mount(createElement(LiveDashboardView, { data, initialPage: "visao-geral", canCustomize: true, saveMetrics: save }));
+    await openPanel();
+    const heads = () => [...document.querySelectorAll('[role="dialog"] h3')].map((h) => h.textContent);
+    expect(heads()).toEqual(["Gerais", "Conversões", "Custos", "Taxas", "Vídeo", "Engajamento"]);
+    const input = document.querySelector('[role="dialog"] input') as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "reproducoes");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(heads()).toContain("Vídeo");
+    expect(heads()).not.toContain("Gerais");
+  });
+
   it("dashboards com dados reais: mesma regra", async () => {
     const data = sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!;
     await mount(createElement(LiveDashboardView, { data, initialPage: "visao-geral", canCustomize: true, saveMetrics: save }));

@@ -288,6 +288,7 @@ export function generateMeta(ctx: MockContext): MockAccountDataset {
           videoViews: u.videoViews,
           videoThruplays: u.videoThruplays,
           ...creativeMetrics(ctx, live[i], date, u),
+          registrations: roundRandom(stream(ctx.accountExternalId, "meta", live[i].spec.key, date, "cadastro"), (u.linkClicks ?? 0) * 0.018),
         });
       });
 

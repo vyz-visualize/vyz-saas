@@ -4,7 +4,7 @@
 // dados já chegam prontos (servidor ou prévia); trocar de aba não consulta nada.
 
 import Link from "next/link";
-import { useState, type ComponentType, type ReactNode } from "react";
+import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { EmptyState } from "@/components/ui/kit";
 import { OverflowTabs } from "@/components/ui/OverflowTabs";
 import { btn } from "@/components/ui/styles";
@@ -21,6 +21,7 @@ import { setQueryParam } from "./creatives/query";
 import { MetaAudience, MetaCampaigns, MetaFunnel, MetaOverview } from "./meta/MetaPages";
 import { ddmm, ddmmyyyyIso } from "./ranges";
 import type { PageProps } from "./shared";
+import { RESULT_METRICS, RESULTS_MIXED_REASON } from "./live-metrics";
 import type { DashboardView, LiveDashboardData, LivePlatform } from "./types";
 
 /** Páginas que cada dashboard live sabe desenhar, na ordem padrão. */
@@ -75,11 +76,17 @@ function syncedAt(iso: string, timeZone: string): string {
   }
 }
 
+const RESULT_IDS = new Set(RESULT_METRICS.map((m) => m.id));
+const RESULT_METRIC_ROWS = META_CATALOG.filter((m) => RESULT_IDS.has(m.id));
+
 /** A única aba com fileira de cards nos dashboards com dados reais. */
 const KPI_PAGE: PageId = "visao-geral";
 
 export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar, logo, metricPrefs, canCustomize = false, saveMetrics }: LiveDashboardViewProps) {
-  const metrics = useMetricPrefsState({ dashboardId: data.dashboard.id, scope: data.platform, catalog: CATALOG[data.platform], initial: metricPrefs, hideSpend: data.hideSpend, saveAction: saveMetrics });
+  // tipos de resultado diferentes no período: o card sai da conta (e do contador), mas a escolha salva fica
+  const resultsMixed = data.view.platform === "meta" && !!data.view.resultsMixed;
+  const liveCatalog = useMemo(() => (resultsMixed ? CATALOG[data.platform].map((m) => (RESULT_IDS.has(m.id) ? { ...m, kpi: undefined } : m)) : CATALOG[data.platform]), [data.platform, resultsMixed]);
+  const metrics = useMetricPrefsState({ dashboardId: data.dashboard.id, scope: data.platform, catalog: liveCatalog, normalizeCatalog: CATALOG[data.platform], initial: metricPrefs, hideSpend: data.hideSpend, saveAction: saveMetrics });
   const pages = livePages(data.platform, pageIds);
   const [page, setPage] = useState<PageId>(initialPage && pages.includes(initialPage) ? initialPage : pages[0]);
   const active = pages.includes(page) ? page : pages[0];
@@ -173,6 +180,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
           pending={metrics.pending}
           error={metrics.error}
           visibleKpis={[...metrics.visibility.kpis]}
+          unavailable={resultsMixed ? RESULT_METRIC_ROWS.map((m) => ({ metric: m, reason: RESULTS_MIXED_REASON })) : undefined}
           kpiPlace={active === KPI_PAGE ? undefined : `na ${PAGES[KPI_PAGE]?.name ?? "Visão geral"}`}
           noKpis={!pages.includes(KPI_PAGE)}
         />

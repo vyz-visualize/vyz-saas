@@ -10,7 +10,8 @@ import { decimal, int, pct } from "@/lib/format";
 import { useColumnVisible } from "@/features/dashboards/metric-prefs-context";
 import { CHANNEL_LABEL } from "../aggregate";
 import { formatValue, HIDDEN, MATCH_LABEL, money, moneyCompact } from "../format";
-import { hiddenOr, HeroChart, StatusCell, TopCampaigns, type PageProps } from "../shared";
+import { GOOGLE_EXTRA_METRICS } from "../live-metrics";
+import { extraColumns, useExtraColumnsWidth, hiddenOr, HeroChart, StatusCell, TopCampaigns, type PageProps } from "../shared";
 import type { CampaignRowVM, GoogleView, ProductVM, SearchTermVM } from "../types";
 import { Chip, DataTable, InlineBar, KpiGrid, NoData, Panel, Roas, SliceBars, Thumb } from "../ui";
 
@@ -187,6 +188,7 @@ function HourPanel({ view, data }: { view: GoogleView; data: PageProps["data"] }
 export function GoogleCampaigns({ data }: PageProps) {
   const view = google(data);
   const { currency, hideSpend } = data;
+  const extraWidth = useExtraColumnsWidth(GOOGLE_EXTRA_METRICS.map((m) => m.id));
   return (
     <div className="space-y-3">
       <Panel title="Todas as campanhas" subtitle="Parcela de impressões só nas de pesquisa: ganha, perdida por orçamento e por classificação.">
@@ -195,7 +197,7 @@ export function GoogleCampaigns({ data }: PageProps) {
           rowKey={(c) => c.id}
           caption="Campanhas do Google Ads no período"
           initialSort={{ key: "spend", dir: "desc" }}
-          minWidth={1040}
+          minWidth={1040 + extraWidth}
           rowClassName={(c) => (c.belowBreakEven ? "[&>*]:bg-error-soft/30" : "")}
           columns={[
             { key: "name", label: "Campanha", sticky: true, className: "w-[15rem] max-w-[15rem]", sort: (c) => c.name, render: (c) => <StatusCell name={c.name} status={c.status} sub={channelLabel(c.kind)} /> },
@@ -218,6 +220,7 @@ export function GoogleCampaigns({ data }: PageProps) {
             { key: "ctr", metric: "ctr", label: "CTR", align: "right", sort: (c) => c.ctr, render: (c) => formatValue(c.ctr, "pct") },
             { key: "cpc", metric: "cpc", label: "CPC médio", align: "right", sort: (c) => c.cpc, render: (c) => money(c.cpc, currency) },
             { key: "is", metric: "impressionShare", label: "Parcela de impressões", sort: (c) => c.impressionShare, className: "w-[11rem]", render: (c) => <ShareBar c={c} /> },
+            ...extraColumns(GOOGLE_EXTRA_METRICS, currency),
           ]}
         />
       </Panel>

@@ -4,11 +4,12 @@
 // receita por dia) e a tabela compacta das campanhas da visão geral.
 
 import { ComboChart } from "@/components/charts/ComboChart";
+import { useMetricVisibility } from "@/features/dashboards/metric-prefs-context";
 import { brl, brlCompact, decimal } from "@/lib/format";
 import { formatValue, HIDDEN, money } from "./format";
 import { ddmm } from "./ranges";
-import type { CampaignRowVM, LiveDashboardData } from "./types";
-import { DataTable, InlineBar, Panel, Roas, StatusDot } from "./ui";
+import type { CampaignRowVM, LiveDashboardData, ValueFormat } from "./types";
+import { DataTable, InlineBar, Panel, Roas, StatusDot, type Column } from "./ui";
 
 export type PageProps = { data: LiveDashboardData };
 
@@ -102,3 +103,14 @@ export function StatusCell({ name, status, sub }: { name: string; status: string
 }
 
 export const hiddenOr = (hide: boolean, v: string) => (hide ? HIDDEN : v);
+
+/** Colunas opcionais do Personalizar na tabela de campanhas. Só aparecem as ligadas. */
+export function extraColumns(metrics: readonly { id: string; label: string; format: ValueFormat }[], currency: string): Column<CampaignRowVM>[] {
+  return metrics.map((m) => ({ key: m.id, metric: m.id, label: m.label, align: "right" as const, sort: (c: CampaignRowVM) => c.extra?.[m.id] ?? null, render: (c: CampaignRowVM) => formatValue(c.extra?.[m.id], m.format, currency) }));
+}
+
+/** Largura a mais para as colunas opcionais ligadas: sem isso, elas apertam as colunas padrão. */
+export function useExtraColumnsWidth(ids: readonly string[]): number {
+  const visible = useMetricVisibility();
+  return visible ? ids.filter((id) => visible.columns.has(id)).length * 118 : 0;
+}

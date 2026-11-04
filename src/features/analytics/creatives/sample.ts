@@ -5,13 +5,15 @@
 // com outras plataformas de anúncios, e com os cards nos que só têm Meta.
 
 import { datasetFor } from "@/features/dashboards/data";
-import { byPlatform, currentTotals } from "@/features/metrics/compute";
+import { sampleExtraCatalog } from "@/features/dashboards/metric-prefs";
+import { currentTotals, platformPart } from "@/features/metrics/compute";
 import type { Dataset } from "@/features/metrics/source";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { periodDays, type DashboardSettings, type PeriodId } from "@/features/workspace/types";
 import { aggregateDashboard, redactSpend } from "../aggregate";
+import { ADD_TO_CART_METRIC, GOOGLE_EXTRA_METRICS, META_EXTRA_METRICS } from "../live-metrics";
 import { sampleRows } from "../preview";
-import type { CreativesData, MetaView } from "../types";
+import type { AdDayRow, CampaignDayRow, CreativesData, MetaView, SampleExtraMetric, WarehouseRows } from "../types";
 import { cutCreatives, type CreativesAccess } from "./access";
 import { scaleAdRows, type ModelTotals } from "./scale";
 
@@ -19,19 +21,8 @@ export const usesCreativesPage = (t: Pick<DashboardTemplate, "sources" | "dataMo
 
 export type SampleSpec = { name: string; client: string; settings: DashboardSettings };
 
-/**
- * O que os anúncios da Meta precisam somar. Só Meta: os totais dos cards. Com outras
- * plataformas: a parte da Meta, a mesma do "Meta 1.574" do card. O modelo não divide
- * receita por plataforma: ela vai na proporção das compras que cada uma atribuiu.
- */
-export function metaTotals(ds: Dataset): ModelTotals {
-  const cur = currentTotals(ds);
-  const parts = byPlatform(ds);
-  const meta = parts.find((p) => p.id === "meta");
-  if (parts.length <= 1 || !meta) return cur;
-  const attributed = parts.reduce((total, p) => total + p.conv, 0);
-  return { spend: meta.spend, impressions: meta.impressions, clicks: meta.clicks, conversions: meta.conv, revenue: attributed > 0 ? (cur.revenue * meta.conv) / attributed : 0, frequency: cur.frequency };
-}
+/** O que os anúncios da Meta precisam somar: a parte da Meta, a mesma do "Meta 1.574" do card. Só Meta: os cards. */
+export const metaTotals = (ds: Dataset): ModelTotals => platformPart(ds, "meta", "current");
 
 export function sampleCreatives(t: DashboardTemplate, spec: SampleSpec, pages: readonly PageId[], access: CreativesAccess, opts: { period: PeriodId; customDays: number; hideSpend?: boolean; today?: string }): CreativesData | undefined {
   if (!usesCreativesPage(t, pages)) return undefined;
@@ -49,4 +40,78 @@ export function sampleCreatives(t: DashboardTemplate, spec: SampleSpec, pages: r
     gallery: creatives.gallery.map((c) => ({ ...c, roas: null })),
     compare: creatives.compare.map((a) => ({ ...a, days: a.days.map((d) => ({ ...d, conversionValue: null as unknown as number })) })),
   };
+}
+
+// ---- métricas novas nas amostras -----------------------------------------------------------------
+
+const inRange = (date: string, r: { from: string; to: string }) => date >= r.from && date <= r.to;
+const sum = <T>(rows: readonly T[], pick: (r: T) => number | null | undefined) => rows.reduce((a, r) => a + Number(pick(r) ?? 0), 0);
+
+/** Linhas de campanha da Meta com a mesma escala dos anúncios. */
+function metaRowsScaled(rows: WarehouseRows, range: { from: string; to: string }, model: ModelTotals, ads: readonly AdDayRow[]) {
+  const raw = rows.campaignDaily.filter((r) => inRange(r.date, range));
+  const f = model.clicks / (sum(raw, (r) => r.clicks) || 1);
+  return [
+    {
+      spend: model.spend / 100,
+      linkClicks: sum(ads, (r) => r.linkClicks),
+      landingPageViews: Math.round(sum(raw, (r) => r.landingPageViews) * f),
+      addToCart: Math.round(sum(raw, (r) => r.addToCart) * f),
+      initiateCheckout: Math.round(sum(raw, (r) => r.initiateCheckout) * f),
+    },
+  ];
+}
+
+/** Linhas de campanha do Google na escala dos totais do modelo. */
+function googleRowsScaled(rows: WarehouseRows, range: { from: string; to: string }, model: ModelTotals): CampaignDayRow[] {
+  const raw = rows.campaignDaily.filter((r) => inRange(r.date, range));
+  const fSpend = model.spend / 100 / (sum(raw, (r) => r.spend) || 1);
+  const fImp = model.impressions / (sum(raw, (r) => r.impressions) || 1);
+  const fClicks = model.clicks / (sum(raw, (r) => r.clicks) || 1);
+  const fConv = model.conversions / (sum(raw, (r) => r.conversions) || 1);
+  return raw.map((r) => ({
+    ...r,
+    spend: r.spend * fSpend,
+    impressions: r.impressions * fImp,
+    clicks: r.clicks * fClicks,
+    conversions: r.conversions * fConv,
+    allConversions: r.allConversions == null ? r.allConversions : r.allConversions * fConv,
+    interactions: r.interactions == null ? r.interactions : r.interactions * fClicks,
+    videoViews: r.videoViews == null ? r.videoViews : r.videoViews * fImp,
+  }));
+}
+
+/** Os valores das métricas novas nos dois períodos, na escala do modelo. Sem investimento oculto escapando. */
+export function sampleExtras(t: DashboardTemplate, spec: SampleSpec, opts: { period: PeriodId; customDays: number; hideSpend?: boolean; today?: string }): SampleExtraMetric[] {
+  const catalog = sampleExtraCatalog(t.sources);
+  if (!catalog.length) return [];
+  const ds = datasetFor({ templateId: t.id, name: spec.name, client: spec.client, settings: spec.settings }, periodDays({ period: opts.period, customDays: opts.customDays }));
+  const period = { period: opts.period, customDays: opts.customDays, today: opts.today };
+  const keep = catalog.filter((m) => !(opts.hideSpend && m.spendDerived));
+  const labelOf = new Map(keep.map((m) => [m.id, m.label]));
+
+  if (t.sources.includes("meta")) {
+    const rows = sampleRows("meta", period);
+    const cur = platformPart(ds, "meta", "current");
+    const prev = platformPart(ds, "meta", "previous");
+    const adsCur = scaleAdRows(rows, cur).adDaily;
+    const adsPrev = scaleAdRows({ ...rows, current: rows.previous }, prev).adDaily;
+    const rowCur = metaRowsScaled(rows, rows.current, cur, adsCur);
+    const rowPrev = metaRowsScaled(rows, rows.previous, prev, adsPrev);
+    return [...META_EXTRA_METRICS, ADD_TO_CART_METRIC].flatMap((m) => {
+      const label = labelOf.get(m.id);
+      if (!label) return [];
+      const value = m.source === "ads" ? m.value(adsCur) : m.value(rowCur);
+      const previous = m.source === "ads" ? m.value(adsPrev) : m.value(rowPrev);
+      return [{ id: m.id, label, format: m.format, better: m.better, value, previous }];
+    });
+  }
+  const rows = sampleRows("google", period);
+  const isVideo = (id: string) => rows.campaigns.some((c) => c.id === id && c.channel === "video");
+  const cur = googleRowsScaled(rows, rows.current, platformPart(ds, "google", "current"));
+  const prev = googleRowsScaled(rows, rows.previous, platformPart(ds, "google", "previous"));
+  return GOOGLE_EXTRA_METRICS.flatMap((m) => {
+    const label = labelOf.get(m.id);
+    return label ? [{ id: m.id, label, format: m.format, better: m.better, value: m.value(cur, isVideo), previous: m.value(prev, isVideo) }] : [];
+  });
 }

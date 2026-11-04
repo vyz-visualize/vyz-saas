@@ -45,6 +45,8 @@ Regras: migration aplicada não se edita (corrige-se com outra); depois de toda 
 | 13 cobrança: complementos | — | CNPJ alfanumérico, troca de plano atômica (`change_subscription`), renovação das assinaturas simuladas |
 | 17 lista de espera | `landing_waitlist`, `landing_waitlist_visits` | quem pediu acesso antecipado às LPs (um por usuário em cada workspace; o e-mail vem do banco) e visitas à página "em breve" (leitura só com a chave de serviço) |
 | 18 métricas do dashboard | `dashboards.metric_prefs` | o que difere do padrão do template, por plataforma (member+ edita) |
+| 19 métricas de criativos | colunas em `insights_ad_daily`, `ads.post_url` | leads, engajamento, vídeo 25 a 100%, segundos assistidos, visitas ao perfil e link do post |
+| 20 métricas do Personalizar | colunas em `insights_ad_daily` e `insights_campaign_daily` | cadastros por anúncio; todas as conversões, interações e topo por campanha. O rollup por conta não usa essas colunas |
 
 ### Fluxo de compra
 

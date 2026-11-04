@@ -63,5 +63,5 @@ O que hoje funciona só no navegador e depende de backend, de integração ou de
 ## Criativos
 
 - **Visitas ao perfil**: `insights_ad_daily.profile_visits` existe, mas o campo real na API da Meta ainda vai ser confirmado. Hoje só o gerador simulado preenche.
-- **Fonte real**: as colunas novas de `insights_ad_daily` e `ads.post_url` só têm dados simulados até a importação real da Meta existir (`liveSource`, em `server/sync/source.ts`).
+- **Fonte real**: as colunas novas de `insights_ad_daily`, `insights_campaign_daily` e `ads.post_url` só têm dados simulados até a importação real existir (`liveSource`, em `server/sync/source.ts`). Ao ligar: usar `readMetaActions` e confirmar se os percentuais de topo do Google vêm como fração (a coluna só aceita de 0 a 1).
 - **Data de início do anúncio**: o banco não guarda. "Dias veiculados" e "Dia 1" valem dentro do período selecionado.

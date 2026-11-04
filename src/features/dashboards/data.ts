@@ -45,5 +45,5 @@ export function sampleDefaultKpis(t: DashboardTemplate, pages: readonly PageId[]
 /** Catálogo e chave de um dashboard: plataforma nos templates com dados reais, "sample" nos de exemplo. */
 export function catalogForTemplate(t: DashboardTemplate, pages: readonly PageId[]): { scope: MetricScope; metrics: CatalogMetric[]; pageKpis?: MetricId[][] } {
   if (t.dataMode === "live") return t.sources.includes("google") ? { scope: "google", metrics: GOOGLE_CATALOG } : { scope: "meta", metrics: META_CATALOG };
-  return { scope: "sample", metrics: sampleCatalog(t.profile, sampleDefaultKpis(t, pages)), pageKpis: pages.map((p) => pageLayout(t, p).kpis.map((k) => k.metric)) };
+  return { scope: "sample", metrics: sampleCatalog(t.profile, sampleDefaultKpis(t, pages), t.sources), pageKpis: pages.map((p) => pageLayout(t, p).kpis.map((k) => k.metric)) };
 }

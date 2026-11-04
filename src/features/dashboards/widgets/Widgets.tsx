@@ -13,6 +13,8 @@ import { formatValue, isGood, metric, type MetricDef, type MetricId, type Profil
 import type { Dataset } from "@/features/metrics/source";
 import type { KpiSpec, WidgetSpec } from "@/features/templates/types";
 import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
+import { formatValue as formatLive } from "@/features/analytics/format";
+import type { SampleExtraMetric } from "@/features/analytics/types";
 import { HideMetricButton } from "../MetricActions";
 import { isSampleSpendDerived } from "../metric-prefs";
 
@@ -116,6 +118,29 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide }: { spec: KpiSpec; 
       </p>
       <p className={`mt-1.5 leading-tight ${lg ? "text-[12px]" : "text-[10px]"} ${strong ? "[&_span]:text-inherit" : "text-fg-2"}`}>{sub}</p>
       {onHide && <HideMetricButton label={def.label} onClick={onHide} />}
+    </div>
+  );
+}
+
+/** Card de métrica nova nas amostras: o valor vem do servidor, na escala do modelo. */
+export function ExtraKpi({ m, ctx, delay, onHide }: { m: SampleExtraMetric; ctx: WidgetContext; delay: number; onHide?: () => void }) {
+  const d = m.value != null && m.previous ? delta(m.value, m.previous) : null;
+  const good = d == null || m.better === "neutral" ? null : m.better === "up" ? d >= 0 : d <= 0;
+  const color = good === null ? "text-fg-2" : good ? "text-accent" : "text-error-fg";
+  return (
+    <div className="group/kpi m-in relative min-w-0 rounded-[10px] border border-line bg-card p-2.5" style={{ "--d": `${delay}ms` } as CSSProperties} data-vyz-metric={m.id}>
+      <p className="min-h-[2.3em] text-[9.5px] leading-[1.15] font-medium tracking-[0.08em] text-fg-2 uppercase">{m.label}</p>
+      <p className="mt-1 text-[18px] leading-none font-bold tracking-[-0.02em] tnum">{formatLive(m.value, m.format)}</p>
+      <p className="mt-1.5 text-[10px] leading-tight text-fg-2">
+        {ctx.compare && d != null ? (
+          <span className={`font-semibold ${color}`}>
+            {d >= 0 ? "▲" : "▼"} {pct(Math.abs(d))} vs anterior
+          </span>
+        ) : (
+          "no período"
+        )}
+      </p>
+      {onHide && <HideMetricButton label={m.label} onClick={onHide} />}
     </div>
   );
 }

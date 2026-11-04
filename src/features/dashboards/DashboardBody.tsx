@@ -10,7 +10,8 @@ import { PLATFORMS } from "@/features/accounts/platforms";
 import { CreativeList } from "@/features/analytics/creatives/CreativeList";
 import { CreativesPage } from "@/features/analytics/creatives/CreativesPage";
 import { setQueryParam } from "@/features/analytics/creatives/query";
-import type { CreativesData } from "@/features/analytics/types";
+import type { CreativesData, SampleExtraMetric } from "@/features/analytics/types";
+import { platformPart } from "@/features/metrics/compute";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
 import type { MetricId } from "@/features/metrics/definitions";
@@ -20,7 +21,7 @@ import type { Brand } from "@/features/workspace/workspace";
 import { ddmmyyyy } from "@/lib/format";
 import { brandVars } from "./brand";
 import { datasetFor, pageLayout, sampleDefaultKpis } from "./data";
-import { pageCatalog, pageKpiIds, sampleCatalog, type MetricPrefs } from "./metric-prefs";
+import { isSampleMetric, pageCatalog, pageKpiIds, sampleCatalog, type MetricPrefs } from "./metric-prefs";
 import { useMetricPrefsState, type SaveMetricPrefs } from "./metric-prefs-context";
 import { MetricNoticeBar } from "./MetricActions";
 import { CustomizeButton, MetricsPanel } from "./MetricsPanel";
@@ -58,6 +59,8 @@ type BodyProps = {
   /** Modelos que usam a Meta: a página de Criativos por plano, no lugar do widget. */
   creatives?: CreativesData;
   initialPage?: PageId;
+  /** Métricas novas do Personalizar, na escala do modelo. */
+  extraMetrics?: readonly SampleExtraMetric[];
   /** A página de Criativos vem do servidor: trocar o período precisa navegar. */
   onPeriodChange?: (period: PeriodId, customDays: number) => void;
 };
@@ -70,7 +73,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, creatives, initialPage, onPeriodChange }: BodyProps) {
+export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, creatives, extraMetrics = [], initialPage, onPeriodChange }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
@@ -80,7 +83,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   const days = periodDays({ period, customDays });
   const ds = useMemo(() => datasetFor({ ...spec, settings: spec.settings }, days), [spec, days]);
   const defaults = useMemo(() => (t ? sampleDefaultKpis(t, spec.pages) : []), [t, spec.pages]);
-  const catalog = useMemo(() => sampleCatalog(t?.profile ?? "ecommerce", defaults), [t, defaults]);
+  const catalog = useMemo(() => sampleCatalog(t?.profile ?? "ecommerce", defaults, t?.sources), [t, defaults]);
+  const extraById = useMemo(() => new Map(extraMetrics.map((m) => [m.id, m])), [extraMetrics]);
   const pageKpis = useMemo(() => (t ? spec.pages.map((p) => pageLayout(t, p).kpis.map((k) => k.metric as string)) : []), [t, spec.pages]);
   const active = spec.pages.includes(page) ? page : spec.pages[0];
   const activeKpis = pageKpis[spec.pages.indexOf(active)];
@@ -89,8 +93,12 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   const metrics = useMetricPrefsState({ dashboardId: customizeId ?? null, scope: "sample", catalog: activeCatalog, pageKpis, initial: spec.metricPrefs, hideSpend, saveAction: saveMetrics });
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
   const ctx = makeContext(ds, { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns });
-  const idsOf = (p: PageId) => pageKpiIds(catalog, pageLayout(t, p).kpis.map((k) => k.metric), metrics.prefs?.kpis, { hideSpend });
-  const layoutOf = (p: PageId) => sampleLayout(pageLayout(t, p), idsOf(p));
+  // métrica nova sem valor do servidor não vira card: o contador e a tela continuam batendo
+  const idsOf = (p: PageId) => pageKpiIds(catalog, pageLayout(t, p).kpis.map((k) => k.metric), metrics.prefs?.kpis, { hideSpend }).filter((id) => isSampleMetric(id) || extraById.has(id));
+  const layoutOf = (p: PageId) => sampleLayout(pageLayout(t, p), idsOf(p).filter(isSampleMetric));
+  const extrasOf = (p: PageId) => idsOf(p).flatMap((id) => extraById.get(id) ?? []);
+  // aba Criativos com outras plataformas: os cards mostram a parte da Meta, a mesma dos anúncios
+  const creativesCtx = creatives && ds.adPlatforms.length > 1 && ds.adPlatforms.includes("meta") ? { ...ctx, cur: platformPart(ds, "meta", "current"), prev: platformPart(ds, "meta", "previous") } : ctx;
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? "";
   const attribution = ATTRIBUTIONS.find((a) => a.value === spec.settings.attribution)?.label;
 
@@ -180,11 +188,11 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
           <div className="m-unveil">
             {active === "criativos" && creatives ? (
               <div key={active} className="space-y-2">
-                <PageView layout={{ ...layoutOf(active), widgets: [] }} ctx={ctx} kpiEdit={metrics.edit} />
+                <PageView layout={{ ...layoutOf(active), widgets: [] }} ctx={creativesCtx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
                 <CreativesPage data={creatives} />
               </div>
             ) : (
-              <PageView key={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} />
+              <PageView key={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
             )}
           </div>
         </div>
@@ -225,11 +233,11 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
               </p>
               {p === "criativos" && creatives ? (
                 <div className="space-y-2">
-                  <PageView layout={{ ...layoutOf(p), widgets: [] }} ctx={ctx} />
+                  <PageView layout={{ ...layoutOf(p), widgets: [] }} ctx={creativesCtx} extraCards={extrasOf(p)} />
                   <CreativeList rows={creatives.list} currency={creatives.currency} hideSpend={creatives.hideSpend} />
                 </div>
               ) : (
-                <PageView layout={layoutOf(p)} ctx={ctx} />
+                <PageView layout={layoutOf(p)} ctx={ctx} extraCards={extrasOf(p)} />
               )}
             </section>
           ))}
@@ -243,8 +251,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
           visibleKpis={idsOf(active)}
           prefs={metrics.prefs}
           hasData={(id) => {
-            const v = ctx.cur[id as MetricId];
-            return Number.isFinite(v) && v !== 0;
+            const v = isSampleMetric(id) ? ctx.cur[id] : extraById.get(id)?.value;
+            return v != null && Number.isFinite(v) && v !== 0;
           }}
           onToggle={metrics.toggle}
           onRestore={metrics.restore}

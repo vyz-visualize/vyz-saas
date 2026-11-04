@@ -41,9 +41,11 @@ type Props = {
   kpiNote?: string;
   /** A aba aberta não tem fileira de cards. */
   noKpis?: boolean;
+  /** Cards que existem mas não valem agora: aparecem desligados, com o motivo. */
+  unavailable?: readonly { metric: CatalogMetric; reason: string }[];
 };
 
-export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle, onRestore, onSave, pending, error, visibleKpis, kpiPlace, kpiNote, noKpis = false }: Props) {
+export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle, onRestore, onSave, pending, error, visibleKpis, kpiPlace, kpiNote, noKpis = false, unavailable = [] }: Props) {
   const [section, setSection] = useState<MetricSection>("kpis");
   const [query, setQuery] = useState("");
   const [help, setHelp] = useState<string | null>(null);
@@ -52,10 +54,12 @@ export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle,
   const sectionPrefs = prefs?.[section];
   const visible = useMemo(() => (section === "kpis" ? visibleKpis : visibleIds(catalog, section, sectionPrefs)), [catalog, section, sectionPrefs, visibleKpis]);
   const max = sectionMax(catalog, section);
+  const reasons = useMemo(() => new Map(section === "kpis" ? unavailable.map((u) => [u.metric.id, u.reason]) : []), [section, unavailable]);
   const list = useMemo(() => {
     const q = fold(query.trim());
-    return catalog.filter((m) => (section === "kpis" ? !!m.kpi : !!m.column) && (!q || fold(`${m.label} ${m.help}`).includes(q)));
-  }, [catalog, query, section]);
+    const extra = section === "kpis" ? unavailable.map((u) => u.metric) : [];
+    return [...catalog.filter((m) => !reasons.has(m.id)), ...extra].filter((m) => (section === "kpis" ? !!m.kpi : !!m.column) && (!q || fold(`${m.label} ${m.help}`).includes(q)));
+  }, [catalog, query, reasons, section, unavailable]);
 
   // o Dialog trava a página; a roda do mouse fora do painel continua rolando o dashboard, para ver as tabelas mudarem
   useEffect(() => {
@@ -123,18 +127,19 @@ export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle,
                   <h3 className="mb-1.5 text-[11.5px] font-medium tracking-[0.06em] text-fg-2 uppercase">{METRIC_GROUP_LABEL[group]}</h3>
                   <ul className="divide-y divide-line/60">
                     {items.map((m) => {
-                      const noData = !hasData(m.id);
-                      const block = toggleBlock(catalog, section, sectionPrefs, m.id);
+                      const reason = reasons.get(m.id);
+                      const noData = !reason && !hasData(m.id);
+                      const block = reason ? null : toggleBlock(catalog, section, sectionPrefs, m.id);
                       const on = visible.includes(m.id);
                       return (
                         <li key={m.id} className="py-2" onPointerEnter={(e) => e.pointerType === "mouse" && setHelp(m.id)} onPointerLeave={(e) => e.pointerType === "mouse" && setHelp(null)}>
                           <div className="flex items-center justify-between gap-2">
                             <Switch
                               label={m.label}
-                              checked={on}
-                              disabled={noData || !!block}
+                              checked={on && !reason}
+                              disabled={!!reason || noData || !!block}
                               onChange={() => onToggle(section, m.id)}
-                              hint={noData ? "sem dados nesta conta" : block === "min" ? "É a última visível" : block === "max" ? `Limite de ${max} cards` : undefined}
+                              hint={reason ? reason : noData ? "sem dados nesta conta" : block === "min" ? "É a última visível" : block === "max" ? `Limite de ${max} cards` : undefined}
                             />
                             <button
                               type="button"

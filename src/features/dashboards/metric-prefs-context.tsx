@@ -42,6 +42,8 @@ type Input = {
   scope: MetricScope;
   /** Catálogo do que está na tela (no exemplo, o da aba aberta). */
   catalog: readonly CatalogMetric[];
+  /** Catálogo completo para gravar, quando o da tela esconde algo só neste período. */
+  normalizeCatalog?: readonly CatalogMetric[];
   /** Cards de cada aba, nos dashboards de exemplo. */
   pageKpis?: readonly (readonly string[])[];
   initial: unknown;
@@ -49,7 +51,7 @@ type Input = {
   saveAction?: SaveMetricPrefs;
 };
 
-export function useMetricPrefsState({ dashboardId, scope, catalog, pageKpis, initial, hideSpend, saveAction }: Input) {
+export function useMetricPrefsState({ dashboardId, scope, catalog, normalizeCatalog, pageKpis, initial, hideSpend, saveAction }: Input) {
   const [saved, setSaved] = useState<MetricPrefs>(() => parseMetricPrefs(initial));
   const [draft, setDraft] = useState<MetricPrefs>(saved);
   const [open, setOpen] = useState(false);
@@ -126,7 +128,7 @@ export function useMetricPrefsState({ dashboardId, scope, catalog, pageKpis, ini
     if (!dashboardId || !saveAction) return;
     setPending(true);
     setError(null);
-    const value = normalizeScope(catalog, draft[scope], pageKpis);
+    const value = normalizeScope(normalizeCatalog ?? catalog, draft[scope], pageKpis);
     const r = await saveAction(dashboardId, scope, value);
     setPending(false);
     if (!r.ok) return setError(r.error.message);
@@ -134,7 +136,7 @@ export function useMetricPrefsState({ dashboardId, scope, catalog, pageKpis, ini
     setSaved(next);
     setDraft(next);
     setOpen(false);
-  }, [catalog, dashboardId, draft, pageKpis, saveAction, scope]);
+  }, [catalog, dashboardId, draft, normalizeCatalog, pageKpis, saveAction, scope]);
 
   return { open, openPanel, close, save, restore, toggle, pending, error, prefs: current, visibility, catalog, edit, notice, undo, dismiss };
 }

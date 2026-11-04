@@ -4,10 +4,15 @@ import { describe, expect, it } from "vitest";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import type { PageId } from "@/features/templates/types";
 import { DashboardBody, type DashboardSpec } from "./DashboardBody";
-import { DEFAULT_SETTINGS } from "./data";
+import { sampleCreatives } from "@/features/analytics/creatives/sample";
+import type { CreativesData } from "@/features/analytics/types";
+import { currentTotals, platformPart } from "@/features/metrics/compute";
+import { periodDays } from "@/features/workspace/types";
+import { brl } from "@/lib/format";
+import { datasetFor, DEFAULT_SETTINGS } from "./data";
 
 const spec = (templateId: string, page: PageId, metricPrefs?: DashboardSpec["metricPrefs"]): DashboardSpec => ({ templateId, name: "Visão", client: "Loja Verde", pages: [page], settings: DEFAULT_SETTINGS, metricPrefs });
-const render = (s: DashboardSpec, extra: { hideSpend?: boolean; customizeId?: string } = {}) => renderToString(createElement(DashboardBody, { spec: s, ...extra }));
+const render = (s: DashboardSpec, extra: { hideSpend?: boolean; customizeId?: string; creatives?: CreativesData; initialPage?: PageId } = {}) => renderToString(createElement(DashboardBody, { spec: s, ...extra }));
 
 describe("dashboard de exemplo", () => {
   const costPages: PageId[] = ["visao-geral", "campanhas", "por-plataforma", "metas", "publico", "criativos"];
@@ -41,6 +46,27 @@ describe("dashboard de exemplo", () => {
     const html = render(teste);
     expect(count(html, /data-vyz-metric=/g)).toBe(4);
     expect(html).not.toContain('data-vyz-metric="spend"');
+  });
+
+  it("aba Criativos com Meta e Google: os cards mostram a parte da Meta, a mesma dos anúncios", () => {
+    const misto: DashboardSpec = { ...spec("ecommerce-completo", "criativos"), pages: ["criativos"] };
+    const ds = datasetFor(misto, periodDays(misto.settings));
+    const cur = currentTotals(ds);
+    const parte = platformPart(ds, "meta", "current");
+    expect(parte.spend).toBeLessThan(cur.spend);
+    const creatives = sampleCreatives(dashboardTemplate("ecommerce-completo")!, { name: misto.name, client: misto.client, settings: misto.settings }, ["criativos"], { tier: "avancado" }, { period: misto.settings.period, customDays: misto.settings.customDays });
+    const comPagina = render(misto, { creatives, initialPage: "criativos" });
+    const semPagina = render(misto, { initialPage: "criativos" });
+    // o CPM do card muda para o da Meta; sem a página por plano, continua o total
+    expect(comPagina).toContain(brl(parte.cpm));
+    expect(semPagina).toContain(brl(cur.cpm));
+  });
+
+  it("modelo só com Meta: a aba Criativos continua com os cards do modelo", () => {
+    const so: DashboardSpec = { ...spec("criativos-meta", "criativos"), pages: ["criativos"] };
+    const ds = datasetFor(so, periodDays(so.settings));
+    const creatives = sampleCreatives(dashboardTemplate("criativos-meta")!, { name: so.name, client: so.client, settings: so.settings }, ["criativos"], { tier: "avancado" }, { period: so.settings.period, customDays: so.settings.customDays });
+    expect(render(so, { creatives, initialPage: "criativos" })).toContain(brl(currentTotals(ds).cpm));
   });
 
   it("escolha salva vale no que a tela desenha, em qualquer aba", () => {

@@ -98,6 +98,22 @@ describe("renderização (smoke)", () => {
       expect(edit).not.toContain("Adicionar métrica");
     });
 
+    it("coluna nova só aparece depois de ligar", () => {
+      const off = renderToString(createElement(LiveDashboardView, { data: sampleDashboardData("meta-ecommerce", { today: TODAY })!, initialPage: "campanhas" }));
+      expect(off).not.toContain(">Cadastros<");
+      expect(off).not.toContain(">Resultados<");
+      const on = renderToString(createElement(LiveDashboardView, { data: sampleDashboardData("meta-ecommerce", { today: TODAY })!, initialPage: "campanhas", metricPrefs: { meta: { columns: { hidden: [], shown: ["registrations", "results"] } } } }));
+      expect(on).toContain("Cadastros");
+      expect(on).toContain("Resultados");
+      expect(on).toContain("engajamentos");
+    });
+
+    it("Google: coluna nova nas campanhas", () => {
+      const html = renderToString(createElement(LiveDashboardView, { data: sampleDashboardData("google-ecommerce", { today: TODAY })!, initialPage: "campanhas", metricPrefs: { google: { columns: { hidden: [], shown: ["topPct", "cpv"] } } } }));
+      expect(html).toContain("% de impressões no topo");
+      expect(html).toContain("CPV");
+    });
+
     it("o último card não tem o olho", () => {
       const hidden = visibleIds(META_CATALOG, "kpis", undefined).slice(1);
       const html = view("meta-ecommerce", { meta: { kpis: { hidden, shown: [] } } });

@@ -3,7 +3,7 @@
 // que a tela desenha. A agregação (aggregate.ts) liga um ao outro.
 
 import type { Tier } from "@/features/pricing/entitlements";
-import type { AdCreativeMetrics, BreakdownDimension } from "@/features/sync/dataset";
+import type { AdCreativeMetrics, BreakdownDimension, CampaignExtraMetrics } from "@/features/sync/dataset";
 
 export type LivePlatform = "meta" | "google";
 
@@ -30,7 +30,7 @@ export type MetricRow = {
 };
 
 export type AccountDayRow = MetricRow & { date: string };
-export type CampaignDayRow = MetricRow & { campaignId: string; date: string };
+export type CampaignDayRow = MetricRow & CampaignExtraMetrics & { campaignId: string; date: string };
 export type AdDayRow = Pick<MetricRow, "spend" | "impressions" | "reach" | "clicks" | "linkClicks" | "conversions" | "conversionValue" | "videoViews" | "videoThruplays"> &
   AdCreativeMetrics & {
     adId: string;
@@ -72,7 +72,7 @@ export type AggregateOptions = {
 
 // ---- view models ------------------------------------------------------------------------
 
-export type ValueFormat = "money" | "int" | "decimal" | "pct" | "ratio";
+export type ValueFormat = "money" | "int" | "decimal" | "pct" | "ratio" | "seconds";
 export type Better = "up" | "down" | "neutral";
 
 export type Kpi = {
@@ -146,6 +146,10 @@ export type CampaignRowVM = {
   lostRank: number | null;
   /** Abaixo do equilíbrio. */
   belowBreakEven: boolean;
+  /** Métricas opcionais do Personalizar, por id. */
+  extra?: Record<string, number | null>;
+  /** O que conta como resultado no objetivo desta campanha ("compras", "leads"). */
+  resultLabel?: string;
 };
 
 export type FunnelStep = { id: string; label: string; count: number; /** Passagem desde a etapa anterior. */ rate: number | null; /** Custo por etapa. */ cost: number | null };
@@ -200,6 +204,9 @@ export type CompareAd = {
   postUrl: string | null;
   days: Omit<AdDayRow, "adId">[];
 };
+
+/** Métrica nova num dashboard de amostra: o valor vem do servidor, na escala do modelo. */
+export type SampleExtraMetric = { id: string; label: string; format: ValueFormat; better: "up" | "down" | "neutral"; value: number | null; previous: number | null };
 
 export type CreativesTab = "galeria" | "comparativo";
 export type CreativesLevel = "list" | "gallery" | "compare";
@@ -286,6 +293,8 @@ export type MetaView = ViewBase & {
   creatives: CreativeVM[];
   creativeList: CreativeListVM[];
   creativeDays: CompareAd[];
+  /** As campanhas do período têm tipos de resultado diferentes: sem card de Resultados. */
+  resultsMixed?: boolean;
   ageGender: AgeGenderCell[];
   placements: SliceVM[];
   devices: SliceVM[];
