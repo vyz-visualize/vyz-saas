@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { creativesLevel, ENTITLEMENTS, LIMIT_ROWS, type Tier } from "@/features/pricing/entitlements";
 import { datasetFor, DEFAULT_SETTINGS } from "@/features/dashboards/data";
-import { currentTotals } from "@/features/metrics/compute";
+import { byPlatform, currentTotals } from "@/features/metrics/compute";
 import { DASHBOARD_TEMPLATES, dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
 import { redactSpend } from "../aggregate";
@@ -11,7 +11,7 @@ import type { MetaView } from "../types";
 import { cutCreatives } from "./access";
 import { adStats, compareTable } from "./compare";
 import { creativesHref, parseCreativesQuery } from "./query";
-import { sampleCreatives, usesCreativesPage } from "./sample";
+import { metaTotals, sampleCreatives, usesCreativesPage } from "./sample";
 
 const sample = () => sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!;
 const meta = () => sample().view as MetaView;
@@ -135,23 +135,30 @@ describe("amostras", () => {
     expect(sampleCreatives(t, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, { ...opts, hideSpend: true })!.compare[0].days[0].spend).toBeNull();
   });
 
-  describe("a soma dos anúncios fecha com os cards do modelo", () => {
+  describe("a soma dos anúncios fecha com o modelo", () => {
     const metaTemplates = DASHBOARD_TEMPLATES.filter((t) => t.sources.includes("meta"));
-
-    it("cobre os modelos com Meta", () => {
-      expect(metaTemplates.length).toBeGreaterThan(5);
-    });
-
-    const cases = metaTemplates.flatMap((t) => [7, 30].map((days) => [t.id, days] as const));
-    it.each(cases)("%s em %i dias", (id, days) => {
-      const t = dashboardTemplate(id)!;
+    const s = { name: "Dashboard de teste", client: "Cliente", settings: DEFAULT_SETTINGS };
+    const load = (id: string, days: number) => {
       const period = days === 7 ? ("7d" as const) : ("30d" as const);
-      const s = { name: "Dashboard de teste", client: "Cliente", settings: DEFAULT_SETTINGS };
-      const cur = currentTotals(datasetFor({ templateId: id, ...s }, days));
-      const c = sampleCreatives(t, s, ["criativos"], { tier: "avancado", tab: "comparativo" }, { period, customDays: days, today: "2026-10-30" })!;
+      const ds = datasetFor({ templateId: id, ...s }, days);
+      const c = sampleCreatives(dashboardTemplate(id)!, s, ["criativos"], { tier: "avancado", tab: "comparativo" }, { period, customDays: days, today: "2026-10-30" })!;
       const rows = c.compare.flatMap((a) => a.days);
       const sum = (pick: (r: (typeof rows)[number]) => number | null | undefined) => rows.reduce((acc, r) => acc + Number(pick(r) ?? 0), 0);
+      return { ds, c, sum, cur: currentTotals(ds), parts: byPlatform(ds) };
+    };
+    const onlyMeta = metaTemplates.filter((t) => load(t.id, 30).parts.length === 1);
+    const withOthers = metaTemplates.filter((t) => load(t.id, 30).parts.length > 1);
+    const days = (list: typeof metaTemplates) => list.flatMap((t) => [7, 30].map((d) => [t.id, d] as const));
 
+    it("cobre os dois casos", () => {
+      expect(onlyMeta.length).toBeGreaterThanOrEqual(2);
+      expect(withOthers.length).toBeGreaterThan(5);
+      expect(onlyMeta.map((t) => t.id)).toContain("criativos-meta");
+      expect(withOthers.map((t) => t.id)).toContain("ecommerce-completo");
+    });
+
+    it.each(days(onlyMeta))("só Meta: %s em %i dias fecha com os cards", (id, d) => {
+      const { c, sum, cur } = load(id, d);
       // investimento (em centavos, como o card), impressões e cliques: exatos
       expect(Math.round(sum((r) => r.spend) * 100)).toBe(Math.round(cur.spend));
       expect(sum((r) => r.impressions)).toBe(Math.round(cur.impressions));
@@ -159,11 +166,40 @@ describe("amostras", () => {
       // resultados: a coluna da lista, que cada anúncio preenche pelo seu objetivo
       expect(c.list.reduce((acc, r) => acc + r.result.value, 0)).toBe(Math.round(cur.conversions));
       expect(Math.round(c.list.reduce((acc, r) => acc + (r.spend ?? 0), 0) * 100)).toBe(Math.round(cur.spend));
-
       // as razões dos cards da aba Criativos saem iguais da soma
       expect(sum((r) => r.clicks) / sum((r) => r.impressions)).toBeCloseTo(cur.ctr, 6);
       expect((sum((r) => r.spend) * 100) / sum((r) => r.impressions)).toBeCloseTo(cur.cpm / 1000, 6);
       expect(sum((r) => r.impressions) / sum((r) => r.reach)).toBeCloseTo(cur.frequency, 1);
+    });
+
+    it.each(days(withOthers))("Meta e outras: %s em %i dias fecha com a parte da Meta", (id, d) => {
+      const { c, sum, cur, parts } = load(id, d);
+      const meta = parts.find((p) => p.id === "meta")!;
+      expect(Math.round(sum((r) => r.spend) * 100)).toBe(Math.round(meta.spend));
+      expect(sum((r) => r.impressions)).toBe(Math.round(meta.impressions));
+      expect(sum((r) => r.clicks)).toBe(Math.round(meta.clicks));
+      expect(c.list.reduce((acc, r) => acc + r.result.value, 0)).toBe(Math.round(meta.conv));
+      expect(Math.round(c.list.reduce((acc, r) => acc + (r.spend ?? 0), 0) * 100)).toBe(Math.round(meta.spend));
+      // é a parte, não o total das plataformas
+      expect(sum((r) => r.spend) * 100).toBeLessThan(cur.spend);
+      expect(sum((r) => r.impressions)).toBeLessThan(cur.impressions);
+      // o CTR dos anúncios é o da Meta no modelo
+      expect(sum((r) => r.clicks) / sum((r) => r.impressions)).toBeCloseTo(meta.ctr, 6);
+    });
+
+    it("o card mostra a mesma parte que os anúncios somam", () => {
+      const { c, parts, ds } = load("ecommerce-completo", 30);
+      const meta = parts.find((p) => p.id === "meta")!;
+      expect(byPlatform(ds).find((p) => p.id === "meta")!.conv).toBe(meta.conv);
+      expect(c.list.reduce((acc, r) => acc + r.result.value, 0)).toBe(meta.conv);
+    });
+
+    it("receita da parte da Meta: proporcional às compras atribuídas", () => {
+      const { ds, cur, parts, sum } = load("ecommerce-completo", 30);
+      const meta = parts.find((p) => p.id === "meta")!;
+      const attributed = parts.reduce((a, p) => a + p.conv, 0);
+      expect(metaTotals(ds).revenue).toBeCloseTo((cur.revenue * meta.conv) / attributed, 6);
+      expect(Math.round(sum((r) => r.conversionValue) * 100)).toBe(Math.round(metaTotals(ds).revenue));
     });
 
     it("alcance nunca passa de impressões e o cliques no link nunca passa de cliques", () => {

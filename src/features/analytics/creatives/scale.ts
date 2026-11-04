@@ -1,13 +1,13 @@
 // Dashboards de amostra: os anúncios vêm do simulador da Meta e os cards, do
-// simulador do modelo. Aqui os anúncios são escalados para fechar com os cards do
+// simulador do modelo. Aqui os anúncios são escalados para fechar com o modelo no
 // período: a soma de investimento, impressões, cliques e resultados dá exatamente
-// o total do modelo, e os cards não mudam. Puro e testado.
+// o total pedido (sample.ts decide qual), e os cards não mudam. Puro e testado.
 
 import { apportion } from "@/features/sync/apportion";
 import type { AdDayRow, WarehouseRows } from "../types";
 import { objectiveKey } from "./objectives";
 
-/** Totais do modelo no período. Dinheiro em centavos, como em features/metrics. */
+/** O que os anúncios precisam somar no período. Dinheiro em centavos, como em features/metrics. */
 export type ModelTotals = { spend: number; impressions: number; clicks: number; conversions: number; revenue: number; frequency: number };
 
 const ratio = (a: number, b: number) => (b > 0 ? a / b : 1);
