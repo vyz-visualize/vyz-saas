@@ -8,16 +8,20 @@ import { PeriodPicker, rangeDays, type Range } from "@/components/ui/PeriodPicke
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
-import type { PageId } from "@/features/templates/types";
+import type { MetricId } from "@/features/metrics/definitions";
+import type { PageId, PageLayout } from "@/features/templates/types";
 import { ATTRIBUTIONS, periodDays, PERIODS, type DashboardSettings, type PeriodId } from "@/features/workspace/types";
 import type { Brand } from "@/features/workspace/workspace";
 import { ddmmyyyy } from "@/lib/format";
 import { brandVars } from "./brand";
-import { datasetFor, pageLayout } from "./data";
+import { datasetFor, pageLayout, sampleDefaultKpis } from "./data";
+import { sampleCatalog, isSampleSpendDerived, type MetricPrefs } from "./metric-prefs";
+import { useMetricPrefsState, type SaveMetricPrefs } from "./metric-prefs-context";
+import { CustomizeButton, MetricsPanel } from "./MetricsPanel";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
 
-export type DashboardSpec = { templateId: string; name: string; client: string; pages: PageId[]; settings: DashboardSettings; brand?: Brand };
+export type DashboardSpec = { templateId: string; name: string; client: string; pages: PageId[]; settings: DashboardSettings; brand?: Brand; metricPrefs?: MetricPrefs };
 
 /** Variáveis de cor da marca própria (Personalizado), iguais nos dois modos. */
 export function brandStyle(brand?: Brand): CSSProperties | undefined {
@@ -42,10 +46,28 @@ type BodyProps = {
   actions?: ReactNode;
   /** Renderiza todas as páginas para impressão. */
   printing?: boolean;
+  /** Dashboard salvo que pode ser personalizado (member+ no painel). */
+  customizeId?: string;
+  saveMetrics?: SaveMetricPrefs;
 };
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ spec, hideSpend, assemble, actions, printing }: BodyProps) {
+/**
+ * Os cards de uma página do exemplo: tira os ocultos e, na primeira página, soma
+ * os que o usuário ligou. Página sem nenhum card visível mantém o primeiro
+ * (mínimo por seção), menos no link com investimento oculto.
+ */
+export function sampleLayout(layout: PageLayout, visible: ReadonlySet<string>, first: boolean, defaults: readonly MetricId[], hideSpend = false): PageLayout {
+  const blocked = (m: MetricId) => hideSpend && isSampleSpendDerived(m);
+  const kept = layout.kpis.filter((k) => visible.has(k.metric));
+  const extras = first ? ([...visible] as MetricId[]).filter((m) => !defaults.includes(m) && !kept.some((k) => k.metric === m)).map((metric) => ({ metric, sub: "delta" as const })) : [];
+  const kpis = [...kept, ...extras];
+  if (kpis.length) return { ...layout, kpis };
+  const fallback = layout.kpis.find((k) => !blocked(k.metric));
+  return { ...layout, kpis: fallback ? [fallback] : [] };
+}
+
+export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(spec.pages[0] ?? "visao-geral");
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
@@ -54,8 +76,12 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing }: 
   const [compare, setCompare] = useState(true);
   const days = periodDays({ period, customDays });
   const ds = useMemo(() => datasetFor({ ...spec, settings: spec.settings }, days), [spec, days]);
+  const defaults = useMemo(() => (t ? sampleDefaultKpis(t, spec.pages) : []), [t, spec.pages]);
+  const catalog = useMemo(() => sampleCatalog(t?.profile ?? "ecommerce", defaults), [t, defaults]);
+  const metrics = useMetricPrefsState({ dashboardId: customizeId ?? null, scope: "sample", catalog, initial: spec.metricPrefs, hideSpend, saveAction: saveMetrics });
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
-  const ctx = makeContext(ds, { hideSpend, compare, showPrevious: compare });
+  const ctx = makeContext(ds, { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns });
+  const layoutOf = (p: PageId) => sampleLayout(pageLayout(t, p), metrics.visibility.kpis, p === spec.pages[0], defaults, hideSpend);
   const active = spec.pages.includes(page) ? page : spec.pages[0];
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? "";
   const attribution = ATTRIBUTIONS.find((a) => a.value === spec.settings.attribution)?.label;
@@ -81,7 +107,12 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing }: 
             </div>
           </div>
         </div>
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        {(actions || customizeId) && (
+          <div className="flex flex-wrap gap-2">
+            {customizeId && <CustomizeButton onClick={() => metrics.setOpen(true)} />}
+            {actions}
+          </div>
+        )}
       </header>
 
       <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-end sm:justify-between">
@@ -118,7 +149,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing }: 
         <div className="relative" data-anim={assemble ? "on" : "off"}>
           <div className="scanner" aria-hidden />
           <div className="m-unveil">
-            <PageView key={active} layout={pageLayout(t, active)} ctx={ctx} />
+            <PageView key={active} layout={layoutOf(active)} ctx={ctx} />
           </div>
         </div>
       )}
@@ -156,10 +187,27 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing }: 
                   {spec.client} · {periodLabel}
                 </span>
               </p>
-              <PageView layout={pageLayout(t, p)} ctx={ctx} />
+              <PageView layout={layoutOf(p)} ctx={ctx} />
             </section>
           ))}
         </div>
+      )}
+      {customizeId && (
+        <MetricsPanel
+          open={metrics.open}
+          onClose={metrics.close}
+          catalog={catalog}
+          prefs={metrics.prefs}
+          hasData={(id) => {
+            const v = ctx.cur[id as MetricId];
+            return Number.isFinite(v) && v !== 0;
+          }}
+          onToggle={metrics.toggle}
+          onRestore={metrics.restore}
+          onSave={metrics.save}
+          pending={metrics.pending}
+          error={metrics.error}
+        />
       )}
     </div>
   );

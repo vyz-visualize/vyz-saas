@@ -8,6 +8,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { TrendSpark } from "@/components/charts/TrendSpark";
 import { decimal, pct } from "@/lib/format";
+import { useColumnVisible, useMetricVisibility, useVisibleColumns } from "@/features/dashboards/metric-prefs-context";
 import { deltaText, deltaTone, FORMAT_LABEL, formatValue, HIDDEN, STATUS_LABEL } from "./format";
 import { kpiMetric } from "./metrics";
 import type { Kpi, LivePlatform, SliceVM } from "./types";
@@ -81,11 +82,13 @@ export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, 
   );
 }
 
-export function KpiGrid({ platform, kpis, currency, maturing, hideSpend }: { platform: LivePlatform; kpis: Kpi[]; currency: string; maturing: number; hideSpend?: boolean }) {
+export function KpiGrid({ platform, kpis, extra = [], currency, maturing, hideSpend }: { platform: LivePlatform; kpis: Kpi[]; extra?: Kpi[]; currency: string; maturing: number; hideSpend?: boolean }) {
+  const visibility = useMetricVisibility();
+  const shown = visibility ? [...kpis, ...extra].filter((k) => visibility.kpis.has(k.id)) : kpis;
   return (
     <div className="grid grid-cols-2 gap-2.5 @[640px]:grid-cols-3 @[1040px]:grid-cols-4 @[1280px]:grid-cols-5">
-      {kpis.map((k, i) => (
-        <KpiCard key={k.id} kpi={k} currency={currency} maturing={maturing} hideSpend={hideSpend} featured={i === 2} metric={kpiMetric(platform, k.id)} />
+      {shown.map((k) => (
+        <KpiCard key={k.id} kpi={k} currency={currency} maturing={maturing} hideSpend={hideSpend} featured={k.id === "roas"} metric={kpiMetric(platform, k.id)} />
       ))}
     </div>
   );
@@ -200,8 +203,10 @@ export function SliceBars({
   basis?: "value" | "spend";
   label: string;
 }) {
+  const roasOn = useColumnVisible("roas");
   const list = limit ? items.slice(0, limit) : items;
   if (!list.length) return <NoData />;
+  const showRoas = roasOn && list.some((i) => i.roas != null);
   const max = Math.max(...list.map((i) => (basis === "value" ? i.valueShare : i.spendShare))) || 1;
   return (
     <table className="w-full text-[12.5px] tnum">
@@ -210,7 +215,7 @@ export function SliceBars({
         <tr>
           <th scope="col">Item</th>
           <th scope="col">{basis === "value" ? "Participação na receita" : "Participação no investimento"}</th>
-          <th scope="col">ROAS</th>
+          {showRoas && <th scope="col">ROAS</th>}
         </tr>
       </thead>
       <tbody>
@@ -229,9 +234,11 @@ export function SliceBars({
                   <span className="w-11 text-right text-fg-2">{pct(share, 0)}</span>
                 </span>
               </td>
-              <td className="w-14 py-1 text-right">
-                <Roas value={s.roas} breakEven={breakEven} />
-              </td>
+              {showRoas && (
+                <td className="w-14 py-1 text-right">
+                  <Roas value={s.roas} breakEven={breakEven} />
+                </td>
+              )}
             </tr>
           );
         })}
@@ -256,11 +263,13 @@ export type Column<T> = {
   className?: string;
   /** Coluna fixa à esquerda no celular (a primeira, com o nome). */
   sticky?: boolean;
+  /** Métrica do catálogo (metric-prefs): dá para ocultar em "Personalizar". */
+  metric?: string;
 };
 
 export function DataTable<T>({
   rows,
-  columns,
+  columns: allColumns,
   rowKey,
   caption,
   initialSort,
@@ -278,6 +287,7 @@ export function DataTable<T>({
   minWidth?: number;
   rowClassName?: (row: T) => string;
 }) {
+  const columns = useVisibleColumns(allColumns);
   const [sort, setSort] = useState(initialSort);
   const [all, setAll] = useState(false);
   const sorted = useMemo(() => {

@@ -191,6 +191,17 @@ function buildKpis(defs: KpiDef[], cur: AccountDayRow[], prev: AccountDayRow[], 
 
 const t = (rows: AccountDayRow[]) => totalsOf(rows);
 
+/**
+ * Média do alcance diário. A Meta não soma pessoas únicas entre dias, então o
+ * alcance do período inteiro não sai destas linhas (docs/PENDENCIAS.md).
+ */
+export function reachPerDay(rows: readonly { date: string; reach: number | null }[]): number | null {
+  const withReach = rows.filter((r) => r.reach != null);
+  if (!withReach.length) return null;
+  const total = withReach.reduce((a, r) => a + (r.reach ?? 0), 0);
+  return total / new Set(withReach.map((r) => r.date)).size;
+}
+
 // ---- campanhas -------------------------------------------------------------------------------
 
 function campaignTable(rows: WarehouseRows, breakEven: number | null): CampaignRowVM[] {
@@ -508,20 +519,34 @@ export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions):
       [
         { id: "spend", label: "Investimento", format: "money", better: "neutral", spendBased: true, pick: (r) => t(r).spend },
         { id: "revenue", label: "Receita", format: "money", better: "up", pick: (r) => t(r).value },
-        { id: "roas", label: "ROAS", format: "ratio", better: "up", note: roasNote, help: "Receita ÷ investimento. Equilíbrio = 1 ÷ margem.", pick: (r) => t(r).roas },
+        { id: "roas", label: "ROAS", format: "ratio", better: "up", spendBased: true, note: roasNote, help: "Receita ÷ investimento. Equilíbrio = 1 ÷ margem.", pick: (r) => t(r).roas },
         { id: "purchases", label: "Compras", format: "int", better: "up", pick: (r) => t(r).conversions },
-        { id: "cpa", label: "Custo por compra", format: "money", better: "down", pick: (r) => t(r).cpa },
+        { id: "cpa", label: "Custo por compra", format: "money", better: "down", spendBased: true, pick: (r) => t(r).cpa },
         { id: "ticket", label: "Ticket médio", format: "money", better: "up", pick: (r) => t(r).ticket },
         { id: "linkCtr", label: "CTR do link", format: "pct", better: "up", help: "Cliques no link ÷ impressões do período.", pick: (r) => t(r).linkCtr },
-        { id: "cpm", label: "CPM", format: "money", better: "down", help: "Investimento por mil impressões.", pick: (r) => t(r).cpm },
+        { id: "cpm", label: "CPM", format: "money", better: "down", spendBased: true, help: "Investimento por mil impressões.", pick: (r) => t(r).cpm },
         {
           id: "frequency",
-          label: "Frequência média",
+          label: "Frequência média por dia",
           format: "decimal",
           better: "neutral",
-          help: "Impressões ÷ alcance diário. O alcance não soma pessoas únicas entre dias, então é uma média.",
+          help: "Impressões ÷ alcance, dia a dia. O alcance não soma pessoas únicas entre dias, então não é a frequência do período inteiro.",
           pick: (r) => t(r).frequency,
         },
+      ],
+      cur,
+      prev,
+      dates,
+      byDate,
+    );
+    const extraKpis = buildKpis(
+      [
+        { id: "impressions", label: "Impressões", format: "int", better: "neutral", pick: (r) => t(r).impressions },
+        { id: "reach", label: "Alcance médio por dia", format: "int", better: "neutral", help: "Média do alcance diário. Não é o total de pessoas únicas do período.", pick: reachPerDay },
+        { id: "clicks", label: "Cliques", format: "int", better: "up", pick: (r) => t(r).clicks },
+        { id: "linkClicks", label: "Cliques no link", format: "int", better: "up", pick: (r) => t(r).linkClicks },
+        { id: "ctr", label: "CTR", format: "pct", better: "up", help: "Todos os cliques ÷ impressões do período.", pick: (r) => t(r).ctr },
+        { id: "cpc", label: "CPC", format: "money", better: "down", spendBased: true, help: "Investimento ÷ cliques.", pick: (r) => t(r).cpc },
       ],
       cur,
       prev,
@@ -532,6 +557,7 @@ export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions):
       platform: "meta",
       ...base,
       kpis,
+      extraKpis,
       funnel: metaFunnel(cur, totals.spend ?? 0),
       funnelByStage: funnelByStage(rows),
       creatives: creatives(rows),
@@ -548,11 +574,11 @@ export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions):
     [
       { id: "spend", label: "Custo", format: "money", better: "neutral", spendBased: true, pick: (r) => t(r).spend },
       { id: "value", label: "Valor de conversão", format: "money", better: "up", pick: (r) => t(r).value },
-      { id: "roas", label: "ROAS", format: "ratio", better: "up", note: roasNote, help: "Valor de conversão ÷ custo. Equilíbrio = 1 ÷ margem.", pick: (r) => t(r).roas },
+      { id: "roas", label: "ROAS", format: "ratio", better: "up", spendBased: true, note: roasNote, help: "Valor de conversão ÷ custo. Equilíbrio = 1 ÷ margem.", pick: (r) => t(r).roas },
       { id: "conversions", label: "Conversões", format: "decimal", better: "up", help: "O Google divide conversões entre cliques (atribuição baseada em dados): pode ter decimais.", pick: (r) => t(r).conversions },
-      { id: "cpa", label: "CPA", format: "money", better: "down", pick: (r) => t(r).cpa },
+      { id: "cpa", label: "CPA", format: "money", better: "down", spendBased: true, pick: (r) => t(r).cpa },
       { id: "ctr", label: "CTR", format: "pct", better: "up", pick: (r) => t(r).ctr },
-      { id: "cpc", label: "CPC médio", format: "money", better: "down", pick: (r) => t(r).cpc },
+      { id: "cpc", label: "CPC médio", format: "money", better: "down", spendBased: true, pick: (r) => t(r).cpc },
     ],
     cur,
     prev,
@@ -573,9 +599,21 @@ export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions):
   const terms = searchTerms(rows);
   const wasted = terms.filter((s) => s.conversions === 0 && (s.spend ?? 0) > 0).sort((a, b) => (b.spend ?? 0) - (a.spend ?? 0));
   const wastedSpend = money(wasted.map((s) => s.spend ?? 0));
+  const extraKpis = buildKpis(
+    [
+      { id: "impressions", label: "Impressões", format: "int", better: "neutral", pick: (r) => t(r).impressions },
+      { id: "clicks", label: "Cliques", format: "int", better: "up", pick: (r) => t(r).clicks },
+      { id: "cpm", label: "CPM", format: "money", better: "down", spendBased: true, help: "Custo por mil impressões.", pick: (r) => t(r).cpm },
+    ],
+    cur,
+    prev,
+    dates,
+    byDate,
+  );
   const view: GoogleView = {
     platform: "google",
     ...base,
+    extraKpis,
     kpis,
     channels: channels(rows),
     devices: breakdownSlices(rows, "device"),
@@ -593,35 +631,27 @@ export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions):
 
 // ---- investimento oculto ----------------------------------------------------------------------
 
+/** Campos dos quais o investimento dá para recalcular (ex.: CPM × impressões, receita ÷ ROAS). */
+const SPEND_FIELDS = new Set(["spend", "roas", "cpa", "cpc", "cpm", "cost", "wastedSpend", "breakEvenRoas"]);
+
+function scrubSpend<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(scrubSpend) as T;
+  if (!value || typeof value !== "object") return value;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value)) {
+    out[k] = SPEND_FIELDS.has(k) ? null : k === "belowBreakEven" ? false : scrubSpend(v);
+  }
+  return out as T;
+}
+
+const blankKpi = (k: Kpi): Kpi => (k.spendBased ? { ...k, value: null, previous: null, delta: null, spark: [], note: undefined } : k);
+
 /**
- * Tira os valores de investimento (links compartilhados com "ocultar
- * investimento"). Roda no servidor, antes de mandar para o navegador: o número
- * nunca chega ao cliente. Razões (ROAS, CPA) continuam, como nos outros dashboards.
+ * Tira o investimento e tudo de onde ele dá para recalcular (links com "ocultar
+ * investimento"). Roda no servidor, antes de mandar para o navegador: os números
+ * nunca chegam ao cliente. Varre a estrutura inteira, para campo novo já nascer coberto.
  */
 export function redactSpend<V extends DashboardView>(view: V): V {
-  const hide = <T extends { spend: number | null }>(list: T[]) => list.map((x) => ({ ...x, spend: null }));
-  const base = {
-    ...view,
-    kpis: view.kpis.map((k) => (k.spendBased ? { ...k, value: null, previous: null, delta: null, spark: [] } : k)),
-    daily: hide(view.daily),
-    campaigns: hide(view.campaigns),
-    totals: { ...view.totals, spend: null },
-    previousTotals: { ...view.previousTotals, spend: null },
-  };
-  if (base.platform === "meta") {
-    const v = base as MetaView;
-    return { ...v, funnelByStage: hide(v.funnelByStage), creatives: hide(v.creatives), ageGender: hide(v.ageGender), placements: hide(v.placements), devices: hide(v.devices), regions: hide(v.regions) } as V;
-  }
-  const v = base as GoogleView;
-  return {
-    ...v,
-    channels: hide(v.channels),
-    devices: hide(v.devices),
-    heatmap: hide(v.heatmap),
-    searchTerms: hide(v.searchTerms),
-    wastedTerms: hide(v.wastedTerms),
-    wastedSpend: null,
-    products: hide(v.products),
-    productCategories: hide(v.productCategories),
-  } as V;
+  const clean = scrubSpend(view);
+  return { ...clean, kpis: view.kpis.map(blankKpi), extraKpis: view.extraKpis?.map(blankKpi) };
 }

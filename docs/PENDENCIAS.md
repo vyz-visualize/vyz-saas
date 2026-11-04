@@ -34,6 +34,13 @@ O que hoje funciona só no navegador e depende de backend, de integração ou de
 | Venda deduplicada, CTR ponderado e maturação | Regras prontas em `features/metrics/compute.ts`, aplicadas aos dados de amostra | — |
 | Análise por áudio | Página "em breve" | "em breve" |
 
+## Métricas do dashboard ("Personalizar")
+
+| Item | Como está hoje | O que falta |
+|---|---|---|
+| Alcance único do período (Meta) | "Alcance médio por dia": a média do alcance diário. A frequência é a média por dia (impressões ÷ alcance, dia a dia), coerente com ele | Pedir à Meta o alcance pelo intervalo inteiro: pessoas únicas não somam entre dias. Com isso dá para mostrar também a frequência do período |
+| App mobile | Mostra os cards padrão e não respeita a personalização nem esconde as colunas | Ler `metric_prefs` em `/api/v1/dashboards/:id` e no app |
+
 ## Precisa de hospedagem
 
 | Item | Como está hoje | Aviso no produto |

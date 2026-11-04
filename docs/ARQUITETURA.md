@@ -176,8 +176,15 @@ Detalhes em `docs/BANCO.md`. Migrations em ordem:
 | store_plans_and_seats | planos vendidos nas lojas, usuários por plano |
 | product_lines | os dois produtos e o caminho do usuário |
 | landing_waitlist | lista de espera das LPs e visitas à página "em breve" |
+| dashboard_metric_prefs | métricas escolhidas em cada dashboard, por plataforma |
 
 Segurança: RLS em todas as tabelas (negado por padrão), funções `security definer` com `search_path` vazio no schema `private`, erros no formato `grupo:motivo` traduzidos em `server/supabase/errors.ts`.
+
+### Métricas de cada dashboard
+
+`features/dashboards/metric-prefs.ts` tem o catálogo por plataforma (grupo, explicação, se o investimento dá para recalcular a partir dela) e as regras: padrão, mínimo de 1 por seção, máximo de 10 cards. O banco guarda só a diferença para o padrão, em `dashboards.metric_prefs`, por plataforma. Vale no painel, no link e no PDF.
+
+Link com investimento oculto: `redactSpend` (`features/analytics/aggregate.ts`) tira no servidor o investimento e tudo de onde ele dá para recalcular (CPM, CPC, CPA, ROAS, custo por etapa). Campo novo com um desses nomes já nasce coberto, porque ele varre a estrutura inteira.
 
 ## 7. Autenticação
 

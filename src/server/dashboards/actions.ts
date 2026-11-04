@@ -9,9 +9,12 @@
 import { refresh, updateTag } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
+import { catalogForTemplate } from "@/features/dashboards/data";
+import { normalizeScope, withScope, type MetricScope, type ScopePrefs } from "@/features/dashboards/metric-prefs";
 import { allowedPages, copyName, defaultPages, settingsToDb, type DashboardDetail } from "@/features/dashboards/model";
 import { createDashboardSchema, dashboardFieldsSchema, type CreateDashboardInput, type DashboardFields } from "@/features/dashboards/schema";
 import { canUse } from "@/features/pricing/entitlements";
+import type { Json } from "@/lib/supabase/database.types";
 import { anyDashboardTemplate, isLiveTemplate } from "@/features/templates/live";
 import type { DashboardTemplate } from "@/features/templates/types";
 import type { WorkspaceSession } from "@/features/workspace/session";
@@ -166,6 +169,28 @@ export async function updateDashboard(dashboardId: string, input: DashboardField
   redirect(`/painel/dashboards/${dashboardId}`);
 }
 
+/** Salva as métricas escolhidas de uma plataforma do dashboard (member). Vale em todos os planos. */
+export async function saveDashboardMetricPrefs(dashboardId: string, scope: MetricScope, value: ScopePrefs): Promise<ActionResult> {
+  try {
+    if (!Id.safeParse(dashboardId).success) throw appError("dashboard:not_found");
+    await authorize("member", { access: false });
+    const current = await getDashboard(dashboardId);
+    if (!current) throw appError("dashboard:not_found");
+    const t = anyDashboardTemplate(current.templateId);
+    if (!t) throw appError("dashboard:template_unavailable");
+    const catalog = catalogForTemplate(t, current.pages);
+    if (scope !== catalog.scope) throw appError("validation");
+    const clean = normalizeScope(catalog.metrics, value);
+    const db = await createServerSupabase();
+    const next = withScope(current.metricPrefs, scope, clean);
+    unwrap(await db.from("dashboards").update({ metric_prefs: next as Json }).eq("id", dashboardId));
+    return { ok: true, data: undefined };
+  } catch (err) {
+    unstable_rethrow(err);
+    return toActionError(err);
+  }
+}
+
 /** Duplica com as páginas e contas que ainda valem (member). Conta no limite do plano. */
 export async function duplicateDashboard(dashboardId: string): Promise<ActionResult> {
   let id: string;
@@ -184,6 +209,8 @@ export async function duplicateDashboard(dashboardId: string): Promise<ActionRes
 
     const db = await createServerSupabase();
     id = await insertDashboard(db, session, { templateId: t.id, name: copyName(d.name), client: d.client, pages, accountIds, settings: settingsToDb(d.settings, d.margin) });
+    // a cópia mantém as métricas escolhidas
+    if (Object.keys(d.metricPrefs).length) unwrap(await db.from("dashboards").update({ metric_prefs: d.metricPrefs as Json }).eq("id", id));
     if (d.brand && session.access.entitlements?.whiteLabel) {
       unwrap(await db.from("dashboards").update({ brand_color: d.brand.color || null, hide_vyz_brand: d.brand.hideVyz }).eq("id", id));
     }

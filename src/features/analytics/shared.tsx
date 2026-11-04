@@ -27,9 +27,11 @@ export function HeroChart({ data, spendLabel, valueLabel }: PageProps & { spendL
       title={hideSpend ? `${valueLabel} por dia` : `${spendLabel} × ${valueLabel.toLowerCase()} por dia`}
       subtitle={hideSpend ? "Investimento oculto neste link." : "Barras: o que foi investido. Linha: o que voltou. Mesmo eixo, em reais."}
       aside={
-        <span className="tnum">
-          ROAS do período <strong className="text-fg">{total.roas == null ? "—" : decimal(total.roas, 2)}</strong>
-        </span>
+        hideSpend ? undefined : (
+          <span className="tnum">
+            ROAS do período <strong className="text-fg">{total.roas == null ? "—" : decimal(total.roas, 2)}</strong>
+          </span>
+        )
       }
     >
       <ComboChart
@@ -43,7 +45,7 @@ export function HeroChart({ data, spendLabel, valueLabel }: PageProps & { spendL
           return [
             ...(hideSpend ? [] : ([[spendLabel, money(d.spend, currency)]] as [string, string][])),
             [valueLabel, money(d.value, currency)],
-            ["ROAS", d.roas == null ? "—" : decimal(d.roas, 2)],
+            ...(hideSpend ? [] : ([["ROAS", d.roas == null ? "—" : decimal(d.roas, 2)]] as [string, string][])),
             ["Conversões", formatValue(d.conversions, "decimal")],
           ];
         }}
@@ -56,7 +58,7 @@ export function HeroChart({ data, spendLabel, valueLabel }: PageProps & { spendL
 export function TopCampaigns({ data, limit = 6, kindLabel }: PageProps & { limit?: number; kindLabel: (kind: string | null) => string }) {
   const { view, currency, hideSpend } = data;
   return (
-    <Panel title="Campanhas que mais investem" subtitle={`ROAS em vermelho fica abaixo do equilíbrio${view.breakEvenRoas ? ` (${decimal(view.breakEvenRoas, 1)})` : " (1,0)"}.`}>
+    <Panel title="Campanhas que mais investem" subtitle={hideSpend ? "Participação de cada campanha no período." : `ROAS em vermelho fica abaixo do equilíbrio${view.breakEvenRoas ? ` (${decimal(view.breakEvenRoas, 1)})` : " (1,0)"}.`}>
       <DataTable<CampaignRowVM>
         rows={view.campaigns.slice(0, limit)}
         rowKey={(c) => c.id}
@@ -75,10 +77,10 @@ export function TopCampaigns({ data, limit = 6, kindLabel }: PageProps & { limit
               </span>
             ),
           },
-          { key: "share", label: hideSpend ? "Participação" : "Investimento", render: (c) => <InlineBar share={c.spendShare} label={hideSpend ? `${Math.round(c.spendShare * 100)}%` : undefined} />, className: "w-[30%]" },
-          ...(hideSpend ? [] : [{ key: "spend", label: "Valor", align: "right" as const, render: (c: CampaignRowVM) => money(c.spend, currency, { decimals: false }) }]),
-          { key: "roas", label: "ROAS", align: "right", render: (c) => <Roas value={c.roas} breakEven={view.breakEvenRoas} /> },
-          { key: "cpa", label: "CPA", align: "right", render: (c) => money(c.cpa, currency) },
+          { key: "share", metric: hideSpend ? undefined : "spend", label: hideSpend ? "Participação" : "Investimento", render: (c) => <InlineBar share={c.spendShare} label={hideSpend ? `${Math.round(c.spendShare * 100)}%` : undefined} />, className: "w-[30%]" },
+          ...(hideSpend ? [] : [{ key: "spend", metric: "spend", label: "Valor", align: "right" as const, render: (c: CampaignRowVM) => money(c.spend, currency, { decimals: false }) }]),
+          { key: "roas", metric: "roas", label: "ROAS", align: "right", render: (c) => <Roas value={c.roas} breakEven={view.breakEvenRoas} /> },
+          { key: "cpa", metric: "cpa", label: "CPA", align: "right", render: (c) => money(c.cpa, currency) },
         ]}
       />
     </Panel>

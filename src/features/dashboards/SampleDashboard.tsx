@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import type { Brand } from "@/features/workspace/workspace";
+import { saveDashboardMetricPrefs } from "@/server/dashboards/actions";
 import { DashboardActions } from "./DashboardActions";
 import { DashboardBody, type DashboardSpec } from "./DashboardBody";
 
@@ -40,6 +41,8 @@ export function SampleDashboard({ dashboard, brand, canEdit, hideSpend, assemble
       hideSpend={hideSpend}
       assemble={assemble}
       printing={printing}
+      customizeId={canEdit ? dashboard.id : undefined}
+      saveMetrics={canEdit ? saveDashboardMetricPrefs : undefined}
       actions={
         canEdit ? (
           <DashboardActions dashboard={{ id: dashboard.id, name: dashboard.name, live: false }} period={dashboard.settings.period} pages={dashboard.pages.length} onExport={() => setPrinting(true)} />

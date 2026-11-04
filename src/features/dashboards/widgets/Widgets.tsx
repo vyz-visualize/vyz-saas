@@ -13,6 +13,7 @@ import { formatValue, isGood, metric, type MetricDef, type MetricId, type Profil
 import type { Dataset } from "@/features/metrics/source";
 import type { KpiSpec, WidgetSpec } from "@/features/templates/types";
 import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
+import { isSampleSpendDerived } from "../metric-prefs";
 
 export type WidgetContext = {
   ds: Dataset;
@@ -29,6 +30,8 @@ export type WidgetContext = {
   compare?: boolean;
   /** Linha tracejada do período anterior nos gráficos de linha. */
   showPrevious?: boolean;
+  /** Colunas visíveis das tabelas ("Personalizar"). Sem valor, todas. */
+  visibleColumns?: ReadonlySet<string>;
 };
 
 export function makeContext(ds: Dataset, opts: Partial<WidgetContext> = {}): WidgetContext {
@@ -120,6 +123,12 @@ export function Kpi({ spec, ctx, delay, size = "md" }: { spec: KpiSpec; ctx: Wid
 export function Widget({ spec, ctx, delay }: { spec: WidgetSpec; ctx: WidgetContext; delay: number }) {
   const { ds, cur } = ctx;
   const title = spec.title;
+
+  // investimento oculto: gráfico de custo ou ROAS permitiria recalcular o valor
+  if (ctx.hideSpend) {
+    if (spec.type === "line" && isSampleSpendDerived(spec.metric)) return null;
+    if (spec.type === "bars" && spec.metric !== "conversions") return null;
+  }
 
   switch (spec.type) {
     case "line": {
@@ -348,8 +357,12 @@ function PlatformCards({ ctx }: { ctx: WidgetContext }) {
             <dd className="text-right font-semibold">{pct(p.ctr, 2)}</dd>
             <dt className="text-fg-2">Atribuídas</dt>
             <dd className="text-right font-semibold">{int(p.conv)}</dd>
-            <dt className="text-fg-2">Custo atribuído</dt>
-            <dd className="text-right font-semibold">{brl(p.cpa)}</dd>
+            {!ctx.hideSpend && (
+              <>
+                <dt className="text-fg-2">Custo atribuído</dt>
+                <dd className="text-right font-semibold">{brl(p.cpa)}</dd>
+              </>
+            )}
           </dl>
         </div>
       ))}
@@ -372,40 +385,43 @@ function PlatformCards({ ctx }: { ctx: WidgetContext }) {
 
 function TableWidget({ source, ctx }: { source: "campaigns" | "products" | "clients"; ctx: WidgetContext }) {
   const { ds, profile } = ctx;
+  const show = (id: string) => (!ctx.hideSpend || !isSampleSpendDerived(id as MetricId)) && (!ctx.visibleColumns || ctx.visibleColumns.has(id));
   const money = profile === "ecommerce" || profile === "marketplace" || profile === "executivo" || profile === "infoproduto" || profile === "site";
   let head: string[] = [];
   let rows: ReactNode[][] = [];
   if (source === "campaigns") {
-    head = ["Campanha", "Plataforma", ctx.hideSpend ? "" : "Investimento", "CTR", metric("conversions", profile).label, metric("cpa", profile).label, money ? "ROAS" : ""].filter(Boolean);
+    head = ["Campanha", "Plataforma", show("spend") ? "Investimento" : "", show("ctr") ? "CTR" : "", show("conversions") ? metric("conversions", profile).label : "", show("cpa") ? metric("cpa", profile).label : "", money && show("roas") ? "ROAS" : ""].filter(Boolean);
     rows = ds.campaigns.map((c) =>
       [
         c.name,
         PLATFORMS[c.platform]?.short ?? "—",
-        ctx.hideSpend ? null : brlCompact(c.spend),
-        pct(c.clicks / Math.max(1, c.impressions), 2),
-        int(c.conversions),
-        brl(c.spend / c.conversions),
-        money ? decimal(c.revenue / c.spend) : null,
+        show("spend") ? brlCompact(c.spend) : null,
+        show("ctr") ? pct(c.clicks / Math.max(1, c.impressions), 2) : null,
+        show("conversions") ? int(c.conversions) : null,
+        show("cpa") ? brl(c.spend / c.conversions) : null,
+        money && show("roas") ? decimal(c.revenue / c.spend) : null,
       ].filter((v) => v !== null),
     );
   } else if (source === "products") {
-    head = ["Produto", "Vendidos", "Receita", "ROAS"];
-    rows = ds.products.map((p) => [p.name, int(p.sold), brlCompact(p.revenue), decimal(p.revenue / p.spend)]);
+    head = ["Produto", "Vendidos", show("revenue") ? "Receita" : "", show("roas") ? "ROAS" : ""].filter(Boolean);
+    rows = ds.products.map((p) => [p.name, int(p.sold), show("revenue") ? brlCompact(p.revenue) : null, show("roas") ? decimal(p.revenue / p.spend) : null].filter((v) => v !== null));
   } else {
-    head = ["Cliente", ctx.hideSpend ? "" : "Investimento", "Conversões", "CPA", "Meta", "Status"].filter(Boolean);
+    head = ["Cliente", show("spend") ? "Investimento" : "", show("conversions") ? "Conversões" : "", show("cpa") ? "CPA" : "", ctx.hideSpend ? "" : "Meta", ctx.hideSpend ? "" : "Status"].filter(Boolean);
     rows = ds.clients.map((c) => {
       const cpa = c.spend / c.conversions;
       const ratio = cpa / c.goal;
       const status = ratio <= 1 ? ["Na meta", "text-accent"] : ratio <= 1.15 ? ["Atenção", "text-warning"] : ["Fora da meta", "text-error-fg"];
       return [
         c.name,
-        ctx.hideSpend ? null : brlCompact(c.spend),
-        int(c.conversions),
-        brl(cpa),
-        brl(c.goal, { decimals: false }),
-        <span key="s" className={`font-semibold ${status[1]}`}>
-          {status[0]}
-        </span>,
+        show("spend") ? brlCompact(c.spend) : null,
+        show("conversions") ? int(c.conversions) : null,
+        show("cpa") ? brl(cpa) : null,
+        ctx.hideSpend ? null : brl(c.goal, { decimals: false }),
+        ctx.hideSpend ? null : (
+          <span key="s" className={`font-semibold ${status[1]}`}>
+            {status[0]}
+          </span>
+        ),
       ].filter((v) => v !== null);
     });
   }
@@ -461,10 +477,12 @@ function Creatives({ ctx }: { ctx: WidgetContext }) {
                   <dt className="text-fg-2">CTR</dt>
                   <dd className="font-semibold">{pct(ctr, 2)}</dd>
                 </div>
-                <div>
-                  <dt className="text-fg-2">{profile === "video" ? "CPV" : "CPA"}</dt>
-                  <dd className="font-semibold">{Number.isFinite(cpa) ? brl(cpa, { decimals: cpa < 100 }) : "—"}</dd>
-                </div>
+                {!ctx.hideSpend && (
+                  <div>
+                    <dt className="text-fg-2">{profile === "video" ? "CPV" : "CPA"}</dt>
+                    <dd className="font-semibold">{Number.isFinite(cpa) ? brl(cpa, { decimals: cpa < 100 }) : "—"}</dd>
+                  </div>
+                )}
                 <div>
                   <dt className="text-fg-2">Freq.</dt>
                   <dd className={`font-semibold ${c.frequency > 3 ? "text-warning" : ""}`}>{decimal(c.frequency)}</dd>
@@ -500,10 +518,12 @@ function Goals({ ctx }: { ctx: WidgetContext }) {
       value: Math.min(1, convToDate / targetConv),
       marker: pacing,
       text: `${int(convToDate)} de ${int(targetConv)}`,
-      note: `Meta a ${brl(ds.goal, { decimals: false })} por conversão`,
+      // meta × conversões daria a verba: fica de fora com o investimento oculto
+      note: ctx.hideSpend ? `Dia ${b.day} de ${b.daysInMonth}` : `Meta a ${brl(ds.goal, { decimals: false })} por conversão`,
       warn: convToDate / targetConv < pacing * 0.9,
     },
     {
+      hidden: ctx.hideSpend,
       label: "Custo por conversão",
       value: Math.min(1, ds.goal / Math.max(1, cur.cpa)),
       marker: 1,
@@ -514,7 +534,7 @@ function Goals({ ctx }: { ctx: WidgetContext }) {
   ];
   return (
     <ul className="space-y-3.5">
-      {rows.map((r) => (
+      {rows.filter((r) => !r.hidden).map((r) => (
         <li key={r.label} className="text-[10.5px]">
           <p className="flex justify-between gap-2">
             <span className="font-semibold text-fg">{r.label}</span>
@@ -539,14 +559,17 @@ function Audience({ ctx }: { ctx: WidgetContext }) {
     <div className="grid gap-4 @[600px]:grid-cols-[2fr_1fr]">
       <ul className="space-y-2" aria-label="Faixas de idade">
         {ds.audience.map((a) => (
-          <li key={a.label} className="grid grid-cols-[3rem_1fr_auto_auto] items-center gap-2 text-[10.5px] tnum">
+          <li key={a.label} className={`grid items-center gap-2 text-[10.5px] tnum ${ctx.hideSpend ? "grid-cols-[3rem_1fr_auto]" : "grid-cols-[3rem_1fr_auto_auto]"}`}>
             <span className="text-fg-2">{a.label}</span>
             <span className="h-2.5 rounded-[3px] bg-accent" style={{ width: `${(a.share / max) * 100}%` }} />
             <span className="font-semibold">{pct(a.share, 0)}</span>
-            <span className={`w-16 text-right ${a.cpa > ds.goal * 1.15 ? "text-error-fg" : "text-fg-2"}`}>{brl(a.cpa, { decimals: false })}</span>
+            {!ctx.hideSpend && <span className={`w-16 text-right ${a.cpa > ds.goal * 1.15 ? "text-error-fg" : "text-fg-2"}`}>{brl(a.cpa, { decimals: false })}</span>}
           </li>
         ))}
-        <li className="text-[10px] text-fg-2">Participação nas {metric("conversions", profile).label.toLowerCase()} e custo por conversão.</li>
+        <li className="text-[10px] text-fg-2">
+          Participação nas {metric("conversions", profile).label.toLowerCase()}
+          {ctx.hideSpend ? "." : " e custo por conversão."}
+        </li>
       </ul>
       <div>
         <div className="flex h-3 overflow-hidden rounded-[3px]">
@@ -576,7 +599,7 @@ const COMPARE: Partial<Record<Profile, MetricId[]>> = {
 
 function Compare({ ctx }: { ctx: WidgetContext }) {
   const { cur, prev, profile } = ctx;
-  const ids = (COMPARE[profile] ?? ["spend", "conversions", "cpa", "revenue", "roas", "ctr"]).filter((id) => !(ctx.hideSpend && id === "spend"));
+  const ids = (COMPARE[profile] ?? ["spend", "conversions", "cpa", "revenue", "roas", "ctr"]).filter((id) => !(ctx.hideSpend && isSampleSpendDerived(id)));
   return (
     <table className="w-full text-[10.5px] tnum">
       <thead>

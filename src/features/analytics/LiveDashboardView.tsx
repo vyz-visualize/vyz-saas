@@ -8,13 +8,16 @@ import { useState, type ComponentType, type ReactNode } from "react";
 import { EmptyState, Tabs } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS } from "@/features/accounts/platforms";
+import { GOOGLE_CATALOG, META_CATALOG, type CatalogMetric } from "@/features/dashboards/metric-prefs";
+import { MetricVisibilityProvider, useMetricPrefsState, type SaveMetricPrefs } from "@/features/dashboards/metric-prefs-context";
+import { CustomizeButton, MetricsPanel } from "@/features/dashboards/MetricsPanel";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
 import { GoogleCampaigns, GoogleOverview, GoogleProducts, GoogleTerms } from "./google/GooglePages";
 import { MetaAudience, MetaCampaigns, MetaCreatives, MetaFunnel, MetaOverview } from "./meta/MetaPages";
 import { ddmm, ddmmyyyyIso } from "./ranges";
 import type { PageProps } from "./shared";
-import type { LiveDashboardData, LivePlatform } from "./types";
+import type { DashboardView, LiveDashboardData, LivePlatform } from "./types";
 
 /** Páginas que cada dashboard live sabe desenhar, na ordem padrão. */
 export const LIVE_PAGES: Record<LivePlatform, Partial<Record<PageId, ComponentType<PageProps>>>> = {
@@ -37,7 +40,23 @@ export type LiveDashboardViewProps = {
   actions?: ReactNode;
   /** Controles ao lado das abas (seletor de período). */
   toolbar?: ReactNode;
+  /** Métricas escolhidas neste dashboard (dashboards.metric_prefs). */
+  metricPrefs?: unknown;
+  /** Mostra o botão "Personalizar" (member+ no painel; nunca no link). */
+  canCustomize?: boolean;
+  saveMetrics?: SaveMetricPrefs;
 };
+
+const CATALOG: Record<LivePlatform, readonly CatalogMetric[]> = { meta: META_CATALOG, google: GOOGLE_CATALOG };
+
+/** A conta tem esse número no período? Sem dado, o painel desabilita a métrica. */
+function liveHasData(view: DashboardView, id: string): boolean {
+  const kpi = [...view.kpis, ...(view.extraKpis ?? [])].find((k) => k.id === id);
+  if (kpi) return kpi.value != null && kpi.value !== 0;
+  if (id === "addToCart" && view.platform === "meta") return view.funnelByStage.some((s) => s.addToCart > 0);
+  if (id === "convRate" && view.platform === "meta") return view.funnelByStage.some((s) => s.convRate != null);
+  return true;
+}
 
 /** "2026-10-30T13:05:00Z" → "30/10 às 10:05" no fuso dado (mesmo texto no servidor e no navegador). */
 function syncedAt(iso: string, timeZone: string): string {
@@ -50,7 +69,8 @@ function syncedAt(iso: string, timeZone: string): string {
   }
 }
 
-export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar }: LiveDashboardViewProps) {
+export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar, metricPrefs, canCustomize = false, saveMetrics }: LiveDashboardViewProps) {
+  const metrics = useMetricPrefsState({ dashboardId: data.dashboard.id, scope: data.platform, catalog: CATALOG[data.platform], initial: metricPrefs, hideSpend: data.hideSpend, saveAction: saveMetrics });
   const pages = livePages(data.platform, pageIds);
   const [page, setPage] = useState<PageId>(initialPage && pages.includes(initialPage) ? initialPage : pages[0]);
   const active = pages.includes(page) ? page : pages[0];
@@ -79,7 +99,12 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
             {data.hideSpend && <span className="rounded-chip border border-dashed border-line px-2 py-0.5 text-fg-2">Investimento oculto</span>}
           </div>
         </div>
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        {(actions || canCustomize) && (
+          <div className="flex flex-wrap gap-2">
+            {canCustomize && <CustomizeButton onClick={() => metrics.setOpen(true)} />}
+            {actions}
+          </div>
+        )}
       </header>
 
       <div className="flex flex-col gap-3 @[900px]:flex-row @[900px]:items-end @[900px]:justify-between">
@@ -111,9 +136,25 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
         ) : data.status === "no_data" ? (
           <EmptyState title="Os dados ainda estão chegando" text="A primeira importação leva alguns instantes. Se a conta não teve veiculação neste período, escolha um período maior." />
         ) : (
-          <Page data={data} />
+          <MetricVisibilityProvider value={metrics.visibility}>
+            <Page data={data} />
+          </MetricVisibilityProvider>
         )}
       </div>
+      {canCustomize && (
+        <MetricsPanel
+          open={metrics.open}
+          onClose={metrics.close}
+          catalog={CATALOG[data.platform]}
+          prefs={metrics.prefs}
+          hasData={(id) => liveHasData(data.view, id)}
+          onToggle={metrics.toggle}
+          onRestore={metrics.restore}
+          onSave={metrics.save}
+          pending={metrics.pending}
+          error={metrics.error}
+        />
+      )}
     </div>
   );
 }

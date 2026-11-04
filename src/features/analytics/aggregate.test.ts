@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateDashboard, deltaOf, fatigueOf, redactSpend, totalsOf, weightedShare } from "./aggregate";
+import { aggregateDashboard, deltaOf, fatigueOf, reachPerDay, redactSpend, totalsOf, weightedShare } from "./aggregate";
 import { sampleDashboardData } from "./preview";
 import { dashboardRanges, maturingStart } from "./ranges";
 import type { AccountDayRow, AdDayRow, CampaignDayRow, GoogleView, MetaView, MetricRow, WarehouseRows } from "./types";
@@ -163,13 +163,41 @@ describe("Meta", () => {
     expect(view.campaigns[0].spendShare).toBeCloseTo(0.75);
     expect(view.funnelByStage.map((s) => s.label)).toEqual(["Prospecção", "Remarketing"]);
   });
-  it("ocultar investimento tira os valores e mantém as razões", () => {
+  it("ocultar investimento tira o valor e tudo de onde ele dá para recalcular", () => {
     const hidden = redactSpend(view);
-    expect(hidden.kpis.find((k) => k.id === "spend")!.value).toBeNull();
-    expect(hidden.campaigns.every((c) => c.spend === null)).toBe(true);
+    for (const id of ["spend", "roas", "cpa", "cpm"]) {
+      const k = hidden.kpis.find((x) => x.id === id)!;
+      expect([id, k.value, k.previous, k.delta, k.spark.length]).toEqual([id, null, null, null, 0]);
+    }
+    expect(hidden.extraKpis!.find((k) => k.id === "cpc")!.value).toBeNull();
+    expect(hidden.kpis.find((k) => k.id === "revenue")!.value).not.toBeNull();
     expect(hidden.totals.spend).toBeNull();
-    expect(hidden.kpis.find((k) => k.id === "roas")!.value).toBeCloseTo(3);
-    expect(JSON.stringify(hidden.daily)).not.toContain('"spend":100');
+    expect(hidden.breakEvenRoas).toBeNull();
+
+    // varre a estrutura inteira: nenhum campo derivado do investimento sobra com número
+    const walk = (v: unknown, path = "view"): void => {
+      if (Array.isArray(v)) return v.forEach((x, i) => walk(x, `${path}[${i}]`));
+      if (!v || typeof v !== "object") return;
+      for (const [k, x] of Object.entries(v)) {
+        if (["spend", "roas", "cpa", "cpc", "cpm", "cost", "wastedSpend"].includes(k)) expect([`${path}.${k}`, x]).toEqual([`${path}.${k}`, null]);
+        if (k === "belowBreakEven") expect(x).toBe(false);
+        walk(x, `${path}.${k}`);
+      }
+    };
+    walk({ ...hidden, kpis: [], extraKpis: [] });
+  });
+
+  it("frequência é coerente com o alcance médio por dia", () => {
+    const rows = [
+      { date: "2026-10-01", impressions: 300, reach: 100 },
+      { date: "2026-10-02", impressions: 500, reach: 300 },
+    ];
+    const mean = reachPerDay(rows)!;
+    expect(mean).toBe(200);
+    // impressões por dia ÷ alcance médio por dia = o que o card de frequência mostra
+    const basic = rows.map((r) => ({ ...r, spend: 0, clicks: 0, conversions: 0, conversionValue: 0 }));
+    expect(totalsOf(basic).frequency).toBeCloseTo(800 / 2 / mean);
+    expect(reachPerDay([{ date: "2026-10-01", reach: null }])).toBeNull();
   });
 });
 

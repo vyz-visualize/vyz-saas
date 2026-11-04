@@ -7,6 +7,7 @@ import { useId, useMemo, useState } from "react";
 import { Heatmap } from "@/components/charts/Heatmap";
 import { Segmented } from "@/components/ui/Segmented";
 import { decimal, int, pct } from "@/lib/format";
+import { useColumnVisible } from "@/features/dashboards/metric-prefs-context";
 import { CHANNEL_LABEL } from "../aggregate";
 import { formatValue, HIDDEN, MATCH_LABEL, money, moneyCompact } from "../format";
 import { hiddenOr, HeroChart, StatusCell, TopCampaigns, type PageProps } from "../shared";
@@ -21,16 +22,16 @@ export function GoogleOverview({ data }: PageProps) {
   const view = google(data);
   return (
     <div className="space-y-3">
-      <KpiGrid platform={view.platform} kpis={view.kpis} currency={data.currency} maturing={data.maturingFrom ? 3 : 0} hideSpend={data.hideSpend} />
+      <KpiGrid platform={view.platform} kpis={view.kpis} extra={view.extraKpis} currency={data.currency} maturing={data.maturingFrom ? 3 : 0} hideSpend={data.hideSpend} />
       <div className="grid gap-3 @[1040px]:grid-cols-3">
         <div className="min-w-0 @[1040px]:col-span-2">
           <HeroChart data={data} spendLabel="Custo" valueLabel="Valor de conversão" />
         </div>
-        <ImpressionSharePanel view={view} />
+        <ImpressionSharePanel view={view} hideSpend={data.hideSpend} />
       </div>
       <div className="grid gap-3 @[900px]:grid-cols-2">
         <ChannelsPanel data={data} />
-        <Panel title="Dispositivos" subtitle="Participação no valor de conversão e ROAS.">
+        <Panel title="Dispositivos" subtitle={data.hideSpend ? "Participação no valor de conversão." : "Participação no valor de conversão e ROAS."}>
           <SliceBars items={view.devices} breakEven={view.breakEvenRoas} label="Dispositivos" />
         </Panel>
       </div>
@@ -39,7 +40,7 @@ export function GoogleOverview({ data }: PageProps) {
   );
 }
 
-function ImpressionSharePanel({ view }: { view: GoogleView }) {
+function ImpressionSharePanel({ view, hideSpend }: { view: GoogleView; hideSpend: boolean }) {
   const s = view.impressionShare;
   if (s.share == null) {
     return (
@@ -76,7 +77,7 @@ function ImpressionSharePanel({ view }: { view: GoogleView }) {
           </li>
         ))}
       </ul>
-      {budget >= 0.1 && <p className="mt-3 rounded-control bg-bg px-2.5 py-2 text-[12px] leading-snug text-fg-2">O orçamento corta {pct(budget, 0)} das aparições. Se o ROAS dessas campanhas está bom, vale aumentar a verba.</p>}
+      {budget >= 0.1 && <p className="mt-3 rounded-control bg-bg px-2.5 py-2 text-[12px] leading-snug text-fg-2">O orçamento corta {pct(budget, 0)} das aparições.{!hideSpend && " Se o ROAS dessas campanhas está bom, vale aumentar a verba."}</p>}
     </Panel>
   );
 }
@@ -84,8 +85,9 @@ function ImpressionSharePanel({ view }: { view: GoogleView }) {
 function ChannelsPanel({ data }: PageProps) {
   const view = google(data);
   const list = view.channels;
+  const showRoas = useColumnVisible("roas");
   return (
-    <Panel title="Por tipo de campanha" subtitle="Onde o custo vai e quanto volta.">
+    <Panel title="Por tipo de campanha" subtitle={data.hideSpend ? "Participação de cada tipo e o valor que volta." : "Onde o custo vai e quanto volta."}>
       {!list.length ? (
         <NoData />
       ) : (
@@ -96,21 +98,23 @@ function ChannelsPanel({ data }: PageProps) {
             ))}
           </div>
           <table className="mt-3 w-full text-[12.5px] tnum">
-            <caption className="sr-only">Custo, valor e ROAS por tipo de campanha</caption>
+            <caption className="sr-only">{data.hideSpend ? "Participação e valor por tipo de campanha" : "Custo, valor e ROAS por tipo de campanha"}</caption>
             <thead>
               <tr className="text-[11px] text-fg-2">
                 <th scope="col" className="pb-1 text-left font-medium">
                   Tipo
                 </th>
                 <th scope="col" className="pb-1 text-right font-medium">
-                  Custo
+                  {data.hideSpend ? "Participação" : "Custo"}
                 </th>
                 <th scope="col" className="pb-1 text-right font-medium">
                   Valor
                 </th>
-                <th scope="col" className="pb-1 text-right font-medium">
-                  ROAS
-                </th>
+                {showRoas && (
+                  <th scope="col" className="pb-1 text-right font-medium">
+                    ROAS
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -124,9 +128,11 @@ function ChannelsPanel({ data }: PageProps) {
                   </th>
                   <td className="py-1.5 text-right">{data.hideSpend ? pct(c.spendShare, 0) : moneyCompact(c.spend, data.currency)}</td>
                   <td className="py-1.5 text-right">{moneyCompact(c.value, data.currency)}</td>
-                  <td className="py-1.5 text-right">
-                    <Roas value={c.roas} breakEven={view.breakEvenRoas} />
-                  </td>
+                  {showRoas && (
+                    <td className="py-1.5 text-right">
+                      <Roas value={c.roas} breakEven={view.breakEvenRoas} />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -194,7 +200,7 @@ export function GoogleCampaigns({ data }: PageProps) {
           columns={[
             { key: "name", label: "Campanha", sticky: true, className: "w-[15rem] max-w-[15rem]", sort: (c) => c.name, render: (c) => <StatusCell name={c.name} status={c.status} sub={channelLabel(c.kind)} /> },
             {
-              key: "spend",
+              key: "spend", metric: "spend",
               label: "Custo",
               sort: (c) => c.spendShare,
               className: "w-[10rem]",
@@ -205,13 +211,13 @@ export function GoogleCampaigns({ data }: PageProps) {
                 </span>
               ),
             },
-            { key: "value", label: "Valor conv.", align: "right", sort: (c) => c.value, render: (c) => moneyCompact(c.value, currency) },
-            { key: "roas", label: "ROAS", align: "right", sort: (c) => c.roas, render: (c) => <Roas value={c.roas} breakEven={view.breakEvenRoas} /> },
-            { key: "conv", label: "Conversões", align: "right", sort: (c) => c.conversions, render: (c) => decimal(c.conversions, 1) },
-            { key: "cpa", label: "CPA", align: "right", sort: (c) => c.cpa, render: (c) => money(c.cpa, currency) },
-            { key: "ctr", label: "CTR", align: "right", sort: (c) => c.ctr, render: (c) => formatValue(c.ctr, "pct") },
-            { key: "cpc", label: "CPC médio", align: "right", sort: (c) => c.cpc, render: (c) => money(c.cpc, currency) },
-            { key: "is", label: "Parcela de impressões", sort: (c) => c.impressionShare, className: "w-[11rem]", render: (c) => <ShareBar c={c} /> },
+            { key: "value", metric: "value", label: "Valor conv.", align: "right", sort: (c) => c.value, render: (c) => moneyCompact(c.value, currency) },
+            { key: "roas", metric: "roas", label: "ROAS", align: "right", sort: (c) => c.roas, render: (c) => <Roas value={c.roas} breakEven={view.breakEvenRoas} /> },
+            { key: "conv", metric: "conversions", label: "Conversões", align: "right", sort: (c) => c.conversions, render: (c) => decimal(c.conversions, 1) },
+            { key: "cpa", metric: "cpa", label: "CPA", align: "right", sort: (c) => c.cpa, render: (c) => money(c.cpa, currency) },
+            { key: "ctr", metric: "ctr", label: "CTR", align: "right", sort: (c) => c.ctr, render: (c) => formatValue(c.ctr, "pct") },
+            { key: "cpc", metric: "cpc", label: "CPC médio", align: "right", sort: (c) => c.cpc, render: (c) => money(c.cpc, currency) },
+            { key: "is", metric: "impressionShare", label: "Parcela de impressões", sort: (c) => c.impressionShare, className: "w-[11rem]", render: (c) => <ShareBar c={c} /> },
           ]}
         />
       </Panel>
@@ -287,12 +293,12 @@ export function GoogleTerms({ data }: PageProps) {
           minWidth={760}
           columns={[
             termCol,
-            { key: "value", label: "Valor conv.", align: "right", sort: (t) => t.value, render: (t) => moneyCompact(t.value, currency) },
-            { key: "conv", label: "Conversões", align: "right", sort: (t) => t.conversions, render: (t) => decimal(t.conversions, 1) },
-            { key: "roas", label: "ROAS", align: "right", sort: (t) => t.roas, render: (t) => <Roas value={t.roas} breakEven={view.breakEvenRoas} /> },
-            { key: "spend", label: "Custo", align: "right", sort: (t) => t.spend, render: (t) => hiddenOr(hideSpend, money(t.spend, currency)) },
-            { key: "ctr", label: "CTR", align: "right", sort: (t) => t.ctr, render: (t) => formatValue(t.ctr, "pct") },
-            { key: "cpa", label: "CPA", align: "right", sort: (t) => t.cpa, render: (t) => money(t.cpa, currency) },
+            { key: "value", metric: "value", label: "Valor conv.", align: "right", sort: (t) => t.value, render: (t) => moneyCompact(t.value, currency) },
+            { key: "conv", metric: "conversions", label: "Conversões", align: "right", sort: (t) => t.conversions, render: (t) => decimal(t.conversions, 1) },
+            { key: "roas", metric: "roas", label: "ROAS", align: "right", sort: (t) => t.roas, render: (t) => <Roas value={t.roas} breakEven={view.breakEvenRoas} /> },
+            { key: "spend", metric: "spend", label: "Custo", align: "right", sort: (t) => t.spend, render: (t) => hiddenOr(hideSpend, money(t.spend, currency)) },
+            { key: "ctr", metric: "ctr", label: "CTR", align: "right", sort: (t) => t.ctr, render: (t) => formatValue(t.ctr, "pct") },
+            { key: "cpa", metric: "cpa", label: "CPA", align: "right", sort: (t) => t.cpa, render: (t) => money(t.cpa, currency) },
           ]}
         />
       </Panel>
@@ -307,7 +313,7 @@ export function GoogleTerms({ data }: PageProps) {
           columns={[
             termCol,
             {
-              key: "spend",
+              key: "spend", metric: "spend",
               label: "Custo",
               sort: (t) => t.spend,
               className: "w-[11rem]",
@@ -318,9 +324,9 @@ export function GoogleTerms({ data }: PageProps) {
                 </span>
               ),
             },
-            { key: "clicks", label: "Cliques", align: "right", sort: (t) => t.clicks, render: (t) => int(t.clicks) },
-            { key: "impr", label: "Impressões", align: "right", sort: (t) => t.impressions, render: (t) => int(t.impressions) },
-            { key: "ctr", label: "CTR", align: "right", sort: (t) => t.ctr, render: (t) => formatValue(t.ctr, "pct") },
+            { key: "clicks", metric: "clicks", label: "Cliques", align: "right", sort: (t) => t.clicks, render: (t) => int(t.clicks) },
+            { key: "impr", metric: "impressions", label: "Impressões", align: "right", sort: (t) => t.impressions, render: (t) => int(t.impressions) },
+            { key: "ctr", metric: "ctr", label: "CTR", align: "right", sort: (t) => t.ctr, render: (t) => formatValue(t.ctr, "pct") },
           ]}
         />
       </Panel>
@@ -371,7 +377,13 @@ export function GoogleProducts({ data }: PageProps) {
               <p className="label-caps text-[10px] text-fg-2">{i + 1}º em valor</p>
               <p className="line-clamp-2 text-[13px] leading-snug font-semibold text-fg">{p.title}</p>
               <p className="mt-1 text-[12px] tnum text-fg-2">
-                <strong className="text-fg">{moneyCompact(p.value, currency)}</strong> · ROAS <Roas value={p.roas} breakEven={view.breakEvenRoas} />
+                <strong className="text-fg">{moneyCompact(p.value, currency)}</strong>
+                {!hideSpend && (
+                  <>
+                    {" "}
+                    · ROAS <Roas value={p.roas} breakEven={view.breakEvenRoas} />
+                  </>
+                )}
               </p>
             </div>
           </li>
@@ -409,7 +421,7 @@ export function GoogleProducts({ data }: PageProps) {
                 ),
               },
               {
-                key: "value",
+                key: "value", metric: "value",
                 label: "Valor conv.",
                 sort: (p) => p.value,
                 className: "w-[11rem]",
@@ -420,14 +432,14 @@ export function GoogleProducts({ data }: PageProps) {
                   </span>
                 ),
               },
-              { key: "conv", label: "Conversões", align: "right", sort: (p) => p.conversions, render: (p) => decimal(p.conversions, 1) },
-              { key: "roas", label: "ROAS", align: "right", sort: (p) => p.roas, render: (p) => <Roas value={p.roas} breakEven={view.breakEvenRoas} /> },
-              { key: "spend", label: "Custo", align: "right", sort: (p) => p.spend, render: (p) => hiddenOr(hideSpend, money(p.spend, currency, { decimals: false })) },
-              { key: "ctr", label: "CTR", align: "right", sort: (p) => p.ctr, render: (p) => formatValue(p.ctr, "pct") },
+              { key: "conv", metric: "conversions", label: "Conversões", align: "right", sort: (p) => p.conversions, render: (p) => decimal(p.conversions, 1) },
+              { key: "roas", metric: "roas", label: "ROAS", align: "right", sort: (p) => p.roas, render: (p) => <Roas value={p.roas} breakEven={view.breakEvenRoas} /> },
+              { key: "spend", metric: "spend", label: "Custo", align: "right", sort: (p) => p.spend, render: (p) => hiddenOr(hideSpend, money(p.spend, currency, { decimals: false })) },
+              { key: "ctr", metric: "ctr", label: "CTR", align: "right", sort: (p) => p.ctr, render: (p) => formatValue(p.ctr, "pct") },
             ]}
           />
         </Panel>
-        <Panel title="Categorias" subtitle="Participação no valor e ROAS.">
+        <Panel title="Categorias" subtitle={hideSpend ? "Participação no valor." : "Participação no valor e ROAS."}>
           <SliceBars items={view.productCategories} breakEven={view.breakEvenRoas} label="Categorias de produto" />
         </Panel>
       </div>

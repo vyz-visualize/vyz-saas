@@ -61,7 +61,7 @@ export function ShareModal({ open, onClose, dashboard }: { open: boolean; onClos
         {!link ? (
           <>
             <SelectField label="Expira em" value={expires} onChange={(v) => setExpires(v as ExpiryOption)} options={EXPIRY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} />
-            <Checkbox label="Esconder os valores de investimento" hint="ROAS e custos por resultado continuam aparecendo." checked={hideSpend} onChange={setHideSpend} />
+            <Checkbox label="Esconder os valores de investimento" hint={hideSpend ? "Métricas de custo e ROAS também ficam ocultas, para o valor investido não poder ser recalculado." : undefined} checked={hideSpend} onChange={setHideSpend} />
             {error && (
               <p role="alert" className="rounded-control bg-error-soft px-3 py-2 text-[13px] text-error-fg">
                 {error}

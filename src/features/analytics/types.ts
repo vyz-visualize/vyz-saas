@@ -221,7 +221,10 @@ export type ImpressionShareVM = {
 };
 
 type ViewBase = {
+  /** Cards padrão (é o que o app desenha). */
   kpis: Kpi[];
+  /** Cards que o usuário pode ligar em "Personalizar". */
+  extraKpis?: Kpi[];
   daily: DailyPoint[];
   totals: Totals;
   previousTotals: Totals;

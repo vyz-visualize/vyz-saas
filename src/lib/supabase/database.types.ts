@@ -1157,6 +1157,7 @@ export type Database = {
           created_by: string | null
           created_at: string
           updated_at: string
+          metric_prefs: Json
         }
         Insert: {
           id?: string
@@ -1177,6 +1178,7 @@ export type Database = {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          metric_prefs?: Json
         }
         Update: {
           id?: string
@@ -1197,6 +1199,7 @@ export type Database = {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          metric_prefs?: Json
         }
         Relationships: [
           {

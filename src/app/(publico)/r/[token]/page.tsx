@@ -39,6 +39,7 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
             period={period}
             customDays={customDays}
             pageIds={d.pages}
+            metricPrefs={d.metricPrefs}
             hideSpend={shared.hideSpend}
             db={shared.db}
             toolbar={<PeriodNav period={period} customDays={customDays} />}
@@ -51,7 +52,7 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
   return (
     <PublicShell brand={shared.brand} note={note}>
       <SampleDashboard
-        dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays } }}
+        dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays }, metricPrefs: d.metricPrefs }}
         brand={{ color: shared.brand.color ?? "", logo: undefined, hideVyz: true }}
         hideSpend={shared.hideSpend}
       />

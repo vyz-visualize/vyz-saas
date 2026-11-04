@@ -21,7 +21,7 @@ export function MetaOverview({ data }: PageProps) {
   const view = meta(data);
   return (
     <div className="space-y-3">
-      <KpiGrid platform={view.platform} kpis={view.kpis} currency={data.currency} maturing={data.maturingFrom ? 3 : 0} hideSpend={data.hideSpend} />
+      <KpiGrid platform={view.platform} kpis={view.kpis} extra={view.extraKpis} currency={data.currency} maturing={data.maturingFrom ? 3 : 0} hideSpend={data.hideSpend} />
       <div className="grid gap-3 @[1040px]:grid-cols-3">
         <div className="min-w-0 @[1040px]:col-span-2">
           <HeroChart data={data} spendLabel="Investimento" valueLabel="Receita" />
@@ -60,7 +60,7 @@ export function MetaCampaigns({ data }: PageProps) {
           columns={[
             { key: "name", label: "Campanha", sticky: true, className: "w-[15rem] max-w-[15rem]", sort: (c) => c.name, render: (c) => <StatusCell name={c.name} status={c.status} sub={stageLabel(c.kind)} /> },
             {
-              key: "spend",
+              key: "spend", metric: "spend",
               label: "Investimento",
               sort: (c) => c.spendShare,
               className: "w-[11rem]",
@@ -71,13 +71,13 @@ export function MetaCampaigns({ data }: PageProps) {
                 </span>
               ),
             },
-            { key: "value", label: "Receita", align: "right", sort: (c) => c.value, render: (c) => moneyCompact(c.value, currency) },
-            { key: "roas", label: "ROAS", align: "right", sort: (c) => c.roas, render: (c) => <Roas value={c.roas} breakEven={view.breakEvenRoas} /> },
-            { key: "conv", label: "Compras", align: "right", sort: (c) => c.conversions, render: (c) => int(c.conversions) },
-            { key: "cpa", label: "Custo/compra", align: "right", sort: (c) => c.cpa, render: (c) => money(c.cpa, currency) },
-            { key: "ctr", label: "CTR do link", align: "right", sort: (c) => c.linkCtr, render: (c) => formatValue(c.linkCtr, "pct") },
-            { key: "cpm", label: "CPM", align: "right", sort: (c) => c.cpm, render: (c) => money(c.cpm, currency) },
-            { key: "freq", label: "Freq. média", align: "right", sort: (c) => c.frequency, render: (c) => (c.frequency == null ? "—" : decimal(c.frequency, 2)) },
+            { key: "value", metric: "revenue", label: "Receita", align: "right", sort: (c) => c.value, render: (c) => moneyCompact(c.value, currency) },
+            { key: "roas", metric: "roas", label: "ROAS", align: "right", sort: (c) => c.roas, render: (c) => <Roas value={c.roas} breakEven={view.breakEvenRoas} /> },
+            { key: "conv", metric: "purchases", label: "Compras", align: "right", sort: (c) => c.conversions, render: (c) => int(c.conversions) },
+            { key: "cpa", metric: "cpa", label: "Custo/compra", align: "right", sort: (c) => c.cpa, render: (c) => money(c.cpa, currency) },
+            { key: "ctr", metric: "linkCtr", label: "CTR do link", align: "right", sort: (c) => c.linkCtr, render: (c) => formatValue(c.linkCtr, "pct") },
+            { key: "cpm", metric: "cpm", label: "CPM", align: "right", sort: (c) => c.cpm, render: (c) => money(c.cpm, currency) },
+            { key: "freq", metric: "frequency", label: "Freq. média", align: "right", sort: (c) => c.frequency, render: (c) => (c.frequency == null ? "—" : decimal(c.frequency, 2)) },
           ]}
         />
       </Panel>
@@ -139,13 +139,13 @@ export function MetaFunnel({ data }: PageProps) {
   return (
     <div className="space-y-3">
       <div className="grid gap-3 @[900px]:grid-cols-[3fr_2fr]">
-        <Panel title="Funil de compra" subtitle="Das impressões à compra, somando todas as campanhas. O custo por etapa divide o investimento pela etapa.">
+        <Panel title="Funil de compra" subtitle={hideSpend ? "Das impressões à compra, somando todas as campanhas." : "Das impressões à compra, somando todas as campanhas. O custo por etapa divide o investimento pela etapa."}>
           <FunnelSteps steps={view.funnel} currency={currency} />
         </Panel>
         <div className="grid content-start gap-3">
           <Stat label="Taxa de conversão do clique" value={formatValue(click && buy ? buy.count / Math.max(1, click.count) : null, "pct")} note="Compras ÷ cliques no link" />
           <Stat label="CTR do link" value={formatValue(imp && click ? click.count / Math.max(1, imp.count) : null, "pct")} note="Cliques no link ÷ impressões" />
-          <Stat label="Custo por compra" value={money(buy?.cost ?? null, currency)} note={hideSpend ? "Investimento oculto" : `Investimento ${moneyCompact(view.totals.spend, currency)}`} />
+          {!hideSpend && <Stat label="Custo por compra" value={money(buy?.cost ?? null, currency)} note={`Investimento ${moneyCompact(view.totals.spend, currency)}`} />}
         </div>
       </div>
       <Panel title="Funil por etapa da campanha" subtitle="Prospecção traz gente nova; remarketing e retenção convertem quem já conhece a loja.">
@@ -156,12 +156,12 @@ export function MetaFunnel({ data }: PageProps) {
           minWidth={620}
           columns={[
             { key: "stage", label: "Etapa", sticky: true, render: (s) => <span className="font-medium text-fg">{s.label}</span> },
-            { key: "spend", label: "Investimento", align: "right", render: (s) => hiddenOr(hideSpend, money(s.spend, currency, { decimals: false })) },
-            { key: "clicks", label: "Cliques no link", align: "right", render: (s) => int(s.linkClicks) },
-            { key: "atc", label: "Carrinho", align: "right", render: (s) => int(s.addToCart) },
-            { key: "conv", label: "Compras", align: "right", render: (s) => int(s.conversions) },
-            { key: "rate", label: "Conversão do clique", align: "right", render: (s) => formatValue(s.convRate, "pct") },
-            { key: "roas", label: "ROAS", align: "right", render: (s) => <Roas value={s.roas} breakEven={view.breakEvenRoas} /> },
+            { key: "spend", metric: "spend", label: "Investimento", align: "right", render: (s) => hiddenOr(hideSpend, money(s.spend, currency, { decimals: false })) },
+            { key: "clicks", metric: "linkClicks", label: "Cliques no link", align: "right", render: (s) => int(s.linkClicks) },
+            { key: "atc", metric: "addToCart", label: "Carrinho", align: "right", render: (s) => int(s.addToCart) },
+            { key: "conv", metric: "purchases", label: "Compras", align: "right", render: (s) => int(s.conversions) },
+            { key: "rate", metric: "convRate", label: "Conversão do clique", align: "right", render: (s) => formatValue(s.convRate, "pct") },
+            { key: "roas", metric: "roas", label: "ROAS", align: "right", render: (s) => <Roas value={s.roas} breakEven={view.breakEvenRoas} /> },
           ]}
         />
       </Panel>
@@ -185,7 +185,7 @@ type CreativeSort = "spend" | "roas" | "ctr";
 
 export function MetaCreatives({ data }: PageProps) {
   const view = meta(data);
-  const [sort, setSort] = useState<CreativeSort>(data.hideSpend ? "roas" : "spend");
+  const [sort, setSort] = useState<CreativeSort>(data.hideSpend ? "ctr" : "spend");
   const list = useMemo(() => {
     const key = (c: CreativeVM) => (sort === "roas" ? (c.roas ?? -1) : sort === "ctr" ? (c.linkCtr ?? -1) : (c.spend ?? 0));
     return [...view.creatives].sort((a, b) => key(b) - key(a));
@@ -211,7 +211,7 @@ export function MetaCreatives({ data }: PageProps) {
           size="sm"
           value={sort}
           onChange={setSort}
-          options={[...(data.hideSpend ? [] : [{ value: "spend" as const, label: "Investimento" }]), { value: "roas", label: "ROAS" }, { value: "ctr", label: "CTR" }]}
+          options={[...(data.hideSpend ? [] : [{ value: "spend" as const, label: "Investimento" }, { value: "roas" as const, label: "ROAS" }]), { value: "ctr", label: "CTR" }]}
         />
       </div>
       <ul className="grid grid-cols-1 gap-3 @[560px]:grid-cols-2 @[900px]:grid-cols-3 @[1240px]:grid-cols-4">
@@ -239,8 +239,8 @@ function CreativeCard({ c, data, breakEven }: { c: CreativeVM; data: PageProps["
         </div>
         <p className="mt-0.5 truncate text-[11.5px] text-fg-2">{c.campaignName}</p>
         <dl className="mt-3 grid grid-cols-3 gap-x-2 gap-y-2 text-[11px] tnum">
-          <Metric label="Investimento" value={hiddenOr(hideSpend, moneyCompact(c.spend, currency))} />
-          <Metric label="ROAS" value={<Roas value={c.roas} breakEven={breakEven} />} />
+          {!hideSpend && <Metric label="Investimento" value={moneyCompact(c.spend, currency)} />}
+          {!hideSpend && <Metric label="ROAS" value={<Roas value={c.roas} breakEven={breakEven} />} />}
           <Metric label="Compras" value={int(c.conversions)} />
           <Metric label="CTR do link" value={formatValue(c.linkCtr, "pct")} />
           <Metric label="Freq. média" value={c.frequency == null ? "—" : decimal(c.frequency, 2)} />
@@ -276,6 +276,7 @@ type AudienceMetric = "value" | "roas";
 export function MetaAudience({ data }: PageProps) {
   const view = meta(data);
   const [metric, setMetric] = useState<AudienceMetric>("value");
+  const { hideSpend } = data;
   const genders = (["female", "male"] as const).filter((g) => view.ageGender.some((c) => c.gender === g));
   const genderTotals = genders.map((g) => {
     const cells = view.ageGender.filter((c) => c.gender === g);
@@ -289,19 +290,21 @@ export function MetaAudience({ data }: PageProps) {
           title="Idade × gênero"
           subtitle={metric === "value" ? "Participação na receita. Mais escuro = mais receita." : "ROAS por grupo. Vermelho = abaixo do equilíbrio."}
           aside={
-            <Segmented
-              label="Métrica do quadro"
-              size="sm"
-              value={metric}
-              onChange={setMetric}
-              options={[
-                { value: "value", label: "Receita" },
-                { value: "roas", label: "ROAS" },
-              ]}
-            />
+            hideSpend ? undefined : (
+              <Segmented
+                label="Métrica do quadro"
+                size="sm"
+                value={metric}
+                onChange={setMetric}
+                options={[
+                  { value: "value", label: "Receita" },
+                  { value: "roas", label: "ROAS" },
+                ]}
+              />
+            )
           }
         >
-          {view.ageGender.length ? <AgeGenderMatrix view={view} metric={metric} genders={genders} /> : <NoData />}
+          {view.ageGender.length ? <AgeGenderMatrix view={view} metric={metric} genders={genders} hideSpend={hideSpend} /> : <NoData />}
         </Panel>
         <Panel title="Gênero" subtitle="Participação na receita do período.">
           {genderTotals.length ? (
@@ -331,10 +334,10 @@ export function MetaAudience({ data }: PageProps) {
         </Panel>
       </div>
       <div className="grid gap-3 @[900px]:grid-cols-3">
-        <Panel title="Posicionamentos" subtitle="Participação no investimento e ROAS.">
+        <Panel title="Posicionamentos" subtitle={hideSpend ? "Participação no investimento." : "Participação no investimento e ROAS."}>
           <SliceBars items={view.placements} breakEven={view.breakEvenRoas} basis="spend" label="Posicionamentos" />
         </Panel>
-        <Panel title="Dispositivos" subtitle="Participação na receita e ROAS.">
+        <Panel title="Dispositivos" subtitle={hideSpend ? "Participação na receita." : "Participação na receita e ROAS."}>
           <SliceBars items={view.devices} breakEven={view.breakEvenRoas} label="Dispositivos" />
         </Panel>
         <Panel title="Estados que mais vendem" subtitle="Top 10 por receita.">
@@ -345,14 +348,14 @@ export function MetaAudience({ data }: PageProps) {
   );
 }
 
-function AgeGenderMatrix({ view, metric, genders }: { view: MetaView; metric: AudienceMetric; genders: readonly ("female" | "male")[] }) {
+function AgeGenderMatrix({ view, metric, genders, hideSpend }: { view: MetaView; metric: AudienceMetric; genders: readonly ("female" | "male")[]; hideSpend: boolean }) {
   const cell = (age: string, g: string) => view.ageGender.find((c) => c.age === age && c.gender === g);
   const maxShare = Math.max(...view.ageGender.map((c) => c.valueShare)) || 1;
   const breakEven = view.breakEvenRoas ?? 1;
   const maxRoas = Math.max(...view.ageGender.map((c) => c.roas ?? 0)) || 1;
   return (
     <table className="w-full table-fixed border-separate border-spacing-[3px] text-[12px] tnum">
-      <caption className="sr-only">Receita e ROAS por idade e gênero</caption>
+      <caption className="sr-only">{hideSpend ? "Receita por idade e gênero" : "Receita e ROAS por idade e gênero"}</caption>
       <thead>
         <tr>
           <th scope="col" className="w-16 text-left text-[11px] font-medium text-fg-2">
@@ -383,7 +386,9 @@ function AgeGenderMatrix({ view, metric, genders }: { view: MetaView; metric: Au
                   <span className={`block font-semibold ${dark ? "text-on-accent" : bad && metric === "roas" ? "text-error-fg" : "text-fg"}`}>
                     {metric === "value" ? pct(c.valueShare, 1) : c.roas == null ? "—" : decimal(c.roas, 2)}
                   </span>
-                  <span className={`block text-[10.5px] ${dark ? "text-on-accent/80" : "text-fg-2"}`}>{metric === "value" ? `ROAS ${c.roas == null ? "—" : decimal(c.roas, 1)}` : pct(c.valueShare, 0)}</span>
+                  {!hideSpend && (
+                    <span className={`block text-[10.5px] ${dark ? "text-on-accent/80" : "text-fg-2"}`}>{metric === "value" ? `ROAS ${c.roas == null ? "—" : decimal(c.roas, 1)}` : pct(c.valueShare, 0)}</span>
+                  )}
                 </td>
               );
             })}

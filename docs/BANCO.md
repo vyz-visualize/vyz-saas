@@ -44,6 +44,7 @@ Regras: migration aplicada não se edita (corrige-se com outra); depois de toda 
 | 12 endurecimento | — | correções da revisão adversarial (segurança, integridade, desempenho; ver abaixo) |
 | 13 cobrança: complementos | — | CNPJ alfanumérico, troca de plano atômica (`change_subscription`), renovação das assinaturas simuladas |
 | 17 lista de espera | `landing_waitlist`, `landing_waitlist_visits` | quem pediu acesso antecipado às LPs (um por usuário em cada workspace; o e-mail vem do banco) e visitas à página "em breve" (leitura só com a chave de serviço) |
+| 18 métricas do dashboard | `dashboards.metric_prefs` | o que difere do padrão do template, por plataforma (member+ edita) |
 
 ### Fluxo de compra
 

@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import type { PageId } from "@/features/templates/types";
 import type { PeriodId } from "@/features/workspace/types";
 import { loadLiveDashboard } from "@/server/analytics/queries";
+import { saveDashboardMetricPrefs } from "@/server/dashboards/actions";
 import { AppError } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
 import { LiveDashboardError, LiveDashboardView } from "./LiveDashboardView";
@@ -32,11 +33,15 @@ export type LiveDashboardProps = {
   actions?: ReactNode;
   /** Controles ao lado das abas (seletor de período, que navega com o período novo). */
   toolbar?: ReactNode;
+  /** Métricas escolhidas neste dashboard (valem também no link e no PDF). */
+  metricPrefs?: unknown;
+  /** Mostra o botão "Personalizar". */
+  canCustomize?: boolean;
   /** Cliente que confere o acesso. Padrão: sessão (RLS). Link público: admin, DEPOIS de validar o token. */
   db?: DB;
 };
 
-export async function LiveDashboard({ dashboardId, period, customDays, pageIds, hideSpend, initialPage, actions, toolbar, db }: LiveDashboardProps) {
+export async function LiveDashboard({ dashboardId, period, customDays, pageIds, hideSpend, initialPage, actions, toolbar, metricPrefs, canCustomize, db }: LiveDashboardProps) {
   let data: LiveDashboardData;
   try {
     data = await loadLiveDashboard(dashboardId, { period, customDays, hideSpend, db });
@@ -46,7 +51,7 @@ export async function LiveDashboard({ dashboardId, period, customDays, pageIds, 
     console.error("[analytics] falha ao carregar o dashboard", dashboardId, err);
     return <LiveDashboardError message="Tente de novo em alguns instantes. Se continuar, fale com o suporte." />;
   }
-  return <LiveDashboardView data={data} pageIds={pageIds} initialPage={initialPage} actions={actions} toolbar={toolbar} />;
+  return <LiveDashboardView data={data} pageIds={pageIds} initialPage={initialPage} actions={actions} toolbar={toolbar} metricPrefs={metricPrefs} canCustomize={canCustomize} saveMetrics={canCustomize ? saveDashboardMetricPrefs : undefined} />;
 }
 
 export { LiveDashboardSkeleton } from "./ui";

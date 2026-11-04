@@ -57,7 +57,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
     return (
       <div style={brandVars(color)}>
         <Suspense key={`${period}:${customDays}`} fallback={<LiveDashboardSkeleton />}>
-          <LiveDashboard dashboardId={d.id} period={period} customDays={customDays} pageIds={d.pages} actions={actions} toolbar={<PeriodNav period={period} customDays={customDays} />} />
+          <LiveDashboard dashboardId={d.id} period={period} customDays={customDays} pageIds={d.pages} metricPrefs={d.metricPrefs} canCustomize={canEdit} actions={actions} toolbar={<PeriodNav period={period} customDays={customDays} />} />
         </Suspense>
       </div>
     );
@@ -65,7 +65,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
 
   return (
     <SampleDashboard
-      dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays } }}
+      dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays }, metricPrefs: d.metricPrefs }}
       brand={whiteLabel ? { color: color ?? "", logo: ws.brandLogoUrl ?? undefined, hideVyz: ws.hideVyzBrand || !!d.brand?.hideVyz } : undefined}
       canEdit={canEdit}
       assemble={query.novo === "1"}

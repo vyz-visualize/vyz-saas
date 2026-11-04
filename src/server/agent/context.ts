@@ -8,15 +8,17 @@ import "server-only";
 // painel desenha (datasetFor), para a resposta bater com a tela.
 
 import type { AgentContext, ClientData } from "@/features/agent/engine/types";
-import { liveKpiMetrics } from "@/features/analytics/metrics";
+import { kpiMetric } from "@/features/analytics/metrics";
 import { monthToDate, periodTotals, type WarehouseDay } from "@/features/agent/engine/warehouse";
-import { datasetFor, pageLayout } from "@/features/dashboards/data";
+import { datasetFor, pageLayout, sampleDefaultKpis } from "@/features/dashboards/data";
+import { GOOGLE_CATALOG, META_CATALOG, parseMetricPrefs, sampleCatalog, visibleIds } from "@/features/dashboards/metric-prefs";
+import type { MetricId } from "@/features/metrics/definitions";
 import { currentTotals, previousTotals } from "@/features/metrics/compute";
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
 import { localDate } from "@/features/sync/dates";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { LIVE_TEMPLATES } from "@/features/templates/live";
-import type { PageId } from "@/features/templates/types";
+import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { authorize } from "@/server/auth/workspace";
 import { unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
@@ -34,7 +36,7 @@ export async function loadAgentContext(now = new Date()): Promise<AgentContext> 
     unwrap(
       await supabase
         .from("dashboards")
-        .select("id, name, client_name, template_id, goal_cents, margin, monthly_budget_cents, pages:dashboard_pages!dashboard_pages_workspace_id_dashboard_id_fkey(page_type_id, position)")
+        .select("id, name, client_name, template_id, goal_cents, margin, monthly_budget_cents, metric_prefs, pages:dashboard_pages!dashboard_pages_workspace_id_dashboard_id_fkey(page_type_id, position)")
         .eq("workspace_id", ws)
         .order("updated_at", { ascending: false })
         .limit(50),
@@ -90,14 +92,17 @@ export async function loadAgentContext(now = new Date()): Promise<AgentContext> 
         ranges,
       );
       const platform = LIVE_TEMPLATES.find((t) => t.id === d.template_id)?.sources.includes("google") ? "google" : "meta";
-      return [{ dashboardId: d.id, dashboardName: d.name, client, profile: "ecommerce", cur, prev, kpis: liveKpiMetrics(platform) }];
+      // o assistente responde sobre qualquer métrica; só o "Mostrar no painel" precisa do card visível
+      const shown = visibleIds(platform === "google" ? GOOGLE_CATALOG : META_CATALOG, "kpis", parseMetricPrefs(d.metric_prefs)[platform]?.kpis);
+      const kpis = shown.map((id) => kpiMetric(platform, id)).filter((m): m is MetricId => !!m);
+      return [{ dashboardId: d.id, dashboardName: d.name, client, profile: "ecommerce", cur, prev, kpis }];
     }
     const t = dashboardTemplate(d.template_id);
     if (!t) return [];
     const pages = [...d.pages].sort((a, b) => a.position - b.position);
     const first = (pages[0]?.page_type_id ?? "visao-geral") as PageId;
     const ds = datasetFor({ templateId: d.template_id, name: d.name, client: d.client_name, settings: { goal: d.goal_cents ?? 0, margin: d.margin ?? 0, budget: d.monthly_budget_cents ?? 0 } }, days);
-    return [{ dashboardId: d.id, dashboardName: d.name, client, profile: t.profile, cur: currentTotals(ds), prev: previousTotals(ds), kpis: pageLayout(t, first).kpis.map((k) => k.metric) }];
+    return [{ dashboardId: d.id, dashboardName: d.name, client, profile: t.profile, cur: currentTotals(ds), prev: previousTotals(ds), kpis: visibleSampleKpis(t, pages.map((p) => p.page_type_id as PageId), first, d.metric_prefs) }];
   });
 
   return {
@@ -114,4 +119,12 @@ export async function loadAgentContext(now = new Date()): Promise<AgentContext> 
       contractedAccounts: session.access.accountsQuantity,
     },
   };
+}
+
+/** Cards que aparecem na primeira página de um dashboard de exemplo (alvos do "Mostrar no painel"). */
+function visibleSampleKpis(t: DashboardTemplate, pages: PageId[], first: PageId, raw: unknown): MetricId[] {
+  const defaults = sampleDefaultKpis(t, pages);
+  const visible = visibleIds(sampleCatalog(t.profile, defaults), "kpis", parseMetricPrefs(raw).sample?.kpis);
+  const onPage = pageLayout(t, first).kpis.map((k) => k.metric);
+  return (visible as MetricId[]).filter((m) => onPage.includes(m) || !defaults.includes(m));
 }
