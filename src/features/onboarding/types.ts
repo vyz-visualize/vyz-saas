@@ -9,14 +9,12 @@ export type OnboardingState = {
   step: ActiveStep;
   workspaceName: string;
   businessTypeId: string | null;
-  /** Meta/Google marcadas no passo 2 (as outras plataformas ficam como estão). */
+  /** Meta/Google que o layout escolhido usa. */
   platforms: ProviderId[];
+  /** Nome do layout escolhido (passo de conectar). */
+  layoutName: string | null;
   tier: Tier | null;
-  /** Até que plano as páginas do dashboard estão liberadas. */
-  pagesTier: Tier | null;
-  /** Dashboards que ainda cabem no plano. */
-  dashboardsLeft: number;
   canManage: boolean;
-  /** Só nos passos de conexão e dashboard. */
+  /** Só no passo de conectar. */
   connect: ConnectState | null;
 };

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { LockedPages } from "@/features/dashboards/LockedPages";
 import { EmptyState } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { parseCreativesQuery } from "@/features/analytics/creatives/query";
@@ -50,7 +51,14 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
     );
 
   const { period, customDays } = periodFromQuery(query, d.settings);
-  await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "dashboard.viewed", entityType: "dashboard", entityId: d.id, metadata: { period, live: d.live } });
+  await logActivity({
+    workspaceId: session.workspace.id,
+    actorId: session.user.id,
+    event: "dashboard.viewed",
+    entityType: "dashboard",
+    entityId: d.id,
+    metadata: { period, live: d.live },
+  });
   const canEdit = hasRole(session.role, "member");
   const ws = session.workspace;
   const whiteLabel = !!session.access.entitlements?.whiteLabel;
@@ -60,26 +68,55 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   const access = { tier: session.access.tier, tab: q.tab, ads: q.ads, upsell: true };
   const actions = canEdit ? <DashboardActions dashboard={{ id: d.id, name: d.name, live: d.live }} period={period} pages={d.pages.length} /> : undefined;
 
+  // páginas do layout que o plano ainda não libera: vitrine borrada no fim
+  const upsell = <LockedPages templateId={d.templateId} tier={session.access.tier} pagesTier={session.access.entitlements?.pages ?? null} />;
+
   if (d.live) {
     return (
       <div style={brandVars(color)}>
         <Suspense key={`${period}:${customDays}`} fallback={<LiveDashboardSkeleton />}>
-          <LiveDashboard dashboardId={d.id} period={period} customDays={customDays} pageIds={d.pages} initialPage={q.page} creatives={access} metricPrefs={d.metricPrefs} canCustomize={canEdit} actions={actions} toolbar={<PeriodNav period={period} customDays={customDays} />} logo={<BrandMark brand={brand} />} />
+          <LiveDashboard
+            dashboardId={d.id}
+            period={period}
+            customDays={customDays}
+            pageIds={d.pages}
+            initialPage={q.page}
+            creatives={access}
+            metricPrefs={d.metricPrefs}
+            canCustomize={canEdit}
+            actions={actions}
+            toolbar={<PeriodNav period={period} customDays={customDays} />}
+            logo={<BrandMark brand={brand} />}
+          />
         </Suspense>
+        {upsell}
       </div>
     );
   }
 
   const template = anyDashboardTemplate(d.templateId);
   return (
-    <SampleDashboard
-      dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays }, metricPrefs: d.metricPrefs }}
-      brand={brand}
-      canEdit={canEdit}
-      assemble={query.novo === "1"}
-      initialPage={q.page}
-      creatives={template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays }) : undefined}
-      extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays }) : undefined}
-    />
+    <>
+      <SampleDashboard
+        dashboard={{
+          id: d.id,
+          templateId: d.templateId,
+          name: d.name,
+          client: d.client,
+          pages: d.pages,
+          settings: { ...d.settings, period, customDays },
+          metricPrefs: d.metricPrefs,
+        }}
+        brand={brand}
+        canEdit={canEdit}
+        assemble={query.novo === "1"}
+        initialPage={q.page}
+        creatives={
+          template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays }) : undefined
+        }
+        extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays }) : undefined}
+      />
+      {upsell}
+    </>
   );
 }

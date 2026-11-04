@@ -8,8 +8,7 @@ import type { ConnectResult } from "@/features/integrations/results";
 import { signOut } from "@/server/auth/actions";
 import { BusinessStep } from "./BusinessStep";
 import { ConnectStep } from "./ConnectStep";
-import { DashboardStep } from "./DashboardStep";
-import { PlatformsStep } from "./PlatformsStep";
+import { LayoutStep } from "./LayoutStep";
 import { StepNav } from "./StepNav";
 import type { OnboardingState } from "./types";
 
@@ -32,18 +31,8 @@ export function OnboardingFlow({ state, firstName, result, now, timeZone }: Onbo
       {/* key: cada passo entra com uma animação curta (sem movimento se o sistema pede). */}
       <div key={step} className="mt-8 motion-safe:animate-[rise_240ms_var(--ease)_both] sm:mt-10">
         {step === "business" && <BusinessStep initial={state.businessTypeId} firstName={firstName} />}
-        {step === "platforms" && <PlatformsStep initial={state.platforms} tier={state.tier} />}
-        {step === "connect" && connect && <ConnectStep platforms={state.platforms} state={connect} result={result} now={now} timeZone={timeZone} />}
-        {step === "dashboard" && connect && (
-          <DashboardStep
-            businessTypeId={state.businessTypeId}
-            platforms={state.platforms}
-            state={connect}
-            pagesTier={state.pagesTier}
-            dashboardsLeft={state.dashboardsLeft}
-            workspaceName={state.workspaceName}
-          />
-        )}
+        {step === "platforms" && <LayoutStep businessTypeId={state.businessTypeId} tier={state.tier} />}
+        {step === "connect" && connect && <ConnectStep platforms={state.platforms} layoutName={state.layoutName} state={connect} result={result} now={now} timeZone={timeZone} />}
       </div>
     </div>
   );
@@ -60,8 +49,7 @@ export function AskAdmin({ workspaceName }: { workspaceName: string }) {
         Peça ao administrador para concluir
       </h1>
       <p className="mt-2 text-[15px] leading-relaxed text-fg-2">
-        O workspace <strong className="font-semibold text-fg">{workspaceName}</strong> ainda está sendo configurado. Quem é administrador escolhe o negócio, conecta as contas e cria o
-        primeiro dashboard. Assim que terminar, o painel abre para você.
+        O workspace <strong className="font-semibold text-fg">{workspaceName}</strong> ainda está sendo configurado. Quem é administrador escolhe o nicho e o layout e conecta as contas. Assim que terminar, o painel abre para você.
       </p>
       <form action={signOut} className="mt-6">
         <button type="submit" className="inline-flex h-10 items-center gap-2 rounded-control border border-line px-4 text-[14px] font-semibold text-fg hover:border-accent hover:text-accent">
@@ -76,8 +64,8 @@ export function OnboardingSkeleton() {
   const block = "animate-pulse rounded-control bg-card motion-reduce:animate-none";
   return (
     <div className={FRAME} aria-busy="true" aria-label="Carregando">
-      <div className="grid grid-cols-4 gap-3">
-        {[0, 1, 2, 3].map((i) => (
+      <div className="grid grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => (
           <div key={i} className={`h-1 ${block}`} />
         ))}
       </div>

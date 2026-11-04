@@ -43,20 +43,29 @@ export function TemplatePreview({ t, page, variant = "full" }: { t: DashboardTem
 function Card({ t, locked, live, note, onOpen }: { t: DashboardTemplate; locked: boolean; live?: boolean; note?: string; onOpen: () => void }) {
   return (
     <li>
-      <button
-        type="button"
+      {/* a prévia real tem abas (botões): o cartão é uma área clicável, não um <button> */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onOpen}
-        className="group flex h-full w-full flex-col overflow-hidden rounded-card border border-line bg-card text-left transition-colors duration-200 hover:border-accent focus-visible:border-accent focus-visible:outline-none"
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          onOpen();
+        }}
+        className="group flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-card border border-line bg-card text-left transition-colors duration-200 hover:border-accent focus-visible:border-accent focus-visible:outline-none"
       >
         <div className="relative border-b border-line">
           <ScaledPreview height={168} width={live ? 1100 : 760}>
-            {live ? (
-              <div className="bg-bg p-4">
-                <LiveDashboardPreview templateId={t.id} pageIds={["visao-geral"]} />
-              </div>
-            ) : (
-              <TemplatePreview t={t} variant="compact" />
-            )}
+            <div inert>
+              {live ? (
+                <div className="bg-bg p-4">
+                  <LiveDashboardPreview templateId={t.id} pageIds={["visao-geral"]} />
+                </div>
+              ) : (
+                <TemplatePreview t={t} variant="compact" />
+              )}
+            </div>
           </ScaledPreview>
           {locked && (
             <span className="absolute inset-0 flex items-center justify-center bg-bg/55">
@@ -69,7 +78,11 @@ function Card({ t, locked, live, note, onOpen }: { t: DashboardTemplate; locked:
         <div className="flex flex-1 flex-col gap-2 p-4">
           <div className="flex items-start justify-between gap-2">
             <p className="leading-snug font-semibold">{t.name}</p>
-            <span className={`shrink-0 rounded-chip px-2 py-0.5 text-[11px] font-semibold ${t.tier === "base" ? "border border-line text-fg-2" : "bg-accent-soft text-fg"}`}>{TIER_LABEL[t.tier]}</span>
+            <span
+              className={`shrink-0 rounded-chip px-2 py-0.5 text-[11px] font-semibold ${t.tier === "base" ? "border border-line text-fg-2" : "bg-accent-soft text-fg"}`}
+            >
+              {TIER_LABEL[t.tier]}
+            </span>
           </div>
           <p className="line-clamp-2 text-[13px] text-fg-2">{t.description}</p>
           <p className="mt-auto flex flex-wrap gap-1 pt-1">
@@ -86,7 +99,7 @@ function Card({ t, locked, live, note, onOpen }: { t: DashboardTemplate; locked:
           </p>
           {note && <p className="text-[12.5px] text-warning">{note}</p>}
         </div>
-      </button>
+      </div>
     </li>
   );
 }
@@ -100,7 +113,8 @@ type GalleryProps = {
   onUse: (templateId: string) => void;
 };
 
-const missingAccount = (t: DashboardTemplate, enabled: GalleryProps["enabledAccounts"]) => t.dataMode === "live" && !t.sources.some((s) => (enabled[s] ?? 0) > 0);
+const missingAccount = (t: DashboardTemplate, enabled: GalleryProps["enabledAccounts"]) =>
+  t.dataMode === "live" && !t.sources.some((s) => (enabled[s] ?? 0) > 0);
 
 /**
  * Galeria de templates: primeiro os que leem as contas conectadas (prévia com
@@ -147,7 +161,12 @@ export function TemplateGallery({ tier, enabledAccounts, canCreate, onUse }: Gal
         <label className="flex h-10 items-center gap-2 rounded-control border border-line bg-field px-3 focus-within:border-accent lg:w-72">
           <Search size={16} aria-hidden className="text-fg-2" />
           <span className="sr-only">Buscar template</span>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar template" className="h-full min-w-0 flex-1 bg-transparent text-[14px] outline-none" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar template"
+            className="h-full min-w-0 flex-1 bg-transparent text-[14px] outline-none"
+          />
         </label>
       </div>
 
@@ -222,7 +241,12 @@ export function TemplateGallery({ tier, enabledAccounts, canCreate, onUse }: Gal
               </div>
             ) : (
               <>
-                <Tabs label="Páginas do template" value={page ?? open.pages[0]} onChange={setPage} items={open.pages.map((p) => ({ value: p, label: PAGES[p].name }))} />
+                <Tabs
+                  label="Páginas do template"
+                  value={page ?? open.pages[0]}
+                  onChange={setPage}
+                  items={open.pages.map((p) => ({ value: p, label: PAGES[p].name }))}
+                />
                 <div className={`overflow-hidden rounded-card border border-line ${locked ? "max-h-[420px]" : ""}`}>
                   <TemplatePreview t={open} page={page ?? open.pages[0]} />
                 </div>

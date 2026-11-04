@@ -15,13 +15,14 @@ import { MOCK_NOTICE } from "@/features/integrations/mock-data";
 import { PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import type { ConnectResult } from "@/features/integrations/results";
 import type { ConnectState } from "@/features/integrations/types";
-import { confirmAccounts, finishOnboarding } from "@/server/onboarding/actions";
+import { finishOnboarding } from "@/server/onboarding/actions";
 import { StepFooter, StepHeader, useStepAction } from "./ui";
 
 const RETURN_PATH = "/comecar";
 
 type ConnectStepProps = {
   platforms: ProviderId[];
+  layoutName: string | null;
   state: ConnectState;
   result: ConnectResult | null;
   now: string;
@@ -114,7 +115,7 @@ function PlatformPanel({ provider, state, now, timeZone, onSelection }: PanelPro
   );
 }
 
-export function ConnectStep({ platforms, state, result, now, timeZone }: ConnectStepProps) {
+export function ConnectStep({ platforms, layoutName, state, result, now, timeZone }: ConnectStepProps) {
   const [banner, setBanner] = useState(result);
   const { pending, error, run } = useStepAction();
   const skip = useStepAction();
@@ -135,7 +136,7 @@ export function ConnectStep({ platforms, state, result, now, timeZone }: Connect
           return { ok: false, error: { code: "onboarding:accounts_not_saved", message: `Não deu para salvar as contas do ${PROVIDERS[p].name}. Confira o aviso acima.` } };
         }
       }
-      return confirmAccounts();
+      return finishOnboarding();
     });
   }
   const anyConnected = platforms.some((p) => state.platforms[p].connected);
@@ -147,7 +148,12 @@ export function ConnectStep({ platforms, state, result, now, timeZone }: Connect
         title="Conecte as contas de anúncio"
         text={
           <>
-            Um login por plataforma, sem copiar ID. Depois, ative as contas que entram no VYZ: os últimos 90 dias chegam na hora.{" "}
+            {layoutName ? (
+              <>
+                Seu dashboard <strong className="font-semibold text-fg">{layoutName}</strong> está pronto.{" "}
+              </>
+            ) : null}
+            Um login por plataforma, sem copiar ID; ative as contas e os últimos 90 dias chegam na hora. Pode pular e conectar depois.{" "}
             <span className="tnum text-fg">{planUsageLabel(state.projects.length, state.limit.accountsQuantity)}</span> em uso.
           </>
         }
@@ -158,29 +164,25 @@ export function ConnectStep({ platforms, state, result, now, timeZone }: Connect
         {platforms.length === 0 ? (
           <div className="flex items-start gap-3 rounded-card border border-dashed border-line p-5 text-[14px] text-fg-2">
             <PlugZap size={18} aria-hidden className="mt-0.5 shrink-0" />
-            Nenhuma plataforma escolhida. Volte um passo e marque Meta Ads ou Google Ads.
+            Este layout usa plataformas que ainda não conectam por login. Entre no dashboard: ele mostra o que falta.
           </div>
         ) : (
           platforms.map((p) => <PlatformPanel key={p} provider={p} state={state} now={now} timeZone={timeZone} onSelection={onSelection} />)
         )}
       </div>
 
-      {enabled === 0 && platforms.length > 0 && (
-        <p className="mt-4 text-[13px] text-fg-2">{anyConnected ? "Ative pelo menos uma conta para continuar." : "Conecte uma plataforma para continuar."}</p>
-      )}
 
       <StepFooter
         back="platforms"
         pending={pending}
         error={error ?? skip.error}
-        disabled={enabled === 0 || skip.pending}
-        pendingLabel={pendingSave ? "Ativando e importando…" : "Conferindo…"}
+        disabled={skip.pending}
+        continueLabel={enabled > 0 ? "Entrar no dashboard" : "Entrar na plataforma"}
+        pendingLabel={pendingSave ? "Ativando e importando…" : "Abrindo o dashboard…"}
         onContinue={onContinue}
         aside={
-          !anyConnected ? (
-            <button type="button" onClick={() => skip.run(finishOnboarding)} disabled={pending || skip.pending} className="inline-flex h-10 items-center px-3 text-[14px] font-semibold text-fg-2 underline-offset-4 hover:text-fg hover:underline">
-              {skip.pending ? "Abrindo o painel…" : "Conectar depois"}
-            </button>
+          enabled === 0 && platforms.length > 0 ? (
+            <span className="text-[13px] text-fg-2">{anyConnected ? "Nenhuma conta ativa: dá para ativar depois." : "Sem conexão: dá para conectar depois."}</span>
           ) : null
         }
       />

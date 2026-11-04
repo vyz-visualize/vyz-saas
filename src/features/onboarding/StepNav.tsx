@@ -16,7 +16,7 @@ export function StepNav({ current }: { current: ActiveStep }) {
       <p className="mb-3 text-[13px] text-fg-2 sm:hidden">
         Passo <span className="tnum font-semibold text-fg">{at + 1}</span> de {ONBOARDING_STEPS.length} · {STEP_LABEL[current]}
       </p>
-      <ol className="grid grid-cols-4 gap-1.5 sm:gap-3">
+      <ol className="grid grid-cols-3 gap-1.5 sm:gap-3">
         {ONBOARDING_STEPS.map((step, i) => {
           const done = i < at;
           const active = i === at;

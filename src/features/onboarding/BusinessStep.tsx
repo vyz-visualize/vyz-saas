@@ -1,7 +1,6 @@
 "use client";
 
-// Passo 1: tipo de negócio. Só e-commerce está pronto; os outros aparecem
-// como "em breve" para a pessoa ver o que vem.
+// Passo 1: o nicho. Define as métricas e quais layouts aparecem primeiro.
 
 import { Briefcase, Building2, GraduationCap, Rocket, ShoppingBag, Stethoscope, Store, Target, type LucideIcon } from "lucide-react";
 import { useState } from "react";
@@ -18,9 +17,9 @@ export function BusinessStep({ initial, firstName }: { initial: string | null; f
   return (
     <section aria-labelledby="passo-titulo">
       <StepHeader
-        eyebrow="Passo 1 · Negócio"
+        eyebrow="Passo 1 · Nicho"
         title={firstName ? `${firstName}, qual é o negócio do seu cliente?` : "Qual é o negócio do seu cliente?"}
-        text="O VYZ escolhe as métricas e o vocabulário certos para ele: venda, receita e ROAS no e-commerce."
+        text="O VYZ usa as métricas e o vocabulário do nicho e mostra primeiro os layouts feitos para ele."
       />
       <div role="radiogroup" aria-labelledby="passo-titulo" className="mt-8 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
         {BUSINESS_TYPES.map((b) => {

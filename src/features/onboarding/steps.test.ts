@@ -5,57 +5,57 @@ import {
   canGoBackTo,
   centsFromReais,
   marginFromPercent,
+  activeStepOf,
+  layoutOptions,
+  layoutProviders,
   parseDecimal,
-  platformOptions,
-  selectablePlatforms,
   stepIndex,
   templatePages,
-  templatesFor,
 } from "./steps";
 
 const meta = LIVE_TEMPLATES.find((t) => t.id === "meta-ecommerce")!;
 const google = LIVE_TEMPLATES.find((t) => t.id === "google-ecommerce")!;
 
 describe("passos", () => {
-  it("segue a ordem e só volta para trás", () => {
+  it("nicho → layout → conectar, e só volta para trás", () => {
     expect(stepIndex("business")).toBe(0);
-    expect(stepIndex("done")).toBe(4);
+    expect(stepIndex("platforms")).toBe(1);
+    expect(stepIndex("done")).toBe(3);
     expect(canGoBackTo("connect", "business")).toBe(true);
+    expect(canGoBackTo("connect", "platforms")).toBe(true);
     expect(canGoBackTo("connect", "connect")).toBe(false);
-    expect(canGoBackTo("platforms", "dashboard")).toBe(false);
     expect(canGoBackTo("done", "business")).toBe(false);
-    expect(canGoBackTo("dashboard", "done")).toBe(false);
+  });
+
+  it("o passo antigo de dashboard vale como conectar", () => {
+    expect(activeStepOf("dashboard")).toBe("connect");
+    expect(stepIndex("dashboard")).toBe(2);
   });
 });
 
-describe("plataformas", () => {
-  it("libera só Meta e Google; o resto é em breve ou de outro plano", () => {
-    const base = platformOptions("base");
-    expect(base.filter((o) => o.available).map((o) => o.id)).toEqual(["meta", "google"]);
-    expect(base.find((o) => o.id === "ga4")?.reason).toBe("Em breve");
-    expect(base.find((o) => o.id === "tiktok")?.reason).toBe("Disponível no Padrão");
-    expect(platformOptions("pro").find((o) => o.id === "tiktok")?.reason).toBe("Em breve");
-    expect(base.some((o) => o.id === "crm")).toBe(false);
+describe("layouts", () => {
+  it("liberados antes dos travados, e os do nicho na frente", () => {
+    const opts = layoutOptions("ecommerce", "base");
+    expect(opts[0].fits).toBe(true);
+    expect(opts.filter((o) => o.allowed).map((o) => o.template.id).sort()).toEqual(["google-ecommerce", "meta-ecommerce"]);
+    const firstLocked = opts.findIndex((o) => o.fits && !o.allowed);
+    expect(opts.slice(0, firstLocked).every((o) => o.allowed)).toBe(true);
   });
 
-  it("sem plano nada é escolhível", () => {
-    expect(platformOptions(null).some((o) => o.available)).toBe(false);
-    expect(selectablePlatforms(["meta"], null)).toEqual([]);
+  it("todo nicho tem layout e o plano acima aparece travado", () => {
+    for (const niche of ["leads", "imobiliario", "local", "infoproduto", "saude", "educacao", "agencia"]) {
+      expect(layoutOptions(niche, "avancado").some((o) => o.fits)).toBe(true);
+    }
+    expect(layoutOptions("leads", "base").find((o) => o.template.id === "leads-visao-geral")?.lockLabel).toBe("Disponível no Padrão");
   });
 
-  it("filtra o que veio do cliente e mantém a ordem", () => {
-    expect(selectablePlatforms(["google", "ga4", "tiktok", "meta", "x"], "pro")).toEqual(["meta", "google"]);
+  it("conectar mostra só Meta e Google que o layout usa", () => {
+    expect(layoutProviders(meta)).toEqual(["meta"]);
+    expect(layoutProviders(google)).toEqual(["google"]);
   });
 });
 
 describe("templates e páginas", () => {
-  it("casa negócio e plataformas", () => {
-    expect(templatesFor("ecommerce", ["meta", "google"]).map((t) => t.id)).toEqual(["meta-ecommerce", "google-ecommerce"]);
-    expect(templatesFor("ecommerce", ["google"]).map((t) => t.id)).toEqual(["google-ecommerce"]);
-    expect(templatesFor("leads", ["meta"])).toEqual([]);
-    expect(templatesFor(null, ["meta"])).toEqual([]);
-  });
-
   it("passa só as páginas do plano", () => {
     expect(allowedPages(meta, "base")).toEqual(["visao-geral", "campanhas", "funil", "criativos"]);
     expect(allowedPages(meta, "pro")).toEqual(meta.pages);

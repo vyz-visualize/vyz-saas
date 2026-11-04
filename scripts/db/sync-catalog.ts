@@ -9,8 +9,7 @@
 
 import postgres from "postgres";
 import { PLATFORMS, PLATFORM_ORDER, type PlatformId } from "@/features/accounts/platforms";
-import { BUSINESS_TYPES, type BusinessTypeId } from "@/features/catalog/business-types";
-import type { Profile } from "@/features/metrics/definitions";
+import { BUSINESS_TYPES, templateBusinessTypes } from "@/features/catalog/business-types";
 import { BILLING_ITEMS, INTERVAL, planPriceId } from "@/features/pricing/catalog";
 import { ENTITLEMENTS, TIER_LABEL, TIERS } from "@/features/pricing/entitlements";
 import { EXTRA_PROJECT, INCLUDED_PROJECTS, LP_PLAN_PAGES, PLAN, PLAN_LABEL, lpMonthly, planDbId, type Period, type PlanId } from "@/features/pricing/pricing";
@@ -26,25 +25,6 @@ const PRICED: PlanId[] = ["base", "pro", "avancado"];
 const PERIODS: Period[] = ["mensal", "anual"];
 const OAUTH: Partial<Record<PlatformId, "meta" | "google">> = { meta: "meta", google: "google", ga4: "google", youtube: "google" };
 const CONNECT_READY: PlatformId[] = ["meta", "google"];
-
-const ALL_BUSINESS: BusinessTypeId[] = BUSINESS_TYPES.map((b) => b.id);
-/** Tipos de negócio indicados para cada perfil de template. */
-const BUSINESS_BY_PROFILE: Record<Profile, BusinessTypeId[]> = {
-  ecommerce: ["ecommerce"],
-  marketplace: ["ecommerce"],
-  site: ["ecommerce", "leads"],
-  leads: ["leads"],
-  imob: ["imobiliario"],
-  local: ["local"],
-  infoproduto: ["infoproduto"],
-  saude: ["saude"],
-  educacao: ["educacao"],
-  agencia: ["agencia"],
-  midia: ALL_BUSINESS,
-  pesquisa: ALL_BUSINESS,
-  video: ALL_BUSINESS,
-  executivo: ALL_BUSINESS,
-};
 
 async function main() {
   const sql = postgres(url!, { ssl: "require", max: 1, prepare: false, onnotice: () => {} });
@@ -170,7 +150,7 @@ async function main() {
     const business = BUSINESS_TYPES.map((b, sort) => ({ id: b.id, name: b.name, description: b.description, profile: b.profile, sort, is_available: b.available }));
     await tx`insert into public.business_types ${tx(business)}
       on conflict (id) do update set name = excluded.name, description = excluded.description, profile = excluded.profile, sort = excluded.sort, is_available = excluded.is_available`;
-    await tx`update public.business_types set is_available = false where id <> all(${ALL_BUSINESS})`;
+    await tx`update public.business_types set is_available = false where id <> all(${BUSINESS_TYPES.map((b) => b.id)})`;
     counts.business_types = business.length;
 
     // páginas
@@ -209,7 +189,7 @@ async function main() {
     await tx`delete from public.dashboard_template_business_types where template_id = any(${templateIds})`;
     const tPlatforms = ALL_DASHBOARD_TEMPLATES.flatMap((t) => t.sources.map((platform_id) => ({ template_id: t.id, platform_id })));
     const tPages = ALL_DASHBOARD_TEMPLATES.flatMap((t) => t.pages.map((page_type_id, position) => ({ template_id: t.id, page_type_id, position })));
-    const tBusiness = ALL_DASHBOARD_TEMPLATES.flatMap((t) => BUSINESS_BY_PROFILE[t.profile].map((business_type_id) => ({ template_id: t.id, business_type_id })));
+    const tBusiness = ALL_DASHBOARD_TEMPLATES.flatMap((t) => templateBusinessTypes(t.profile).map((business_type_id) => ({ template_id: t.id, business_type_id })));
     await tx`insert into public.dashboard_template_platforms ${tx(tPlatforms)}`;
     await tx`insert into public.dashboard_template_pages ${tx(tPages)}`;
     await tx`insert into public.dashboard_template_business_types ${tx(tBusiness)}`;
