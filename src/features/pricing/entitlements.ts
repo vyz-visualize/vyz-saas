@@ -3,6 +3,7 @@
 
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 
 export type Tier = "base" | "pro" | "avancado" | "personalizado";
 
@@ -73,19 +74,25 @@ export function nextTier(tier: Tier): Tier | null {
   return i < TIERS.length - 1 ? TIERS[i + 1] : null;
 }
 
+/** Colunas da tabela de limites: o Personalizado é sob consulta e fica fora dela. */
+export const LIMIT_TIERS: Tier[] = ["base", "pro", "avancado"];
+
 /** Linhas da tabela de limites (página Plano e documentação). */
 export const LIMIT_ROWS: { label: string; value: (t: Tier) => string }[] = [
-  { label: "Templates de dashboard", value: (t) => (t === "personalizado" ? `${ENTITLEMENTS[t].dashboardTemplates} + sob medida` : String(ENTITLEMENTS[t].dashboardTemplates)) },
-  { label: "Templates de landing page", value: (t) => String(ENTITLEMENTS[t].landingTemplates) },
+  { label: "Templates de dashboard", value: (t) => String(ENTITLEMENTS[t].dashboardTemplates) },
+  ...(SHOW_LANDING_PAGES ? [{ label: "Templates de landing page", value: (t: Tier) => String(ENTITLEMENTS[t].landingTemplates) }] : []),
   { label: "Plataformas", value: (t) => (ENTITLEMENTS[t].platforms === "core" ? "Meta e Google por login; GA4 em breve" : "Meta e Google por login; GA4 e mais plataformas em breve") },
   {
     label: "Páginas do dashboard",
-    value: (t) => ({ base: "essenciais", pro: "+ Pro", avancado: "todas", personalizado: "todas" })[t],
+    value: (t) => ({ base: "essenciais", pro: "+ Padrão", avancado: "todas", personalizado: "todas" })[t],
   },
-  { label: "Marca própria (white-label)", value: (t) => (ENTITLEMENTS[t].whiteLabel ? "sim" : "não") },
-  { label: "Análise por áudio", value: (t) => (ENTITLEMENTS[t].audio === "soon" ? "em breve" : "não") },
-  { label: "Assistente VYZ", value: (t) => (ENTITLEMENTS[t].agentVoice ? "chat + voz" : ENTITLEMENTS[t].agentChat ? "chat" : "não") },
+  {
+    label: "Criativos",
+    value: (t) => ({ base: "lista", pro: "galeria com preview", avancado: "galeria + comparativo", personalizado: "galeria + comparativo" })[t],
+  },
+  { label: "Assistente VYZ", value: (t) => (ENTITLEMENTS[t].agentVoice ? "chat + voz" : "chat") },
+  { label: "Integre com sua IA (MCP)", value: () => "em breve" },
   { label: "Dashboards", value: (t) => String(ENTITLEMENTS[t].maxDashboards) },
-  { label: "Landing pages publicadas", value: (t) => String(ENTITLEMENTS[t].maxLandingPages) },
+  ...(SHOW_LANDING_PAGES ? [{ label: "Landing pages publicadas", value: (t: Tier) => String(ENTITLEMENTS[t].maxLandingPages) }] : []),
   { label: "Usuários", value: (t) => String(ENTITLEMENTS[t].maxMembers) },
 ];

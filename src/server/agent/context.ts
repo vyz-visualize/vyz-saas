@@ -20,6 +20,7 @@ import type { PageId } from "@/features/templates/types";
 import { authorize } from "@/server/auth/workspace";
 import { unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
+import { landingPagesEnabledFor } from "@/lib/flags";
 
 const PAGE_SIZE = 1000;
 
@@ -105,6 +106,7 @@ export async function loadAgentContext(now = new Date()): Promise<AgentContext> 
     tierLabel: TIER_LABEL[tier],
     ent: session.access.entitlements ?? ENTITLEMENTS[tier],
     dashboards: clients,
+    landingPages: landingPagesEnabledFor(session.workspace.product),
     counts: {
       dashboards: session.usage.dashboards,
       landingPublished: session.usage.publishedLandingPages,

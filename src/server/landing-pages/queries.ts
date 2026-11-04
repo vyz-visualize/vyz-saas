@@ -7,13 +7,14 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
 import { landingDefaults, landingTemplate, type LandingContent } from "@/features/templates/landing-pages";
+import type { WorkspaceSession } from "@/features/workspace/session";
 import type { Tracking } from "@/features/workspace/types";
 import { columnsToTracking, readStoredContent, type LandingPageDTO, type LandingStatus, type LandingVersionDTO, type StoredContent } from "@/features/landing-pages/model";
 import type { Tables } from "@/lib/supabase/database.types";
 import { publicAssetUrl } from "@/lib/supabase/storage";
 import { getWorkspaceSession } from "@/server/auth/workspace";
 import { createAdminSupabase } from "@/server/supabase/admin";
-import { appError, unwrap } from "@/server/supabase/errors";
+import { appError, fromPostgrest, unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 
 export const LANDING_SELECT =
@@ -180,4 +181,12 @@ export async function getLandingPreview(slug: string): Promise<RenderableLanding
     hideBadge: !!access?.hide_vyz_brand_effective,
     status: row.status as LandingStatus,
   };
+}
+
+/** Quem está logado já entrou na lista de espera deste workspace? (RLS: só a própria inscrição) */
+export async function isOnLandingWaitlist(session: Pick<WorkspaceSession, "workspace" | "user">): Promise<boolean> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.from("landing_waitlist").select("id").eq("workspace_id", session.workspace.id).eq("user_id", session.user.id).maybeSingle();
+  if (error) throw fromPostgrest(error);
+  return !!data;
 }

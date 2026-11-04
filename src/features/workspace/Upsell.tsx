@@ -7,10 +7,11 @@ import { ArrowRight, BarChart3, PanelsTopLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Paywall } from "@/components/ui/Paywall";
-import { canUse, type Tier } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, canUse, type Tier } from "@/features/pricing/entitlements";
 import { brl } from "@/lib/format";
 import { lpMonthly, startingPrice, type Product } from "@/features/pricing/pricing";
 import { useWorkspaceSession } from "./WorkspaceProvider";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 
 type Feature = { required: Tier; feature: string; text: string; preview: ReactNode };
 
@@ -47,7 +48,12 @@ function Preview({ bars = [40, 65, 52, 80, 70, 92], chips = 0, rows = 0 }: { bar
 
 const FEATURES: Record<Product, Feature[]> = {
   dash: [
-    { required: "pro", feature: "Mais plataformas em breve", text: "Mídia, marketplaces e CRMs no mesmo dashboard.", preview: <Preview chips={8} bars={[30, 55, 45, 70, 60, 85]} /> },
+    {
+      required: "pro",
+      feature: `${ENTITLEMENTS.pro.dashboardTemplates} templates, ${ENTITLEMENTS.pro.maxDashboards} dashboards e ${ENTITLEMENTS.pro.maxMembers} usuários`,
+      text: "Mais templates, mais dashboards e mais gente no mesmo workspace.",
+      preview: <Preview chips={8} bars={[30, 55, 45, 70, 60, 85]} />,
+    },
     { required: "avancado", feature: "Análise por áudio", text: "Pergunte em voz alta e ouça a leitura dos números.", preview: <Preview bars={[20, 70, 35, 90, 45, 75, 30, 60]} /> },
     { required: "personalizado", feature: "Marca própria", text: "Seu logo e suas cores no dashboard, no link e no PDF.", preview: <Preview rows={4} /> },
   ],
@@ -82,7 +88,7 @@ export function Upsell() {
           </div>
         </>
       )}
-      <CrossSell product={other} />
+      {(other === "dash" || SHOW_LANDING_PAGES) && <CrossSell product={other} />}
     </section>
   );
 }
@@ -106,7 +112,7 @@ function CrossSell({ product }: { product: Product }) {
           <span className="block text-[13.5px] text-fg-2">
             {lp
               ? "Páginas feitas pelo time, com GTM e leads no painel."
-              : "Meta, Google e GA4 num dashboard pronto para o cliente."}{" "}
+              : "Meta e Google num dashboard pronto para o cliente."}{" "}
             A partir de {brl(from)}/mês.
           </span>
         </span>

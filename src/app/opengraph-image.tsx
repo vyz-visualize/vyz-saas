@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
 import { LETTER_STEP, V_POLYS, Y_POLY, Z_BOTTOM, Z_TOP } from "@/components/brand/geometry";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 
-export const alt = "VYZ · Vyzualize · Dashboards para gestores de tráfego";
+export const alt = SHOW_LANDING_PAGES ? "VYZ · Vyzualize · Dashboards e landing pages para gestores de tráfego" : "VYZ · Vyzualize · Dashboards para gestores de tráfego";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

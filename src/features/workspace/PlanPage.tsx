@@ -29,12 +29,13 @@ import {
   TRANSACTION_STATUS_LABEL,
 } from "@/features/checkout/labels";
 import { planChangeBlocker, quotePlanChange, samePlan, type PlanSelection, type PlanUsage } from "@/features/checkout/plan-change";
-import { ENTITLEMENTS, LIMIT_ROWS, TIER_LABEL, TIERS, type Tier } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, LIMIT_ROWS, LIMIT_TIERS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
 import { LP_PLAN_PAGES, MAX_ACCOUNTS_IN_PLAN, lpMonthly, lpSetup, type Period, type PlanId } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";
 import { msgUpgrade, waLink } from "@/lib/whatsapp";
 import { cancelSubscription, changePlan, resumeSubscription } from "@/server/billing/actions";
 import type { BillingOverview } from "@/server/billing/queries";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { useWorkspaceSession } from "./WorkspaceProvider";
 
 const PLAN_IDS: PlanId[] = ["base", "pro", "avancado"];
@@ -44,7 +45,7 @@ type Subscription = NonNullable<BillingOverview["subscription"]>;
 
 function Section({ id, title, aside, children, className = "" }: { id: string; title: string; aside?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`space-y-4 rounded-card border border-line bg-card p-5 ${className}`} aria-labelledby={id}>
+    <section className={`min-w-0 space-y-4 rounded-card border border-line bg-card p-5 ${className}`} aria-labelledby={id}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id={id} className="title text-lg">
           {title}
@@ -394,7 +395,7 @@ function History({ overview }: { overview: BillingOverview }) {
       </Section>
       <Section id="h-servicos" title="Pedidos de serviço">
         {serviceOrders.length === 0 ? (
-          <p className="text-[13.5px] text-fg-2">Nenhum pedido de serviço (landing page feita pelo time, dashboard sob medida).</p>
+          <p className="text-[13.5px] text-fg-2">{SHOW_LANDING_PAGES ? "Nenhum pedido de serviço (landing page feita pelo time, dashboard sob medida)." : "Nenhum pedido de serviço (dashboard sob medida)."}</p>
         ) : (
           <ul className="divide-y divide-line">
             {serviceOrders.map((o) => (
@@ -545,7 +546,7 @@ export function PlanPage({
       )}
 
       {sub && canManage && !custom && (
-        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           {lp ? (
             <Section id="h-trocar" title="Trocar de plano">
               <LpChangePlan current={sub.tier} unlock={unlock} />
@@ -570,13 +571,13 @@ export function PlanPage({
             Limites por plano
           </h2>
           <div className="overflow-x-auto rounded-card border border-line bg-card">
-            <table className="w-full min-w-[680px] text-left text-[13.5px]">
+            <table className="w-full min-w-[560px] text-left text-[13.5px]">
               <thead>
                 <tr className="border-b border-line">
                   <th scope="col" className="px-4 py-3 font-medium text-fg-2">
                     &nbsp;
                   </th>
-                  {TIERS.map((t) => (
+                  {LIMIT_TIERS.map((t) => (
                     <th key={t} scope="col" className={`px-4 py-3 font-semibold ${t === tier ? "bg-accent-soft" : ""}`}>
                       {TIER_LABEL[t]}
                       {t === tier && <span className="ml-1.5 text-[11px] font-medium text-fg-2">atual</span>}
@@ -590,34 +591,30 @@ export function PlanPage({
                     <th scope="row" className="px-4 py-2.5 font-medium text-fg-2">
                       {r.label}
                     </th>
-                    {TIERS.map((t) => (
+                    {LIMIT_TIERS.map((t) => (
                       <td key={t} className={`px-4 py-2.5 ${t === tier ? "bg-accent-soft/60 font-semibold" : ""}`}>
                         {r.value(t)}
                       </td>
                     ))}
                   </tr>
                 ))}
-                <tr>
-                  <td className="px-4 py-3" />
-                  {TIERS.map((t) => (
-                    <td key={t} className="px-4 py-3">
-                      {t === "personalizado" && !custom && (
-                        <a
-                          href={waLink(msgUpgrade(tier ? TIER_LABEL[tier] : "sem plano", TIER_LABEL[t]))}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`${btn.small} h-8 px-3 text-[12.5px]`}
-                        >
-                          <WhatsAppIcon size={14} /> Falar com especialista
-                        </a>
-                      )}
-                    </td>
-                  ))}
-                </tr>
               </tbody>
             </table>
           </div>
-          <p className="text-[12.5px] text-fg-2">Os limites de dashboards e de landing pages publicadas são provisórios.</p>
+          <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[14px] text-fg">Marca própria e implementação sob medida: plano Personalizado, sob consulta.</p>
+            {!custom && (
+              <a
+                href={waLink(msgUpgrade(tier ? TIER_LABEL[tier] : "sem plano", TIER_LABEL.personalizado))}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${btn.small} h-8 shrink-0 px-3 text-[12.5px]`}
+              >
+                <WhatsAppIcon size={14} /> Falar com especialista
+              </a>
+            )}
+          </div>
+          <p className="text-[12.5px] text-fg-2">{SHOW_LANDING_PAGES ? "Os limites de dashboards e de landing pages publicadas são provisórios." : "Os limites de dashboards são provisórios."}</p>
         </section>
       )}
       {toast.node}

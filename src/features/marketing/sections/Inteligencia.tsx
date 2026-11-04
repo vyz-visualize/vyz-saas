@@ -1,8 +1,8 @@
 "use client";
 
 // Dobra "Inteligência": o que vai além do dashboard (MMM, previsão,
-// correlações, estatística) e o VYZ, o analista que olha os números todo dia,
-// traz o que fazer e responde por texto ou voz. Visuais leves em SVG/CSS.
+// correlações, estatística, em breve) e o VYZ, que responde quando você pergunta,
+// por texto ou voz. O alerta diário vem depois. Visuais leves em SVG/CSS.
 
 import { Mic, Sparkles } from "lucide-react";
 import { useInView, useReducedMotion } from "motion/react";
@@ -170,15 +170,19 @@ function VyzCard() {
       <div className="flex items-center gap-4">
         <VyzOrb mood={state} />
         <div>
-          <p className="label-caps text-sage">Seu analista</p>
+          <p className="label-caps text-sage">Seu assistente</p>
           <h3 className="display text-[clamp(1.9rem,3.6vw,2.6rem)] leading-none">VYZ</h3>
         </div>
       </div>
       <p className="max-w-lg text-[16px] leading-relaxed text-offwhite/85">
-        Ele olha as suas contas todo dia, cruza os números e te diz o que fazer. Pergunte qualquer coisa por texto ou por voz: ele responde com os dados do seu cliente.
+        Pergunte por texto, ou por voz no Avançado: ele responde na hora, com os dados do seu cliente.
       </p>
 
-      <ul className="space-y-2.5" aria-label="Exemplos de insights do VYZ">
+      <p className="-mb-3 flex items-center text-[13px] font-medium text-offwhite/85">
+        Alerta diário
+        <SoonBadge />
+      </p>
+      <ul className="space-y-2.5" aria-label="Exemplos do alerta diário do VYZ, em breve">
         {INSIGHTS.map((ins, i) => (
           <li
             key={ins.text}
@@ -198,7 +202,7 @@ function VyzCard() {
         <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-sage text-deep">
           <Mic size={17} aria-hidden />
         </span>
-        <span className="min-w-0 flex-1 truncate text-[14px] text-offwhite/80">“VYZ, por que as vendas caíram ontem?”</span>
+        <span className="min-w-0 flex-1 truncate text-[14px] text-offwhite/80">“VYZ, quanto investi esse mês?”</span>
         <span aria-hidden className="flex h-5 items-center gap-[3px]">
           {[8, 14, 20, 12, 18, 9, 15].map((h, i) => (
             <span
@@ -228,7 +232,7 @@ export function Inteligencia() {
           lines={["Não é só dashboard.", "É análise de verdade."]}
         />
         <p className="mt-6 max-w-2xl text-[17px] leading-relaxed text-fg-2">
-          Os métodos que as grandes agências usam para decidir verba, rodando nos dados das suas contas. E um analista que não dorme.
+          Os métodos que as grandes agências usam para decidir verba, rodando nos dados das suas contas. E um assistente que responde na hora.
         </p>
 
         <div className="mt-12 grid grid-cols-[minmax(0,1fr)] gap-4 lg:mt-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">

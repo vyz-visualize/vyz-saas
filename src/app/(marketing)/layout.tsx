@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { MotionRoot } from "@/components/motion/MotionRoot";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
-import { SHOW_LANDING_PAGES } from "@/features/marketing/config";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 
 const title = SHOW_LANDING_PAGES ? "VYZ · Vyzualize · Dashboards e landing pages para gestores de tráfego" : "VYZ · Vyzualize · Dashboards para gestores de tráfego";
 const description =

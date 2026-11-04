@@ -126,6 +126,7 @@ function limits(q: string, ctx: AgentContext): AgentAnswer | null {
     });
   }
   if (has(q, "landing*", "lp", "lps", "pagina*")) {
+    if (!ctx.landingPages) return answer({ text: "As **landing pages** estão em breve. Em Landing pages, no menu, você entra na lista para acessar antes." });
     const left = Math.max(0, ent.maxLandingPages - counts.landingPublished);
     return answer({
       text: `No plano **${tierLabel}** cabem **${count(ent.maxLandingPages)} landing pages publicadas**. Você tem ${count(counts.landingPublished)} no ar, então ${left ? `ainda pode publicar **${count(left)}**` : "chegou ao limite"}.`,
@@ -176,7 +177,7 @@ export function respond(question: string, ctx: AgentContext): AgentAnswer {
   if (action) return action;
   if (has(q, "plano") && has(q, "qual", "meu", "estou", "tenho")) {
     return answer({
-      text: `Você está no plano **${ctx.tierLabel}**. Ele libera **${count(ctx.ent.maxDashboards)} dashboards** e **${count(ctx.ent.maxLandingPages)} landing pages publicadas**.`,
+      text: `Você está no plano **${ctx.tierLabel}**. Ele libera **${count(ctx.ent.maxDashboards)} dashboards**${ctx.landingPages ? ` e **${count(ctx.ent.maxLandingPages)} landing pages publicadas**` : ""}.`,
       card: { label: "Plano", value: ctx.tierLabel, note: `${count(ctx.counts.contractedAccounts)} ${ctx.counts.contractedAccounts === 1 ? "conta contratada" : "contas contratadas"}` },
       action: { type: "navigate", href: "/painel/plano", label: "Ver plano" },
     });

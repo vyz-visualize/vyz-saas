@@ -4,7 +4,7 @@ import { useInView, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { PageView } from "@/features/dashboards/widgets/PageView";
-import { SHOW_LANDING_PAGES } from "@/features/marketing/config";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { makeContext } from "@/features/dashboards/widgets/Widgets";
 import { MockSource } from "@/features/metrics/source";
 import { dashboardTemplate } from "@/features/templates/dashboards";

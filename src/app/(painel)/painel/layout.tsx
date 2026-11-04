@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AppShell } from "@/features/workspace/AppShell";
 import { WorkspaceProvider } from "@/features/workspace/WorkspaceProvider";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { isMockBilling } from "@/server/env";
 
 export const metadata: Metadata = {
   title: { default: "Painel", template: "%s · Painel VYZ" },
-  description: "Dashboards e landing pages para gestores de tráfego.",
+  description: SHOW_LANDING_PAGES ? "Dashboards e landing pages para gestores de tráfego." : "Dashboards para gestores de tráfego.",
 };
 
 /** Área do painel: app shell próprio, sem Lenis, intro nem motion pesado. */

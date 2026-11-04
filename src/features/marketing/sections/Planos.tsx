@@ -9,7 +9,7 @@ import { SectionWipe } from "@/components/motion/SectionWipe";
 import { Odometer } from "@/components/ui/Odometer";
 import { Segmented } from "@/components/ui/Segmented";
 import { btn } from "@/components/ui/styles";
-import { SHOW_LANDING_PAGES } from "@/features/marketing/config";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { usePlan } from "@/features/marketing/state/PlanProvider";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import {
@@ -265,7 +265,7 @@ export function Planos() {
         <div className="mt-8 flex flex-col gap-3 text-sm text-fg-2 sm:flex-row sm:items-center sm:justify-between">
           <p>
             {product === "dash"
-              ? "Valores em reais · contas a mais, dashboards extras e marca própria você liga dentro do painel"
+              ? "Valores em reais · contas a mais e dashboards extras você liga dentro do painel. Marca própria e implementação sob medida: plano Personalizado, sob consulta."
               : "Valores em reais · mais páginas e domínio próprio você liga dentro do painel"}
           </p>
           <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={`${btn.ghost} -ml-3 w-fit sm:ml-0`}>

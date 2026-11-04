@@ -56,7 +56,7 @@ No código: `Product` e as funções de plano em `features/pricing/pricing.ts` (
 Grupos de rota isolados: cada um tem o próprio layout, e nenhum importa o motion, o layout ou o estado de outro (regra de ESLint `no-restricted-imports`).
 
 ```
-(marketing)/page.tsx                    site: hero, como funciona, Inteligência, planos (LP oculta: SHOW_LANDING_PAGES em features/marketing/config.ts)
+(marketing)/page.tsx                    site: hero, como funciona, Inteligência, planos (LP oculta: SHOW_LANDING_PAGES em lib/flags.ts)
 (checkout)/assinar                      1. dados (Google ou e-mail) → pagamento/[id] → concluido/[id]
 (auth)/entrar, recuperar-senha,         login (e-mail e senha ou Google), senha, convite de equipe
        redefinir-senha, convite/[token]
@@ -64,7 +64,7 @@ Grupos de rota isolados: cada um tem o próprio layout, e nenhum importa o motio
 (painel)/painel/...                     o SaaS (menu por produto)
   page.tsx                              Início (dashboards) · LP vai para /painel/landing-pages
   dashboards, dashboards/novo, [id], [id]/editar
-  landing-pages, novo, [id] (editor), leads
+  landing-pages, novo, [id] (editor), leads   com SHOW_LANDING_PAGES desligada: "em breve" + lista de espera (workspaces de dashboards)
   contas, compartilhar, plano, configuracoes
   w/[slug]/route.ts                     entrada do cliente: abre o workspace e leva ao produto dele
 (publico)/p/[slug]                      landing page publicada
@@ -118,7 +118,7 @@ src/
     security/         rate limit
     supabase/         clientes (usuário e admin) e tradução de erros do banco
     env.ts            variáveis validadas (zod)
-  lib/                utilitários sem domínio: format, whatsapp, ids, hooks, product-hosts, supabase/cookies
+  lib/                utilitários sem domínio: flags, format, whatsapp, ids, hooks, product-hosts, supabase/cookies
 packages/shared/      tipos e regras usados pelo site e pelo app (API, créditos, planos da loja, termos proibidos no iOS)
 apps/mobile/          app Expo (docs/MOBILE.md)
 supabase/migrations/  o banco, em ordem (docs/BANCO.md)
@@ -175,6 +175,7 @@ Detalhes em `docs/BANCO.md`. Migrations em ordem:
 | native_app, public_link_exists | créditos e eventos das lojas, push, exclusão de conta; checagem de links públicos |
 | store_plans_and_seats | planos vendidos nas lojas, usuários por plano |
 | product_lines | os dois produtos e o caminho do usuário |
+| landing_waitlist | lista de espera das LPs e visitas à página "em breve" |
 
 Segurança: RLS em todas as tabelas (negado por padrão), funções `security definer` com `search_path` vazio no schema `private`, erros no formato `grupo:motivo` traduzidos em `server/supabase/errors.ts`.
 

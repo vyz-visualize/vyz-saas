@@ -24,6 +24,8 @@ export type AgentContext = {
   tierLabel: string;
   ent: Entitlements;
   dashboards: ClientData[];
+  /** Este workspace usa o módulo de landing pages? (false = em breve, lista de espera) */
+  landingPages: boolean;
   counts: { dashboards: number; landingPublished: number; accounts: number; contractedAccounts: number };
 };
 

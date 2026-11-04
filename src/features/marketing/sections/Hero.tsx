@@ -1,6 +1,6 @@
 import { CutReveal } from "@/components/motion/CutReveal";
 import { Reveal } from "@/components/motion/Reveal";
-import { SHOW_LANDING_PAGES } from "@/features/marketing/config";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { DashboardMock } from "@/features/marketing/mock/DashboardMock";
 import { TiltFrame } from "@/features/marketing/mock/TiltFrame";
 import { brl } from "@/lib/format";

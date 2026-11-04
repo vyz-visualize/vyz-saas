@@ -16,7 +16,7 @@ function client(id: string, name: string, profile: ClientData["profile"], cur: P
 }
 
 function ctx(dashboards: ClientData[], tier: AgentContext["tier"] = "pro"): AgentContext {
-  return { now: NOW, tier, tierLabel: tier === "pro" ? "Pro" : "Base", ent: ENTITLEMENTS[tier], dashboards, counts: { dashboards: dashboards.length, landingPublished: 1, accounts: 2, contractedAccounts: 2 } };
+  return { now: NOW, tier, tierLabel: tier === "pro" ? "Pro" : "Base", ent: ENTITLEMENTS[tier], dashboards, landingPages: true, counts: { dashboards: dashboards.length, landingPublished: 1, accounts: 2, contractedAccounts: 2 } };
 }
 
 const LOJA = client("d1", "Loja Verde", "ecommerce", { spend: 1_000_000, conversions: 200, revenue: 4_000_000 }, { spend: 900_000, conversions: 180, revenue: 3_500_000 });
@@ -80,6 +80,13 @@ describe("LocalEngine", () => {
     const roas = respond("qual o melhor roas?", ctx([IMOB]));
     expect(roas.text).toMatch(/não tenho esse dado/i);
     expect(roas.card).toBeUndefined();
+  });
+
+  it("landing pages em breve: não fala de limite de LP", () => {
+    const off = { ...ctx([LOJA]), landingPages: false };
+    expect(respond("quantas landing pages posso publicar?", off).text).toMatch(/em breve/);
+    expect(respond("qual é o meu plano?", off).text).not.toMatch(/landing/i);
+    expect(respond("qual é o meu plano?", ctx([LOJA])).text).toMatch(/landing pages publicadas/);
   });
 
   it("pergunta desconhecida: resposta honesta + sugestões", () => {

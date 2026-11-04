@@ -9,7 +9,7 @@ import { SectionWipe } from "@/components/motion/SectionWipe";
 import { PromptHeadline } from "./PromptHeadline";
 import { StoryStage, type SceneKey } from "./StoryPanel";
 import { WhyCards } from "./WhyCards";
-import { SHOW_LANDING_PAGES } from "@/features/marketing/config";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 
 const STEPS = [
   {

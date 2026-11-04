@@ -25,11 +25,12 @@ import { TIER_LABEL } from "@/features/pricing/entitlements";
 import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
 import type { Product } from "@/features/pricing/pricing";
+import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { subscriptionNotice } from "./notice";
 import { ROLE_LABEL } from "./session";
 import { useWorkspaceSession } from "./WorkspaceProvider";
 
-type NavItem = { href: string; label: string; icon: typeof Home; short?: string };
+type NavItem = { href: string; label: string; icon: typeof Home; short?: string; soon?: boolean };
 
 // cada produto tem o seu menu: dashboards não vê LPs e vice-versa
 const NAVS: Record<Product, NavItem[]> = {
@@ -38,6 +39,7 @@ const NAVS: Record<Product, NavItem[]> = {
     { href: "/painel/dashboards", label: "Dashboards", icon: BarChart3 },
     { href: "/painel/contas", label: "Contas", icon: Plug },
     { href: "/painel/compartilhar", label: "Compartilhar", icon: Share2 },
+    ...(SHOW_LANDING_PAGES ? [] : [{ href: "/painel/landing-pages", label: "Landing pages", icon: PanelsTopLeft, short: "LPs", soon: true }]),
     { href: "/painel/plano", label: "Plano", icon: Gem },
     { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
   ],
@@ -107,22 +109,25 @@ function SideNav({ path, collapsed }: { path: string | null; collapsed: boolean 
   const nav = useNav();
   return (
     <ul className="space-y-1">
-      {nav.map(({ href, label, icon: I }) => {
+      {nav.map(({ href, label, icon: I, soon }) => {
         const active = isActive(path, href);
         return (
           <li key={href} className="relative">
             {active && <m.span layoutId="side-tab" transition={TAB_SPRING} aria-hidden className="side-tab absolute inset-y-0 left-0 -right-px rounded-l-[12px] bg-[var(--panel)]" />}
-            <Tooltip content={label} disabled={!collapsed}>
+            <Tooltip content={soon ? `${label} · em breve` : label} disabled={!collapsed}>
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                aria-label={collapsed ? label : undefined}
+                aria-label={collapsed ? (soon ? `${label}, em breve` : label) : undefined}
                 className={`group relative flex h-11 items-center gap-3 overflow-hidden pl-3.5 text-[14px] outline-none ${active ? "font-semibold text-fg" : "text-[var(--sidebar-muted)] hover:text-[var(--sidebar-fg)]"}`}
               >
                 {!active && <span aria-hidden className="absolute inset-y-0 right-3 left-0 rounded-[12px] transition-colors duration-150 group-hover:bg-white/8 group-focus-visible:bg-white/8" />}
                 <span aria-hidden className="pointer-events-none absolute inset-y-1 right-4 left-1 rounded-[10px] group-focus-visible:ring-2 group-focus-visible:ring-[var(--sidebar-fg)]/70" />
                 <I size={19} aria-hidden className={`relative shrink-0 transition-transform duration-300 ease-brand sb-closed:translate-x-[22px] ${active ? "text-accent" : ""}`} />
-                <span className={`relative ${fade}`}>{label}</span>
+                <span className={`relative ${fade}`}>
+                  {label}
+                  {soon && <span className="ml-2 rounded-chip border border-current/40 px-1.5 py-px text-[10.5px] font-medium">Em breve</span>}
+                </span>
               </Link>
             </Tooltip>
           </li>
@@ -408,10 +413,11 @@ export function AppShell({ children, simulatedBilling = false }: { children: Rea
               </nav>
               <Modal open={more} onClose={() => setMore(false)} title="Mais">
                 <ul className="space-y-1" onClick={() => setMore(false)}>
-                  {nav.slice(4).map(({ href, label, icon: I }) => (
+                  {nav.slice(4).map(({ href, label, icon: I, soon }) => (
                     <li key={href}>
                       <Link href={href} className="flex items-center gap-3 rounded-control px-3 py-3 text-[15px] hover:bg-accent-soft">
                         <I size={18} aria-hidden /> {label}
+                        {soon && <span className="rounded-chip border border-line px-1.5 py-px text-[11px] text-fg-2">Em breve</span>}
                       </Link>
                     </li>
                   ))}

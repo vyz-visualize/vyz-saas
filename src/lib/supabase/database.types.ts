@@ -1864,6 +1864,67 @@ export type Database = {
           },
         ]
       }
+      landing_waitlist: {
+        Row: {
+          id: string
+          workspace_id: string
+          user_id: string
+          email: string
+          use_case: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          user_id: string
+          email: string
+          use_case?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          user_id?: string
+          email?: string
+          use_case?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_waitlist_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      landing_waitlist_visits: {
+        Row: {
+          id: number
+          workspace_id: string
+          visited_at: string
+        }
+        Insert: {
+          id?: never
+          workspace_id: string
+          visited_at?: string
+        }
+        Update: {
+          id?: never
+          workspace_id?: string
+          visited_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_waitlist_visits_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_acceptances: {
         Row: {
           id: string

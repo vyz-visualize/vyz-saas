@@ -47,35 +47,22 @@ function Card({ title, text, children, delay }: { title: string; text: string; c
   );
 }
 
-function Dedupe({ phase }: { phase: number }) {
-  const merged = phase === 1;
+function SideBySide({ phase }: { phase: number }) {
+  const on = phase === 1;
   return (
-    <div className="flex h-full flex-col justify-center gap-2 text-[11px] font-semibold tnum">
-      <div className="relative h-6">
-        <m.div
-          className="absolute inset-y-0 left-0 flex origin-left items-center rounded-[4px] bg-accent px-2 text-on-accent"
-          animate={{ width: merged ? "100%" : "79%", y: merged ? 16 : 0 }}
-          transition={{ duration: 0.6, ease: EASE }}
-        >
-          <m.span animate={{ opacity: merged ? 0 : 1 }}>Meta 642</m.span>
-        </m.div>
-      </div>
-      <div className="relative h-6">
-        <m.div
-          className="absolute inset-y-0 left-0 flex items-center rounded-[4px] bg-muted px-2 text-fg"
-          animate={{ width: merged ? "100%" : "58%", y: merged ? -16 : 0, opacity: merged ? 0 : 1 }}
-          transition={{ duration: 0.6, ease: EASE }}
-        >
-          Google 470
-        </m.div>
-      </div>
-      <m.p
-        className="absolute top-1/2 left-6 -translate-y-1/2 text-[12px] text-on-accent"
-        animate={{ opacity: merged ? 1 : 0 }}
-        transition={{ delay: merged ? 0.35 : 0, duration: 0.25 }}
-      >
-        812 confirmadas
-      </m.p>
+    <div className="grid h-full grid-cols-2 items-center gap-4 tnum">
+      {[
+        { label: "Meta", value: "642", width: "79%", bar: "bg-accent" },
+        { label: "Google", value: "470", width: "58%", bar: "bg-muted" },
+      ].map((p) => (
+        <div key={p.label}>
+          <p className="text-[12px] font-medium text-fg-2">{p.label}</p>
+          <p className="text-[26px] leading-tight font-bold text-fg">{p.value}</p>
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-line">
+            <m.div className={`h-full rounded-full ${p.bar}`} animate={{ width: on ? p.width : "45%" }} transition={{ duration: 0.6, ease: EASE }} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -144,10 +131,10 @@ export function WhyCards() {
     <div className="grid gap-4 md:grid-cols-3">
       <Card
         delay={0}
-        title="Venda sem dupla contagem."
-        text="Meta e Google atribuem a mesma venda. O topo mostra a venda confirmada no GA4, e o que cada plataforma atribui fica ao lado."
+        title="Cada plataforma com a sua venda."
+        text="O topo mostra as vendas e conversões vindas da Meta e do Google, lado a lado, sem somar uma na outra."
       >
-        {(p) => <Dedupe phase={p} />}
+        {(p) => <SideBySide phase={p} />}
       </Card>
       <Card
         delay={90}
