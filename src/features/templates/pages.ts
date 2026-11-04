@@ -154,7 +154,8 @@ export const PAGES: Record<PageId, PageDef> = {
   criativos: {
     id: "criativos",
     name: "Criativos",
-    tier: "pro",
+    // a página é de todos os planos; o que muda é a profundidade (ENTITLEMENTS.creatives)
+    tier: "base",
     description: "Grade de anúncios com CTR, CPA e frequência.",
     build: () => ({
       kpis: [{ metric: "ctr", sub: "delta" }, { metric: "cpa", sub: "delta" }, { metric: "frequency", sub: "delta" }, { metric: "cpm", sub: "delta" }],

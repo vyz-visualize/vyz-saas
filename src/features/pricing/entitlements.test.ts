@@ -29,8 +29,10 @@ describe("limites por plano", () => {
   });
 
   it("páginas: Base essenciais, Pro + Pro, Avançado todas", () => {
-    expect(canUse("base", PAGES.criativos.tier)).toBe(false);
-    expect(canUse("pro", PAGES.criativos.tier)).toBe(true);
+    expect(canUse("base", PAGES.publico.tier)).toBe(false);
+    expect(canUse("pro", PAGES.publico.tier)).toBe(true);
+    // Criativos é de todos os planos; a profundidade vem de ENTITLEMENTS.creatives
+    expect(canUse("base", PAGES.criativos.tier)).toBe(true);
     expect(canUse("pro", PAGES["leads-crm"].tier)).toBe(false);
     expect(canUse("avancado", PAGES["leads-crm"].tier)).toBe(true);
   });

@@ -13,6 +13,7 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 import { aggregateDashboard, redactSpend } from "@/features/analytics/aggregate";
+import { cutCreatives, type CreativesAccess } from "@/features/analytics/creatives/access";
 import { TEMPLATE_PLATFORM } from "@/features/analytics/preview";
 import { dashboardRanges, isPeriodId, maturingStart } from "@/features/analytics/ranges";
 import type {
@@ -42,6 +43,8 @@ export type LoadLiveDashboardOptions = {
   customDays?: number;
   /** Tira os valores de investimento antes de mandar para o navegador. */
   hideSpend?: boolean;
+  /** Página de Criativos: o que o plano cobre. Sem isso, só a lista (nunca manda o que não foi pedido). */
+  creatives?: CreativesAccess;
   /**
    * Cliente que confere o acesso. Padrão: o da sessão (RLS). O link público
    * passa o admin DEPOIS de validar o token; scripts de teste também.
@@ -85,6 +88,8 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     ? await readWarehouse({ dashboardId, platform, accountIds: accounts.map((a) => a.id), current, previous, breakEvenRoas })
     : aggregateDashboard(emptyRows(platform, current, previous), { breakEvenRoas });
   if (opts.hideSpend) view = redactSpend(view);
+  const currency = accounts[0]?.currency ?? "BRL";
+  const cut = cutCreatives(view, opts.creatives ?? {}, { hideSpend: !!opts.hideSpend, currency });
 
   return {
     dashboard: { id: dashboard.id, name: dashboard.name, clientName: dashboard.client_name, templateId: dashboard.template_id },
@@ -92,14 +97,15 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     status: !accounts.length ? "no_accounts" : view.hasData ? "ok" : "no_data",
     accounts,
     // contas de moedas diferentes não se somam com conversão: vale a primeira
-    currency: accounts[0]?.currency ?? "BRL",
+    currency,
     timeZone,
     current,
     previous,
     maturingFrom: maturingStart(current),
     hideSpend: !!opts.hideSpend,
     sample: false,
-    view,
+    view: cut.view,
+    creatives: cut.creatives,
   };
 }
 
@@ -204,22 +210,22 @@ async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
     fetchAll((a, b) =>
       db.from("insights_account_daily").select(`ad_account_id, date, ${METRIC_COLUMNS}`).in("ad_account_id", ids).gte("date", prev.from).lte("date", cur.to).order("ad_account_id").order("date").range(a, b),
     ).then((rows): AccountDayRow[] => rows.map((r) => ({ date: r.date, ...metricRow(r) }))),
-    fetchAll((a, b) => db.from("ad_campaigns").select("id, name, status, channel, funnel_stage, daily_budget").in("ad_account_id", ids).order("id").range(a, b)).then((rows) =>
-      rows.map((r) => ({ id: r.id, name: r.name, status: r.status, channel: r.channel, funnelStage: r.funnel_stage, dailyBudget: opt(r.daily_budget) })),
+    fetchAll((a, b) => db.from("ad_campaigns").select("id, name, objective, status, channel, funnel_stage, daily_budget").in("ad_account_id", ids).order("id").range(a, b)).then((rows) =>
+      rows.map((r) => ({ id: r.id, name: r.name, objective: r.objective, status: r.status, channel: r.channel, funnelStage: r.funnel_stage, dailyBudget: opt(r.daily_budget) })),
     ),
     fetchAll((a, b) =>
       db.from("insights_campaign_daily").select(`campaign_id, date, ${METRIC_COLUMNS}`).in("ad_account_id", ids).gte("date", prev.from).lte("date", cur.to).order("campaign_id").order("date").range(a, b),
     ).then((rows): CampaignDayRow[] => rows.map((r) => ({ campaignId: r.campaign_id, date: r.date, ...metricRow(r) }))),
     meta
-      ? fetchAll((a, b) => db.from("ads").select("id, campaign_id, name, format, status, headline, thumbnail_url").in("ad_account_id", ids).order("id").range(a, b)).then((rows) =>
-          rows.map((r) => ({ id: r.id, campaignId: r.campaign_id, name: r.name, format: r.format, status: r.status, headline: r.headline, thumbnailUrl: r.thumbnail_url })),
+      ? fetchAll((a, b) => db.from("ads").select("id, campaign_id, name, format, status, headline, thumbnail_url, post_url").in("ad_account_id", ids).order("id").range(a, b)).then((rows) =>
+          rows.map((r) => ({ id: r.id, campaignId: r.campaign_id, postUrl: r.post_url, name: r.name, format: r.format, status: r.status, headline: r.headline, thumbnailUrl: r.thumbnail_url })),
         )
       : [],
     meta
       ? fetchAll((a, b) =>
           db
             .from("insights_ad_daily")
-            .select("ad_id, date, spend, impressions, reach, clicks, link_clicks, conversions, conversion_value, video_views, video_thruplays")
+            .select("ad_id, date, spend, impressions, reach, clicks, link_clicks, conversions, conversion_value, video_views, video_thruplays, leads, post_engagement, post_reactions, post_comments, post_shares, post_saves, profile_visits, video_p25, video_p50, video_p75, video_p95, video_p100, video_watch_seconds")
             .in("ad_account_id", ids)
             .gte("date", cur.from)
             .lte("date", cur.to)
@@ -239,6 +245,19 @@ async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
             conversionValue: num(r.conversion_value),
             videoViews: opt(r.video_views),
             videoThruplays: opt(r.video_thruplays),
+            leads: opt(r.leads),
+            postEngagement: opt(r.post_engagement),
+            postReactions: opt(r.post_reactions),
+            postComments: opt(r.post_comments),
+            postShares: opt(r.post_shares),
+            postSaves: opt(r.post_saves),
+            profileVisits: opt(r.profile_visits),
+            videoP25: opt(r.video_p25),
+            videoP50: opt(r.video_p50),
+            videoP75: opt(r.video_p75),
+            videoP95: opt(r.video_p95),
+            videoP100: opt(r.video_p100),
+            videoWatchSeconds: opt(r.video_watch_seconds),
           })),
         )
       : [],

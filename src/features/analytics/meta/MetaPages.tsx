@@ -1,18 +1,17 @@
 "use client";
 
-// Páginas do Meta Ads · E-commerce: visão geral, campanhas, funil, criativos e público.
+// Páginas do Meta Ads · E-commerce: visão geral, campanhas, funil e público (Criativos: pasta creatives/).
 
 import { TrendingDown } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Segmented } from "@/components/ui/Segmented";
 import { AGE_BUCKETS, GENDER_LABEL } from "@/features/sync/breakdowns";
 import { decimal, int, pct } from "@/lib/format";
 import { FUNNEL_STAGE_LABEL } from "../aggregate";
 import { formatValue, money, moneyCompact } from "../format";
 import { hiddenOr, HeroChart, StatusCell, TopCampaigns, type PageProps } from "../shared";
-import type { CampaignRowVM, CreativeVM, FunnelStep, MetaView } from "../types";
-import { Chip, DataTable, InlineBar, KpiGrid, NoData, Panel, Roas, SliceBars, Thumb } from "../ui";
-import { TrendSpark } from "@/components/charts/TrendSpark";
+import type { CampaignRowVM, FunnelStep, MetaView } from "../types";
+import { DataTable, InlineBar, KpiGrid, NoData, Panel, Roas, SliceBars } from "../ui";
 
 const stageLabel = (s: string | null) => (s ? (FUNNEL_STAGE_LABEL[s] ?? "Outras") : "Outras");
 const meta = (data: PageProps["data"]) => data.view as MetaView;
@@ -175,96 +174,6 @@ function Stat({ label, value, note }: { label: string; value: string; note: stri
       <p className="label-caps text-[10.5px] text-fg-2">{label}</p>
       <p className="mt-1 text-[22px] leading-none font-bold tracking-[-0.02em] tnum">{value}</p>
       <p className="mt-1 text-[11.5px] text-fg-2">{note}</p>
-    </div>
-  );
-}
-
-// ---- criativos ----------------------------------------------------------------------------
-
-type CreativeSort = "spend" | "roas" | "ctr";
-
-export function MetaCreatives({ data }: PageProps) {
-  const view = meta(data);
-  const [sort, setSort] = useState<CreativeSort>(data.hideSpend ? "ctr" : "spend");
-  const list = useMemo(() => {
-    const key = (c: CreativeVM) => (sort === "roas" ? (c.roas ?? -1) : sort === "ctr" ? (c.linkCtr ?? -1) : (c.spend ?? 0));
-    return [...view.creatives].sort((a, b) => key(b) - key(a));
-  }, [view.creatives, sort]);
-  const tired = view.creatives.filter((c) => c.fatigue);
-  if (!view.creatives.length) return <NoData text="Nenhum anúncio veiculou no período." />;
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[13px] text-fg-2">
-          {view.creatives.length} anúncios com entrega no período
-          {tired.length > 0 && (
-            <>
-              {" · "}
-              <span className="font-semibold text-error-fg">
-                {tired.length === 1 ? "1 mostra" : `${tired.length} mostram`} sinal de cansaço
-              </span>
-            </>
-          )}
-        </p>
-        <Segmented
-          label="Ordenar criativos"
-          size="sm"
-          value={sort}
-          onChange={setSort}
-          options={[...(data.hideSpend ? [] : [{ value: "spend" as const, label: "Investimento" }, { value: "roas" as const, label: "ROAS" }]), { value: "ctr", label: "CTR" }]}
-        />
-      </div>
-      <ul className="grid grid-cols-1 gap-3 @[560px]:grid-cols-2 @[900px]:grid-cols-3 @[1240px]:grid-cols-4">
-        {list.map((c) => (
-          <li key={c.id}>
-            <CreativeCard c={c} data={data} breakEven={view.breakEvenRoas} />
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function CreativeCard({ c, data, breakEven }: { c: CreativeVM; data: PageProps["data"]; breakEven: number | null }) {
-  const { currency, hideSpend } = data;
-  return (
-    <article className={`flex h-full flex-col overflow-hidden rounded-card border bg-card ${c.fatigue ? "border-error/40" : "border-line"}`} aria-label={c.name}>
-      <Thumb seed={c.id} url={c.thumbnailUrl} label={c.headline ?? c.name} badge={c.format} className="aspect-[16/10]" />
-      <div className="flex flex-1 flex-col p-3">
-        <div className="flex items-start justify-between gap-2">
-          <h4 className="line-clamp-2 text-[13px] leading-snug font-semibold text-fg" title={c.name}>
-            {c.name}
-          </h4>
-          {c.status !== "active" && <Chip>{c.status === "paused" ? "Pausado" : c.status}</Chip>}
-        </div>
-        <p className="mt-0.5 truncate text-[11.5px] text-fg-2">{c.campaignName}</p>
-        <dl className="mt-3 grid grid-cols-3 gap-x-2 gap-y-2 text-[11px] tnum">
-          {!hideSpend && <Metric label="Investimento" value={moneyCompact(c.spend, currency)} />}
-          {!hideSpend && <Metric label="ROAS" value={<Roas value={c.roas} breakEven={breakEven} />} />}
-          <Metric label="Compras" value={int(c.conversions)} />
-          <Metric label="CTR do link" value={formatValue(c.linkCtr, "pct")} />
-          <Metric label="Freq. média" value={c.frequency == null ? "—" : decimal(c.frequency, 2)} />
-          <Metric label="Hook rate" value={c.hookRate == null ? "—" : pct(c.hookRate, 0)} />
-        </dl>
-        <div className="mt-auto pt-3">
-          <p className="mb-1 text-[10.5px] text-fg-2">CTR do link por dia</p>
-          <TrendSpark values={c.ctrSpark} maturing={0} tone={c.fatigue ? "bad" : "good"} className="h-7" />
-          {c.fatigue && (
-            <p className="mt-2 rounded-control bg-error-soft px-2 py-1.5 text-[11.5px] leading-snug text-error-fg">
-              Cansando: frequência {pct(c.fatigue.frequencyChange, 0)} maior e CTR {pct(Math.abs(c.fatigue.ctrChange), 0)} menor na 2ª metade do período. Renove o criativo.
-            </p>
-          )}
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <dt className="truncate text-fg-2">{label}</dt>
-      <dd className="font-semibold text-fg">{value}</dd>
     </div>
   );
 }

@@ -10,7 +10,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { parsePlanDbId } from "@/features/pricing/pricing";
-import { TIERS, type Entitlements, type Tier } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, TIERS, type Entitlements, type Tier } from "@/features/pricing/entitlements";
 import { hasRole, type MemberRole, type OnboardingStep, type SubscriptionStatus, type WorkspaceSession } from "@/features/workspace/session";
 import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -63,6 +63,7 @@ function toEntitlements(row: Tables<"workspace_access"> | null): Entitlements | 
     landingTemplates: row.landing_templates ?? 0,
     platforms: row.platforms === "all" ? "all" : "core",
     pages: isTier(row.pages_plan_id) ? row.pages_plan_id : "base",
+    creatives: ENTITLEMENTS[isTier(row.pages_plan_id) ? row.pages_plan_id : "base"].creatives,
     whiteLabel: !!row.white_label,
     audio: row.audio === "soon" ? "soon" : "none",
     customDashboards: !!row.custom_dashboards,

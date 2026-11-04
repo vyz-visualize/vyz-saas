@@ -7,6 +7,10 @@ import { PendingChip } from "@/components/ui/kit";
 import { OverflowTabs } from "@/components/ui/OverflowTabs";
 import { PeriodPicker, rangeDays, type Range } from "@/components/ui/PeriodPicker";
 import { PLATFORMS } from "@/features/accounts/platforms";
+import { CreativeList } from "@/features/analytics/creatives/CreativeList";
+import { CreativesPage } from "@/features/analytics/creatives/CreativesPage";
+import { setQueryParam } from "@/features/analytics/creatives/query";
+import type { CreativesData } from "@/features/analytics/types";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
 import type { MetricId } from "@/features/metrics/definitions";
@@ -51,6 +55,11 @@ type BodyProps = {
   /** Dashboard salvo que pode ser personalizado (member+ no painel). */
   customizeId?: string;
   saveMetrics?: SaveMetricPrefs;
+  /** Modelos que usam a Meta: a página de Criativos por plano, no lugar do widget. */
+  creatives?: CreativesData;
+  initialPage?: PageId;
+  /** A página de Criativos vem do servidor: trocar o período precisa navegar. */
+  onPeriodChange?: (period: PeriodId, customDays: number) => void;
 };
 
 /** Os cards de uma aba do exemplo: os dela que seguem visíveis e, depois, os adicionados. */
@@ -61,9 +70,9 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics }: BodyProps) {
+export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, creatives, initialPage, onPeriodChange }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
-  const [page, setPage] = useState<PageId>(spec.pages[0] ?? "visao-geral");
+  const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
   const [customDays, setCustomDays] = useState(spec.settings.customDays || 14);
   const [range, setRange] = useState<Range | null>(null);
@@ -113,7 +122,15 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
 
         <div className="flex flex-col gap-3">
           <div className="min-w-0">
-            <OverflowTabs label="Páginas do dashboard" value={active} onChange={setPage} items={spec.pages.map((p) => ({ value: p, label: PAGES[p].name }))} />
+            <OverflowTabs
+              label="Páginas do dashboard"
+              value={active}
+              onChange={(p) => {
+                setPage(p);
+                setQueryParam("pagina", p);
+              }}
+              items={spec.pages.map((p) => ({ value: p, label: PAGES[p].name }))}
+            />
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <div className="w-full @[540px]:w-52 @[760px]:w-60">
@@ -128,6 +145,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                     setRange(r);
                     setCustomDays(Math.max(3, rangeDays(r)));
                   }
+                  onPeriodChange?.(p, r ? Math.max(3, rangeDays(r)) : customDays);
                 }}
               />
             </div>
@@ -160,7 +178,14 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         <div className="relative" data-anim={assemble ? "on" : "off"}>
           <div className="scanner" aria-hidden />
           <div className="m-unveil">
-            <PageView key={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} />
+            {active === "criativos" && creatives ? (
+              <div key={active} className="space-y-2">
+                <PageView layout={{ ...layoutOf(active), widgets: [] }} ctx={ctx} kpiEdit={metrics.edit} />
+                <CreativesPage data={creatives} />
+              </div>
+            ) : (
+              <PageView key={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} />
+            )}
           </div>
         </div>
       )}
@@ -198,7 +223,14 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                   {spec.client} · {periodLabel}
                 </span>
               </p>
-              <PageView layout={layoutOf(p)} ctx={ctx} />
+              {p === "criativos" && creatives ? (
+                <div className="space-y-2">
+                  <PageView layout={{ ...layoutOf(p), widgets: [] }} ctx={ctx} />
+                  <CreativeList rows={creatives.list} currency={creatives.currency} hideSpend={creatives.hideSpend} />
+                </div>
+              ) : (
+                <PageView layout={layoutOf(p)} ctx={ctx} />
+              )}
             </section>
           ))}
         </div>

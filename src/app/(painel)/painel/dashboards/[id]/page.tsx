@@ -4,6 +4,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
+import { parseCreativesQuery } from "@/features/analytics/creatives/query";
+import { sampleCreatives } from "@/features/analytics/creatives/sample";
 import { LiveDashboard, LiveDashboardSkeleton } from "@/features/analytics/LiveDashboard";
 import { brandVars } from "@/features/dashboards/brand";
 import { DashboardActions } from "@/features/dashboards/DashboardActions";
@@ -11,6 +13,7 @@ import { periodFromQuery } from "@/features/dashboards/model";
 import { BrandMark } from "@/features/dashboards/DashboardBody";
 import { PeriodNav } from "@/features/dashboards/PeriodNav";
 import { SampleDashboard } from "@/features/dashboards/SampleDashboard";
+import { anyDashboardTemplate } from "@/features/templates/live";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { getDashboard } from "@/server/dashboards/queries";
@@ -53,24 +56,29 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   const whiteLabel = !!session.access.entitlements?.whiteLabel;
   const color = whiteLabel ? d.brand?.color || ws.brandColor : null;
   const brand = whiteLabel ? { color: color ?? "", logo: ws.brandLogoUrl ?? undefined, hideVyz: ws.hideVyzBrand || !!d.brand?.hideVyz } : undefined;
+  const q = parseCreativesQuery(query);
+  const access = { tier: session.access.tier, tab: q.tab, ads: q.ads, upsell: true };
   const actions = canEdit ? <DashboardActions dashboard={{ id: d.id, name: d.name, live: d.live }} period={period} pages={d.pages.length} /> : undefined;
 
   if (d.live) {
     return (
       <div style={brandVars(color)}>
         <Suspense key={`${period}:${customDays}`} fallback={<LiveDashboardSkeleton />}>
-          <LiveDashboard dashboardId={d.id} period={period} customDays={customDays} pageIds={d.pages} metricPrefs={d.metricPrefs} canCustomize={canEdit} actions={actions} toolbar={<PeriodNav period={period} customDays={customDays} />} logo={<BrandMark brand={brand} />} />
+          <LiveDashboard dashboardId={d.id} period={period} customDays={customDays} pageIds={d.pages} initialPage={q.page} creatives={access} metricPrefs={d.metricPrefs} canCustomize={canEdit} actions={actions} toolbar={<PeriodNav period={period} customDays={customDays} />} logo={<BrandMark brand={brand} />} />
         </Suspense>
       </div>
     );
   }
 
+  const template = anyDashboardTemplate(d.templateId);
   return (
     <SampleDashboard
       dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays }, metricPrefs: d.metricPrefs }}
       brand={brand}
       canEdit={canEdit}
       assemble={query.novo === "1"}
+      initialPage={q.page}
+      creatives={template ? sampleCreatives(template, d.pages, access, { period, customDays }) : undefined}
     />
   );
 }

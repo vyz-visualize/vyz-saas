@@ -41,6 +41,7 @@ export function adRows(ds: AccountDataset, scope: Omit<RowScope, "syncedAt">, ca
     call_to_action: a.callToAction,
     thumbnail_url: a.thumbnailUrl,
     landing_url: a.landingUrl,
+    post_url: a.postUrl ?? null,
   }));
 }
 
@@ -128,6 +129,19 @@ export function factRows(ds: AccountDataset, scope: RowScope, ids: EntityIds): F
         conversion_value: r.conversionValue,
         video_views: r.videoViews,
         video_thruplays: r.videoThruplays,
+        leads: r.leads ?? null,
+        post_engagement: r.postEngagement ?? null,
+        post_reactions: r.postReactions ?? null,
+        post_comments: r.postComments ?? null,
+        post_shares: r.postShares ?? null,
+        post_saves: r.postSaves ?? null,
+        profile_visits: r.profileVisits ?? null,
+        video_p25: r.videoP25 ?? null,
+        video_p50: r.videoP50 ?? null,
+        video_p75: r.videoP75 ?? null,
+        video_p95: r.videoP95 ?? null,
+        video_p100: r.videoP100 ?? null,
+        video_watch_seconds: r.videoWatchSeconds ?? null,
       })),
       FACT_KEYS.insights_ad_daily,
     ),

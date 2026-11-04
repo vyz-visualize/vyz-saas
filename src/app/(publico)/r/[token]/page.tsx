@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { parseCreativesQuery } from "@/features/analytics/creatives/query";
+import { sampleCreatives } from "@/features/analytics/creatives/sample";
 import { LiveDashboard, LiveDashboardSkeleton } from "@/features/analytics/LiveDashboard";
 import { periodFromQuery } from "@/features/dashboards/model";
 import { PeriodNav } from "@/features/dashboards/PeriodNav";
 import { SampleDashboard } from "@/features/dashboards/SampleDashboard";
+import { anyDashboardTemplate } from "@/features/templates/live";
 import { PublicShell, ShareMessage } from "@/features/share/SharedDashboard";
 import { openSharedDashboard } from "@/server/share/public";
 
@@ -28,6 +31,9 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
 
   const d = shared.dashboard;
   const { period, customDays } = periodFromQuery(query, d.settings);
+  const q = parseCreativesQuery(query);
+  // o link mostra o que o plano do dono cobre, sem oferta de plano para o cliente final
+  const access = { tier: shared.tier, tab: q.tab, ads: q.ads, upsell: false };
   const note = d.live ? "Somente leitura · dados das contas conectadas" : "Somente leitura · dados de exemplo";
 
   if (d.live) {
@@ -39,6 +45,8 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
             period={period}
             customDays={customDays}
             pageIds={d.pages}
+            initialPage={q.page}
+            creatives={access}
             metricPrefs={d.metricPrefs}
             hideSpend={shared.hideSpend}
             db={shared.db}
@@ -49,12 +57,15 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
     );
   }
 
+  const template = anyDashboardTemplate(d.templateId);
   return (
     <PublicShell brand={shared.brand} note={note}>
       <SampleDashboard
         dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays }, metricPrefs: d.metricPrefs }}
         brand={{ color: shared.brand.color ?? "", logo: undefined, hideVyz: true }}
         hideSpend={shared.hideSpend}
+        initialPage={q.page}
+        creatives={template ? sampleCreatives(template, d.pages, access, { period, customDays, hideSpend: shared.hideSpend }) : undefined}
       />
     </PublicShell>
   );

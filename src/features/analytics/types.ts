@@ -2,7 +2,8 @@
 // (insights_* em camelCase, já filtradas por conta e período) e os view models
 // que a tela desenha. A agregação (aggregate.ts) liga um ao outro.
 
-import type { BreakdownDimension } from "@/features/sync/dataset";
+import type { Tier } from "@/features/pricing/entitlements";
+import type { AdCreativeMetrics, BreakdownDimension } from "@/features/sync/dataset";
 
 export type LivePlatform = "meta" | "google";
 
@@ -30,17 +31,18 @@ export type MetricRow = {
 
 export type AccountDayRow = MetricRow & { date: string };
 export type CampaignDayRow = MetricRow & { campaignId: string; date: string };
-export type AdDayRow = Pick<MetricRow, "spend" | "impressions" | "reach" | "clicks" | "linkClicks" | "conversions" | "conversionValue" | "videoViews" | "videoThruplays"> & {
-  adId: string;
-  date: string;
-};
+export type AdDayRow = Pick<MetricRow, "spend" | "impressions" | "reach" | "clicks" | "linkClicks" | "conversions" | "conversionValue" | "videoViews" | "videoThruplays"> &
+  AdCreativeMetrics & {
+    adId: string;
+    date: string;
+  };
 export type BasicRow = Pick<MetricRow, "spend" | "impressions" | "clicks" | "conversions" | "conversionValue">;
 export type BreakdownDayRow = BasicRow & { date: string; dimension: BreakdownDimension | string; value: string };
 export type SearchTermDayRow = BasicRow & { campaignId: string; date: string; searchTerm: string; matchType: string };
 export type ProductDayRow = BasicRow & { productId: string; date: string };
 
-export type CampaignInfo = { id: string; name: string; status: string; channel: string | null; funnelStage: string | null; dailyBudget: number | null };
-export type AdInfo = { id: string; campaignId: string; name: string; format: string; status: string; headline: string | null; thumbnailUrl: string | null };
+export type CampaignInfo = { id: string; name: string; objective?: string | null; status: string; channel: string | null; funnelStage: string | null; dailyBudget: number | null };
+export type AdInfo = { id: string; campaignId: string; postUrl?: string | null; name: string; format: string; status: string; headline: string | null; thumbnailUrl: string | null };
 export type ProductInfo = { id: string; title: string; category: string | null; imageUrl: string | null; price: number | null };
 
 /** Tudo o que a agregação precisa, já filtrado pelas contas do dashboard. */
@@ -174,6 +176,49 @@ export type CreativeVM = {
   ctrSpark: (number | null)[];
 };
 
+/** Linha da lista de criativos (todos os planos). */
+export type CreativeListVM = {
+  id: string;
+  name: string;
+  campaignName: string;
+  status: string;
+  spend: number | null;
+  /** Resultado principal do objetivo da campanha. */
+  result: { label: string; value: number };
+};
+
+/** Um anúncio com os dias dele, para o comparativo (só Avançado, só na aba Comparativo). */
+export type CompareAd = {
+  id: string;
+  name: string;
+  campaignName: string;
+  objective: string | null;
+  format: string;
+  status: string;
+  headline: string | null;
+  thumbnailUrl: string | null;
+  postUrl: string | null;
+  days: Omit<AdDayRow, "adId">[];
+};
+
+export type CreativesTab = "galeria" | "comparativo";
+export type CreativesLevel = "list" | "gallery" | "compare";
+
+/** O que a página de Criativos recebe: só o que o plano cobre. */
+export type CreativesData = {
+  level: CreativesLevel;
+  tab: CreativesTab;
+  list: CreativeListVM[];
+  gallery: CreativeVM[];
+  compare: CompareAd[];
+  initialAds: string[];
+  hideSpend: boolean;
+  currency: string;
+  breakEvenRoas: number | null;
+  /** Plano para a amostra com blur. null = sem oferta (link compartilhado, prévias). */
+  upsellTier: Tier | null;
+};
+
 export type SliceVM = { key: string; label: string; spend: number | null; spendShare: number; value: number; valueShare: number; conversions: number; roas: number | null; cpa: number | null; ctr: number | null };
 
 export type AgeGenderCell = { age: string; gender: string; spend: number | null; value: number; conversions: number; roas: number | null; valueShare: number };
@@ -239,6 +284,8 @@ export type MetaView = ViewBase & {
   funnel: FunnelStep[];
   funnelByStage: FunnelByStage[];
   creatives: CreativeVM[];
+  creativeList: CreativeListVM[];
+  creativeDays: CompareAd[];
   ageGender: AgeGenderCell[];
   placements: SliceVM[];
   devices: SliceVM[];
@@ -280,5 +327,7 @@ export type LiveDashboardData = {
   hideSpend: boolean;
   /** Prévia com dados do gerador (galeria/onboarding). */
   sample: boolean;
+  /** Página de Criativos já cortada pelo plano (servidor). Sem isso: prévia, com a galeria. */
+  creatives?: CreativesData;
   view: DashboardView;
 };

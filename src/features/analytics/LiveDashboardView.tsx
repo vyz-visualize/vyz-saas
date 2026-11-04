@@ -16,7 +16,9 @@ import { CustomizeButton, MetricsPanel } from "@/features/dashboards/MetricsPane
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
 import { GoogleCampaigns, GoogleOverview, GoogleProducts, GoogleTerms } from "./google/GooglePages";
-import { MetaAudience, MetaCampaigns, MetaCreatives, MetaFunnel, MetaOverview } from "./meta/MetaPages";
+import { MetaCreatives } from "./creatives/CreativesPage";
+import { setQueryParam } from "./creatives/query";
+import { MetaAudience, MetaCampaigns, MetaFunnel, MetaOverview } from "./meta/MetaPages";
 import { ddmm, ddmmyyyyIso } from "./ranges";
 import type { PageProps } from "./shared";
 import type { DashboardView, LiveDashboardData, LivePlatform } from "./types";
@@ -110,7 +112,15 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
         {actions}
       </header>
 
-      <OverflowTabs label="Páginas do dashboard" value={active} onChange={setPage} items={pages.map((p) => ({ value: p, label: PAGES[p]?.name ?? p }))} />
+      <OverflowTabs
+        label="Páginas do dashboard"
+        value={active}
+        onChange={(p) => {
+          setPage(p);
+          setQueryParam("pagina", p);
+        }}
+        items={pages.map((p) => ({ value: p, label: PAGES[p]?.name ?? p }))}
+      />
 
       {(toolbar || canCustomize) && (
         <div className="flex flex-wrap items-end gap-2">

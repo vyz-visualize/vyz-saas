@@ -51,6 +51,8 @@ export type AdEntity = {
   callToAction: string | null;
   thumbnailUrl: string | null;
   landingUrl: string | null;
+  /** Link público do post (Instagram ou Facebook), quando houver. */
+  postUrl?: string | null;
 };
 
 export type ProductEntity = {
@@ -90,10 +92,30 @@ export type AccountDay = DailyMetrics & { date: string };
 
 export type CampaignDay = DailyMetrics & { campaignExternalId: string; date: string };
 
-export type AdDay = Pick<DailyMetrics, "spend" | "impressions" | "reach" | "clicks" | "linkClicks" | "conversions" | "conversionValue" | "videoViews" | "videoThruplays"> & {
-  adExternalId: string;
-  date: string;
+/** Métricas só do anúncio (página de Criativos). Sem o dado = null ou ausente: a tela esconde. */
+export type AdCreativeMetrics = {
+  leads?: number | null;
+  postEngagement?: number | null;
+  postReactions?: number | null;
+  postComments?: number | null;
+  postShares?: number | null;
+  postSaves?: number | null;
+  /** Campo real na API da Meta ainda a confirmar; hoje só o gerador preenche. */
+  profileVisits?: number | null;
+  videoP25?: number | null;
+  videoP50?: number | null;
+  videoP75?: number | null;
+  videoP95?: number | null;
+  videoP100?: number | null;
+  /** Segundos totais assistidos no dia (média não se soma). */
+  videoWatchSeconds?: number | null;
 };
+
+export type AdDay = Pick<DailyMetrics, "spend" | "impressions" | "reach" | "clicks" | "linkClicks" | "conversions" | "conversionValue" | "videoViews" | "videoThruplays"> &
+  AdCreativeMetrics & {
+    adExternalId: string;
+    date: string;
+  };
 
 /** Métricas das quebras, dos termos e dos produtos. */
 export type BasicMetrics = Pick<DailyMetrics, "spend" | "impressions" | "clicks" | "conversions" | "conversionValue">;

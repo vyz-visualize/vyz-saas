@@ -8,6 +8,8 @@ import "server-only";
 
 import { after } from "next/server";
 import type { DashboardDetail } from "@/features/dashboards/model";
+import type { Tier } from "@/features/pricing/entitlements";
+import { parsePlanDbId } from "@/features/pricing/pricing";
 import { isShareToken, linkStatus } from "@/features/share/links";
 import { publicAssetUrl } from "@/lib/supabase/storage";
 import { fromJoined, DASHBOARD_SELECT, type JoinedDashboard } from "@/server/dashboards/queries";
@@ -21,7 +23,7 @@ import { hashShareToken } from "./token";
 export type PublicBrand = { color: string | null; logoUrl: string | null; hideVyz: boolean };
 
 export type SharedDashboard =
-  | { kind: "ok"; db: DB; linkId: string; hideSpend: boolean; dashboard: DashboardDetail; brand: PublicBrand }
+  | { kind: "ok"; db: DB; linkId: string; hideSpend: boolean; dashboard: DashboardDetail; brand: PublicBrand; tier: Tier | null }
   | { kind: "invalid" | "expired" | "revoked" | "unavailable" | "rate_limited" };
 
 export async function openSharedDashboard(token: string): Promise<SharedDashboard> {
@@ -45,7 +47,7 @@ export async function openSharedDashboard(token: string): Promise<SharedDashboar
 
   const [dash, access, ws] = await Promise.all([
     admin.from("dashboards").select(DASHBOARD_SELECT).eq("id", link.dashboard_id).eq("workspace_id", link.workspace_id).maybeSingle(),
-    admin.from("workspace_access").select("has_access, white_label, hide_vyz_brand_effective").eq("workspace_id", link.workspace_id).maybeSingle(),
+    admin.from("workspace_access").select("has_access, plan_id, white_label, hide_vyz_brand_effective").eq("workspace_id", link.workspace_id).maybeSingle(),
     admin.from("workspaces").select("brand_color, brand_logo_path").eq("id", link.workspace_id).maybeSingle(),
   ]);
   if (dash.error || access.error || ws.error) {
@@ -71,5 +73,5 @@ export async function openSharedDashboard(token: string): Promise<SharedDashboar
   });
   await logActivity({ workspaceId: link.workspace_id, event: "share_link.viewed", entityType: "share_link", entityId: link.id, metadata: { dashboard_id: dashboard.id } });
 
-  return { kind: "ok", db: admin, linkId: link.id, hideSpend: link.hide_spend, dashboard, brand };
+  return { kind: "ok", db: admin, linkId: link.id, hideSpend: link.hide_spend, dashboard, brand, tier: parsePlanDbId(access.data.plan_id)?.tier ?? null };
 }

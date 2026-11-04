@@ -59,3 +59,10 @@ O que hoje funciona só no navegador e depende de backend, de integração ou de
 - **Número de WhatsApp**: provisório (`WHATSAPP_NUMBER` em `features/pricing/pricing.ts`).
 - **`robots: noindex`**: segue ligado em todas as áreas, com o `// TODO: remover no lançamento`.
 - **Lighthouse mobile ≥ 90 na LP**: as medições locais oscilaram entre 83 e 93 (máquina carregada). O LCP real acontece na primeira pintura; a nota é puxada pelo JavaScript (React, runtime do Next e motion). Medir no PageSpeed depois do deploy.
+
+## Criativos
+
+- **Visitas ao perfil**: `insights_ad_daily.profile_visits` existe, mas o campo real na API da Meta ainda vai ser confirmado. Hoje só o gerador simulado preenche.
+- **Fonte real**: as colunas novas de `insights_ad_daily` e `ads.post_url` só têm dados simulados até a importação real da Meta existir (`liveSource`, em `server/sync/source.ts`).
+- **Data de início do anúncio**: o banco não guarda. "Dias veiculados" e "Dia 1" valem dentro do período selecionado.
+- **Títulos e textos simulados**: `sync/mock/catalog.ts` ainda tem o termo proibido em títulos, textos e termos de pesquisa (ex.: frete e troca sem custo). Só os dois nomes de anúncio foram trocados.

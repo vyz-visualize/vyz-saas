@@ -58,6 +58,8 @@ export type MetaCampaignSpec = {
   key: string;
   name: string;
   funnelStage: FunnelStage;
+  /** Objetivo na Meta. Sem valor: vendas. Só rótulo: não muda nenhum número da campanha. */
+  objective?: string;
   /** Parte da verba da conta. */
   share: number;
   roas: Range;
@@ -89,7 +91,7 @@ export const META_CAMPAIGNS: readonly MetaCampaignSpec[] = [
     ads: [
       { key: "asc-ugc", name: "VID · UGC provador 15s", format: "video", weight: 1, ctr: 1.15, cvr: 1.05, hook: [0.27, 0.34], headline: "Provou, amou: veja no corpo real", body: "Peças leves para a estação, com troca grátis em 30 dias.", cta: "Comprar agora", path: "/novidades" },
       { key: "asc-reels", name: "VID · Reels bastidores", format: "video", weight: 0.7, ctr: 0.95, cvr: 0.95, hook: [0.22, 0.29], headline: "Do ateliê para o seu guarda-roupa", body: "Conheça quem faz cada peça.", cta: "Saiba mais", path: "/sobre" },
-      { key: "asc-frete", name: "IMG · Frete grátis acima de R$ 299", format: "image", weight: 0.55, ctr: 0.9, cvr: 1, headline: "Frete grátis acima de R$ 299", body: "Para todo o Brasil, em até 10x sem juros.", cta: "Comprar agora", path: "/ofertas" },
+      { key: "asc-frete", name: "IMG · Frete zero acima de R$ 299", format: "image", weight: 0.55, ctr: 0.9, cvr: 1, headline: "Frete grátis acima de R$ 299", body: "Para todo o Brasil, em até 10x sem juros.", cta: "Comprar agora", path: "/ofertas" },
       { key: "asc-maisvendidos", name: "CAR · Mais vendidos da semana", format: "carousel", weight: 0.8, ctr: 1.05, cvr: 1.1, headline: "Os mais vendidos da semana", body: "Os favoritos de quem já comprou.", cta: "Comprar agora", path: "/mais-vendidos" },
       { key: "asc-primavera", name: "VID · Coleção Primavera", format: "video", weight: 0.75, ctr: 1.2, cvr: 1, hook: [0.3, 0.37], launch: -9, headline: "Chegou a coleção Primavera", body: "Cores e tecidos para os dias mais quentes.", cta: "Ver mais", path: "/colecao-primavera" },
     ],
@@ -114,6 +116,7 @@ export const META_CAMPAIGNS: readonly MetaCampaignSpec[] = [
   {
     key: "interesses",
     name: "Prospecção · Interesses moda e casa",
+    objective: "OUTCOME_LEADS",
     funnelStage: "prospecting",
     share: 0.15,
     roas: [1, 1.3],
@@ -142,7 +145,7 @@ export const META_CAMPAIGNS: readonly MetaCampaignSpec[] = [
       { key: "rmk-oferta", name: "IMG · Oferta 15% OFF", format: "image", weight: 1.3, ctr: 1.3, cvr: 1.1, frequency: 0.85, launch: -34, story: "fatigue", headline: "15% OFF só esta semana", body: "Aquela peça que você viu está com desconto.", cta: "Comprar agora", path: "/ofertas" },
       { key: "rmk-carrinho", name: "CAR · Você esqueceu no carrinho", format: "carousel", weight: 0.8, ctr: 1, cvr: 1.1, headline: "Ainda está aqui", body: "Os itens do seu carrinho estão esperando.", cta: "Comprar agora", path: "/carrinho" },
       { key: "rmk-depoimentos", name: "VID · Depoimentos 15s", format: "video", weight: 0.6, ctr: 0.9, cvr: 0.95, hook: [0.24, 0.32], headline: "Quem comprou, recomenda", body: "Avaliações reais de clientes.", cta: "Saiba mais", path: "/avaliacoes" },
-      { key: "rmk-troca", name: "IMG · Troca grátis em 30 dias", format: "image", weight: 0.5, ctr: 0.85, cvr: 0.9, headline: "Troca grátis em 30 dias", body: "Compre sem medo de errar o tamanho.", cta: "Comprar agora", path: "/trocas" },
+      { key: "rmk-troca", name: "IMG · Troca sem custo em 30 dias", format: "image", weight: 0.5, ctr: 0.85, cvr: 0.9, headline: "Troca grátis em 30 dias", body: "Compre sem medo de errar o tamanho.", cta: "Comprar agora", path: "/trocas" },
     ],
   },
   {
@@ -165,6 +168,7 @@ export const META_CAMPAIGNS: readonly MetaCampaignSpec[] = [
   {
     key: "retencao",
     name: "Retenção · Clientes 180 dias",
+    objective: "OUTCOME_ENGAGEMENT",
     funnelStage: "retention",
     share: 0.07,
     roas: [3.8, 5.2],

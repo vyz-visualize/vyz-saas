@@ -186,6 +186,10 @@ Segurança: RLS em todas as tabelas (negado por padrão), funções `security de
 
 Nos dashboards de exemplo cada aba tem os próprios cards: `pageKpiIds` é a fonte única da tela, do PDF, do link e do contador do painel, que conta a aba aberta. Oculto some de todas as abas; adicionado aparece em todas as que têm fileira de cards; aba sem fileira continua sem. Nos dashboards com dados reais, a fileira só existe na Visão geral. Quem pode editar também oculta pelo card (grava na hora, com Desfazer; `MetricActions.tsx`). O contador do painel recebe a lista que a tela está desenhando, inclusive com escolhas não salvas. Topo do dashboard: botões e abas que não cabem vão para menus (`components/ui/fit-items.ts`), sem quebra de linha nem rolagem.
 
+### Página de Criativos
+
+A profundidade vem de `ENTITLEMENTS[tier].creatives` (Básico: lista; Padrão: galeria; Avançado e Personalizado: galeria + comparativo), e a página é de todos os planos. `features/analytics/creatives/access.ts` corta os dados no servidor, depois do cache e do investimento oculto: o Básico só recebe os campos da lista, e os dias por anúncio só vão no Avançado, na aba Comparativo. Galeria e comparativo são carregados sob demanda; as amostras com blur (`LockedSamples.tsx`) têm dados fixos de exemplo e nunca aparecem no link compartilhado. As contas do comparativo ficam em `compare.ts`, e o texto de "Gerar análise" em `features/agent/engine/creative-analysis.ts`, só com números calculados. Endereço: `?pagina=criativos&criativos=comparativo&anuncios=a,b,c`. Dashboards de amostra usam a mesma página só nos modelos com Meta (`sample.ts`); TikTok, YouTube e só Google mantêm o widget do modelo.
+
 Link com investimento oculto: `redactSpend` (`features/analytics/aggregate.ts`) tira no servidor o investimento e tudo de onde ele dá para recalcular (CPM, CPC, CPA, ROAS, custo por etapa). Campo novo com um desses nomes já nasce coberto, porque ele varre a estrutura inteira.
 
 ## 7. Autenticação

@@ -166,11 +166,14 @@ export function Thumb({ seed, url, label, badge, className = "" }: { seed: strin
   const h = hash(seed);
   const [a, b] = TONES[h % TONES.length];
   const variant = (h >> 4) % 3;
+  // link de preview expira: sem a imagem, fica a miniatura gerada, com o título
+  const [broken, setBroken] = useState<string | null>(null);
+  const image = url && broken !== url ? url : null;
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
-      {url ? (
+      {image ? (
         // eslint-disable-next-line @next/next/no-img-element -- imagem da plataforma (domínio variável)
-        <img src={url} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" />
+        <img src={image} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" onError={() => setBroken(image)} />
       ) : (
         <svg viewBox="0 0 100 75" className="absolute inset-0 size-full" preserveAspectRatio="xMidYMid slice" aria-hidden>
           {variant === 0 && <circle cx={30 + (h % 40)} cy="34" r="22" fill="#fff" opacity="0.16" />}
@@ -180,7 +183,7 @@ export function Thumb({ seed, url, label, badge, className = "" }: { seed: strin
           <rect x="12" y="62" width="28" height="5" rx="2.5" fill="#fff" opacity="0.3" />
         </svg>
       )}
-      {!url && (
+      {!image && label && (
         <span className="absolute top-2 left-2.5 max-w-[80%] truncate text-[10px] font-semibold tracking-wide text-white/85 uppercase" aria-hidden>
           {label}
         </span>

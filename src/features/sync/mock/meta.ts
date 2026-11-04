@@ -12,7 +12,7 @@
 //     "IMG · Coleção Inverno" foi pausado 21 dias antes da âncora.
 
 import { apportion } from "../apportion";
-import type { AdDay, AdEntity, BreakdownDay, CampaignDay, CampaignEntity, ProductDay } from "../dataset";
+import type { AdCreativeMetrics, AdDay, AdEntity, BreakdownDay, CampaignDay, CampaignEntity, ProductDay } from "../dataset";
 import { addDays, diffDays } from "../dates";
 import { rollupAccountDaily } from "../rollup";
 import { conversionByWeekday, maturity, spendByWeekday, trendFactor, type Trend } from "./calendar";
@@ -175,6 +175,48 @@ function adDay(ctx: MockContext, ad: Ad, date: string, spend: number, rates: Day
   return { spend, impressions, clicks, conversions, value, reach, linkClicks, landingPageViews, addToCart, initiateCheckout, videoViews, videoThruplays };
 }
 
+const LEADS_OBJECTIVE = "OUTCOME_LEADS";
+
+/**
+ * Engajamento, leads, visitas ao perfil e retenção de vídeo do anúncio no dia.
+ * Sorteios à parte (sequência própria): nenhum número que já existia muda.
+ */
+function creativeMetrics(ctx: MockContext, ad: Ad, date: string, u: FullUnits): AdCreativeMetrics {
+  const base = stream(ctx.accountExternalId, "meta", "criativo", ad.spec.key);
+  const engagementRate = between(base, [0.008, 0.026]);
+  const watchPerView = between(base, [5, 13]);
+  const r = stream(ctx.accountExternalId, "meta", ad.spec.key, date, "criativo");
+  const engagement = roundRandom(r, u.impressions * engagementRate * jitter(r, 0.12));
+  const reactions = roundRandom(r, engagement * 0.58 * jitter(r, 0.08));
+  const comments = roundRandom(r, engagement * 0.08 * jitter(r, 0.15));
+  const shares = roundRandom(r, engagement * 0.07 * jitter(r, 0.15));
+  const saves = roundRandom(r, engagement * 0.05 * jitter(r, 0.15));
+  const profileVisits = roundRandom(r, u.clicks * 0.06 * jitter(r, 0.15));
+  const leads = ad.campaign.spec.objective === LEADS_OBJECTIVE ? roundRandom(r, (u.linkClicks ?? 0) * 0.09 * jitter(r, 0.12)) : null;
+  const views = u.videoViews;
+  const p25 = views === null ? null : roundRandom(r, views * 0.62 * jitter(r, 0.05));
+  const p50 = p25 === null ? null : roundRandom(r, p25 * 0.62 * jitter(r, 0.05));
+  const p75 = p50 === null ? null : roundRandom(r, p50 * 0.68 * jitter(r, 0.05));
+  const p95 = p75 === null ? null : roundRandom(r, p75 * 0.72 * jitter(r, 0.05));
+  const p100 = p95 === null ? null : roundRandom(r, p95 * 0.86 * jitter(r, 0.05));
+  const watch = views === null ? null : Math.round(views * watchPerView * jitter(r, 0.08));
+  return {
+    leads,
+    postEngagement: engagement,
+    postReactions: reactions,
+    postComments: comments,
+    postShares: shares,
+    postSaves: saves,
+    profileVisits,
+    videoP25: p25,
+    videoP50: p50,
+    videoP75: p75,
+    videoP95: p95,
+    videoP100: p100,
+    videoWatchSeconds: watch,
+  };
+}
+
 /**
  * Pessoas únicas da conta no dia: as campanhas de prospecção e de remarketing
  * se sobrepõem, então fica entre o maior alcance de campanha e a soma deles.
@@ -245,6 +287,7 @@ export function generateMeta(ctx: MockContext): MockAccountDataset {
           conversionValue: u.value / 100,
           videoViews: u.videoViews,
           videoThruplays: u.videoThruplays,
+          ...creativeMetrics(ctx, live[i], date, u),
         });
       });
 
@@ -272,7 +315,7 @@ export function generateMeta(ctx: MockContext): MockAccountDataset {
     externalId: c.id,
     name: c.spec.name,
     status: "active",
-    objective: "OUTCOME_SALES",
+    objective: c.spec.objective ?? "OUTCOME_SALES",
     channel: null,
     funnelStage: c.spec.funnelStage,
     dailyBudget: c.dailyBudget,
@@ -291,6 +334,8 @@ export function generateMeta(ctx: MockContext): MockAccountDataset {
       body: ad.spec.body,
       callToAction: ad.spec.cta,
       thumbnailUrl: null,
+      // domínio reservado (.example): nunca aponta para um post real
+      postUrl: `${ctx.site.replace("https://", "https://instagram.")}/p/${ad.spec.key}`,
       landingUrl: `${ctx.site}${ad.spec.path}?utm_source=facebook&utm_medium=paid_social&utm_campaign=${ad.campaign.spec.key}&utm_content=${ad.spec.key}`,
     }));
 

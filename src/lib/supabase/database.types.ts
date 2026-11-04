@@ -255,6 +255,7 @@ export type Database = {
           landing_url: string | null
           created_at: string
           updated_at: string
+          post_url: string | null
         }
         Insert: {
           id?: string
@@ -272,6 +273,7 @@ export type Database = {
           landing_url?: string | null
           created_at?: string
           updated_at?: string
+          post_url?: string | null
         }
         Update: {
           id?: string
@@ -289,6 +291,7 @@ export type Database = {
           landing_url?: string | null
           created_at?: string
           updated_at?: string
+          post_url?: string | null
         }
         Relationships: [
           {
@@ -1308,6 +1311,19 @@ export type Database = {
           video_views: number | null
           video_thruplays: number | null
           synced_at: string
+          leads: number | null
+          post_engagement: number | null
+          post_reactions: number | null
+          post_comments: number | null
+          post_shares: number | null
+          post_saves: number | null
+          profile_visits: number | null
+          video_p25: number | null
+          video_p50: number | null
+          video_p75: number | null
+          video_p95: number | null
+          video_p100: number | null
+          video_watch_seconds: number | null
         }
         Insert: {
           workspace_id: string
@@ -1324,6 +1340,19 @@ export type Database = {
           video_views?: number | null
           video_thruplays?: number | null
           synced_at?: string
+          leads?: number | null
+          post_engagement?: number | null
+          post_reactions?: number | null
+          post_comments?: number | null
+          post_shares?: number | null
+          post_saves?: number | null
+          profile_visits?: number | null
+          video_p25?: number | null
+          video_p50?: number | null
+          video_p75?: number | null
+          video_p95?: number | null
+          video_p100?: number | null
+          video_watch_seconds?: number | null
         }
         Update: {
           workspace_id?: string
@@ -1340,6 +1369,19 @@ export type Database = {
           video_views?: number | null
           video_thruplays?: number | null
           synced_at?: string
+          leads?: number | null
+          post_engagement?: number | null
+          post_reactions?: number | null
+          post_comments?: number | null
+          post_shares?: number | null
+          post_saves?: number | null
+          profile_visits?: number | null
+          video_p25?: number | null
+          video_p50?: number | null
+          video_p75?: number | null
+          video_p95?: number | null
+          video_p100?: number | null
+          video_watch_seconds?: number | null
         }
         Relationships: [
           {

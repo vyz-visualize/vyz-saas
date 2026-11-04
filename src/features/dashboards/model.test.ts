@@ -78,7 +78,7 @@ describe("páginas pelo plano", () => {
     expect(opts.find((o) => o.id === "produtos")?.locked).toBe(true);
     expect(opts.find((o) => o.id === "termos")?.locked).toBe(false);
     expect(defaultPages(google, "pro")).toEqual(["visao-geral", "campanhas", "termos"]);
-    expect(defaultPages(meta, "base")).toEqual(["visao-geral", "campanhas", "funil"]);
+    expect(defaultPages(meta, "base")).toEqual(["visao-geral", "campanhas", "funil", "criativos"]);
   });
 
   it("exemplo: biblioteca sem as páginas exclusivas de outros templates", () => {
@@ -89,7 +89,7 @@ describe("páginas pelo plano", () => {
   });
 
   it("allowedPages filtra, tira repetidas e mantém a ordem pedida", () => {
-    expect(allowedPages(meta, "base", ["funil", "criativos", "funil", "xyz", "visao-geral"])).toEqual(["funil", "visao-geral"]);
+    expect(allowedPages(meta, "base", ["funil", "publico", "funil", "xyz", "visao-geral"])).toEqual(["funil", "visao-geral"]);
     expect(allowedPages(meta, "pro", ["publico", "criativos"])).toEqual(["publico", "criativos"]);
   });
 });

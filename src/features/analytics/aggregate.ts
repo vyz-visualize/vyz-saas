@@ -13,10 +13,13 @@
 import { breakdownLabel, parseAgeGender } from "@/features/sync/breakdowns";
 import type { BreakdownDimension } from "@/features/sync/dataset";
 import { dateRange, weekday } from "@/features/sync/dates";
+import { objectiveResult } from "./creatives/objectives";
 import { maturingStart, MATURING_DAYS } from "./ranges";
 import type {
   AccountDayRow,
   AdDayRow,
+  CompareAd,
+  CreativeListVM,
   AgeGenderCell,
   AggregateOptions,
   BasicRow,
@@ -383,6 +386,72 @@ function creatives(rows: WarehouseRows): CreativeVM[] {
   return out.sort((a, b) => (b.spend ?? 0) - (a.spend ?? 0));
 }
 
+/** Lista simples: nome, campanha, investimento e o resultado principal do objetivo. */
+function creativeList(rows: WarehouseRows): CreativeListVM[] {
+  const byAd = groupBy(
+    rows.adDaily.filter((r) => inRange(r.date, rows.current)),
+    (r) => r.adId,
+  );
+  const campaigns = new Map(rows.campaigns.map((c) => [c.id, c]));
+  const out: CreativeListVM[] = [];
+  for (const ad of rows.ads) {
+    const list = byAd.get(ad.id);
+    if (!list?.length) continue;
+    const campaign = campaigns.get(ad.campaignId);
+    const tt = totalsOf(list);
+    out.push({
+      id: ad.id,
+      name: ad.name,
+      campaignName: campaign?.name ?? "",
+      status: ad.status,
+      spend: tt.spend,
+      result: objectiveResult(campaign?.objective ?? null, {
+        conversions: tt.conversions,
+        leads: sumNullable(list, (r) => r.leads),
+        postEngagement: sumNullable(list, (r) => r.postEngagement),
+        linkClicks: tt.linkClicks,
+        clicks: tt.clicks,
+        impressions: tt.impressions,
+      }),
+    });
+  }
+  return out.sort((a, b) => (b.spend ?? 0) - (a.spend ?? 0));
+}
+
+function withoutAdId(row: AdDayRow): CompareAd["days"][number] {
+  const day: Partial<AdDayRow> = { ...row };
+  delete day.adId;
+  return day as CompareAd["days"][number];
+}
+
+/** Os dias de cada anúncio com entrega no período, para o comparativo. */
+function creativeDays(rows: WarehouseRows): CompareAd[] {
+  const byAd = groupBy(
+    rows.adDaily.filter((r) => inRange(r.date, rows.current)),
+    (r) => r.adId,
+  );
+  const campaigns = new Map(rows.campaigns.map((c) => [c.id, c]));
+  const out: CompareAd[] = [];
+  for (const ad of rows.ads) {
+    const list = byAd.get(ad.id);
+    if (!list?.length) continue;
+    const campaign = campaigns.get(ad.campaignId);
+    out.push({
+      id: ad.id,
+      name: ad.name,
+      campaignName: campaign?.name ?? "",
+      objective: campaign?.objective ?? null,
+      format: ad.format,
+      status: ad.status,
+      headline: ad.headline,
+      thumbnailUrl: ad.thumbnailUrl,
+      postUrl: ad.postUrl ?? null,
+      days: [...list].sort((a, b) => a.date.localeCompare(b.date)).map(withoutAdId),
+    });
+  }
+  return out;
+}
+
 function ctrSpark(list: AdDayRow[], dates: string[]): (number | null)[] {
   const byDate = groupBy(list, (r) => r.date);
   return dates.map((d) => {
@@ -561,6 +630,8 @@ export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions):
       funnel: metaFunnel(cur, totals.spend ?? 0),
       funnelByStage: funnelByStage(rows),
       creatives: creatives(rows),
+      creativeList: creativeList(rows),
+      creativeDays: creativeDays(rows),
       ageGender: ageGenderCells(rows),
       placements: breakdownSlices(rows, "placement"),
       devices: breakdownSlices(rows, "device"),

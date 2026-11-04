@@ -13,6 +13,7 @@ import { loadLiveDashboard } from "@/server/analytics/queries";
 import { saveDashboardMetricPrefs } from "@/server/dashboards/actions";
 import { AppError } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
+import type { CreativesAccess } from "./creatives/access";
 import { LiveDashboardError, LiveDashboardView } from "./LiveDashboardView";
 import type { LiveDashboardData } from "./types";
 
@@ -35,6 +36,8 @@ export type LiveDashboardProps = {
   toolbar?: ReactNode;
   /** Logo à esquerda do título. */
   logo?: ReactNode;
+  /** Página de Criativos: plano, aba e anúncios da URL. */
+  creatives?: CreativesAccess;
   /** Métricas escolhidas neste dashboard (valem também no link e no PDF). */
   metricPrefs?: unknown;
   /** Mostra o botão "Personalizar". */
@@ -43,10 +46,10 @@ export type LiveDashboardProps = {
   db?: DB;
 };
 
-export async function LiveDashboard({ dashboardId, period, customDays, pageIds, hideSpend, initialPage, actions, toolbar, logo, metricPrefs, canCustomize, db }: LiveDashboardProps) {
+export async function LiveDashboard({ dashboardId, period, customDays, pageIds, hideSpend, initialPage, actions, toolbar, logo, metricPrefs, canCustomize, creatives, db }: LiveDashboardProps) {
   let data: LiveDashboardData;
   try {
-    data = await loadLiveDashboard(dashboardId, { period, customDays, hideSpend, db });
+    data = await loadLiveDashboard(dashboardId, { period, customDays, hideSpend, db, creatives });
   } catch (err) {
     unstable_rethrow(err);
     if (err instanceof AppError) return <LiveDashboardError message={err.message} />;

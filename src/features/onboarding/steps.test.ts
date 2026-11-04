@@ -57,7 +57,7 @@ describe("templates e páginas", () => {
   });
 
   it("passa só as páginas do plano", () => {
-    expect(allowedPages(meta, "base")).toEqual(["visao-geral", "campanhas", "funil"]);
+    expect(allowedPages(meta, "base")).toEqual(["visao-geral", "campanhas", "funil", "criativos"]);
     expect(allowedPages(meta, "pro")).toEqual(meta.pages);
     expect(allowedPages(google, "pro")).toEqual(["visao-geral", "campanhas", "termos"]);
     expect(allowedPages(google, "avancado")).toEqual(google.pages);
