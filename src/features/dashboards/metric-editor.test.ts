@@ -94,6 +94,49 @@ describe("entrar no modo", () => {
     expect(count()).toBe(9);
   });
 
+  it("os encaixes vazios ficam numa fileira só, abaixo dos cards", async () => {
+    await sample();
+    await enter();
+    const rows = host.querySelectorAll("[data-empty-row]");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].querySelectorAll("[data-empty-slot]")).toHaveLength(emptySlots());
+    expect(rows[0].className).toContain("col-span-full");
+    const grid = rows[0].parentElement!;
+    expect(grid.hasAttribute("data-kpi-row")).toBe(true);
+    expect(grid.lastElementChild === rows[0] || grid.lastElementChild?.getAttribute("aria-hidden") === "true").toBe(true);
+  });
+
+  it("a bandeja começa na borda do conteúdo no computador e ocupa a largura toda no celular", async () => {
+    await sample();
+    await enter();
+    const classes = tray()!.className.split(/\s+/);
+    expect(classes).toEqual(expect.arrayContaining(["inset-x-0", "md:left-[260px]", "md:sb-closed:left-[104px]"]));
+  });
+
+  it("fileira da bandeja: seta e degradê só na ponta onde há mais cards", async () => {
+    await sample();
+    await enter();
+    const row = document.querySelector<HTMLElement>("[data-tray-row]")!;
+    const arrow = (side: string) => document.querySelector(`[data-tray-arrow="${side}"]`);
+    expect(row.className).toContain("md:[scrollbar-width:none]");
+    expect(arrow("prev")).toBeNull();
+    expect(arrow("next")).toBeNull();
+    const scrollBy = vi.fn();
+    Object.assign(row, { scrollBy });
+    Object.defineProperty(row, "scrollWidth", { configurable: true, value: 900 });
+    Object.defineProperty(row, "clientWidth", { configurable: true, value: 400 });
+    await act(async () => void row.dispatchEvent(new Event("scroll")));
+    expect(arrow("prev")).toBeNull();
+    expect(arrow("next")).not.toBeNull();
+    expect(document.querySelectorAll("[data-tray-fade]")).toHaveLength(1);
+    await click(arrow("next"));
+    expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: 320 }));
+    row.scrollLeft = 500;
+    await act(async () => void row.dispatchEvent(new Event("scroll")));
+    expect(arrow("prev")).not.toBeNull();
+    expect(arrow("next")).toBeNull();
+  });
+
   it("encaixe vazio leva a busca da bandeja", async () => {
     await sample();
     await enter();
@@ -188,6 +231,24 @@ describe("cards apagados", () => {
     expect(card?.getAttribute("draggable")).toBe("false");
     await click(card?.querySelector('button[aria-label^="Adicionar"]'));
     expect(cards()).toHaveLength(3);
+  });
+
+  it("sem dados: mostra o traço, sem linha de tendência e com o aviso inteiro", async () => {
+    await sample();
+    await enter();
+    const card = await trayCard("Leads qualificados");
+    expect(card?.textContent).toContain("—");
+    expect(card?.querySelector(".h-6")).toBeNull();
+    const aviso = [...(card?.querySelectorAll("span") ?? [])].find((s) => s.textContent === "sem dados nesta conta");
+    expect(aviso?.className).not.toContain("truncate");
+  });
+
+  it("com dados: mostra o valor, e não o traço", async () => {
+    await sample();
+    await enter();
+    const card = await trayCard("Investimento");
+    expect(card?.textContent).not.toContain("—");
+    expect(card?.textContent).toMatch(/R\$/);
   });
 
   it("tipos de resultado diferentes: com o aviso, não entra", async () => {
@@ -310,6 +371,27 @@ describe("arrastar", () => {
     await fire(card, "dragend", dt);
     expect(cards()).toContain("spend");
     expect(host.textContent).not.toContain("Solte para adicionar");
+  });
+
+  it("rolar a fileira com o mouse não pega o card que passa por baixo", async () => {
+    await sample();
+    await enter();
+    const card = (await trayCard("Investimento"))!;
+    const row = document.querySelector<HTMLElement>("[data-tray-row]")!;
+    Object.defineProperty(row, "scrollWidth", { configurable: true, value: 900 });
+    Object.defineProperty(row, "clientWidth", { configurable: true, value: 400 });
+    Object.assign(row, { setPointerCapture: vi.fn() });
+    const pointer = (type: string) => act(async () => void row.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "mouse", button: 0, clientX: 100 })));
+    const kpiRow = () => host.querySelector("[data-kpi-row]")!;
+
+    await pointer("pointerdown");
+    await fire(card, "dragstart", dataTransfer());
+    expect(kpiRow().textContent).not.toContain("Solte para adicionar");
+
+    await pointer("pointerup");
+    await fire(card, "dragstart", dataTransfer());
+    expect(kpiRow().textContent).toContain("Solte para adicionar");
+    await fire(card, "dragend", dataTransfer());
   });
 });
 

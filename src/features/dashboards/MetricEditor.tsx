@@ -4,8 +4,8 @@
 // topo, encaixes na fileira de cards e bandeja embaixo. Mexe só no rascunho de
 // useMetricPrefsState; quem decide o que pode e o que grava continua em metric-prefs.ts.
 
-import { Check, ChevronDown, Info, Plus, Search, SlidersHorizontal } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Info, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { TrendSpark } from "@/components/charts/TrendSpark";
 import { Modal } from "@/components/ui/kit";
@@ -273,6 +273,91 @@ export function MetricEditBar({ state }: { state: EditorState }) {
 
 // ---- bandeja ------------------------------------------------------------------------------------
 
+/**
+ * A fileira de cards no computador: sem barra de rolagem, com setas e degradê só nas pontas
+ * onde há mais cards. O mouse também arrasta a fileira, menos em cima de um card que dá para
+ * adicionar, porque lá o arrasto leva o card. No celular a lista é grade com rolagem vertical.
+ */
+function TrayRow({ count, children }: { count: number; children: ReactNode }) {
+  const ref = useRef<HTMLUListElement>(null);
+  const grab = useRef<{ x: number; left: number } | null>(null);
+  const [before, setBefore] = useState(false);
+  const [after, setAfter] = useState(false);
+
+  const measure = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setBefore(el.scrollLeft > 1);
+    setAfter(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [count, measure]);
+
+  const nudge = (direction: 1 | -1) => {
+    const el = ref.current;
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el?.scrollBy?.({ left: direction * el.clientWidth * 0.8, behavior: still ? "auto" : "smooth" });
+  };
+
+  const onPointerDown = (e: PointerEvent<HTMLUListElement>) => {
+    const el = e.currentTarget;
+    if (e.pointerType !== "mouse" || e.button !== 0 || el.scrollWidth <= el.clientWidth) return;
+    if ((e.target as Element).closest('button, [draggable="true"]')) return;
+    grab.current = { x: e.clientX, left: el.scrollLeft };
+    el.setPointerCapture(e.pointerId);
+  };
+
+  const arrow = "absolute top-1/2 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-card text-fg outline-none hover:border-accent md:inline-flex";
+  return (
+    <div className="relative min-h-0 flex-1">
+      <ul
+        ref={ref}
+        data-tray-row
+        onScroll={measure}
+        onPointerDown={onPointerDown}
+        onPointerMove={(e) => {
+          if (grab.current) e.currentTarget.scrollLeft = grab.current.left - (e.clientX - grab.current.x);
+        }}
+        onPointerUp={() => (grab.current = null)}
+        onPointerCancel={() => (grab.current = null)}
+        // a fileira anda sob o ponteiro: sem isto, o card que passa por baixo começaria a ser arrastado
+        onDragStartCapture={(e) => {
+          if (!grab.current) return;
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        className="grid h-full auto-rows-[124px] grid-cols-2 gap-2 overflow-y-auto md:flex md:overflow-x-auto md:overflow-y-hidden md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden"
+      >
+        {children}
+      </ul>
+      {/* fora do Tab: o foco já rola até o card, e a seta some ao chegar na ponta */}
+      {before && (
+        <>
+          <div aria-hidden data-tray-fade className="pointer-events-none absolute inset-y-0 left-0 hidden w-14 bg-linear-to-r from-card to-transparent md:block" />
+          <button type="button" tabIndex={-1} data-tray-arrow="prev" onClick={() => nudge(-1)} aria-label="Ver métricas anteriores" className={`${arrow} left-1`}>
+            <ChevronLeft size={16} aria-hidden />
+          </button>
+        </>
+      )}
+      {after && (
+        <>
+          <div aria-hidden data-tray-fade className="pointer-events-none absolute inset-y-0 right-0 hidden w-14 bg-linear-to-l from-card to-transparent md:block" />
+          <button type="button" tabIndex={-1} data-tray-arrow="next" onClick={() => nudge(1)} aria-label="Ver mais métricas" className={`${arrow} right-1`}>
+            <ChevronRight size={16} aria-hidden />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function MetricTray({ state }: { state: EditorState }) {
   const { input, section, setSection, collapsed, setCollapsed, focusTick, setDragging, canAdd, add, guard, announcement, columns } = state;
   const { metrics, visibleKpis, hasData, valueOf, unavailable, kpiNote } = input;
@@ -293,6 +378,7 @@ export function MetricTray({ state }: { state: EditorState }) {
   }, [metrics.catalog, query, reasons, section, unavailable]);
   const groups = METRIC_GROUPS.filter((g) => list.some((m) => m.group === g));
   const active = groups.includes(tab) ? tab : (groups[0] ?? tab);
+  const shown = list.filter((m) => m.group === active);
   const visible = section === "kpis" ? visibleKpis : columns;
 
   return (
@@ -302,13 +388,13 @@ export function MetricTray({ state }: { state: EditorState }) {
       </p>
       {metrics.open &&
         createPortal(
-          <section data-metric-tray aria-label="Bandeja de métricas" className="fixed inset-x-0 bottom-0 z-[85] flex flex-col rounded-t-[20px] border-t border-line bg-card text-fg print:hidden">
+          <section data-metric-tray aria-label="Bandeja de métricas" className="fixed inset-x-0 bottom-0 z-[85] flex flex-col rounded-t-[20px] border-t border-line bg-card text-fg transition-[left] duration-300 ease-[cubic-bezier(0.32,1.15,0.6,1)] sb-closed:delay-100 md:right-3 md:bottom-3 md:left-[260px] md:rounded-[24px] md:border md:sb-closed:left-[104px] print:hidden">
             <button type="button" onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed} aria-label={collapsed ? "Abrir a bandeja" : "Recolher a bandeja"} className="flex h-6 shrink-0 items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-accent">
               <span className="h-1 w-10 rounded-full bg-line" aria-hidden />
               {collapsed && <ChevronDown size={14} aria-hidden className="ml-1 rotate-180 text-fg-2" />}
             </button>
             {!collapsed && (
-              <div className="flex h-[54dvh] flex-col gap-2 px-3 pb-3 md:h-[276px] md:px-4">
+              <div className="flex h-[54dvh] flex-col gap-2 px-3 pb-3 md:h-[264px] md:px-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Segmented<MetricSection>
                     label="O que personalizar"
@@ -348,15 +434,15 @@ export function MetricTray({ state }: { state: EditorState }) {
                   )}
                 </p>
                 {!list.length && <p className="py-4 text-center text-[13.5px] text-fg-2">Nenhuma métrica com esse nome.</p>}
-                <ul className="grid min-h-0 flex-1 auto-rows-[124px] grid-cols-2 gap-2 overflow-y-auto md:flex md:gap-2 md:overflow-x-auto md:overflow-y-hidden md:[scrollbar-width:thin]">
-                  {list
-                    .filter((m) => m.group === active)
-                    .map((m) => {
+                <TrayRow key={`${section}-${active}`} count={shown.length}>
+                  {shown.map((m) => {
                       const reason = reasons.get(m.id);
                       const used = !reason && visible.includes(m.id);
                       const noData = !reason && !used && section === "kpis" && !hasData(m.id);
                       const addable = canAdd(section, m.id);
                       const value = valueOf(m.id);
+                      // sem número para mostrar: um traço, sem linha de tendência
+                      const blank = !!reason || !value || !hasData(m.id);
                       const note = reason ?? (noData ? "sem dados nesta conta" : used ? "em uso" : !addable ? "limite atingido" : null);
                       return (
                         <li
@@ -374,10 +460,10 @@ export function MetricTray({ state }: { state: EditorState }) {
                           className={`relative flex min-w-0 flex-col rounded-[10px] border border-line bg-bg p-2.5 md:h-full md:w-44 md:shrink-0 ${addable ? "md:cursor-grab" : "opacity-55"}`}
                         >
                           <p className="line-clamp-2 pr-6 text-[11.5px] leading-tight font-medium text-fg">{m.label}</p>
-                          {value && <p className="mt-1 truncate text-[15px] leading-none font-bold tnum">{value.text}</p>}
-                          {value?.spark && <TrendSpark values={[...value.spark]} maturing={0} tone="good" className="mt-1 h-6 shrink-0 md:h-10" />}
+                          <p className={`mt-1 truncate text-[15px] leading-none font-bold tnum ${blank ? "text-fg-2" : ""}`}>{blank ? "—" : value.text}</p>
+                          {!blank && value.spark && <TrendSpark values={[...value.spark]} maturing={0} tone="good" line className="mt-1 h-6 shrink-0 md:h-10" />}
                           <div className="mt-auto flex items-center justify-between gap-1 pt-1">
-                            <span className="min-w-0 truncate text-[10.5px] text-fg-2" title={note ?? undefined}>
+                            <span className="min-w-0 text-[10.5px] leading-tight text-fg-2">
                               {note}
                             </span>
                             <span className="flex shrink-0 items-center gap-1">
@@ -397,8 +483,8 @@ export function MetricTray({ state }: { state: EditorState }) {
                           </div>
                         </li>
                       );
-                    })}
-                </ul>
+                  })}
+                </TrayRow>
               </div>
             )}
           </section>,

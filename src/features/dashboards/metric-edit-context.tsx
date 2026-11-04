@@ -53,12 +53,23 @@ export function RemoveColumnButton({ label, onClick }: { label: string; onClick:
   );
 }
 
-export function EmptySlots({ count, onClick, className = "" }: { count: number; onClick: () => void; className?: string }) {
-  return Array.from({ length: Math.max(0, count) }, (_, i) => (
-    <button key={i} type="button" onClick={onClick} data-empty-slot className={`flex min-h-[88px] min-w-0 items-center justify-center gap-1 rounded-card border border-dashed border-line text-[12.5px] font-medium text-fg-2 outline-none hover:border-accent hover:text-fg focus-visible:ring-2 focus-visible:ring-accent print:hidden ${className}`}>
-      <Plus size={14} aria-hidden /> encaixe
-    </button>
-  ));
+/**
+ * Os vazios ficam numa fileira só, baixa, abaixo dos cards. Com muitos num espaço estreito,
+ * cada um mostra só o +: quem decide é a largura do próprio encaixe.
+ */
+export function EmptySlots({ count, onClick }: { count: number; onClick: () => void }) {
+  if (count <= 0) return null;
+  return (
+    <div data-empty-row className="col-span-full flex gap-2 print:hidden">
+      {Array.from({ length: count }, (_, i) => (
+        <button key={i} type="button" onClick={onClick} data-empty-slot aria-label="Encaixe vazio: abrir a bandeja" className="@container h-14 max-w-60 min-w-0 flex-1 rounded-card border border-dashed border-line text-[12.5px] font-medium text-fg-2 outline-none hover:border-accent hover:text-fg focus-visible:ring-2 focus-visible:ring-accent">
+          <span className="flex items-center justify-center gap-1">
+            <Plus size={14} aria-hidden /> <span className="hidden @[84px]:inline">encaixe</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 /**

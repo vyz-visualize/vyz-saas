@@ -9,16 +9,18 @@ type TrendSparkProps = {
   maturing?: number;
   /** "good"/"bad" colorem a linha pelo sentido da métrica; "neutral" fica no verde da marca. */
   tone?: "good" | "bad" | "neutral";
+  /** Só a linha: sem a área preenchida e sem o ponto do último dia. */
+  line?: boolean;
   className?: string;
 };
 
 const STROKE = { good: "var(--accent)", bad: "var(--error-fg)", neutral: "var(--accent)" };
 
 /**
- * Sparkline com área suave, em px reais. Os dias em maturação saem
+ * Sparkline com área suave (ou só a linha), em px reais. Os dias em maturação saem
  * tracejados (as conversões ainda chegam). Decorativa: o número vem ao lado.
  */
-export function TrendSpark({ values, maturing = 0, tone = "neutral", className = "" }: TrendSparkProps) {
+export function TrendSpark({ values, maturing = 0, tone = "neutral", line = false, className = "" }: TrendSparkProps) {
   const finite = values.filter((v): v is number => v != null && Number.isFinite(v));
   if (finite.length < 2) return <div className={className} aria-hidden />;
   return (
@@ -48,10 +50,10 @@ export function TrendSpark({ values, maturing = 0, tone = "neutral", className =
         const color = STROKE[tone];
         return (
           <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block overflow-visible" aria-hidden>
-            {area && <path d={area} fill={color} opacity="0.1" />}
+            {!line && area && <path d={area} fill={color} opacity="0.1" />}
             <path d={settled} fill="none" stroke={color} strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" />
             {late && <path d={late} fill="none" stroke={color} strokeWidth="1.5" strokeDasharray="2 3" opacity="0.7" />}
-            {values[lastIdx] != null && <circle cx={x(lastIdx)} cy={y(values[lastIdx]!)} r="2.5" fill={color} />}
+            {!line && values[lastIdx] != null && <circle cx={x(lastIdx)} cy={y(values[lastIdx]!)} r="2.5" fill={color} />}
           </svg>
         );
       }}
