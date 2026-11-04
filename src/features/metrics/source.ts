@@ -70,6 +70,8 @@ export type Dataset = {
   clients: Client[];
   alerts: Alert[];
   budget: { monthly: number; spent: number; day: number; daysInMonth: number };
+  /** Com filtro: a frequência do recorte. Sem isso, a do modelo. */
+  filteredFrequency?: { current: number; previous: number };
   /** Meta de custo por conversão e ROAS de equilíbrio (1 ÷ margem). */
   goal: number;
   breakEven: number;

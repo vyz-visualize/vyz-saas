@@ -4,7 +4,7 @@ import { NO_FILTERS, type DashFilters } from "@/features/analytics/filters";
 import { datasetFor, DEFAULT_SETTINGS } from "@/features/dashboards/data";
 import { DASHBOARD_TEMPLATES, dashboardTemplate } from "@/features/templates/dashboards";
 import { addDays } from "@/features/sync/dates";
-import { byPlatform, currentTotals, platformPart, previousTotals } from "./compute";
+import { byPlatform, campaignFrequencies, combinedFrequency, currentTotals, platformPart, previousTotals } from "./compute";
 import { filterDataset } from "./filter-dataset";
 
 const TODAY = "2026-10-30";
@@ -110,8 +110,37 @@ describe("filtro nas amostras", () => {
     expect(delta(ds.campaigns[0].id)).not.toBeCloseTo(delta(ds.campaigns[1].id), 3);
   });
 
-  it("frequência é do modelo: não muda com o filtro", () => {
-    expect(currentTotals(run(ds, { campaigns: [one.id] }).ds).frequency).toBe(base.frequency);
+  describe("frequência por campanha", () => {
+    const frequencies = campaignFrequencies(ds);
+
+    it("cada campanha tem a sua, nunca abaixo de 1", () => {
+      expect(new Set(frequencies.values()).size).toBeGreaterThan(1);
+      for (const f of frequencies.values()) expect(f).toBeGreaterThan(1);
+    });
+
+    it("o filtro mostra a da campanha, e o período anterior acompanha", () => {
+      const out = run(ds, { campaigns: [one.id] }).ds;
+      close(currentTotals(out).frequency, frequencies.get(one.id)!);
+      expect(previousTotals(out).frequency).toBeLessThan(currentTotals(out).frequency * 1.05);
+      expect(previousTotals(out).frequency).not.toBe(currentTotals(out).frequency);
+    });
+
+    it("sem filtro, e com a plataforma inteira, a frequência é a do card do modelo", () => {
+      expect(currentTotals(ds).frequency).toBe(base.frequency);
+      close(currentTotals(run(ds, { platforms: ["meta"] }).ds).frequency, base.frequency);
+      close(previousTotals(run(ds, { platforms: ["meta"] }).ds).frequency, previousTotals(ds).frequency);
+    });
+
+    it("todos os modelos: as campanhas de cada plataforma fecham com o card", () => {
+      for (const t of DASHBOARD_TEMPLATES) {
+        const each = load(t.id);
+        const f = campaignFrequencies(each);
+        for (const id of new Set(each.campaigns.map((c) => c.platform))) {
+          const mine = each.campaigns.filter((c) => c.platform === id).map((c) => ({ impressions: c.impressions, frequency: f.get(c.id)! }));
+          close(combinedFrequency(mine), currentTotals(each).frequency, 6);
+        }
+      }
+    });
   });
 });
 
@@ -187,6 +216,40 @@ describe("anúncios simulados ligados às campanhas do modelo", () => {
     const all = sampleExtras(t, spec, opts).find((x) => x.id === "registrations")!;
     const cut = sampleExtras(t, spec, { ...opts, filters }).find((x) => x.id === "registrations")!;
     expect(cut.value!).toBeLessThan(all.value!);
+  });
+
+  describe("a frequência do card fecha com a dos anúncios", () => {
+    const access2 = { tier: "avancado" as const };
+    const adsFrequency = (c: NonNullable<ReturnType<typeof sampleCreatives>>, names?: string[], ids?: string[]) => {
+      const rows = c.compare.filter((a) => (!names || names.includes(a.campaignName)) && (!ids || ids.includes(a.id))).flatMap((a) => a.days);
+      return rows.reduce((a, r) => a + r.impressions, 0) / rows.reduce((a, r) => a + (r.reach ?? 0), 0);
+    };
+
+    it("campanha", () => {
+      const { ds, c } = load2("criativos-meta", 30);
+      for (const camp of ds.campaigns) {
+        const card = currentTotals(filterDataset(ds, f({ campaigns: [camp.id] }), { today: TODAY }).ds).frequency;
+        expect(adsFrequency(c, [camp.name])).toBeCloseTo(card, 1);
+      }
+    });
+
+    it("anúncio", () => {
+      const { t, ds, opts, c } = load2("criativos-meta", 30);
+      const ad = c.compare[0];
+      const out = sampleCreatives(t, spec, ["criativos"], access2, { ...opts, filters: f({ ads: [ad.id] }) })!;
+      const card = currentTotals(filterDataset(ds, f({ ads: [ad.id] }), { today: TODAY, adSelection: out.selection }).ds).frequency;
+      expect(adsFrequency(c, undefined, [ad.id])).toBeCloseTo(card, 6);
+    });
+
+    it("trecho de dias: muda a frequência, nos cards e na galeria", () => {
+      const { t, ds, opts } = load2("criativos-meta", 30);
+      const n = ds.current.length;
+      const days = { from: addDays(TODAY, -ds.current[n - 10].ago), to: addDays(TODAY, -ds.current[n - 6].ago) };
+      const card = currentTotals(filterDataset(ds, f({ days }), { today: TODAY }).ds).frequency;
+      expect(card).not.toBe(currentTotals(ds).frequency);
+      const ad = sampleCreatives(t, spec, ["criativos"], access2, { ...opts, filters: f({ days }) })!;
+      expect(ad.gallery.every((g) => (g.frequency ?? 0) >= 1)).toBe(true);
+    });
   });
 
   it("recorte sem a Meta: as métricas dela ficam sem valor", () => {

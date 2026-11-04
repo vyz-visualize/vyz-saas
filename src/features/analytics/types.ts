@@ -215,7 +215,7 @@ export type CreativesTab = "galeria" | "comparativo";
 export type CreativesLevel = "list" | "gallery" | "compare";
 
 /** Os anúncios filtrados somados, na escala do modelo: os cards das amostras leem daqui. */
-export type SampleAdSelection = { spend: number; impressions: number; clicks: number; conversions: number; revenue: number };
+export type SampleAdSelection = { spend: number; impressions: number; clicks: number; conversions: number; revenue: number; frequency: number };
 
 /** O que a página de Criativos recebe: só o que o plano cobre. */
 export type CreativesData = {

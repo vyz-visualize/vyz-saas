@@ -102,8 +102,6 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
   const strong = spec.highlight;
   const filters = useDashFilters();
   const filtered = !!ctx.base;
-  // a frequência do modelo vem dos criativos, não das linhas: fica no total
-  const unfiltered = filtered && filters && spec.metric === "frequency" ? notFilteredText(activeDims(filters.filters)) : null;
 
   let sub: ReactNode = null;
   switch (spec.sub) {
@@ -143,11 +141,6 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
         <Odometer value={value} />
       </p>
       <p className={`mt-1.5 leading-tight ${lg ? "text-[12px]" : "text-[10px]"} ${strong ? "[&_span]:text-inherit" : "text-fg-2"}`}>{sub}</p>
-      {unfiltered && (
-        <p className="mt-1">
-          <NotFilteredBadge text={unfiltered} />
-        </p>
-      )}
       {onHide && <HideMetricButton label={label} onClick={onHide} />}
       {onRemove && <RemoveMetricButton label={label} onClick={onRemove} />}
     </div>

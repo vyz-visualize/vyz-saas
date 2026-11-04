@@ -2,6 +2,7 @@
 // período (soma ÷ soma), nunca como média de médias.
 
 import type { PlatformId } from "@/features/accounts/platforms";
+import { hash } from "@/lib/random";
 import type { MetricId } from "./definitions";
 import type { Dataset, DayRow } from "./source";
 
@@ -49,7 +50,7 @@ export function totals(rows: DayRow[], frequency = 0): Totals {
 }
 
 /** Média de frequência dos criativos, ponderada por impressões. */
-export function frequencyOf(ds: Dataset): number {
+export function frequencyOf(ds: Pick<Dataset, "creatives">): number {
   const imp = ds.creatives.reduce((a, c) => a + c.impressions, 0);
   return safe(
     ds.creatives.reduce((a, c) => a + c.frequency * c.impressions, 0),
@@ -57,12 +58,50 @@ export function frequencyOf(ds: Dataset): number {
   );
 }
 
+/** A frequência dos cards num período: a do recorte, com filtro; a do modelo, sem. */
+const frequencyFor = (ds: Dataset, when: "current" | "previous") => ds.filteredFrequency?.[when] ?? (when === "current" ? frequencyOf(ds) : frequencyOf(ds) * 0.94);
+
+/** Frequência de um conjunto: impressões ÷ alcance, como numa campanha só. */
+export function combinedFrequency(parts: readonly { impressions: number; frequency: number }[]): number {
+  const impressions = parts.reduce((a, p) => a + p.impressions, 0);
+  const reach = parts.reduce((a, p) => a + (p.frequency > 0 ? p.impressions / p.frequency : 0), 0);
+  return safe(impressions, reach);
+}
+
+/**
+ * Frequência de cada campanha da amostra: fictícia e estável. As de uma mesma plataforma
+ * fecham com a frequência do modelo (impressões ÷ alcance), então os cards não mudam, e
+ * nunca ficam abaixo de 1, porque só o que passa de 1 varia.
+ */
+export function campaignFrequencies(ds: Pick<Dataset, "spec" | "campaigns" | "creatives">): Map<string, number> {
+  const total = frequencyOf(ds);
+  const out = new Map<string, number>();
+  const above = total - 1;
+  for (const platform of new Set(ds.campaigns.map((c) => c.platform))) {
+    const mine = ds.campaigns.filter((c) => c.platform === platform);
+    const shape = mine.map((c) => 0.55 + ((hash(`${ds.spec.seed}|${c.id}|frequencia`) >>> 0) % 901) / 1000);
+    const at = (k: number) => mine.map((c, i) => ({ impressions: c.impressions, frequency: 1 + above * shape[i] * k }));
+    // acha a escala em que o conjunto fecha com o total (a frequência cresce com a escala)
+    let lo = 0;
+    let hi = 1;
+    while (above > 0 && combinedFrequency(at(hi)) < total && hi < 1e6) hi *= 2;
+    for (let i = 0; i < 50; i++) {
+      const mid = (lo + hi) / 2;
+      if (combinedFrequency(at(mid)) < total) lo = mid;
+      else hi = mid;
+    }
+    const each = at(hi);
+    mine.forEach((c, i) => out.set(c.id, above > 0 ? each[i].frequency : total));
+  }
+  return out;
+}
+
 export function currentTotals(ds: Dataset): Totals {
-  return totals(ds.current, frequencyOf(ds));
+  return totals(ds.current, frequencyFor(ds, "current"));
 }
 
 export function previousTotals(ds: Dataset): Totals {
-  return totals(ds.previous, frequencyOf(ds) * 0.94);
+  return totals(ds.previous, frequencyFor(ds, "previous"));
 }
 
 /** Variação relativa entre períodos (0,082 = +8,2%). */
@@ -122,7 +161,7 @@ export function byPlatform(ds: Dataset): PlatformTotals[] {
  */
 export function platformPart(ds: Dataset, id: PlatformId, when: "current" | "previous"): Totals {
   const rows = ds[when];
-  const frequency = when === "current" ? frequencyOf(ds) : frequencyOf(ds) * 0.94;
+  const frequency = frequencyFor(ds, when);
   if (ds.adPlatforms.length <= 1 || !ds.adPlatforms.includes(id)) return totals(rows, frequency);
   const part = { spend: 0, impressions: 0, clicks: 0, conv: 0 };
   let attributed = 0;

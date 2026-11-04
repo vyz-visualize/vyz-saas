@@ -7,6 +7,7 @@ import type { PlatformId } from "@/features/accounts/platforms";
 import { clampDays, hasFilters, type DashFilters, type DayRange } from "@/features/analytics/filters";
 import { addDays } from "@/features/sync/dates";
 import { hash } from "@/lib/random";
+import { campaignFrequencies, combinedFrequency } from "./compute";
 import type { Campaign, Dataset, DayRow } from "./source";
 
 const METRICS = ["spend", "impressions", "clicks", "conversions", "revenue"] as const;
@@ -14,10 +15,10 @@ type Metric = (typeof METRICS)[number];
 type Amounts = Record<Metric, number>;
 
 /** O que foi escolhido, somado. A chave dá a variação estável no período anterior. */
-type Part = Amounts & { key: string; platform?: PlatformId };
+type Part = Amounts & { key: string; platform?: PlatformId; frequency: number };
 
 /** Os anúncios escolhidos, somados no servidor (dinheiro em centavos, como o modelo). */
-export type AdTotals = Amounts;
+export type AdTotals = Amounts & { frequency: number };
 
 export type FilteredDataset = {
   /** Cards e tudo o que respeita todos os filtros. `campaigns` ignora o filtro de campanha, para destacar. */
@@ -27,6 +28,8 @@ export type FilteredDataset = {
   /** Cartões e barras por plataforma: sem o filtro de plataforma, para destacar. */
   platforms: Dataset;
   active: boolean;
+  /** O trecho de dias que valeu, depois de conferir com o período. */
+  days: DayRange | null;
 };
 
 export type FilterDatasetOptions = {
@@ -107,7 +110,25 @@ function scaleRow(d: DayRow, share: Amounts, platforms: PlatformShares): DayRow 
   };
 }
 
-const toPart = (c: Campaign): Part => ({ key: c.id, platform: c.platform, spend: c.spend, impressions: c.impressions, clicks: c.clicks, conversions: c.conversions, revenue: c.revenue });
+/**
+ * Frequência das campanhas no trecho: fictícia e estável por trecho. Vale para os cards e
+ * para os anúncios da galeria, que fecham com ela.
+ */
+export function campaignFrequenciesIn(ds: Pick<Dataset, "spec" | "campaigns" | "creatives">, days: DayRange | null): Map<string, number> {
+  const frequencies = campaignFrequencies(ds);
+  if (!days) return frequencies;
+  const factor = 0.9 + ((hash(`${ds.spec.seed}|${days.from}|${days.to}|frequencia`) >>> 0) % 2001) / 10000;
+  return new Map([...frequencies].map(([id, f]) => [id, 1 + (f - 1) * factor]));
+}
+
+/** No período anterior a frequência era um pouco menor (como no modelo), e cada item varia. */
+function previousFrequency(seed: string, parts: readonly Part[], current: number, reference: readonly Part[]): number {
+  const weighted = (list: readonly Part[]) => {
+    const total = list.reduce((a, p) => a + p.impressions, 0);
+    return total > 0 ? list.reduce((a, p) => a + p.impressions * (0.95 + ((hash(`${seed}|${p.key}|frequencia-anterior`) >>> 0) % 1001) / 10000), 0) / total : 1;
+  };
+  return current * 0.94 * (weighted(parts) / weighted(reference));
+}
 
 /** As campanhas que o filtro deixa, considerando plataforma e campanha. */
 export function selectedCampaigns(ds: Pick<Dataset, "campaigns">, f: Pick<DashFilters, "campaigns" | "platforms">): Campaign[] {
@@ -138,9 +159,11 @@ export function filterDataset(ds: Dataset, filters: DashFilters, opts: FilterDat
   const period = samplePeriod(ds, opts.today);
   const days = period ? clampDays(filters.days, period) : null;
   const f: DashFilters = { ...filters, days };
-  if (!hasFilters(f)) return { ds, chart: { current: ds.current, previous: ds.previous }, platforms: ds, active: false };
+  if (!hasFilters(f)) return { ds, chart: { current: ds.current, previous: ds.previous }, platforms: ds, active: false, days: null };
 
   const seed = ds.spec.seed;
+  const frequencies = campaignFrequenciesIn(ds, days);
+  const toPart = (c: Campaign): Part => ({ key: c.id, platform: c.platform, spend: c.spend, impressions: c.impressions, clicks: c.clicks, conversions: c.conversions, revenue: c.revenue, frequency: frequencies.get(c.id) ?? 0 });
   const everyCampaign = ds.campaigns.map(toPart);
   const inDays = sliceRows(ds, days, opts.today);
 
@@ -171,7 +194,7 @@ export function filterDataset(ds: Dataset, filters: DashFilters, opts: FilterDat
     f.ads.length && !opts.adSelection && ds.creatives.some((c) => f.ads.includes(c.id))
       ? ds.creatives
           .filter((c) => f.ads.includes(c.id) && (!f.platforms.length || f.platforms.includes(c.platform)))
-          .map((c) => ({ key: c.id, platform: c.platform, spend: c.spend, impressions: c.impressions, clicks: c.clicks, conversions: c.conversions, revenue: totalConversions > 0 ? (sum(ds.current, "revenue") * c.conversions) / totalConversions : 0 }))
+          .map((c) => ({ key: c.id, platform: c.platform, spend: c.spend, impressions: c.impressions, clicks: c.clicks, conversions: c.conversions, frequency: c.frequency, revenue: totalConversions > 0 ? (sum(ds.current, "revenue") * c.conversions) / totalConversions : 0 }))
       : null;
   const widgetOnCampaign = widget && f.campaigns.length ? sharesOf(selectedCampaigns(ds, { campaigns: f.campaigns, platforms: [] }).map(toPart), ds.current) : undefined;
 
@@ -182,6 +205,11 @@ export function filterDataset(ds: Dataset, filters: DashFilters, opts: FilterDat
   };
 
   const main = cut(inDays);
+
+  // a frequência do recorte: a dos itens escolhidos, ou a de todas as campanhas no trecho
+  const picked = gallery ?? widget ?? chosen ?? everyCampaign;
+  const frequency = combinedFrequency(picked);
+  const filteredFrequency = { current: frequency, previous: previousFrequency(seed, picked, frequency, chosen || gallery || widget ? everyCampaign.filter((p) => picked.some((x) => x.platform === p.platform)) : picked) };
   const chart = cut({ current: ds.current, previous: ds.previous });
 
   // a tabela e as barras de campanha não respeitam o próprio filtro: o escolhido fica em destaque
@@ -192,9 +220,10 @@ export function filterDataset(ds: Dataset, filters: DashFilters, opts: FilterDat
   const platforms = scaled(inDays, withoutPlatform, ds.current);
 
   return {
-    ds: { ...ds, ...main, campaigns },
+    ds: { ...ds, ...main, campaigns, filteredFrequency },
     chart: { current: chart.current, previous: chart.previous },
     platforms: { ...ds, ...platforms },
     active: true,
+    days,
   };
 }

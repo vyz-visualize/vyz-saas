@@ -6,7 +6,7 @@ import { LockedPages } from "@/features/dashboards/LockedPages";
 import { EmptyState } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { parseCreativesQuery } from "@/features/analytics/creatives/query";
-import { hasFilters, parseFilters } from "@/features/analytics/filters";
+import { parseFilters } from "@/features/analytics/filters";
 import { sampleCreatives, sampleExtras } from "@/features/analytics/creatives/sample";
 import { LiveDashboard, LiveDashboardSkeleton } from "@/features/analytics/LiveDashboard";
 import { brandVars } from "@/features/dashboards/brand";
@@ -19,7 +19,7 @@ import { anyDashboardTemplate } from "@/features/templates/live";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { getDashboard } from "@/server/dashboards/queries";
-import { isInPageNavigation } from "@/server/http/request";
+import { isSamePageNavigation } from "@/server/http/request";
 import { logActivity } from "@/server/history/log";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -54,8 +54,8 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
 
   const { period, customDays } = periodFromQuery(query, d.settings);
   const filters = parseFilters(query);
-  // clicar para filtrar não é abrir o dashboard de novo
-  if (!(hasFilters(filters) && (await isInPageNavigation()))) {
+  // só a abertura da página conta: filtrar, limpar e trocar o período não
+  if (!(await isSamePageNavigation(`/painel/dashboards/${d.id}`))) {
     await logActivity({
       workspaceId: session.workspace.id,
       actorId: session.user.id,

@@ -7,8 +7,8 @@
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { datasetFor } from "@/features/dashboards/data";
 import { sampleExtraCatalog } from "@/features/dashboards/metric-prefs";
-import { currentTotals, platformPart } from "@/features/metrics/compute";
-import { filterDataset, selectedCampaigns } from "@/features/metrics/filter-dataset";
+import { campaignFrequencies, currentTotals, platformPart } from "@/features/metrics/compute";
+import { campaignFrequenciesIn, filterDataset, selectedCampaigns } from "@/features/metrics/filter-dataset";
 import type { Campaign, Dataset } from "@/features/metrics/source";
 import { addDays, DEFAULT_TIME_ZONE, localDate } from "@/features/sync/dates";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
@@ -56,11 +56,11 @@ function linkToModel(rows: WarehouseRows, model: readonly Campaign[]): Warehouse
 }
 
 /** Os anúncios de cada campanha escalados para fechar com ela. A soma das campanhas fecha com o total. */
-function scaleByCampaign(rows: WarehouseRows, model: readonly Campaign[], frequency: number): WarehouseRows {
+function scaleByCampaign(rows: WarehouseRows, model: readonly Campaign[], frequencies: ReadonlyMap<string, number>): WarehouseRows {
   const campaignOf = new Map(rows.ads.map((a) => [a.id, a.campaignId]));
   const adDaily = model
     .filter((c) => c.platform === "meta")
-    .flatMap((c) => scaleAdRows({ ...rows, adDaily: rows.adDaily.filter((r) => campaignOf.get(r.adId) === c.id) }, { spend: c.spend, impressions: c.impressions, clicks: c.clicks, conversions: c.conversions, revenue: c.revenue, frequency }).adDaily);
+    .flatMap((c) => scaleAdRows({ ...rows, adDaily: rows.adDaily.filter((r) => campaignOf.get(r.adId) === c.id) }, { spend: c.spend, impressions: c.impressions, clicks: c.clicks, conversions: c.conversions, revenue: c.revenue, frequency: frequencies.get(c.id) ?? 0 }).adDaily);
   return { ...rows, adDaily };
 }
 
@@ -70,17 +70,16 @@ const toSimulatorDays = (days: DayRange | null): DayRange | null => (days ? { fr
 /** As linhas escaladas do período inteiro e, com filtro, as do recorte. */
 function sampleAdRows(ds: Dataset, opts: { period: PeriodId; customDays: number; today?: string; filters?: DashFilters }) {
   const raw = sampleRows("meta", { period: opts.period, customDays: opts.customDays, today: opts.today });
-  const frequency = metaTotals(ds).frequency;
-  const period = scaleByCampaign(linkToModel(raw, ds.campaigns), ds.campaigns, frequency);
+  const period = scaleByCampaign(linkToModel(raw, ds.campaigns), ds.campaigns, campaignFrequencies(ds));
   const f = opts.filters ?? NO_FILTERS;
   if (!hasFilters(f)) return { period, cut: period, filters: f };
   // o trecho e a campanha com a conta dos cards, para a galeria fechar com eles também
   const today = opts.today ?? localDate(new Date(), DEFAULT_TIME_ZONE);
   const inDays = filterDataset(ds, { ...NO_FILTERS, days: f.days }, { today });
-  const days = toSimulatorDays(inDays.active ? f.days : null);
+  const days = toSimulatorDays(inDays.days);
   const current = days ? { ...days, days: inDays.ds.current.length } : raw.current;
   const model = inDays.ds.campaigns.map((c) => ({ ...c, spend: Math.round(c.spend), impressions: Math.round(c.impressions), clicks: Math.round(c.clicks), conversions: Math.round(c.conversions), revenue: Math.round(c.revenue) }));
-  const cut = scaleByCampaign(linkToModel({ ...raw, current }, ds.campaigns), model, frequency);
+  const cut = scaleByCampaign(linkToModel({ ...raw, current }, ds.campaigns), model, campaignFrequenciesIn(ds, inDays.days));
   return { period, cut, filters: { ...f, campaigns: selectedCampaigns(ds, f).map((c) => c.id), platforms: [], days: null } };
 }
 
@@ -97,6 +96,7 @@ function adSelection(rows: WarehouseRows, f: DashFilters): SampleAdSelection | u
     clicks: add((r) => r.clicks),
     conversions: list.reduce((a, r) => a + r.result.value, 0),
     revenue: add((r) => r.conversionValue) * 100,
+    frequency: add((r) => r.reach ?? 0) > 0 ? add((r) => r.impressions) / add((r) => r.reach ?? 0) : 0,
   };
 }
 

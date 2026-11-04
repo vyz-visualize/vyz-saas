@@ -5,6 +5,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
+import { isSamePageRequest } from "@/lib/navigation";
 import { serverEnv } from "@/server/env";
 
 export type RequestContext = {
@@ -31,6 +32,12 @@ async function requestHeaders(): Promise<Headers | null> {
  */
 export async function isInPageNavigation(): Promise<boolean> {
   return (await requestHeaders())?.get("sec-fetch-dest") === "empty";
+}
+
+/** O pedido partiu desta mesma página: filtrar ou trocar o período, sem abri-la de novo. */
+export async function isSamePageNavigation(pathname: string): Promise<boolean> {
+  const h = await requestHeaders();
+  return isSamePageRequest({ fetchDest: h?.get("sec-fetch-dest") ?? null, referer: h?.get("referer") ?? null }, pathname);
 }
 
 export async function requestContext(): Promise<RequestContext> {

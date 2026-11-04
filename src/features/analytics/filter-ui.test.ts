@@ -215,6 +215,18 @@ describe("amostras: a conta é no navegador", () => {
     expect([...host.querySelectorAll("[data-not-filtered]")].map((b) => b.textContent)).toContain("não filtrado por Campanha");
   });
 
+  it("o card de Frequência filtra sem selo, e o valor muda", async () => {
+    const criativos: DashboardSpec = { ...spec, templateId: "criativos-meta", pages: ["visao-geral", "criativos"] };
+    const card = () => host.querySelector('[data-vyz-metric="frequency"]');
+    await mount(createElement(DashboardBody, { spec: criativos, initialPage: "criativos" }));
+    const before = card()?.textContent;
+    expect(before).toBeTruthy();
+    await act(async () => root.unmount());
+    await mount(createElement(DashboardBody, { spec: criativos, initialPage: "criativos", initialFilters: parseFilters({ campanha: "c0" }) }));
+    expect(card()?.querySelector("[data-not-filtered]")).toBeNull();
+    expect(card()?.textContent).not.toBe(before);
+  });
+
   it("o PDF sai com os filtros e os chips no topo", async () => {
     await sample({ printing: true, initialFilters: parseFilters({ campanha: "c0" }) });
     const cover = host.querySelector("[data-print-filters]");
