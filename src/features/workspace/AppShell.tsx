@@ -7,7 +7,7 @@
 // fica no <html data-sidebar>, aplicado antes da primeira pintura. O topo
 // mostra o plano real da sessão e, quando há, o aviso da assinatura.
 
-import { AlertTriangle, BarChart3, Check, ChevronsUpDown, Gem, Home, Inbox, Info, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PanelsTopLeft, Plug, Settings, Share2 } from "lucide-react";
+import { AlertTriangle, BarChart3, Check, ChevronsUpDown, FolderKanban, Gem, Home, Inbox, Info, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PanelsTopLeft, Plug, Settings, Share2 } from "lucide-react";
 import { LazyMotion, m, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -36,6 +36,7 @@ type NavItem = { href: string; label: string; icon: typeof Home; short?: string;
 const NAVS: Record<Product, NavItem[]> = {
   dash: [
     { href: "/painel", label: "Início", icon: Home },
+    { href: "/painel/projetos", label: "Projetos", icon: FolderKanban },
     { href: "/painel/dashboards", label: "Dashboards", icon: BarChart3 },
     { href: "/painel/contas", label: "Contas", icon: Plug },
     { href: "/painel/compartilhar", label: "Compartilhar", icon: Share2 },
@@ -149,12 +150,12 @@ const initials = (name: string) =>
     .map((w) => w[0]?.toUpperCase())
     .join("") || "V";
 
-/** "Pro · 2 contas" ou "Sem plano ativo". */
+/** "Padrão · 3 projetos" ou "Sem plano ativo". */
 function planLine(access: ReturnType<typeof useWorkspaceSession>["access"], product: Product) {
   if (!access.hasAccess || !access.tier) return "Sem plano ativo";
   if (product === "lp") return `${TIER_LABEL[access.tier]} · Landing pages`;
   const n = access.accountsQuantity;
-  return `${TIER_LABEL[access.tier]} · ${n} ${n === 1 ? "conta" : "contas"}`;
+  return `${TIER_LABEL[access.tier]} · ${n} ${n === 1 ? "projeto" : "projetos"}`;
 }
 
 /** Cartão do workspace com o próprio menu (trocar de workspace, Configurações e Sair). Recolhido, vira avatar. */

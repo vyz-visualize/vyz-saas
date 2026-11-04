@@ -4,7 +4,7 @@ export default {
   id: "meta-essencial",
   name: "Meta Ads essencial",
   category: "Mídia",
-  tier: "base",
+  tier: "pro",
   profile: "midia",
   sources: ["meta"],
   pages: ["visao-geral", "campanhas"],

@@ -60,9 +60,11 @@ export type EnabledAccountsResult = {
  * banco (gatilho): passou, nada muda e volta a mensagem do plano. As contas
  * recém-ativadas fazem a sincronização inicial (90 dias).
  */
-export async function setEnabledAccounts(platformId: string, adAccountIds: string[]): Promise<ActionResult<EnabledAccountsResult>> {
+export async function setEnabledAccounts(platformId: string, adAccountIds: string[], projectOf: Record<string, string> = {}): Promise<ActionResult<EnabledAccountsResult>> {
   try {
-    const parsed = z.object({ platformId: Platform, ids: z.array(Id).max(500) }).safeParse({ platformId, ids: adAccountIds });
+    const parsed = z
+      .object({ platformId: Platform, ids: z.array(Id).max(500), projects: z.record(Id, Id) })
+      .safeParse({ platformId, ids: adAccountIds, projects: projectOf });
     if (!parsed.success) throw appError("validation");
     const session = await authorize("admin");
     const ws = session.workspace.id;
@@ -71,7 +73,7 @@ export async function setEnabledAccounts(platformId: string, adAccountIds: strin
     const supabase = await createServerSupabase();
 
     // A lista do navegador é só a escolha: o que existe e o estado de cada conta vêm do banco.
-    const rows = unwrap(await supabase.from("ad_accounts").select("id, name, status, is_enabled, connection_id").eq("workspace_id", ws).eq("platform_id", platform)) ?? [];
+    const rows = unwrap(await supabase.from("ad_accounts").select("id, name, status, is_enabled, connection_id, project_id").eq("workspace_id", ws).eq("platform_id", platform)) ?? [];
     const byId = new Map(rows.map((r) => [r.id, r]));
     if (ids.some((id) => !byId.has(id))) throw appError("not_found", "Alguma das contas escolhidas não está neste workspace.");
     const blocked = ids.map((id) => byId.get(id)!).find((r) => !r.connection_id || r.status !== "active");
@@ -79,6 +81,10 @@ export async function setEnabledAccounts(platformId: string, adAccountIds: strin
       const why = blocked.connection_id ? "o login conectado não dá mais acesso a ela" : "ela está sem conexão; reconecte o login";
       throw appError("account:not_connected", `“${blocked.name}” não pode ser ativada: ${why}.`);
     }
+
+    // projeto de cada conta escolhida: as que saem do projeto saem antes (liberam espaço), depois as que entram
+    const moves = ids.filter((id) => parsed.data.projects[id] && parsed.data.projects[id] !== byId.get(id)!.project_id);
+    for (const id of moves) unwrap(await supabase.from("ad_accounts").update({ project_id: parsed.data.projects[id] }).eq("id", id).eq("workspace_id", ws));
 
     const before = new Set(rows.filter((r) => r.is_enabled).map((r) => r.id));
     const enabledCount = unwrap(await supabase.rpc("set_enabled_ad_accounts", { p_workspace_id: ws, p_platform_id: platform, p_ad_account_ids: ids })) ?? 0;

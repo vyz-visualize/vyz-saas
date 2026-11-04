@@ -59,6 +59,8 @@ export type AdAccountDTO = {
   fields: Record<string, string>;
   /** Dashboards que usam a conta. */
   dashboards: { id: string; name: string }[];
+  /** Projeto (cliente) da conta; sem projeto até ser ligada. */
+  projectId: string | null;
 };
 
 export type PlatformConnectState = {
@@ -75,11 +77,15 @@ export type PlatformConnectState = {
 export type ConnectState = {
   platforms: Record<ProviderId, PlatformConnectState>;
   limit: {
-    /** Contas contratadas. */
+    /** Projetos contratados. */
     accountsQuantity: number;
-    /** Contas contratadas em uso (BM do Meta conta uma vez). */
+    /** Contas ligadas, por unidade (BM do Meta conta uma vez). */
     billableAccounts: number;
+    /** Contas da mesma plataforma em cada projeto. */
+    maxAccountsPerPlatform: number;
   };
+  /** Projetos ativos (a conta ligada entra em um deles). */
+  projects: { id: string; name: string }[];
   /** Admin: conecta, desconecta e escolhe as contas. */
   canManage: boolean;
   /** Member: pede sincronização. */

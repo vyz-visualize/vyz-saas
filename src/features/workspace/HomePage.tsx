@@ -112,7 +112,7 @@ export function HomePage({ data }: { data: HomeData }) {
             <h2 id="h-uso" className="title text-lg">
               Uso do plano
             </h2>
-            <UsageBar used={usage.billableAccounts} limit={access.accountsQuantity} label="Contas" />
+            <UsageBar used={usage.projects} limit={access.accountsQuantity} label="Projetos" />
             <UsageBar used={usage.dashboards} limit={ent.maxDashboards} label="Dashboards" />
             <Link href="/painel/plano" className="inline-block text-[13.5px] font-semibold text-accent">
               Ver limites do plano →

@@ -13,8 +13,10 @@ import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { usePlan } from "@/features/marketing/state/PlanProvider";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import {
-  ANNUAL_SAVING_PCT,
   DEFAULT_STATE,
+  EXTRA_PROJECT,
+  INCLUDED_PROJECTS,
+  annualSavingPct,
   LP_PLAN_PAGES,
   PLAN_LABEL,
   lpMonthly,
@@ -31,7 +33,8 @@ import { AudioWave } from "./AudioWave";
 import { SoonBadge } from "./SoonBadge";
 
 // Planos: dois produtos (dashboards e landing pages, esta atrás de
-// SHOW_LANDING_PAGES), três planos cada, e um clique até o checkout. Contas a mais, extras e marca própria ficam dentro do app.
+// SHOW_LANDING_PAGES), três planos cada, e um clique até o checkout. Projetos a mais e plataforma
+// extra se escolhem no checkout; marca própria fica dentro do app. Abaixo, as perguntas sobre projeto.
 
 const TIERS: PlanId[] = ["base", "pro", "avancado"];
 
@@ -64,14 +67,14 @@ function dashCard(tier: PlanId, period: Period): Card {
   const e = ENTITLEMENTS[tier];
   const base = {
     price: startingPrice(tier, period),
-    caption: `${period === "anual" ? "no anual" : "no mensal"} · 1 conta conectada`,
+    caption: `${period === "anual" ? "no anual" : "no mensal"} · ${INCLUDED_PROJECTS} projetos · + ${brl(EXTRA_PROJECT[tier][period])} por projeto extra`,
     templates: `${e.dashboardTemplates} templates de dashboard`,
   };
   if (tier === "base") {
     return {
       ...base,
       pitch: "Você conecta as contas e escolhe o template. Pronto em minutos.",
-      features: ["Meta e Google por login; GA4 em breve", `${e.maxDashboards} dashboards, um para cada plataforma`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário", ...COMMON],
+      features: [`${INCLUDED_PROJECTS} projetos (clientes) inclusos`, "Meta e Google por login; GA4 em breve", "1 conta por plataforma em cada projeto", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário", ...COMMON],
     };
   }
   if (tier === "pro") {
@@ -80,6 +83,7 @@ function dashCard(tier: PlanId, period: Period): Card {
       pitch: "Tudo do Básico, com o tracking ligado pelo nosso time.",
       features: [
         "Tudo do Básico",
+        `Até ${e.maxAccountsPerPlatform} contas por plataforma em cada projeto`,
         <>
           Mais plataformas: mídia, marketplaces e CRMs
           <SoonBadge />
@@ -117,9 +121,49 @@ function lpCard(tier: PlanId): Card {
   return { ...base, pitch: "Cinco páginas para quem roda várias campanhas.", features: ["Tudo do Padrão", "5 landing pages feitas pelo time", "Todos os templates", `${e.maxMembers} usuários`] };
 }
 
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: "O que é um projeto?",
+    a: "É o cliente, a empresa ou a marca para quem você gera os dashboards. Dentro dele você conecta as contas (Meta Ads, Google Ads e as outras plataformas do plano) e cria os dashboards daquele cliente.",
+  },
+  {
+    q: `Preciso contratar mais de ${INCLUDED_PROJECTS} projetos?`,
+    a: `Todo plano já vem com ${INCLUDED_PROJECTS} projetos. Tem mais clientes? Você soma de um em um no checkout, sem pacote fechado: quem tem 6 clientes paga 6.`,
+  },
+  {
+    q: "Posso mudar o número de projetos depois?",
+    a: "Sim. Aumente ou diminua quando quiser, na página Plano do painel. A diferença entra na próxima cobrança, proporcional aos dias.",
+  },
+  {
+    q: "Quantas contas cabem em cada projeto?",
+    a: `No Básico, 1 conta de cada plataforma por projeto. No Padrão e no Avançado, até ${ENTITLEMENTS.pro.maxAccountsPerPlatform}. No Meta, as contas da mesma Business Manager contam como uma.`,
+  },
+];
+
+function ProjectFaq() {
+  return (
+    <div className="mt-14 border-t border-line pt-10">
+      <h3 className="title text-2xl text-fg">Perguntas sobre projetos</h3>
+      <div className="mt-5 divide-y divide-line rounded-card border border-line bg-card">
+        {FAQ.map((f) => (
+          <details key={f.q} className="group px-5 py-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[16px] font-semibold text-fg">
+              {f.q}
+              <span aria-hidden className="text-fg-2 transition-transform group-open:rotate-45">
+                +
+              </span>
+            </summary>
+            <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-fg-2">{f.a}</p>
+          </details>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PlanCard({ tier, product, period, card, featured, delay }: { tier: PlanId; product: Product; period: Period; card: Card; featured: boolean; delay: number }) {
-  // checkout direto: o plano, o período e 1 conta (contas a mais ficam no app)
-  const href = `/assinar?${toQuery({ ...DEFAULT_STATE, produto: product, plano: tier, periodo: product === "lp" ? "mensal" : period, meta: 1, google: 0 })}`;
+  // checkout direto: o plano, o período e os projetos inclusos (mais projetos no checkout)
+  const href = `/assinar?${toQuery({ ...DEFAULT_STATE, produto: product, plano: tier, periodo: product === "lp" ? "mensal" : period })}`;
 
   function spotlight(e: PointerEvent<HTMLElement>) {
     const r = e.currentTarget.getBoundingClientRect();
@@ -238,7 +282,7 @@ export function Planos() {
                   {
                     value: "anual",
                     label: "Anual",
-                    badge: <span className="rounded-chip bg-accent-soft px-1.5 py-px text-[11px] font-semibold text-fg">−{ANNUAL_SAVING_PCT}%</span>,
+                    badge: <span className="rounded-chip bg-accent-soft px-1.5 py-px text-[11px] font-semibold text-fg">até −{Math.max(...TIERS.map(annualSavingPct))}%</span>,
                   },
                 ]}
               />
@@ -265,13 +309,15 @@ export function Planos() {
         <div className="mt-8 flex flex-col gap-3 text-sm text-fg-2 sm:flex-row sm:items-center sm:justify-between">
           <p>
             {product === "dash"
-              ? "Valores em reais · contas a mais e dashboards extras você liga dentro do painel. Marca própria e implementação sob medida: plano Personalizado, sob consulta."
+              ? "Valores em reais · projetos a mais você escolhe no checkout e muda quando quiser. Marca própria e implementação sob medida: plano Personalizado, sob consulta."
               : "Valores em reais · mais páginas e domínio próprio você liga dentro do painel"}
           </p>
           <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={`${btn.ghost} -ml-3 w-fit sm:ml-0`}>
             Dúvida? Fale com um especialista →
           </a>
         </div>
+
+        {product === "dash" && <ProjectFaq />}
       </div>
     </section>
   );

@@ -4,7 +4,7 @@ export default {
   id: "criativos-meta",
   name: "Criativos · Meta Ads",
   category: "Mídia",
-  tier: "pro",
+  tier: "avancado",
   profile: "midia",
   sources: ["meta"],
   pages: ["criativos", "visao-geral", "publico"],

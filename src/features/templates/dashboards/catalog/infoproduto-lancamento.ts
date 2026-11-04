@@ -4,7 +4,7 @@ export default {
   id: "infoproduto-lancamento",
   name: "Infoproduto · Lançamento",
   category: "Leads",
-  tier: "pro",
+  tier: "avancado",
   profile: "infoproduto",
   sources: ["meta", "google", "ga4"],
   pages: ["visao-geral", "funil", "criativos", "metas", "publico"],

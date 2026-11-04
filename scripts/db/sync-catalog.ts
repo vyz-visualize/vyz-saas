@@ -13,7 +13,7 @@ import { BUSINESS_TYPES, type BusinessTypeId } from "@/features/catalog/business
 import type { Profile } from "@/features/metrics/definitions";
 import { BILLING_ITEMS, INTERVAL, planPriceId } from "@/features/pricing/catalog";
 import { ENTITLEMENTS, TIER_LABEL, TIERS } from "@/features/pricing/entitlements";
-import { AUDIO_ADDON, EXTRA_ACCOUNT, LP_PLAN_PAGES, PLAN, PLAN_LABEL, lpMonthly, planDbId, type Period, type PlanId } from "@/features/pricing/pricing";
+import { EXTRA_PROJECT, INCLUDED_PROJECTS, LP_PLAN_PAGES, PLAN, PLAN_LABEL, lpMonthly, planDbId, type Period, type PlanId } from "@/features/pricing/pricing";
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
@@ -77,6 +77,7 @@ async function main() {
         max_dashboards: e.maxDashboards,
         max_landing_pages: e.maxLandingPages,
         max_members: e.maxMembers,
+        max_accounts_per_platform: e.maxAccountsPerPlatform,
       };
     });
     // landing pages: sem dashboards nem contas; LPs do pacote e templates por tier
@@ -101,7 +102,7 @@ async function main() {
         platforms = excluded.platforms, pages_plan_id = excluded.pages_plan_id, white_label = excluded.white_label,
         audio = excluded.audio, custom_dashboards = excluded.custom_dashboards, agent_chat = excluded.agent_chat,
         agent_voice = excluded.agent_voice, max_dashboards = excluded.max_dashboards, max_landing_pages = excluded.max_landing_pages,
-        max_members = excluded.max_members`;
+        max_members = excluded.max_members, max_accounts_per_platform = excluded.max_accounts_per_platform`;
     counts.plan_entitlements = entitlements.length;
 
     const prices: Record<string, unknown>[] = PRICED.flatMap((plan) =>
@@ -110,9 +111,10 @@ async function main() {
         plan_id: plan,
         interval: INTERVAL[period],
         currency: "BRL",
-        first_account_cents: PLAN[plan][period],
-        extra_account_cents: EXTRA_ACCOUNT[plan][period],
-        addon_cents: plan === "avancado" ? AUDIO_ADDON : 0,
+        // o banco calcula first + extra × (projetos − 1); o plano inclui INCLUDED_PROJECTS
+        first_account_cents: PLAN[plan][period] - (INCLUDED_PROJECTS - 1) * EXTRA_PROJECT[plan][period],
+        extra_account_cents: EXTRA_PROJECT[plan][period],
+        addon_cents: 0,
         is_active: true,
       })),
     );

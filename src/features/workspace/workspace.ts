@@ -16,7 +16,7 @@ export type Workspace = {
   userName: string;
   /** Plano vigente (sem assinatura ativa, vale o Base para os bloqueios). */
   tier: Tier;
-  /** Contas contratadas (entram no limite). */
+  /** Projetos contratados (entram no limite). */
   contractedAccounts: number;
   brand: Brand;
 };
@@ -25,7 +25,7 @@ export const DEFAULT_WORKSPACE: Workspace = {
   name: "Minha agência",
   userName: "",
   tier: "base",
-  contractedAccounts: 1,
+  contractedAccounts: 3,
   brand: { color: "#4B5320", hideVyz: false },
 };
 

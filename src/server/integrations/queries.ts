@@ -9,7 +9,9 @@ import type { PlatformId } from "@/features/accounts/platforms";
 import { countUnits } from "@/features/integrations/limits";
 import { PROVIDER_IDS, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import type { AdAccountDTO, AdAccountStatus, ConnectionDTO, ConnectionStatus, ConnectState, PlatformConnectState, SyncTrigger } from "@/features/integrations/types";
+import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import { hasRole } from "@/features/workspace/session";
+import { listProjects } from "@/server/projects/queries";
 import { getWorkspaceSession } from "@/server/auth/workspace";
 import { isMockIntegrations } from "@/server/env";
 import { appError, unwrap } from "@/server/supabase/errors";
@@ -30,7 +32,7 @@ function stringFields(v: unknown): Record<string, string> {
 
 // A última sincronização vem embutida (1 por conta); os dashboards, pelo dashboard_sources.
 const ACCOUNT_SELECT = `id, platform_id, connection_id, name, external_id, business_external_id, business_name, manager_external_id,
-  currency, timezone, status, is_enabled, enabled_at, last_synced_at, metadata,
+  currency, timezone, status, is_enabled, enabled_at, last_synced_at, metadata, project_id,
   last_sync:sync_runs!sync_runs_workspace_id_ad_account_id_fkey(status, trigger, started_at, finished_at, rows_written, error, created_at),
   sources:dashboard_sources!dashboard_sources_workspace_id_ad_account_id_fkey(dashboard:dashboards!dashboard_sources_workspace_id_dashboard_id_fkey(id, name))`;
 
@@ -82,6 +84,7 @@ const loadAdAccounts = cache(async (): Promise<AdAccountDTO[]> => {
       manual,
       fields: manual ? stringFields(meta.fields) : {},
       dashboards: r.sources.flatMap((s) => (s.dashboard ? [{ id: s.dashboard.id, name: s.dashboard.name }] : [])),
+      projectId: r.project_id,
     };
   });
 });
@@ -134,7 +137,8 @@ export async function listAdAccounts(filter: { platformId?: string; manual?: boo
 /** Estado da conexão por plataforma (Meta Ads, Google Ads) e o limite do plano. */
 export async function getConnectState(): Promise<ConnectState> {
   const session = await currentSession();
-  const [connections, accounts] = await Promise.all([loadConnections(), loadAdAccounts()]);
+  const [connections, accounts, projects] = await Promise.all([loadConnections(), loadAdAccounts(), listProjects()]);
+  const ent = session.access.entitlements ?? ENTITLEMENTS[session.access.tier ?? "base"];
 
   const platform = (provider: ProviderId): PlatformConnectState => {
     const platformId = PROVIDERS[provider].platformId;
@@ -155,7 +159,9 @@ export async function getConnectState(): Promise<ConnectState> {
     limit: {
       accountsQuantity: session.access.accountsQuantity,
       billableAccounts: countUnits(accounts.filter((a) => a.isEnabled)),
+      maxAccountsPerPlatform: ent.maxAccountsPerPlatform,
     },
+    projects: projects.map((p) => ({ id: p.id, name: p.name })),
     canManage: hasRole(session.role, "admin"),
     canSync: hasRole(session.role, "member"),
     mock: isMockIntegrations(),

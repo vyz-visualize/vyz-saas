@@ -30,21 +30,21 @@ import relatorioExecutivo from "./catalog/relatorio-executivo";
 import ecommerceCompleto from "./catalog/ecommerce-completo";
 
 export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
-  // ---- Básico
+  // ---- Básico: só os 2 templates com dados reais (live.ts)
+  // ---- Padrão (+3)
   ecommerceVisaoGeral,
   leadsVisaoGeral,
+  metaEssencial,
+  // ---- Avançado (todos)
   imobiliarioLeads,
   localWhatsapp,
-  metaEssencial,
   varejoLocal,
-  // ---- Padrão
   googlePesquisa,
   criativosMeta,
   funilGa4,
   infoproduto,
   agenciaCarteira,
   infoprodutoLancamento,
-  // ---- Avançado
   tiktokAds,
   marketplace,
   crmLeadVenda,

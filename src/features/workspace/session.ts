@@ -37,6 +37,8 @@ export type WorkspaceUsage = {
   /** Contas que contam no limite (cada BM do Meta conta uma vez). */
   billableAccounts: number;
   activeConnections: number;
+  /** Projetos ativos (clientes ou marcas): é o que o plano limita. */
+  projects: number;
 };
 
 export type WorkspaceSession = {

@@ -26,7 +26,7 @@ export type AgentContext = {
   dashboards: ClientData[];
   /** Este workspace usa o módulo de landing pages? (false = em breve, lista de espera) */
   landingPages: boolean;
-  counts: { dashboards: number; landingPublished: number; accounts: number; contractedAccounts: number };
+  counts: { dashboards: number; landingPublished: number; accounts: number; projects: number; contractedProjects: number };
 };
 
 export type AgentAction =

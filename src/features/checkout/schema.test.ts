@@ -89,11 +89,13 @@ describe("pagamento", () => {
 });
 
 describe("troca de plano", () => {
-  it("plano self-service, período e 1 a 30 contas", () => {
+  it("plano self-service, período e 3 a 200 projetos", () => {
     expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 3 }).success).toBe(true);
+    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 2 }).success).toBe(false);
+    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 200 }).success).toBe(true);
     expect(planChangeSchema.safeParse({ tier: "personalizado", period: "anual", accounts: 3 }).success).toBe(false);
     expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 0 }).success).toBe(false);
-    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 31 }).success).toBe(false);
+    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 201 }).success).toBe(false);
     expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 2.5 }).success).toBe(false);
   });
 });

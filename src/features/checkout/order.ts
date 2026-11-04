@@ -28,7 +28,7 @@ export type Order = {
   planDbId: string | null;
   period: Period;
   interval: "month" | "year";
-  /** Contas contratadas (0 sem plano). */
+  /** Projetos contratados (0 sem plano). Coluna accounts_quantity no banco. */
   accountsQuantity: number;
   items: OrderItem[];
   /** Primeira cobrança: o período (mês ou ano) + os itens únicos. */
@@ -40,7 +40,7 @@ export type Order = {
 };
 
 export const BLOCK_MESSAGE: Record<OrderBlock, string> = {
-  over_limit: "Acima de 30 contas, o plano é montado com um especialista.",
+  over_limit: "Acima de 200 projetos, o plano é montado com um especialista.",
   recurring_without_plan: "Itens mensais (hospedagem das LPs ou dashboard sob medida mensal) precisam de um plano.",
   empty: "Escolha um plano ou um extra para assinar.",
 };
@@ -54,17 +54,17 @@ export function normalizeState(patch: Partial<PlanState> | null | undefined): Pl
   // landing pages: só o pacote do plano, mensal, sem contas nem extras
   if (s.produto === "lp") {
     if (s.plano === "sem") s.plano = DEFAULT_STATE.plano;
-    return { ...DEFAULT_STATE, produto: "lp", plano: s.plano, periodo: "mensal", meta: 0, google: 0, nicho: s.nicho };
+    return { ...DEFAULT_STATE, produto: "lp", plano: s.plano, periodo: "mensal", plataformas: 0, nicho: s.nicho };
   }
-  if (s.plano === "sem") Object.assign(s, { meta: 0, google: 0, ga4: 0, outras: 0, dash: 0 });
+  if (s.plano === "sem") Object.assign(s, { plataformas: 0, dash: 0 });
+  // só o Básico compra plataforma à parte: Padrão e Avançado já têm todas
+  if (s.plano !== "base") s.plataformas = 0;
   if (s.lp === 0) s.lpcare = false;
   return s;
 }
 
-const accountsLabel = (n: number) => `${n} ${n === 1 ? "conta" : "contas"}`;
-
-export function planItemLabel(plan: PlanId, accounts: number): string {
-  return `Plano ${PLAN_LABEL[plan]} · ${accountsLabel(accounts)}${plan === "avancado" ? " · com análise por áudio" : ""}`;
+export function planItemLabel(plan: PlanId, projects: number): string {
+  return `Plano ${PLAN_LABEL[plan]} · ${projects} ${projects === 1 ? "projeto" : "projetos"}`;
 }
 
 export function buildOrder(state: PlanState): Order {
@@ -77,9 +77,9 @@ export function buildOrder(state: PlanState): Order {
     items.push({
       kind: "recurring",
       planPriceId: planPriceId(planId, state.periodo),
-      quantity: q.accountsBilled,
+      quantity: q.projects,
       amountCents: q.planMonthly,
-      label: planItemLabel(planId, q.accountsBilled),
+      label: planItemLabel(planId, q.projects),
     });
   }
 
@@ -89,6 +89,7 @@ export function buildOrder(state: PlanState): Order {
     items.push({ kind: item.kind, billingItemId: id, quantity, amountCents: quantity * item.unitCents, label: item.name });
   };
   // mensais primeiro (entram na assinatura), depois os únicos (viram pedidos de serviço)
+  if (planId) extra("platform_extra", state.plataformas);
   if (state.lpcare) extra("lp_care", state.lp);
   if (state.sobm === "recorrente") extra("dash_custom_monthly", state.sob);
   extra("lp_team", state.lp);
@@ -111,7 +112,7 @@ export function buildOrder(state: PlanState): Order {
     planDbId: planId,
     period: state.periodo,
     interval: INTERVAL[state.periodo],
-    accountsQuantity: planId ? q.accountsBilled : 0,
+    accountsQuantity: planId ? q.projects : 0,
     items,
     amountDueNowCents: recurringCents + q.oneTime,
     recurringCents,

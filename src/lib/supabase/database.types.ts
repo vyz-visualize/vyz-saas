@@ -67,6 +67,7 @@ export type Database = {
           metadata: Json
           created_at: string
           updated_at: string
+          project_id: string | null
         }
         Insert: {
           id?: string
@@ -87,6 +88,7 @@ export type Database = {
           metadata?: Json
           created_at?: string
           updated_at?: string
+          project_id?: string | null
         }
         Update: {
           id?: string
@@ -107,6 +109,7 @@ export type Database = {
           metadata?: Json
           created_at?: string
           updated_at?: string
+          project_id?: string | null
         }
         Relationships: [
           {
@@ -1161,6 +1164,7 @@ export type Database = {
           created_at: string
           updated_at: string
           metric_prefs: Json
+          project_id: string | null
         }
         Insert: {
           id?: string
@@ -1182,6 +1186,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           metric_prefs?: Json
+          project_id?: string | null
         }
         Update: {
           id?: string
@@ -1203,6 +1208,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           metric_prefs?: Json
+          project_id?: string | null
         }
         Relationships: [
           {
@@ -2175,6 +2181,7 @@ export type Database = {
           max_landing_pages: number
           updated_at: string
           max_members: number
+          max_accounts_per_platform: number
         }
         Insert: {
           plan_id: string
@@ -2191,6 +2198,7 @@ export type Database = {
           max_landing_pages: number
           updated_at?: string
           max_members?: number
+          max_accounts_per_platform?: number
         }
         Update: {
           plan_id?: string
@@ -2207,6 +2215,7 @@ export type Database = {
           max_landing_pages?: number
           updated_at?: string
           max_members?: number
+          max_accounts_per_platform?: number
         }
         Relationships: [
           {
@@ -2402,6 +2411,44 @@ export type Database = {
           },
           {
             foreignKeyName: "product_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          id: string
+          workspace_id: string
+          name: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+          archived_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          name: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          archived_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          name?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          archived_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -3318,6 +3365,7 @@ export type Database = {
           enabled_ad_accounts: number | null
           billable_accounts: number | null
           active_connections: number | null
+          projects: number | null
         }
         Relationships: []
       }

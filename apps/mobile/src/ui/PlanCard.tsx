@@ -1,8 +1,8 @@
 // Plano do workspace no app: assinar ou trocar pela loja (mesma regra do site:
-// plano + período + contas, 1 a 30). Plano contratado no site muda no site
+// plano + período + projetos, 3 a 30). Plano contratado no site muda no site
 // (sem link: regra das lojas). O preço vem da loja.
 
-import { STORE_MAX_ACCOUNTS, STORE_PLAN_PERIODS, STORE_PLAN_TIERS, type MeResponse, type StorePlan, type StorePlanPeriod, type StorePlanTier } from "@vyz/shared";
+import { STORE_MAX_ACCOUNTS, STORE_MIN_ACCOUNTS, STORE_PLAN_PERIODS, STORE_PLAN_TIERS, type MeResponse, type StorePlan, type StorePlanPeriod, type StorePlanTier } from "@vyz/shared";
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { PurchasesStoreProduct } from "react-native-purchases";
@@ -41,7 +41,7 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
     workspace.plan && workspace.period && (STORE_PLAN_TIERS as readonly string[]).includes(workspace.plan)
       ? { tier: workspace.plan as StorePlanTier, period: workspace.period, accounts: workspace.accounts }
       : null;
-  const [plan, setPlan] = useState<StorePlan>(current ?? { tier: "pro", period: "anual", accounts: 1 });
+  const [plan, setPlan] = useState<StorePlan>(current ?? { tier: "pro", period: "anual", accounts: STORE_MIN_ACCOUNTS });
   const [product, setProduct] = useState<PurchasesStoreProduct | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
     <>
       <Text style={{ color: t.fg2, fontSize: 13 }}>Plano</Text>
       <Text style={{ color: t.fg, fontSize: 20, fontWeight: "700" }}>
-        {current ? `${TIER_LABEL[current.tier]} · ${PERIOD_LABEL[current.period]} · ${current.accounts} ${current.accounts === 1 ? "conta" : "contas"}` : "Sem plano"}
+        {current ? `${TIER_LABEL[current.tier]} · ${PERIOD_LABEL[current.period]} · ${current.accounts} ${current.accounts === 1 ? "projeto" : "projetos"}` : "Sem plano"}
       </Text>
       {current && workspace.cancelAtPeriodEnd && workspace.periodEnd ? (
         <Text style={{ color: t.fg2 }}>Termina em {new Date(workspace.periodEnd).toLocaleDateString("pt-BR")}</Text>
@@ -85,7 +85,7 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
   }
 
   const same = !!current && current.tier === plan.tier && current.period === plan.period && current.accounts === plan.accounts && !workspace.cancelAtPeriodEnd;
-  const setAccounts = (n: number) => setPlan((p) => ({ ...p, accounts: Math.min(STORE_MAX_ACCOUNTS, Math.max(1, n)) }));
+  const setAccounts = (n: number) => setPlan((p) => ({ ...p, accounts: Math.min(STORE_MAX_ACCOUNTS, Math.max(STORE_MIN_ACCOUNTS, n)) }));
 
   const purchase = async () => {
     if (!product) return;
@@ -111,7 +111,7 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
       <Choice options={STORE_PLAN_TIERS} value={plan.tier} label={(v) => TIER_LABEL[v]} onChange={(tier) => setPlan((p) => ({ ...p, tier }))} />
       <Choice options={STORE_PLAN_PERIODS} value={plan.period} label={(v) => PERIOD_LABEL[v]} onChange={(period) => setPlan((p) => ({ ...p, period }))} />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <Text style={{ color: t.fg, flex: 1 }}>Contas de anúncio</Text>
+        <Text style={{ color: t.fg, flex: 1 }}>Projetos (clientes)</Text>
         <Button tone="secondary" label="−" onPress={() => setAccounts(plan.accounts - 1)} />
         <Text style={{ color: t.fg, fontSize: 18, fontWeight: "700", minWidth: 28, textAlign: "center" }}>{plan.accounts}</Text>
         <Button tone="secondary" label="+" onPress={() => setAccounts(plan.accounts + 1)} />

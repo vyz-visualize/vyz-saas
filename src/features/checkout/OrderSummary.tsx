@@ -6,8 +6,7 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { PendingChip } from "@/components/ui/kit";
 import { brl } from "@/lib/format";
-import { describeAccounts } from "@/features/pricing/messages";
-import { LP_PLAN_PAGES, PERIOD_LABEL, PLAN_LABEL, PRO_TRACKING_VALUE, type PlanId, type PlanState, type Quote } from "@/features/pricing/pricing";
+import { EXTRA_PLATFORM_PRICE, INCLUDED_PROJECTS, LP_PLAN_PAGES, MAX_EXTRA, MAX_PROJECTS_IN_PLAN, PERIOD_LABEL, PLAN_LABEL, PRO_TRACKING_VALUE, type PlanId, type PlanState, type Quote } from "@/features/pricing/pricing";
 
 type OrderSummaryProps = {
   state: PlanState;
@@ -18,7 +17,31 @@ type OrderSummaryProps = {
   editHref?: string;
   simulated?: boolean;
   className?: string;
+  /** Link do mesmo pedido com outra seleção: liga os botões de projetos e plataforma extra. */
+  adjustHref?: (patch: Partial<PlanState>) => string;
 };
+
+function Stepper({ label, hint, value, min, max, href }: { label: string; hint: string; value: number; min: number; max: number; href: (n: number) => string }) {
+  const step = "inline-flex size-8 items-center justify-center rounded-full border border-line text-[16px] font-semibold text-fg transition-colors hover:border-accent";
+  const off = "pointer-events-none opacity-35";
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <div className="min-w-0">
+        <p className="text-[14px] font-semibold text-fg">{label}</p>
+        <p className="text-[12px] text-fg-2">{hint}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Link href={href(value - 1)} scroll={false} replace aria-label={`Menos: ${label}`} aria-disabled={value <= min} className={`${step} ${value <= min ? off : ""}`}>
+          −
+        </Link>
+        <span className="w-7 text-center font-semibold tnum">{value}</span>
+        <Link href={href(value + 1)} scroll={false} replace aria-label={`Mais: ${label}`} aria-disabled={value >= max} className={`${step} ${value >= max ? off : ""}`}>
+          +
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -29,14 +52,13 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function OrderSummary({ state, quote: q, amountDueNowCents, recurringCents, editHref, simulated = false, className = "" }: OrderSummaryProps) {
+export function OrderSummary({ state, quote: q, amountDueNowCents, recurringCents, editHref, simulated = false, className = "", adjustHref }: OrderSummaryProps) {
   const noPlan = state.plano === "sem";
   const annual = state.periodo === "anual";
   const lp = state.produto === "lp";
   const headline = noPlan
     ? "Sem plano · só extras"
     : `${lp ? "Landing pages · " : ""}Plano ${PLAN_LABEL[state.plano]} · ${PERIOD_LABEL[state.periodo]}`;
-  const accounts = noPlan || lp ? "" : describeAccounts(state);
   const pages = noPlan || !lp ? 0 : LP_PLAN_PAGES[state.plano as PlanId];
 
   return (
@@ -51,9 +73,31 @@ export function OrderSummary({ state, quote: q, amountDueNowCents, recurringCent
         <p className="mt-2 text-[17px] font-semibold">{headline}</p>
         {!noPlan && (
           <p className="mt-0.5 text-[13px] text-fg-2">
-            {lp ? `${pages} ${pages === 1 ? "landing page feita" : "landing pages feitas"} pelo time` : q.accountsBilled === 1 ? "1 conta" : `${q.accountsBilled} contas`}
-            {accounts && ` · ${accounts}`}
+            {lp ? `${pages} ${pages === 1 ? "landing page feita" : "landing pages feitas"} pelo time` : `${q.projects} projetos · cada projeto é um cliente ou marca`}
           </p>
+        )}
+
+        {adjustHref && !noPlan && !lp && (
+          <div className="dotted mt-4 pt-1">
+            <Stepper
+              label="Projetos"
+              hint={`Cada cliente ou marca é um projeto. ${INCLUDED_PROJECTS} inclusos.`}
+              value={q.projects}
+              min={INCLUDED_PROJECTS}
+              max={MAX_PROJECTS_IN_PLAN}
+              href={(n) => adjustHref({ projetos: n })}
+            />
+            {state.plano === "base" && (
+              <Stepper
+                label="Plataforma extra"
+                hint={`TikTok, LinkedIn e outras fora do Básico · ${brl(EXTRA_PLATFORM_PRICE)}/mês cada`}
+                value={state.plataformas}
+                min={0}
+                max={MAX_EXTRA}
+                href={(n) => adjustHref({ plataformas: n })}
+              />
+            )}
+          </div>
         )}
 
         <ul className="dotted mt-4 pt-2" aria-label="Linhas do pedido">
@@ -78,13 +122,6 @@ export function OrderSummary({ state, quote: q, amountDueNowCents, recurringCent
             </li>
           ))}
         </ul>
-
-        {q.accountsOutside > 0 && (
-          <p className="mt-2 rounded-control border border-dashed border-line px-3 py-2 text-[12.5px] text-fg-2">
-            {q.accountsOutside === 1 ? "1 conta de outra plataforma fica" : `${q.accountsOutside} contas de outras plataformas ficam`} fora do Base: TikTok,
-            LinkedIn e CRMs entram no Pro.
-          </p>
-        )}
 
         <dl className="dotted mt-3 pt-2">
           {q.monthly > 0 && <Row label="Todo mês" value={brl(q.monthly)} />}

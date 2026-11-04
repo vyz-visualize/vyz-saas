@@ -4,7 +4,7 @@ export default {
   id: "agencia-carteira",
   name: "Agência · Carteira de clientes",
   category: "Agência",
-  tier: "pro",
+  tier: "avancado",
   profile: "agencia",
   sources: ["meta", "google"],
   pages: ["carteira", "visao-geral", "metas"],

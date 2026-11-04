@@ -116,7 +116,8 @@ export async function loadAgentContext(now = new Date()): Promise<AgentContext> 
       dashboards: session.usage.dashboards,
       landingPublished: session.usage.publishedLandingPages,
       accounts: session.usage.billableAccounts,
-      contractedAccounts: session.access.accountsQuantity,
+      projects: session.usage.projects,
+      contractedProjects: session.access.accountsQuantity,
     },
   };
 }

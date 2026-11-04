@@ -4,15 +4,15 @@
 //
 //   npx tsx scripts/store/plan-products.ts > planos-lojas.csv
 
-import { STORE_MAX_ACCOUNTS, STORE_PLAN_PERIODS, STORE_PLAN_TIERS, storePlanProductId } from "@vyz/shared";
+import { STORE_MAX_ACCOUNTS, STORE_MIN_ACCOUNTS, STORE_PLAN_PERIODS, STORE_PLAN_TIERS, storePlanProductId } from "@vyz/shared";
 import { PLAN_LABEL, planMonthly } from "@/features/pricing/pricing";
 
-const rows = ["product_id,nome,periodo,contas,preco_brl"];
+const rows = ["product_id,nome,periodo,projetos,preco_brl"];
 for (const tier of STORE_PLAN_TIERS) {
   for (const period of STORE_PLAN_PERIODS) {
-    for (let accounts = 1; accounts <= STORE_MAX_ACCOUNTS; accounts++) {
+    for (let accounts = STORE_MIN_ACCOUNTS; accounts <= STORE_MAX_ACCOUNTS; accounts++) {
       const cents = planMonthly(tier, period, accounts) * (period === "anual" ? 12 : 1);
-      const name = `VYZ ${PLAN_LABEL[tier]} · ${accounts} ${accounts === 1 ? "conta" : "contas"}`;
+      const name = `VYZ ${PLAN_LABEL[tier]} · ${accounts} projetos`;
       rows.push([storePlanProductId({ tier, period, accounts }), `"${name}"`, period, accounts, (cents / 100).toFixed(2)].join(","));
     }
   }

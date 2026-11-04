@@ -4,7 +4,7 @@ export default {
   id: "imobiliario-leads",
   name: "Imobiliário · Leads",
   category: "Imobiliário",
-  tier: "base",
+  tier: "avancado",
   profile: "imob",
   sources: ["meta", "google"],
   pages: ["visao-geral", "campanhas", "por-plataforma"],

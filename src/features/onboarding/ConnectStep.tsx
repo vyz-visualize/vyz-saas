@@ -10,7 +10,7 @@ import { useCallback, useState } from "react";
 import { PendingChip } from "@/components/ui/kit";
 import { AccountPicker, type PickerSelection } from "@/features/integrations/AccountPicker";
 import { ConnectButton } from "@/features/integrations/ConnectButton";
-import { otherPlatformUnits, planUsageLabel } from "@/features/integrations/limits";
+import { planUsageLabel } from "@/features/integrations/limits";
 import { MOCK_NOTICE } from "@/features/integrations/mock-data";
 import { PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import type { ConnectResult } from "@/features/integrations/results";
@@ -95,8 +95,8 @@ function PlatformPanel({ provider, state, now, timeZone, onSelection }: PanelPro
               <AccountPicker
                 provider={provider}
                 accounts={p.accounts}
-                accountsQuantity={state.limit.accountsQuantity}
-                otherUnits={otherPlatformUnits(state, provider)}
+                projects={state.projects}
+                maxPerProject={state.limit.maxAccountsPerPlatform}
                 canManage={state.canManage}
                 canSync={state.canSync}
                 now={now}
@@ -148,7 +148,7 @@ export function ConnectStep({ platforms, state, result, now, timeZone }: Connect
         text={
           <>
             Um login por plataforma, sem copiar ID. Depois, ative as contas que entram no VYZ: os últimos 90 dias chegam na hora.{" "}
-            <span className="tnum text-fg">{planUsageLabel(state.limit.billableAccounts, state.limit.accountsQuantity)}</span> em uso.
+            <span className="tnum text-fg">{planUsageLabel(state.projects.length, state.limit.accountsQuantity)}</span> em uso.
           </>
         }
       />

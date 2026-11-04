@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Switch } from "@/components/ui/controls";
 import { btn } from "@/components/ui/styles";
 import { resyncAccount, setEnabledAccounts, type EnabledAccountsResult } from "@/server/integrations/actions";
-import { countUnits, fitsPlan, planUsageLabel, type BillableRef } from "./limits";
+import { fitsProject, type BillableRef } from "./limits";
 import { PROVIDERS, type ProviderId } from "./providers";
 import { accountStatusLabel, syncSummary, type SyncSummary } from "./sync-label";
 import type { AdAccountDTO } from "./types";
@@ -22,10 +22,10 @@ type AccountPickerProps = {
   provider: ProviderId;
   /** Contas vistas pelas conexões desta plataforma (getConnectState). */
   accounts: AdAccountDTO[];
-  /** Contas contratadas. */
-  accountsQuantity: number;
-  /** Contas contratadas ocupadas pelas outras plataformas. */
-  otherUnits: number;
+  /** Projetos ativos: cada conta ligada entra em um. */
+  projects: { id: string; name: string }[];
+  /** Contas da mesma plataforma em cada projeto (plano). */
+  maxPerProject: number;
   canManage: boolean;
   canSync?: boolean;
   /** Horário da renderização no servidor (texto igual no servidor e no navegador). */
@@ -86,7 +86,7 @@ export function SyncBadge({ summary }: { summary: SyncSummary }) {
   );
 }
 
-export function AccountPicker({ provider, accounts, accountsQuantity, otherUnits, canManage, canSync = canManage, now, timeZone, onSaved, saveLabel = "Salvar escolha", onRemove, onSelectionChange }: AccountPickerProps) {
+export function AccountPicker({ provider, accounts, projects, maxPerProject, canManage, canSync = canManage, now, timeZone, onSaved, saveLabel = "Salvar escolha", onRemove, onSelectionChange }: AccountPickerProps) {
   // Só o que mudou em relação ao banco; depois de salvar, volta a valer o banco.
   const [draft, setDraft] = useState<Record<string, boolean>>({});
   const [saving, startSave] = useTransition();
@@ -94,13 +94,27 @@ export function AccountPicker({ provider, accounts, accountsQuantity, otherUnits
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
+  // projeto de cada conta: o escolhido agora, o salvo, ou o primeiro (o banco cria um se não houver)
+  const [projectDraft, setProjectDraft] = useState<Record<string, string>>({});
+  const projectOf = (a: AdAccountDTO) => projectDraft[a.id] ?? a.projectId ?? projects[0]?.id ?? "";
   const isOn = (a: AdAccountDTO) => draft[a.id] ?? a.isEnabled;
   const selected = accounts.filter(isOn);
-  const dirty = accounts.some((a) => isOn(a) !== a.isEnabled);
-  const used = otherUnits + countUnits(selected.map(ref));
+  const dirty = accounts.some((a) => isOn(a) !== a.isEnabled) || Object.keys(projectDraft).length > 0;
   const groups = useMemo(() => groupsOf(provider, accounts), [provider, accounts]);
   const busy = saving || syncing;
-  const blockedByPlan = accounts.some((a) => !isOn(a) && a.connectionId && a.status === "active" && !fitsPlan(ref(a), selected.map(ref), otherUnits, accountsQuantity));
+  const inProject = (project: string, except?: AdAccountDTO) => selected.filter((s) => s !== except && projectOf(s) === project).map(ref);
+  const fitsIn = (a: AdAccountDTO, project: string) => fitsProject(ref(a), inProject(project, a), maxPerProject);
+  const blockedByPlan = accounts.some((a) => !isOn(a) && a.connectionId && a.status === "active" && !fitsIn(a, projectOf(a)));
+  const overLimit = selected.some((a) => !fitsIn(a, projectOf(a)));
+
+  function setProject(a: AdAccountDTO, project: string) {
+    setMessage(null);
+    setProjectDraft((d) => {
+      const next = { ...d, [a.id]: project };
+      if (project === (a.projectId ?? projects[0]?.id ?? "")) delete next[a.id];
+      return next;
+    });
+  }
 
   function toggle(a: AdAccountDTO, on: boolean) {
     setMessage(null);
@@ -117,12 +131,14 @@ export function AccountPicker({ provider, accounts, accountsQuantity, otherUnits
   }
 
   async function persist(): Promise<boolean> {
-    const res = await setEnabledAccounts(PROVIDERS[provider].platformId, selected.map((a) => a.id));
+    const assign = Object.fromEntries(selected.filter((a) => projectOf(a)).map((a) => [a.id, projectOf(a)]));
+    const res = await setEnabledAccounts(PROVIDERS[provider].platformId, selected.map((a) => a.id), assign);
     if (!res.ok) {
       setMessage({ tone: "error", text: res.error.message });
       return false;
     }
     setDraft({});
+    setProjectDraft({});
     const failed = res.data.synced.filter((s) => !s.ok);
     const n = res.data.enabledCount;
     const active = `${n} ${n === 1 ? "conta ativa" : "contas ativas"}`;
@@ -165,8 +181,8 @@ export function AccountPicker({ provider, accounts, accountsQuantity, otherUnits
               const on = isOn(a);
               const connected = !!a.connectionId;
               const enableable = connected && a.status === "active";
-              const fits = on || fitsPlan(ref(a), selected.map(ref), otherUnits, accountsQuantity);
-              const why = !connected ? "Sem conexão: reconecte o login para ativar." : a.status === "disabled" ? "O login conectado não dá mais acesso a esta conta. Reconecte para atualizar." : a.status !== "active" ? `${accountStatusLabel(a.status)}.` : !fits ? "Sem espaço no plano." : null;
+              const fits = on || fitsIn(a, projectOf(a));
+              const why = !connected ? "Sem conexão: reconecte o login para ativar." : a.status === "disabled" ? "O login conectado não dá mais acesso a esta conta. Reconecte para atualizar." : a.status !== "active" ? `${accountStatusLabel(a.status)}.` : !fits ? "O projeto já tem o máximo de contas desta plataforma no seu plano." : null;
               const summary = a.isEnabled ? syncSummary(a, now, timeZone) : null;
               const rowSyncing = syncing && syncingId === a.id;
               return (
@@ -184,6 +200,23 @@ export function AccountPicker({ provider, accounts, accountsQuantity, otherUnits
                       disabled={!canManage || busy || (!on && (!enableable || !fits))}
                       onChange={(v) => toggle(a, v)}
                     />
+                    {on && projects.length > 0 && (
+                      <label className="mt-2 flex flex-wrap items-center gap-2 pl-[52px] text-[12.5px] text-fg-2">
+                        Projeto
+                        <select
+                          value={projectOf(a)}
+                          onChange={(e) => setProject(a, e.target.value)}
+                          disabled={!canManage || busy}
+                          className="h-8 max-w-[220px] rounded-control border border-line bg-bg px-2 text-[13px] text-fg"
+                        >
+                          {projects.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
                     {a.dashboards.length > 0 && <p className="mt-1.5 pl-[52px] text-[12.5px] text-fg-2">Em: {a.dashboards.map((d) => d.name).join(", ")}</p>}
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2 pl-[52px] sm:pl-0">
@@ -214,11 +247,17 @@ export function AccountPicker({ provider, accounts, accountsQuantity, otherUnits
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-[13px]">
-          <p className={`font-semibold tnum ${used > accountsQuantity ? "text-error-fg" : "text-fg"}`}>{planUsageLabel(used, accountsQuantity)}</p>
+          <p className={`font-semibold ${overLimit ? "text-error-fg" : "text-fg"}`}>
+            Até {maxPerProject} {maxPerProject === 1 ? "conta" : "contas"} de {PROVIDERS[provider].name} por projeto
+          </p>
           {provider === "meta" && <p className="text-fg-2">Contas da mesma BM contam como uma.</p>}
           {blockedByPlan && canManage && (
             <p className="text-fg-2">
-              Para ativar mais, aumente as contas contratadas em{" "}
+              Para ativar mais, coloque a conta em outro projeto em{" "}
+              <Link href="/painel/projetos" className="font-semibold text-accent underline-offset-4 hover:underline">
+                Projetos
+              </Link>{" "}
+              ou mude o plano em{" "}
               <Link href="/painel/plano" className="font-semibold text-accent underline-offset-4 hover:underline">
                 Plano
               </Link>
@@ -230,7 +269,14 @@ export function AccountPicker({ provider, accounts, accountsQuantity, otherUnits
         {canManage && (dirty || onSaved) && (
           <div className="flex flex-wrap gap-2">
             {dirty && !saving && (
-              <button type="button" onClick={() => setDraft({})} className={`${btn.ghost} h-9`}>
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft({});
+                  setProjectDraft({});
+                }}
+                className={`${btn.ghost} h-9`}
+              >
                 Desfazer
               </button>
             )}

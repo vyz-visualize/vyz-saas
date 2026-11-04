@@ -3,13 +3,9 @@ import { DASH_CUSTOM, LP_CARE_MONTHLY, NICHO_LABEL, PERIOD_LABEL, PLAN_LABEL, ty
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-export function describeAccounts(s: PlanState): string {
-  const parts: string[] = [];
-  if (s.meta) parts.push(plural(s.meta, "BM do Meta", "BMs do Meta"));
-  if (s.google) parts.push(plural(s.google, "conta do Google Ads", "contas do Google Ads"));
-  if (s.ga4) parts.push(plural(s.ga4, "propriedade do GA4", "propriedades do GA4"));
-  if (s.outras && s.plano !== "base")
-    parts.push(plural(s.outras, "conta de outra plataforma", "contas de outras plataformas"));
+export function describeProjects(s: PlanState): string {
+  const parts = [plural(s.projetos, "projeto", "projetos")];
+  if (s.plataformas && s.plano === "base") parts.push(plural(s.plataformas, "plataforma extra", "plataformas extras"));
   return joinPt(parts);
 }
 
@@ -33,7 +29,7 @@ export function describeExtras(s: PlanState): string[] {
 export function buildPlanMessage(s: PlanState, q: Quote, url: string): string {
   if (q.overLimit) {
     return [
-      `Olá, VYZ! Tenho ${q.accountsAccepted} contas para conectar e quero montar um plano com um especialista.`,
+      `Olá, VYZ! Tenho ${s.projetos} projetos (clientes) e quero montar um plano com um especialista.`,
       `Simulação: ${url}`,
     ].join("\n");
   }
@@ -58,21 +54,11 @@ export function buildPlanMessage(s: PlanState, q: Quote, url: string): string {
     "Olá, VYZ! Montei meu plano no site:",
     `• Plano ${PLAN_LABEL[s.plano]}, ${PERIOD_LABEL[s.periodo]}`,
   ];
-  if (q.accountsAccepted === 0) {
-    lines.push("• Ainda não sei quantas contas vou conectar");
-  } else {
-    lines.push(`• ${plural(q.accountsAccepted, "conta", "contas")} (${describeAccounts(s)})`);
-  }
-  if (q.accountsOutside > 0) {
-    lines.push(
-      `• + ${plural(q.accountsOutside, "conta", "contas")} de outras plataformas (${q.accountsOutside === 1 ? "fica" : "ficam"} fora do Base)`,
-    );
-  }
+  lines.push(`• ${describeProjects(s)}`);
   if (s.nicho) lines.push(`• Tipo de negócio: ${NICHO_LABEL[s.nicho]}`);
   if (extras.length) lines.push(`• Extras: ${extras.join(", ")}`);
-  const from = q.accountsAccepted === 0 ? "a partir de " : "";
   const year = s.periodo === "anual" ? ` (${brl(q.yearly)} no ano)` : "";
-  lines.push(`• Todo mês: ${from}${brl(q.monthly)}${year}`);
+  lines.push(`• Todo mês: ${brl(q.monthly)}${year}`);
   if (q.oneTime > 0) lines.push(`• Uma vez: ${brl(q.oneTime)}`);
   lines.push(`Simulação: ${url}`, "Podemos seguir?");
   return lines.join("\n");
@@ -86,7 +72,7 @@ export function buildSummary(s: PlanState, q: Quote, url: string, date: string):
       : `VYZ · Plano ${PLAN_LABEL[s.plano]}, ${PERIOD_LABEL[s.periodo]}`;
   const lines = [head];
   if (q.overLimit) {
-    lines.push(`${q.accountsAccepted} contas · Sob consulta`);
+    lines.push(`${s.projetos} projetos · Sob consulta`);
   } else {
     for (const l of q.lines) {
       const value = l.kind === "included" ? "R$ 0,00 (incluso)" : brl(l.amount);

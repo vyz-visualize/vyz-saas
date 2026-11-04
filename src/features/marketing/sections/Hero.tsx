@@ -50,8 +50,8 @@ export function Hero() {
           <Reveal trigger="intro" delay={640}>
             <HeroActions />
             <p className="mt-5 text-sm text-fg-2">
-              A partir de <strong className="font-semibold text-fg tnum">{brl(startingPrice("base", "anual"))}/mês</strong> no anual · 1
-              conta conectada
+              A partir de <strong className="font-semibold text-fg tnum">{brl(startingPrice("base", "anual"))}/mês</strong> no anual · 3
+              projetos inclusos
             </p>
           </Reveal>
         </div>

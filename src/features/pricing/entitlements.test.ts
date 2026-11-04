@@ -17,8 +17,8 @@ describe("limites por plano", () => {
   });
 
   it("rótulo dos cartões da LP", () => {
-    expect(templateCountsLabel("base")).toBe("8 templates de dashboard · 4 de landing page");
-    expect(templateCountsLabel("pro")).toBe("14 templates de dashboard · 8 de landing page");
+    expect(templateCountsLabel("base")).toBe("2 templates de dashboard · 4 de landing page");
+    expect(templateCountsLabel("pro")).toBe("5 templates de dashboard · 8 de landing page");
     expect(templateCountsLabel("avancado")).toBe("25 templates de dashboard · 13 de landing page");
   });
 

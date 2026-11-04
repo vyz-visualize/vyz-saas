@@ -74,7 +74,7 @@ export function quotePlanChange(input: {
 export const samePlan = (a: PlanSelection, b: PlanSelection) => a.tier === b.tier && a.period === b.period && a.accounts === b.accounts;
 
 /** O que o workspace usa hoje (workspace_usage + plataformas das contas ativas). */
-export type PlanUsage = { billableAccounts: number; dashboards: number; publishedLandingPages: number; enabledPlatforms: string[]; /** membros + convites pendentes */ members?: number };
+export type PlanUsage = { projects: number; dashboards: number; publishedLandingPages: number; enabledPlatforms: string[]; /** membros + convites pendentes */ members?: number };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -82,10 +82,10 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 export function planChangeBlocker(next: PlanSelection, usage: PlanUsage): { code: string; message: string } | null {
   const limits = ENTITLEMENTS[next.tier];
   const tier = TIER_LABEL[next.tier];
-  if (usage.billableAccounts > next.accounts) {
+  if (usage.projects > next.accounts) {
     return {
-      code: "limit:accounts_in_use",
-      message: `Você tem ${plural(usage.billableAccounts, "conta ativa", "contas ativas")}. Desative contas em Contas antes de contratar ${next.accounts}.`,
+      code: "limit:projects_in_use",
+      message: `Você tem ${plural(usage.projects, "projeto ativo", "projetos ativos")}. Arquive projetos em Projetos antes de contratar ${next.accounts}.`,
     };
   }
   if (usage.dashboards > limits.maxDashboards) {

@@ -4,7 +4,7 @@ export default {
   id: "local-whatsapp",
   name: "Negócio local · WhatsApp e ligações",
   category: "Negócio local",
-  tier: "base",
+  tier: "avancado",
   profile: "local",
   sources: ["meta", "google"],
   pages: ["visao-geral", "campanhas", "por-plataforma"],

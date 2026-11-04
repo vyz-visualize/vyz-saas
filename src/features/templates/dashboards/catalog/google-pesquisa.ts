@@ -4,7 +4,7 @@ export default {
   id: "google-pesquisa",
   name: "Google Ads · Pesquisa",
   category: "Mídia",
-  tier: "pro",
+  tier: "avancado",
   profile: "pesquisa",
   sources: ["google"],
   pages: ["visao-geral", "campanhas", "comparativo"],

@@ -23,7 +23,7 @@ async function Plano({ searchParams }: { searchParams: PageProps<"/painel/plano"
   const session = await requireWorkspace({ access: false, onboarding: false, next: "/painel/plano" });
   const [overview, accounts, query] = await Promise.all([hasRole(session.role, "admin") ? getBillingOverview() : null, listAdAccounts(), searchParams]);
   const usage = {
-    billableAccounts: session.usage.billableAccounts,
+    projects: session.usage.projects,
     dashboards: session.usage.dashboards,
     publishedLandingPages: session.usage.publishedLandingPages,
     enabledPlatforms: [...new Set(accounts.filter((a) => a.isEnabled).map((a) => a.platformId))],

@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { passwordSchema } from "@/features/auth/password";
-import { MAX_ACCOUNTS_IN_PLAN } from "@/features/pricing/pricing";
+import { INCLUDED_PROJECTS, MAX_PROJECTS_IN_PLAN } from "@/features/pricing/pricing";
 import { CARD_BRANDS } from "./card";
 import { checkDetails } from "./fields";
 import { normalizePhone } from "./phone";
@@ -63,7 +63,8 @@ export const planChangeSchema = z
   .object({
     tier: z.enum(["base", "pro", "avancado"]),
     period: z.enum(["mensal", "anual"]),
-    accounts: z.number().int().min(1).max(MAX_ACCOUNTS_IN_PLAN),
+    /** Projetos (a coluna no banco ainda se chama accounts_quantity). */
+    accounts: z.number().int().min(INCLUDED_PROJECTS).max(MAX_PROJECTS_IN_PLAN),
   })
   .strict();
 

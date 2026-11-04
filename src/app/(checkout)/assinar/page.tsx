@@ -93,6 +93,7 @@ async function Checkout({ searchParams }: { searchParams: Promise<SearchParams> 
           recurringCents={order.recurringCents}
           editHref={editHref}
           simulated={isMockBilling()}
+          adjustHref={(patch) => `/assinar?${toQuery(normalizeState({ ...state, ...patch }))}`}
         />
       </aside>
     </div>

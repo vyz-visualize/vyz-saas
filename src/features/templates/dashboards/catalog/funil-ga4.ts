@@ -4,7 +4,7 @@ export default {
   id: "funil-ga4",
   name: "Funil do site · GA4",
   category: "E-commerce",
-  tier: "pro",
+  tier: "avancado",
   profile: "site",
   sources: ["ga4"],
   pages: ["visao-geral", "funil", "comparativo"],

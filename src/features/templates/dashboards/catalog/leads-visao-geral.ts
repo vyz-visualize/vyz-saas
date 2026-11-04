@@ -4,7 +4,7 @@ export default {
   id: "leads-visao-geral",
   name: "Geração de leads · Visão geral",
   category: "Leads",
-  tier: "base",
+  tier: "pro",
   profile: "leads",
   sources: ["meta", "google", "ga4"],
   pages: ["visao-geral", "por-plataforma", "campanhas", "funil"],

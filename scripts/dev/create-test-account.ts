@@ -79,7 +79,7 @@ async function create() {
   }
 
   const product = values.product === "lp" ? "lp" : "dash";
-  const state = normalizeState({ produto: product, plano: plan, periodo: period, meta: accounts, google: 0, ga4: 0, outras: 0, nicho: "ecommerce" });
+  const state = normalizeState({ produto: product, plano: plan, periodo: period, projetos: accounts, nicho: "ecommerce" });
   const order = buildOrder(state);
 
   const { data: checkout, error: cErr } = await admin

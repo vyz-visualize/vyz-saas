@@ -13,7 +13,6 @@ import { btn } from "@/components/ui/styles";
 import { AccountPicker } from "@/features/integrations/AccountPicker";
 import { ConnectButton } from "@/features/integrations/ConnectButton";
 import { ConnectionCard } from "@/features/integrations/ConnectionCard";
-import { otherPlatformUnits } from "@/features/integrations/limits";
 import { MOCK_NOTICE } from "@/features/integrations/mock-data";
 import { PROVIDER_IDS, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import type { ConnectResult } from "@/features/integrations/results";
@@ -134,8 +133,8 @@ function ProviderSection({
         <AccountPicker
           provider={provider}
           accounts={platform.accounts}
-          accountsQuantity={state.limit.accountsQuantity}
-          otherUnits={otherPlatformUnits(state, provider)}
+          projects={state.projects}
+          maxPerProject={state.limit.maxAccountsPerPlatform}
           canManage={state.canManage}
           canSync={state.canSync}
           now={now}

@@ -16,7 +16,7 @@ function client(id: string, name: string, profile: ClientData["profile"], cur: P
 }
 
 function ctx(dashboards: ClientData[], tier: AgentContext["tier"] = "pro"): AgentContext {
-  return { now: NOW, tier, tierLabel: tier === "pro" ? "Pro" : "Base", ent: ENTITLEMENTS[tier], dashboards, landingPages: true, counts: { dashboards: dashboards.length, landingPublished: 1, accounts: 2, contractedAccounts: 2 } };
+  return { now: NOW, tier, tierLabel: tier === "pro" ? "Pro" : "Base", ent: ENTITLEMENTS[tier], dashboards, landingPages: true, counts: { dashboards: dashboards.length, landingPublished: 1, accounts: 2, projects: 2, contractedProjects: 3 } };
 }
 
 const LOJA = client("d1", "Loja Verde", "ecommerce", { spend: 1_000_000, conversions: 200, revenue: 4_000_000 }, { spend: 900_000, conversions: 180, revenue: 3_500_000 });

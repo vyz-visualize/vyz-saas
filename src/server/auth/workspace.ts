@@ -68,6 +68,7 @@ function toEntitlements(row: Tables<"workspace_access"> | null): Entitlements | 
     audio: row.audio === "soon" ? "soon" : "none",
     customDashboards: !!row.custom_dashboards,
     agentChat: !!row.agent_chat,
+    maxAccountsPerPlatform: ENTITLEMENTS[isTier(row.pages_plan_id) ? row.pages_plan_id : "base"].maxAccountsPerPlatform,
     agentVoice: !!row.agent_voice,
     maxDashboards: row.max_dashboards,
     maxLandingPages: row.max_landing_pages,
@@ -136,6 +137,7 @@ export const getWorkspaceSession = cache(async (): Promise<WorkspaceSession | nu
       enabledAdAccounts: u?.enabled_ad_accounts ?? 0,
       billableAccounts: u?.billable_accounts ?? 0,
       activeConnections: u?.active_connections ?? 0,
+      projects: u?.projects ?? 0,
     },
     memberships: viewer.memberships.map((m) => ({ id: m.workspace.id, name: m.workspace.name, role: m.role })),
   };

@@ -135,8 +135,8 @@ function limits(q: string, ctx: AgentContext): AgentAnswer | null {
   }
   if (has(q, "conta*")) {
     return answer({
-      text: `Você usa **${count(counts.accounts)} ${counts.accounts === 1 ? "conta" : "contas"}** de **${count(counts.contractedAccounts)}** contratadas.`,
-      card: { label: "Contas", value: `${count(counts.accounts)} de ${count(counts.contractedAccounts)}` },
+      text: `Você tem **${count(counts.projects)} ${counts.projects === 1 ? "projeto" : "projetos"}** de **${count(counts.contractedProjects)}** contratados, com ${count(counts.accounts)} ${counts.accounts === 1 ? "conta ativa" : "contas ativas"}.`,
+      card: { label: "Projetos", value: `${count(counts.projects)} de ${count(counts.contractedProjects)}` },
       action: { type: "navigate", href: "/painel/contas", label: "Abrir Contas" },
     });
   }
@@ -178,7 +178,7 @@ export function respond(question: string, ctx: AgentContext): AgentAnswer {
   if (has(q, "plano") && has(q, "qual", "meu", "estou", "tenho")) {
     return answer({
       text: `Você está no plano **${ctx.tierLabel}**. Ele libera **${count(ctx.ent.maxDashboards)} dashboards**${ctx.landingPages ? ` e **${count(ctx.ent.maxLandingPages)} landing pages publicadas**` : ""}.`,
-      card: { label: "Plano", value: ctx.tierLabel, note: `${count(ctx.counts.contractedAccounts)} ${ctx.counts.contractedAccounts === 1 ? "conta contratada" : "contas contratadas"}` },
+      card: { label: "Plano", value: ctx.tierLabel, note: `${count(ctx.counts.contractedProjects)} ${ctx.counts.contractedProjects === 1 ? "projeto contratado" : "projetos contratados"}` },
       action: { type: "navigate", href: "/painel/plano", label: "Ver plano" },
     });
   }

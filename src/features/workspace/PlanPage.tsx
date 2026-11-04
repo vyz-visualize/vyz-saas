@@ -30,7 +30,7 @@ import {
 } from "@/features/checkout/labels";
 import { planChangeBlocker, quotePlanChange, samePlan, type PlanSelection, type PlanUsage } from "@/features/checkout/plan-change";
 import { ENTITLEMENTS, LIMIT_ROWS, LIMIT_TIERS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
-import { LP_PLAN_PAGES, MAX_ACCOUNTS_IN_PLAN, lpMonthly, lpSetup, type Period, type PlanId } from "@/features/pricing/pricing";
+import { INCLUDED_PROJECTS, LP_PLAN_PAGES, MAX_PROJECTS_IN_PLAN, lpMonthly, lpSetup, type Period, type PlanId } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";
 import { msgUpgrade, waLink } from "@/lib/whatsapp";
 import { cancelSubscription, changePlan, resumeSubscription } from "@/server/billing/actions";
@@ -165,12 +165,12 @@ function ChangePlan({
         </div>
       </div>
       <Stepper
-        label="Contas contratadas"
-        hint={`Pelo menos as ${usage.billableAccounts} em uso; até ${MAX_ACCOUNTS_IN_PLAN}. Cada BM do Meta conta uma vez.`}
-        unit="conta contratada"
+        label="Projetos contratados"
+        hint={`Cada cliente ou marca é um projeto. Pelo menos os ${usage.projects} em uso e no mínimo ${INCLUDED_PROJECTS}; até ${MAX_PROJECTS_IN_PLAN}.`}
+        unit="projeto contratado"
         value={next.accounts}
-        min={Math.max(1, usage.billableAccounts)}
-        max={MAX_ACCOUNTS_IN_PLAN}
+        min={Math.max(INCLUDED_PROJECTS, usage.projects)}
+        max={MAX_PROJECTS_IN_PLAN}
         onChange={(accounts) => set({ accounts })}
       />
 
@@ -451,7 +451,7 @@ export function PlanPage({
     : tier
       ? lp
         ? `${ent.maxLandingPages} landing pages no plano`
-        : `${access.accountsQuantity} ${access.accountsQuantity === 1 ? "conta contratada" : "contas contratadas"}`
+        : `${access.accountsQuantity} ${access.accountsQuantity === 1 ? "projeto contratado" : "projetos contratados"}`
       : lp
         ? "Escolha um plano para publicar as landing pages."
         : "Escolha um plano para usar os dashboards.";
@@ -536,9 +536,11 @@ export function PlanPage({
               <UsageBar used={usage.publishedLandingPages} limit={ent.maxLandingPages} label="Landing pages publicadas" />
             ) : (
               <>
-                <UsageBar used={usage.billableAccounts} limit={access.accountsQuantity} label="Contas ativas" />
+                <UsageBar used={usage.projects} limit={access.accountsQuantity} label="Projetos" />
                 <UsageBar used={usage.dashboards} limit={ent.maxDashboards} label="Dashboards" />
-                <p className="text-[12.5px] text-fg-2">Cada Business Manager do Meta conta como uma conta, com quantas contas de anúncio tiver.</p>
+                <p className="text-[12.5px] text-fg-2">
+                  Cada cliente ou marca é um projeto, com até {ent.maxAccountsPerPlatform} {ent.maxAccountsPerPlatform === 1 ? "conta" : "contas"} de cada plataforma.
+                </p>
               </>
             )}
           </Section>

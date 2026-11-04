@@ -22,15 +22,15 @@ describe("troca de plano no mesmo período", () => {
     expect(q.recurringCents).toBe(planMonthly("pro", "mensal", 2));
   });
 
-  it("menos contas vira crédito, sem cobrança", () => {
+  it("menos projetos vira crédito, sem cobrança", () => {
     const q = quotePlanChange({
-      current: { tier: "pro", period: "mensal", accounts: 3, periodStart: start, periodEnd: monthEnd },
-      next: { tier: "pro", period: "mensal", accounts: 2 },
+      current: { tier: "pro", period: "mensal", accounts: 4, periodStart: start, periodEnd: monthEnd },
+      next: { tier: "pro", period: "mensal", accounts: 3 },
       extrasMonthlyCents: 0,
       now: half,
     });
     expect(q.prorationCents).toBe(0);
-    expect(q.creditCents).toBe(Math.round(14999 / 2));
+    expect(q.creditCents).toBe(Math.round(1890 / 2));
   });
 
   it("os extras mensais entram na recorrência, não na diferença", () => {
@@ -100,16 +100,16 @@ describe("datas", () => {
 });
 
 describe("uso atual no plano novo", () => {
-  const usage = { billableAccounts: 2, dashboards: 2, publishedLandingPages: 1, enabledPlatforms: ["meta", "google"] };
+  const usage = { projects: 2, dashboards: 2, publishedLandingPages: 1, enabledPlatforms: ["meta", "google"] };
 
   it("cabe: nenhum bloqueio", () => {
     expect(planChangeBlocker({ tier: "base", period: "mensal", accounts: 2 }, usage)).toBeNull();
   });
 
-  it("menos contas do que as ativas", () => {
+  it("menos projetos do que os ativos", () => {
     expect(planChangeBlocker({ tier: "pro", period: "anual", accounts: 1 }, usage)).toEqual({
-      code: "limit:accounts_in_use",
-      message: "Você tem 2 contas ativas. Desative contas em Contas antes de contratar 1.",
+      code: "limit:projects_in_use",
+      message: "Você tem 2 projetos ativos. Arquive projetos em Projetos antes de contratar 1.",
     });
   });
 
