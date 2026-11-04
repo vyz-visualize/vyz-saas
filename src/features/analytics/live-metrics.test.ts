@@ -257,7 +257,7 @@ describe("Resultados", () => {
   it("na tabela, cada campanha mostra o seu resultado", () => {
     const v = meta();
     const labels = new Set(v.campaigns.map((c) => c.resultLabel));
-    expect(labels).toEqual(new Set(["compras", "leads", "engajamentos"]));
+    expect(labels).toEqual(new Set(["compras", "leads", "interações"]));
     for (const c of v.campaigns) {
       expect(c.extra?.results).toBeGreaterThan(0);
       expect(c.extra?.costPerResult).toBeCloseTo(c.spend! / c.extra!.results!, 2);

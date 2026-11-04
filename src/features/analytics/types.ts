@@ -173,7 +173,13 @@ export type CreativeVM = {
   roas: number | null;
   linkCtr: number | null;
   frequency: number | null;
-  /** Visualizações de 3 s ÷ impressões (só vídeo). */
+  /** Resultado principal do objetivo da campanha do anúncio. */
+  result: { label: string; value: number };
+  /** Investimento ÷ resultado. */
+  costPerResult: number | null;
+  /** A campanha do anúncio teve receita no período: dá para falar em ROAS. */
+  hasRevenue: boolean;
+  /** Retenção 3 s: visualizações de 3 s ÷ impressões (só vídeo). */
   hookRate: number | null;
   /** ThruPlays ÷ visualizações de 3 s. */
   holdRate: number | null;

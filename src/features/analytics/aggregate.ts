@@ -395,6 +395,13 @@ export function creatives(rows: WarehouseRows): CreativeVM[] {
   const cur = rows.adDaily.filter((r) => inRange(r.date, rows.current));
   const byAd = groupBy(cur, (r) => r.adId);
   const campaigns = nameOf(rows);
+  const objectives = new Map(rows.campaigns.map((c) => [c.id, c.objective ?? null]));
+  const campaignOf = new Map(rows.ads.map((a) => [a.id, a.campaignId]));
+  const revenue = new Map<string, number>();
+  for (const r of cur) {
+    const id = campaignOf.get(r.adId) ?? "";
+    revenue.set(id, (revenue.get(id) ?? 0) + r.conversionValue);
+  }
   const dates = dateRange(rows.current.to, rows.current.days);
   const mid = dates[Math.floor(dates.length / 2)];
   const out: CreativeVM[] = [];
@@ -402,6 +409,7 @@ export function creatives(rows: WarehouseRows): CreativeVM[] {
     const list = byAd.get(ad.id);
     if (!list?.length) continue;
     const tt = totalsOf(list);
+    const result = resultOf(objectives.get(ad.campaignId), list);
     const videoViews = sumNullable(list, (r) => r.videoViews);
     const thruplays = sumNullable(list, (r) => r.videoThruplays);
     const first = list.filter((r) => r.date < mid);
@@ -418,6 +426,9 @@ export function creatives(rows: WarehouseRows): CreativeVM[] {
       value: tt.value,
       conversions: tt.conversions,
       roas: tt.roas,
+      result,
+      costPerResult: ratio(tt.spend, result.value),
+      hasRevenue: (revenue.get(ad.campaignId) ?? 0) > 0,
       linkCtr: tt.linkCtr ?? tt.ctr,
       frequency: tt.frequency,
       hookRate: videoViews ? ratio(videoViews, tt.impressions) : null,

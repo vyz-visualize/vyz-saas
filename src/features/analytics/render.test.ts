@@ -105,7 +105,7 @@ describe("renderização (smoke)", () => {
       const on = renderToString(createElement(LiveDashboardView, { data: sampleDashboardData("meta-ecommerce", { today: TODAY })!, initialPage: "campanhas", metricPrefs: { meta: { columns: { hidden: [], shown: ["registrations", "results"] } } } }));
       expect(on).toContain("Cadastros");
       expect(on).toContain("Resultados");
-      expect(on).toContain("engajamentos");
+      expect(on).toContain("interações");
     });
 
     it("Google: coluna nova nas campanhas", () => {

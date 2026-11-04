@@ -32,19 +32,23 @@ export const OBJECTIVE_LABEL: Record<ObjectiveKey, string> = {
 
 export type ResultInput = { conversions: number; leads: number | null; postEngagement: number | null; linkClicks: number | null; clicks: number; impressions: number };
 
-/** Resultado principal do objetivo. Sem o dado do objetivo, cai no que a campanha tem. */
+/** Resultado principal do objetivo: sempre o tipo que a campanha busca, nunca compras numa campanha de leads. */
 export function objectiveResult(raw: string | null | undefined, t: ResultInput): { label: string; value: number } {
   switch (objectiveKey(raw)) {
+    case "sales":
+      return { label: "compras", value: t.conversions };
     case "leads":
-      if (t.leads != null) return { label: "leads", value: t.leads };
-      break;
+      return { label: "leads", value: t.leads ?? 0 };
     case "engagement":
-      if (t.postEngagement != null) return { label: "engajamentos", value: t.postEngagement };
-      break;
+      return { label: "interações", value: t.postEngagement ?? 0 };
     case "traffic":
       return t.linkClicks != null ? { label: "cliques no link", value: t.linkClicks } : { label: "cliques", value: t.clicks };
     case "awareness":
       return { label: "impressões", value: t.impressions };
   }
-  return { label: "compras", value: t.conversions };
+  // objetivo que o VYZ não conhece: compras, se houver; sem nenhuma, não afirma que era isso que buscava
+  return t.conversions > 0 ? { label: "compras", value: t.conversions } : { label: "resultados", value: 0 };
 }
+
+/** "cliques no link" → "Cliques no link". */
+export const resultTitle = (label: string) => `${label[0].toUpperCase()}${label.slice(1)}`;

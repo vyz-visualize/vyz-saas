@@ -12,10 +12,12 @@ import { btn } from "@/components/ui/styles";
 import { decimal, int, pct } from "@/lib/format";
 import { filterAria, filterTone, useDashFilters } from "../filter-context";
 import { hasFilters } from "../filters";
-import { formatValue, moneyCompact } from "../format";
+import { formatValue, money, moneyCompact } from "../format";
 import type { CreativeVM, CreativesData } from "../types";
 import { Chip, NoData, Roas, Thumb } from "../ui";
 import { MAX_COMPARE, MIN_COMPARE } from "./limits";
+import { RETENTION_HELP } from "./metrics";
+import { resultTitle } from "./objectives";
 
 type CreativeSort = "spend" | "roas" | "ctr";
 
@@ -29,7 +31,10 @@ export function CreativeGallery({ data, compareHref }: Props) {
   const { gallery, hideSpend } = data;
   const dashFilters = useDashFilters();
   const filtered = !!dashFilters && hasFilters(dashFilters.filters);
-  const [sort, setSort] = useState<CreativeSort>(hideSpend ? "ctr" : "spend");
+  const [chosenSort, setSort] = useState<CreativeSort>(hideSpend ? "ctr" : "spend");
+  // sem receita em nenhuma campanha, não há ROAS para ordenar
+  const anyRevenue = gallery.some((c) => c.hasRevenue);
+  const sort: CreativeSort = chosenSort === "roas" && !anyRevenue ? "spend" : chosenSort;
   const [picked, setPicked] = useState<string[]>([]);
   const list = useMemo(() => {
     const key = (c: CreativeVM) => (sort === "roas" ? (c.roas ?? -1) : sort === "ctr" ? (c.linkCtr ?? -1) : (c.spend ?? 0));
@@ -57,7 +62,7 @@ export function CreativeGallery({ data, compareHref }: Props) {
           size="sm"
           value={sort}
           onChange={setSort}
-          options={[...(hideSpend ? [] : [{ value: "spend" as const, label: "Investimento" }, { value: "roas" as const, label: "ROAS" }]), { value: "ctr", label: "CTR" }]}
+          options={[...(hideSpend ? [] : [{ value: "spend" as const, label: "Investimento" }, ...(anyRevenue ? [{ value: "roas" as const, label: "ROAS" }] : [])]), { value: "ctr", label: "CTR" }]}
         />
       </div>
       <ul className="grid grid-cols-1 gap-3 @[560px]:grid-cols-2 @[900px]:grid-cols-3 @[1240px]:grid-cols-4">
@@ -115,11 +120,11 @@ function CreativeCard({ c, data, compare }: { c: CreativeVM; data: Props["data"]
         <p className="mt-0.5 truncate text-[11.5px] text-fg-2">{c.campaignName}</p>
         <dl className="mt-3 grid grid-cols-3 gap-x-2 gap-y-2 text-[11px] tnum">
           {!hideSpend && <Metric label="Investimento" value={moneyCompact(c.spend, currency)} />}
-          {!hideSpend && <Metric label="ROAS" value={<Roas value={c.roas} breakEven={breakEvenRoas} />} />}
-          <Metric label="Compras" value={int(c.conversions)} />
+          {!hideSpend && (c.hasRevenue ? <Metric label="ROAS" value={<Roas value={c.roas} breakEven={breakEvenRoas} />} /> : <Metric label="Custo por resultado" value={money(c.costPerResult, currency)} />)}
+          <Metric label={resultTitle(c.result.label)} value={int(c.result.value)} />
           <Metric label="CTR do link" value={formatValue(c.linkCtr, "pct")} />
           <Metric label="Freq. média" value={c.frequency == null ? "—" : decimal(c.frequency, 2)} />
-          <Metric label="Hook rate" value={c.hookRate == null ? "—" : pct(c.hookRate, 0)} />
+          <Metric label="Retenção 3 s" help={RETENTION_HELP} value={c.hookRate == null ? "—" : pct(c.hookRate, 0)} />
         </dl>
         <div className="mt-auto pt-3">
           <p className="mb-1 text-[10.5px] text-fg-2">CTR do link por dia</p>
@@ -147,10 +152,10 @@ function CreativeCard({ c, data, compare }: { c: CreativeVM; data: Props["data"]
   );
 }
 
-function Metric({ label, value }: { label: string; value: ReactNode }) {
+function Metric({ label, value, help }: { label: string; value: ReactNode; help?: string }) {
   return (
-    <div className="min-w-0">
-      <dt className="truncate text-fg-2">{label}</dt>
+    <div className="flex min-w-0 flex-col justify-between" title={help}>
+      <dt className="leading-tight text-fg-2">{label}</dt>
       <dd className="font-semibold text-fg">{value}</dd>
     </div>
   );

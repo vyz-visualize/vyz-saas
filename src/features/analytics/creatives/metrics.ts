@@ -98,7 +98,12 @@ export type CompareMetric = {
   /** O investimento dá para recalcular a partir dela: some no link com investimento oculto. */
   spendDerived?: boolean;
   value: (s: Sums) => number | null;
+  /** Explicação ao passar o mouse. */
+  help?: string;
 };
+
+/** Explicação da Retenção 3 s, na galeria e no comparativo. */
+export const RETENTION_HELP = "% de quem assistiu pelo menos 3 segundos";
 
 const count = (id: string, label: string, group: CompareGroup, value: (s: Sums) => number | null): CompareMetric => ({ id, label, group, format: "int", better: "up", additive: true, value });
 const rate = (id: string, label: string, group: CompareGroup, value: (s: Sums) => number | null): CompareMetric => ({ id, label, group, format: "pct", better: "up", additive: false, value });
@@ -129,7 +134,7 @@ export const COMPARE_METRICS: CompareMetric[] = [
 
   count("videoViews", "Reproduções de 3 s", "video", (s) => s.videoViews),
   count("thruplays", "ThruPlays", "video", (s) => s.thruplays),
-  rate("hookRate", "Hook rate", "video", (s) => per(s.videoViews, s.impressions)),
+  { ...rate("hookRate", "Retenção 3 s", "video", (s) => per(s.videoViews, s.impressions)), help: RETENTION_HELP },
   rate("holdRate", "Hold rate", "video", (s) => per(s.thruplays, s.videoViews)),
   cost("costPerThruplay", "Custo por ThruPlay", "video", (s) => per(s.videoSpend, s.thruplays)),
   count("p25", "Vídeo até 25%", "video", (s) => s.p25),

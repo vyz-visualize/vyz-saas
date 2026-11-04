@@ -300,7 +300,7 @@ function CompareTable({ stats, colors, mode, hideSpend, currency }: { stats: AdS
               {open &&
                 g.rows.map((r) => (
                   <tr key={r.metric.id}>
-                    <th scope="row" className={`${label} border-b border-line/60 font-normal text-fg-2 @[480px]:whitespace-nowrap`}>
+                    <th scope="row" title={r.metric.help} className={`${label} border-b border-line/60 font-normal text-fg-2 @[480px]:whitespace-nowrap`}>
                       {r.metric.label}
                       {r.metric.better === "down" && <span className="block text-[10.5px] text-fg-2/80">menor é melhor</span>}
                     </th>
