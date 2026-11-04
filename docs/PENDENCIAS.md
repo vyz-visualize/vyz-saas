@@ -40,6 +40,7 @@ O que hoje funciona só no navegador e depende de backend, de integração ou de
 |---|---|---|
 | Alcance único do período (Meta) | "Alcance médio por dia": a média do alcance diário. A frequência é a média por dia (impressões ÷ alcance, dia a dia), coerente com ele | Pedir à Meta o alcance pelo intervalo inteiro: pessoas únicas não somam entre dias. Com isso dá para mostrar também a frequência do período |
 | App mobile | Mostra os cards padrão e não respeita a personalização nem esconde as colunas | Ler `metric_prefs` em `/api/v1/dashboards/:id` e no app |
+| Reordenar os cards | A ordem segue o padrão do template, e soltar um card só adiciona | Guardar a ordem no `metric_prefs` (hoje `normalizeSection` regrava na ordem do catálogo) |
 
 ## Precisa de hospedagem
 

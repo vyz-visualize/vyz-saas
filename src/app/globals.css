@@ -819,13 +819,12 @@ details.lines summary::-webkit-details-marker {
   }
 }
 
-/* Painel "Personalizar" aberto em tela larga: o conteúdo abre espaço para ele
-   (400 px + 2 × 12 px de margem) e as grades se reorganizam pela largura do
-   contêiner. Abaixo de 1280 px o painel fica por cima. */
-@media screen and (width >= 80rem) {
-  body:has([data-metrics-panel]) .shell-content {
-    margin-right: 424px;
-  }
+/* Modo personalizar: o que não é a fileira de cards fica esmaecido. */
+[data-metric-editing="kpis"] [data-dim-scope] > *:not([data-kpi-row]),
+[data-metric-editing="kpis"] [data-dim-wrap] > * > *:not([data-kpi-row]),
+[data-metric-editing="kpis"] [data-dim-self] {
+  opacity: 0.4;
+  transition: opacity 180ms ease;
 }
 
 /* ---- Sidebar do painel: aba ativa com cantos côncavos ------------------- */

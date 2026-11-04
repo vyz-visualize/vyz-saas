@@ -11,14 +11,16 @@ import { btn } from "@/components/ui/styles";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { GOOGLE_CATALOG, META_CATALOG, type CatalogMetric } from "@/features/dashboards/metric-prefs";
 import { MetricVisibilityProvider, useMetricPrefsState, type SaveMetricPrefs } from "@/features/dashboards/metric-prefs-context";
+import { MetricEditProvider } from "@/features/dashboards/metric-edit-context";
 import { MetricNoticeBar } from "@/features/dashboards/MetricActions";
-import { CustomizeButton, MetricsPanel } from "@/features/dashboards/MetricsPanel";
+import { CustomizeButton, MetricEditBar, MetricTray, useMetricEditorState } from "@/features/dashboards/MetricEditor";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
 import { GoogleCampaigns, GoogleOverview, GoogleProducts, GoogleTerms } from "./google/GooglePages";
 import { MetaCreatives } from "./creatives/CreativesPage";
 import { setQueryParam } from "./creatives/query";
 import { MetaAudience, MetaCampaigns, MetaFunnel, MetaOverview } from "./meta/MetaPages";
+import { formatValue } from "./format";
 import { ddmm, ddmmyyyyIso } from "./ranges";
 import type { PageProps } from "./shared";
 import { RESULT_METRICS, RESULTS_MIXED_REASON } from "./live-metrics";
@@ -97,9 +99,26 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
     .sort()
     .at(0);
   const panelId = `painel-${data.dashboard.id}`;
+  const allKpis = useMemo(() => new Map([...data.view.kpis, ...(data.view.extraKpis ?? [])].map((k) => [k.id, k])), [data.view]);
+  const edit = useMetricEditorState({
+    metrics,
+    visibleKpis: [...metrics.visibility.kpis],
+    hasData: (id) => liveHasData(data.view, id),
+    valueOf: (id) => {
+      const k = allKpis.get(id);
+      return k ? { text: formatValue(k.value, k.format, data.currency), spark: k.spark } : null;
+    },
+    unavailable: resultsMixed ? RESULT_METRIC_ROWS.map((m) => ({ metric: m, reason: RESULTS_MIXED_REASON })) : undefined,
+    kpiPlace: active === KPI_PAGE ? undefined : `na ${PAGES[KPI_PAGE]?.name ?? "Visão geral"}`,
+    noKpis: !pages.includes(KPI_PAGE) || active !== KPI_PAGE,
+    goToCards: pages.includes(KPI_PAGE) && active !== KPI_PAGE ? () => setPage(KPI_PAGE) : undefined,
+  });
+  const editing = metrics.open;
 
   return (
-    <div className="@container space-y-4">
+    <MetricEditProvider value={edit.editor}>
+    <div data-metric-editing={editing ? edit.section : undefined} className={`@container space-y-4 ${editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
+      {canCustomize && <MetricEditBar state={edit} />}
       <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
         {logo && <div className="hidden shrink-0 pt-1.5 @[500px]:block">{logo}</div>}
         <div className="min-w-0 flex-1">
@@ -131,8 +150,11 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
 
       {(toolbar || canCustomize) && (
         <div className="flex flex-wrap items-end gap-2">
-          {toolbar}
-          {canCustomize && (
+          {/* trocar o período recarrega o dashboard: no modo personalizar perderia o rascunho */}
+          <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
+            {toolbar}
+          </div>
+          {canCustomize && !editing && (
             <div className="ml-auto">
               <CustomizeButton onClick={() => metrics.openPanel()} />
             </div>
@@ -148,7 +170,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
         {last && !data.sample && <span>· atualizado em {syncedAt(last, data.timeZone)}</span>}
       </p>
 
-      <div role="tabpanel" id={panelId} aria-label={PAGES[active]?.name ?? active}>
+      <div role="tabpanel" id={panelId} data-dim-wrap aria-label={PAGES[active]?.name ?? active}>
         {data.status === "no_accounts" ? (
           <EmptyState
             title="Nenhuma conta ativa neste dashboard"
@@ -167,26 +189,10 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
           </MetricVisibilityProvider>
         )}
       </div>
-      {canCustomize && (
-        <MetricsPanel
-          open={metrics.open}
-          onClose={metrics.close}
-          catalog={metrics.catalog}
-          prefs={metrics.prefs}
-          hasData={(id) => liveHasData(data.view, id)}
-          onToggle={metrics.toggle}
-          onRestore={metrics.restore}
-          onSave={metrics.save}
-          pending={metrics.pending}
-          error={metrics.error}
-          visibleKpis={[...metrics.visibility.kpis]}
-          unavailable={resultsMixed ? RESULT_METRIC_ROWS.map((m) => ({ metric: m, reason: RESULTS_MIXED_REASON })) : undefined}
-          kpiPlace={active === KPI_PAGE ? undefined : `na ${PAGES[KPI_PAGE]?.name ?? "Visão geral"}`}
-          noKpis={!pages.includes(KPI_PAGE)}
-        />
-      )}
+      {canCustomize && <MetricTray state={edit} />}
       {canCustomize && <MetricNoticeBar notice={metrics.notice} onUndo={metrics.undo} onDismiss={metrics.dismiss} />}
     </div>
+    </MetricEditProvider>
   );
 }
 

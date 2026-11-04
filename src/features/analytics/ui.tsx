@@ -8,6 +8,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { TrendSpark } from "@/components/charts/TrendSpark";
 import { decimal, pct } from "@/lib/format";
+import { EmptySlots, RemoveColumnButton, RemoveMetricButton, useKpiDropRow, useMetricEditor } from "@/features/dashboards/metric-edit-context";
 import { HideMetricButton } from "@/features/dashboards/MetricActions";
 import { useColumnVisible, useMetricVisibility, useVisibleColumns } from "@/features/dashboards/metric-prefs-context";
 import { deltaText, deltaTone, FORMAT_LABEL, formatValue, HIDDEN, STATUS_LABEL } from "./format";
@@ -61,7 +62,7 @@ export function DeltaBadge({ delta, better, suffix }: { delta: number | null; be
   );
 }
 
-export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, metric, onHide }: { kpi: Kpi; currency: string; maturing: number; hideSpend?: boolean; featured?: boolean; /** Alvo do "Mostrar no painel" do assistente. */ metric?: string; /** Atalho de ocultar (só para quem pode editar). */ onHide?: () => void }) {
+export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, metric, onHide, onRemove, editId }: { kpi: Kpi; currency: string; maturing: number; hideSpend?: boolean; featured?: boolean; /** Alvo do "Mostrar no painel" do assistente. */ metric?: string; /** Atalho de ocultar (só para quem pode editar). */ onHide?: () => void; /** Modo personalizar: o ✕. */ onRemove?: () => void; editId?: string }) {
   const hidden = hideSpend && kpi.spendBased;
   const value = hidden ? HIDDEN : formatValue(kpi.value, kpi.format, currency);
   const tone = deltaTone(kpi.delta, kpi.better);
@@ -70,6 +71,7 @@ export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, 
       className={`group/kpi relative flex min-w-0 flex-col rounded-card border p-3.5 ${featured ? "border-accent/40 bg-accent-soft/50" : "border-line bg-card"}`}
       aria-label={`${kpi.label}: ${value}`}
       data-vyz-metric={metric}
+      data-edit-metric={editId}
       title={kpi.help}
     >
       <h3 className="label-caps truncate text-[10.5px] text-fg-2">{kpi.label}</h3>
@@ -80,6 +82,7 @@ export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, 
       </div>
       {!hidden && <TrendSpark values={kpi.spark} maturing={maturing} tone={tone === "bad" ? "bad" : "good"} className="mt-2.5 h-8" />}
       {onHide && <HideMetricButton label={kpi.label} onClick={onHide} />}
+      {onRemove && <RemoveMetricButton label={kpi.label} onClick={onRemove} />}
     </article>
   );
 }
@@ -88,11 +91,27 @@ export function KpiGrid({ platform, kpis, extra = [], currency, maturing, hideSp
   const visibility = useMetricVisibility();
   const shown = visibility ? [...kpis, ...extra].filter((k) => visibility.kpis.has(k.id)) : kpis;
   const edit = visibility?.edit;
+  const editor = useMetricEditor();
+  const editingCards = editor?.section === "kpis";
+  const drop = useKpiDropRow();
   return (
-    <div className="grid grid-cols-2 gap-2.5 @[640px]:grid-cols-3 @[1040px]:grid-cols-4 @[1280px]:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2.5 relative @[640px]:grid-cols-3 @[1040px]:grid-cols-4 @[1280px]:grid-cols-5" data-kpi-row {...drop.props}>
       {shown.map((k) => (
-        <KpiCard key={k.id} kpi={k} currency={currency} maturing={maturing} hideSpend={hideSpend} featured={k.id === "roas"} metric={kpiMetric(platform, k.id)} onHide={edit && shown.length > 1 ? () => edit.hide(k.id) : undefined} />
+        <KpiCard
+          key={k.id}
+          kpi={k}
+          currency={currency}
+          maturing={maturing}
+          hideSpend={hideSpend}
+          featured={k.id === "roas"}
+          metric={kpiMetric(platform, k.id)}
+          editId={k.id}
+          onHide={!editor && edit && shown.length > 1 ? () => edit.hide(k.id) : undefined}
+          onRemove={editingCards && editor.canRemoveKpi ? () => editor.removeKpi(k.id) : undefined}
+        />
       ))}
+      {editingCards && <EmptySlots count={editor.slots - shown.length} onClick={editor.openTray} />}
+      {drop.overlay}
     </div>
   );
 }
@@ -294,6 +313,7 @@ export function DataTable<T>({
   rowClassName?: (row: T) => string;
 }) {
   const columns = useVisibleColumns(allColumns);
+  const editor = useMetricEditor();
   const [sort, setSort] = useState(initialSort);
   const [all, setAll] = useState(false);
   const sorted = useMemo(() => {
@@ -343,6 +363,7 @@ export function DataTable<T>({
                     ) : (
                       c.label
                     )}
+                    {editor?.section === "columns" && c.metric && editor.canRemoveColumn && <RemoveColumnButton label={c.label} onClick={() => editor.removeColumn(c.metric!)} />}
                   </th>
                 );
               })}

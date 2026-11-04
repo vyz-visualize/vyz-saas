@@ -11,7 +11,9 @@ import { CreativeList } from "@/features/analytics/creatives/CreativeList";
 import { CreativesPage } from "@/features/analytics/creatives/CreativesPage";
 import { setQueryParam } from "@/features/analytics/creatives/query";
 import type { CreativesData, SampleExtraMetric } from "@/features/analytics/types";
-import { platformPart } from "@/features/metrics/compute";
+import { formatValue as formatLive } from "@/features/analytics/format";
+import { currentTotals, platformPart, series } from "@/features/metrics/compute";
+import { formatValue as formatMetricValue, metric as metricDefinition } from "@/features/metrics/definitions";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
 import type { MetricId } from "@/features/metrics/definitions";
@@ -24,7 +26,8 @@ import { datasetFor, pageLayout, sampleDefaultKpis } from "./data";
 import { isSampleMetric, pageCatalog, pageKpiIds, sampleCatalog, type MetricPrefs } from "./metric-prefs";
 import { useMetricPrefsState, type SaveMetricPrefs } from "./metric-prefs-context";
 import { MetricNoticeBar } from "./MetricActions";
-import { CustomizeButton, MetricsPanel } from "./MetricsPanel";
+import { MetricEditProvider } from "./metric-edit-context";
+import { CustomizeButton, MetricEditBar, MetricTray, useMetricEditorState } from "./MetricEditor";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
 
@@ -91,20 +94,47 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   // o painel conta os cards da aba aberta: os mesmos que a tela mostra
   const activeCatalog = useMemo(() => pageCatalog(catalog, activeKpis ?? []), [catalog, activeKpis]);
   const metrics = useMetricPrefsState({ dashboardId: customizeId ?? null, scope: "sample", catalog: activeCatalog, pageKpis, initial: spec.metricPrefs, hideSpend, saveAction: saveMetrics });
+  const pagesWithCards = spec.pages.filter((p, i) => (pageKpis[i] ?? []).length > 0);
+  const known = (id: string) => isSampleMetric(id) || extraById.has(id);
+  const activeIds = pageKpiIds(catalog, activeKpis ?? [], metrics.prefs?.kpis, { hideSpend }).filter(known);
+  // aba Criativos com outras plataformas: os cards mostram a parte da Meta, a mesma dos anúncios
+  const metaPart = !!creatives && active === "criativos" && ds.adPlatforms.length > 1 && ds.adPlatforms.includes("meta");
+  const edit = useMetricEditorState({
+    metrics,
+    visibleKpis: activeIds,
+    hasData: (id) => {
+      const v = isSampleMetric(id) ? currentTotals(ds)[id] : extraById.get(id)?.value;
+      return v != null && Number.isFinite(v) && v !== 0;
+    },
+    valueOf: (id) => {
+      if (isSampleMetric(id)) {
+        const totals = metaPart ? platformPart(ds, "meta", "current") : currentTotals(ds);
+        const def = metricDefinition(id, t?.profile ?? "ecommerce");
+        return { text: formatMetricValue(totals[id], def.format), spark: metaPart ? undefined : series(ds.current, id) };
+      }
+      const extra = extraById.get(id);
+      return extra ? { text: formatLive(extra.value, extra.format) } : null;
+    },
+    kpiPlace: "nesta aba",
+    kpiNote: pageKpis.filter((r) => r.length).length > 1 ? "Ocultar ou adicionar vale para todas as abas com cards." : undefined,
+    noKpis: !activeKpis?.length,
+    goToCards: pagesWithCards[0] ? () => setPage(pagesWithCards[0]) : undefined,
+  });
+  const editing = metrics.open;
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
   const ctx = makeContext(ds, { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns });
   // métrica nova sem valor do servidor não vira card: o contador e a tela continuam batendo
   const idsOf = (p: PageId) => pageKpiIds(catalog, pageLayout(t, p).kpis.map((k) => k.metric), metrics.prefs?.kpis, { hideSpend }).filter((id) => isSampleMetric(id) || extraById.has(id));
   const layoutOf = (p: PageId) => sampleLayout(pageLayout(t, p), idsOf(p).filter(isSampleMetric));
   const extrasOf = (p: PageId) => idsOf(p).flatMap((id) => extraById.get(id) ?? []);
-  // aba Criativos com outras plataformas: os cards mostram a parte da Meta, a mesma dos anúncios
-  const creativesCtx = creatives && ds.adPlatforms.length > 1 && ds.adPlatforms.includes("meta") ? { ...ctx, cur: platformPart(ds, "meta", "current"), prev: platformPart(ds, "meta", "previous") } : ctx;
+  const creativesCtx = creatives && ds.adPlatforms.length > 1 && ds.adPlatforms.includes("meta") ? { ...ctx, cur: platformPart(ds, "meta", "current"), prev: platformPart(ds, "meta", "previous"), labelSuffix: " · Meta" } : ctx;
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? "";
   const attribution = ATTRIBUTIONS.find((a) => a.value === spec.settings.attribution)?.label;
 
   return (
-    <div style={brandStyle(spec.brand)} className="space-y-4">
-      {/* pela largura do contêiner, não da janela: o painel "Personalizar" encolhe esta área */}
+    <MetricEditProvider value={edit.editor}>
+    <div style={brandStyle(spec.brand)} data-metric-editing={editing ? edit.section : undefined} className={`space-y-4 ${editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
+      {customizeId && <MetricEditBar state={edit} />}
       <div className="@container space-y-4 print:hidden">
         <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
           <div className="flex min-w-0 flex-1 items-start gap-4">
@@ -141,6 +171,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
             />
           </div>
           <div className="flex flex-wrap items-end gap-2">
+            <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
             <div className="w-full @[540px]:w-52 @[760px]:w-60">
               <PeriodPicker
                 period={period}
@@ -169,7 +200,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                 onChange={setCompare}
               />
             </div>
-            {customizeId && (
+            </div>
+            {customizeId && !editing && (
               <div className="ml-auto">
                 <CustomizeButton onClick={() => metrics.openPanel()} />
               </div>
@@ -189,7 +221,9 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
             {active === "criativos" && creatives ? (
               <div key={active} className="space-y-2">
                 <PageView layout={{ ...layoutOf(active), widgets: [] }} ctx={creativesCtx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
-                <CreativesPage data={creatives} />
+                <div data-dim-self>
+                  <CreativesPage data={creatives} />
+                </div>
               </div>
             ) : (
               <PageView key={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
@@ -243,28 +277,9 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
           ))}
         </div>
       )}
-      {customizeId && (
-        <MetricsPanel
-          open={metrics.open}
-          onClose={metrics.close}
-          catalog={metrics.catalog}
-          visibleKpis={idsOf(active)}
-          prefs={metrics.prefs}
-          hasData={(id) => {
-            const v = isSampleMetric(id) ? ctx.cur[id] : extraById.get(id)?.value;
-            return v != null && Number.isFinite(v) && v !== 0;
-          }}
-          onToggle={metrics.toggle}
-          onRestore={metrics.restore}
-          onSave={metrics.save}
-          pending={metrics.pending}
-          error={metrics.error}
-          kpiPlace="nesta aba"
-          kpiNote={pageKpis.filter((r) => r.length).length > 1 ? "Ocultar ou adicionar vale para todas as abas com cards." : undefined}
-          noKpis={!activeKpis?.length}
-        />
-      )}
+      {customizeId && <MetricTray state={edit} />}
       {customizeId && <MetricNoticeBar notice={metrics.notice} onUndo={metrics.undo} onDismiss={metrics.dismiss} />}
     </div>
+    </MetricEditProvider>
   );
 }

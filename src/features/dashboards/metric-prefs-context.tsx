@@ -138,5 +138,8 @@ export function useMetricPrefsState({ dashboardId, scope, catalog, normalizeCata
     setOpen(false);
   }, [catalog, dashboardId, draft, normalizeCatalog, pageKpis, saveAction, scope]);
 
-  return { open, openPanel, close, save, restore, toggle, pending, error, prefs: current, visibility, catalog, edit, notice, undo, dismiss };
+  const writeCatalog = normalizeCatalog ?? catalog;
+  const dirty = open && JSON.stringify(normalizeScope(writeCatalog, draft[scope], pageKpis)) !== JSON.stringify(normalizeScope(writeCatalog, saved[scope], pageKpis));
+
+  return { open, openPanel, close, save, restore, toggle, pending, error, prefs: current, visibility, catalog, edit, notice, undo, dismiss, dirty };
 }

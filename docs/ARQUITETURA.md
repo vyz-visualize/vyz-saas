@@ -186,6 +186,10 @@ Segurança: RLS em todas as tabelas (negado por padrão), funções `security de
 
 Nos dashboards de exemplo cada aba tem os próprios cards: `pageKpiIds` é a fonte única da tela, do PDF, do link e do contador do painel, que conta a aba aberta. Oculto some de todas as abas; adicionado aparece em todas as que têm fileira de cards; aba sem fileira continua sem. Nos dashboards com dados reais, a fileira só existe na Visão geral. Quem pode editar também oculta pelo card (grava na hora, com Desfazer; `MetricActions.tsx`). O contador do painel recebe a lista que a tela está desenhando, inclusive com escolhas não salvas. Topo do dashboard: botões e abas que não cabem vão para menus (`components/ui/fit-items.ts`), sem quebra de linha nem rolagem.
 
+### Modo personalizar
+
+"Personalizar métricas" liga a edição no próprio dashboard (`features/dashboards/MetricEditor.tsx`): faixa no topo, encaixes na fileira de cards e bandeja embaixo. Mexe só no rascunho de `useMetricPrefsState`; o que pode e o que grava continua em `metric-prefs.ts`. Links internos e o voltar pedem confirmação em janela própria; fechar ou recarregar usa o aviso nativo do navegador, porque não há outra forma. A posição do card segue a ordem padrão, então arrastar destaca a fileira inteira.
+
 ### Métricas novas do Personalizar
 
 `features/analytics/live-metrics.ts` define de onde vem cada métrica, como é calculada e o texto que explica; cards, tabelas e o catálogo leem daí, e as novas entram desligadas. Meta: contagens por anúncio somam `insights_ad_daily`; página de destino, carrinho e checkout vêm das linhas por campanha e conta. Google: tudo das campanhas (`insights_campaign_daily`), porque Performance Max e Shopping não têm linha de anúncio. O `rollup_account_insights` não usa essas colunas. Custo por ThruPlay e CPV usam só o investimento de vídeo, e tempo médio é segundos totais ÷ reproduções. Resultados vira card só com um tipo de resultado no período; a tabela mostra por campanha. A lista do investimento oculto (`SPEND_FIELDS`) sai das mesmas definições. Eventos da Meta sem contagem em dobro: um campo por evento, em `features/sync/meta-actions.ts`.

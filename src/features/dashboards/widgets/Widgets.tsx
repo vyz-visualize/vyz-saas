@@ -16,6 +16,7 @@ import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
 import { formatValue as formatLive } from "@/features/analytics/format";
 import type { SampleExtraMetric } from "@/features/analytics/types";
 import { HideMetricButton } from "../MetricActions";
+import { RemoveColumnButton, RemoveMetricButton, useMetricEditor } from "../metric-edit-context";
 import { isSampleSpendDerived } from "../metric-prefs";
 
 export type WidgetContext = {
@@ -29,6 +30,8 @@ export type WidgetContext = {
   zero?: boolean;
   /** Marca a linha da meta para a intro da LP. */
   markGoal?: boolean;
+  /** Texto no nome de cada card (" · Meta" na aba Criativos dos modelos com outras plataformas). */
+  labelSuffix?: string;
   /** Comparação com o período anterior (variações nos KPIs). */
   compare?: boolean;
   /** Linha tracejada do período anterior nos gráficos de linha. */
@@ -72,10 +75,11 @@ function Delta({ cur, prev, id, profile, suffix = "" }: { cur: number; prev: num
 
 // ---- KPI ------------------------------------------------------------------
 
-export function Kpi({ spec, ctx, delay, size = "md", onHide }: { spec: KpiSpec; ctx: WidgetContext; delay: number; size?: "md" | "lg"; /** Atalho de ocultar (só para quem pode editar). */ onHide?: () => void }) {
+export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec: KpiSpec; ctx: WidgetContext; delay: number; size?: "md" | "lg"; /** Atalho de ocultar (só para quem pode editar). */ onHide?: () => void; /** Modo personalizar: o ✕. */ onRemove?: () => void }) {
   const lg = size === "lg";
   const { cur, prev, ds, profile } = ctx;
   const def = metric(spec.metric, profile);
+  const label = `${def.label}${ctx.labelSuffix ?? ""}`;
   const hidden = ctx.hideSpend && spec.metric === "spend";
   const raw = formatValue(cur[spec.metric], def.format);
   const value = hidden ? HIDDEN : ctx.zero ? zeroed(raw) : raw;
@@ -108,27 +112,29 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide }: { spec: KpiSpec; 
   return (
     <div
       data-vyz-metric={spec.metric}
+      data-edit-metric={spec.metric}
       className={`group/kpi m-in relative min-w-0 rounded-[10px] border ${lg ? "p-3.5" : "p-2.5"} ${strong ? "border-transparent bg-accent text-on-accent" : "border-line bg-card"}`}
       style={{ "--d": `${delay}ms` } as CSSProperties}
       title={def.help}
     >
-      <p className={`min-h-[2.3em] leading-[1.15] font-medium tracking-[0.08em] uppercase ${lg ? "text-[11px]" : "text-[9.5px]"} ${strong ? "" : "text-fg-2"}`}>{def.label}</p>
+      <p className={`min-h-[2.3em] leading-[1.15] font-medium tracking-[0.08em] uppercase ${lg ? "text-[11px]" : "text-[9.5px]"} ${strong ? "" : "text-fg-2"}`}>{label}</p>
       <p className={`mt-1 leading-none font-bold tracking-[-0.02em] ${lg ? "text-[22px] @[760px]:text-[26px]" : value.length > 10 ? "text-[15px] @[900px]:text-[18px]" : "text-[17px] @[900px]:text-[21px]"}`}>
         <Odometer value={value} />
       </p>
       <p className={`mt-1.5 leading-tight ${lg ? "text-[12px]" : "text-[10px]"} ${strong ? "[&_span]:text-inherit" : "text-fg-2"}`}>{sub}</p>
-      {onHide && <HideMetricButton label={def.label} onClick={onHide} />}
+      {onHide && <HideMetricButton label={label} onClick={onHide} />}
+      {onRemove && <RemoveMetricButton label={label} onClick={onRemove} />}
     </div>
   );
 }
 
 /** Card de métrica nova nas amostras: o valor vem do servidor, na escala do modelo. */
-export function ExtraKpi({ m, ctx, delay, onHide }: { m: SampleExtraMetric; ctx: WidgetContext; delay: number; onHide?: () => void }) {
+export function ExtraKpi({ m, ctx, delay, onHide, onRemove }: { m: SampleExtraMetric; ctx: WidgetContext; delay: number; onHide?: () => void; onRemove?: () => void }) {
   const d = m.value != null && m.previous ? delta(m.value, m.previous) : null;
   const good = d == null || m.better === "neutral" ? null : m.better === "up" ? d >= 0 : d <= 0;
   const color = good === null ? "text-fg-2" : good ? "text-accent" : "text-error-fg";
   return (
-    <div className="group/kpi m-in relative min-w-0 rounded-[10px] border border-line bg-card p-2.5" style={{ "--d": `${delay}ms` } as CSSProperties} data-vyz-metric={m.id}>
+    <div className="group/kpi m-in relative min-w-0 rounded-[10px] border border-line bg-card p-2.5" style={{ "--d": `${delay}ms` } as CSSProperties} data-vyz-metric={m.id} data-edit-metric={m.id}>
       <p className="min-h-[2.3em] text-[9.5px] leading-[1.15] font-medium tracking-[0.08em] text-fg-2 uppercase">{m.label}</p>
       <p className="mt-1 text-[18px] leading-none font-bold tracking-[-0.02em] tnum">{formatLive(m.value, m.format)}</p>
       <p className="mt-1.5 text-[10px] leading-tight text-fg-2">
@@ -141,6 +147,7 @@ export function ExtraKpi({ m, ctx, delay, onHide }: { m: SampleExtraMetric; ctx:
         )}
       </p>
       {onHide && <HideMetricButton label={m.label} onClick={onHide} />}
+      {onRemove && <RemoveMetricButton label={m.label} onClick={onRemove} />}
     </div>
   );
 }
@@ -412,8 +419,11 @@ function PlatformCards({ ctx }: { ctx: WidgetContext }) {
 
 function TableWidget({ source, ctx }: { source: "campaigns" | "products" | "clients"; ctx: WidgetContext }) {
   const { ds, profile } = ctx;
+  const editor = useMetricEditor();
   const show = (id: string) => (!ctx.hideSpend || !isSampleSpendDerived(id as MetricId)) && (!ctx.visibleColumns || ctx.visibleColumns.has(id));
   const money = profile === "ecommerce" || profile === "marketplace" || profile === "executivo" || profile === "infoproduto" || profile === "site";
+  // os rótulos variam por nicho: o cabeçalho volta para a métrica por aqui, para o ✕ do modo personalizar
+  const columnOf: Record<string, string> = { Investimento: "spend", CTR: "ctr", ROAS: "roas", Receita: "revenue", Conversões: "conversions", CPA: "cpa", [metric("conversions", profile).label]: "conversions", [metric("cpa", profile).label]: "cpa" };
   let head: string[] = [];
   let rows: ReactNode[][] = [];
   if (source === "campaigns") {
@@ -460,6 +470,7 @@ function TableWidget({ source, ctx }: { source: "campaigns" | "products" | "clie
             {head.map((h, i) => (
               <th key={h} scope="col" className={`py-1.5 font-medium ${i ? "text-right" : ""}`}>
                 {h}
+                {editor?.section === "columns" && editor.canRemoveColumn && columnOf[h] && <RemoveColumnButton label={h} onClick={() => editor.removeColumn(columnOf[h])} />}
               </th>
             ))}
           </tr>

@@ -35,13 +35,30 @@ const mount = async (el: ReturnType<typeof createElement>) => {
   await act(async () => root.render(el));
 };
 const sampleCards = () => [...host.querySelectorAll<HTMLElement>("[data-vyz-metric]")].map((e) => e.dataset.vyzMetric);
-const counter = () => Number(/^(\d+) de/.exec(document.querySelector('[role="dialog"] [role="status"]')?.textContent ?? "")?.[1]);
+const counter = () => Number(/^(\d+) de/.exec(document.querySelector("[data-metric-counter]")?.textContent ?? "")?.[1]);
 const click = async (el: Element | null | undefined) => {
   expect(el).toBeTruthy();
   await act(async () => (el as HTMLElement).click());
 };
 const openPanel = () => click([...host.querySelectorAll("button")].find((b) => b.textContent?.includes("Personalizar métricas")));
-const toggle = (label: string) => click([...document.querySelectorAll('[role="dialog"] li')].find((l) => l.querySelector("label")?.textContent?.startsWith(label))?.querySelector('[role="switch"]'));
+const trayTabs = () => [...document.querySelectorAll<HTMLElement>("[data-tray-tab]")];
+const trayCardsNow = () => [...document.querySelectorAll<HTMLElement>("[data-tray-metric]")];
+/** Procura o card da bandeja pelo nome, passando pelas categorias. */
+const trayCard = async (label: string) => {
+  const find = () => trayCardsNow().find((c) => c.querySelector("p")?.textContent?.startsWith(label));
+  for (const tab of trayTabs()) {
+    await click(tab);
+    if (find()) return find()!;
+  }
+  return find();
+};
+/** Liga ou desliga: "+" na bandeja para adicionar, ✕ no card para remover. */
+const toggle = async (label: string) => {
+  const remove = [...host.querySelectorAll("button")].find((b) => b.getAttribute("aria-label")?.startsWith(`Remover ${label}`));
+  if (remove) return click(remove);
+  const card = await trayCard(label);
+  return click(card?.querySelector(`button[aria-label^="Adicionar ${label}"]`));
+};
 
 beforeEach(() => {
   save.mockClear();
@@ -88,7 +105,7 @@ describe("prévia não salva", () => {
     expect(counter()).toBe(2);
     await toggle("Investimento");
     expect(counter()).toBe(sampleCards().length);
-    await click(document.querySelector('[role="dialog"] button[aria-label="Fechar sem salvar"]'));
+    await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Cancelar"));
     expect(sampleCards()).toEqual(["conversions", "cpa", "ctr"]);
     expect(save).not.toHaveBeenCalled();
   });
@@ -123,7 +140,7 @@ describe("prévia não salva", () => {
   it("métrica nova sem valor fica desligada, com o aviso", async () => {
     await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, extraMetrics: [] }));
     await openPanel();
-    const li = [...document.querySelectorAll('[role="dialog"] li')].find((l) => l.querySelector("label")?.textContent?.startsWith("Cadastros"))!;
+    const li = (await trayCard("Cadastros"))!;
     expect(li.textContent).toContain("sem dados nesta conta");
   });
 
@@ -133,9 +150,9 @@ describe("prévia não salva", () => {
     expect(host.querySelectorAll("article")).toHaveLength(9);
     await openPanel();
     expect(counter()).toBe(9);
-    const li = [...document.querySelectorAll('[role="dialog"] li')].find((l) => l.querySelector("label")?.textContent?.startsWith("Resultados"))!;
+    const li = (await trayCard("Resultados"))!;
     expect(li.textContent).toContain("tipos de resultado diferentes no período");
-    expect(li.querySelector('[role="switch"]')?.hasAttribute("disabled")).toBe(true);
+    expect(li.querySelector('button[aria-label^="Adicionar"]')?.hasAttribute("disabled")).toBe(true);
   });
 
   it("dados reais: card novo liga e aparece; coluna nova só depois de ligar", async () => {
@@ -152,9 +169,9 @@ describe("prévia não salva", () => {
     const data = sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!;
     await mount(createElement(LiveDashboardView, { data, initialPage: "visao-geral", canCustomize: true, saveMetrics: save }));
     await openPanel();
-    const heads = () => [...document.querySelectorAll('[role="dialog"] h3')].map((h) => h.textContent);
+    const heads = () => trayTabs().map((h) => h.textContent);
     expect(heads()).toEqual(["Gerais", "Conversões", "Custos", "Taxas", "Vídeo", "Engajamento"]);
-    const input = document.querySelector('[role="dialog"] input') as HTMLInputElement;
+    const input = document.querySelector("[data-metric-search]") as HTMLInputElement;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "reproducoes");
       input.dispatchEvent(new Event("input", { bubbles: true }));
