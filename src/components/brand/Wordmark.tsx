@@ -2,11 +2,11 @@ import type { CSSProperties } from "react";
 import { LETTER_STEP, V_BOTTOM, V_TOP, WORDMARK_WIDTH, Y_POLY, Z_BOTTOM, Z_TOP } from "./geometry";
 
 type WordmarkProps = {
-  /** "full" = assinatura principal com "visualize"; "reduced" = só o wordmark. */
+  /** "full" = assinatura principal com "vyzualize"; "reduced" = só o wordmark. */
   variant?: "full" | "reduced";
   /** Cor do wordmark (classe de texto). Padrão: destaque do modo atual. */
   className?: string;
-  /** Cor do descritivo "visualize". Padrão: texto primário. */
+  /** Cor do descritivo "vyzualize". Padrão: texto primário. */
   descriptorClassName?: string;
   title?: string;
   /** Sem rótulo acessível (quando o texto já está ao lado). */
@@ -14,7 +14,7 @@ type WordmarkProps = {
   style?: CSSProperties;
 };
 
-// "visualize": Inter 500, tracking +34%, centralizado abaixo da base.
+// "vyzualize": Inter 500, tracking +34%, centralizado abaixo da base.
 const DESC_SIZE = 2.2;
 const DESC_TRACKING = 0.34;
 const DESC_BASELINE = 14.3;
@@ -42,7 +42,7 @@ export function Wordmark({
       viewBox={`0 0 ${WORDMARK_WIDTH} ${height}`}
       role={decorative ? undefined : "img"}
       aria-hidden={decorative ? true : undefined}
-      aria-label={decorative ? undefined : full ? `${title} · visualize` : title}
+      aria-label={decorative ? undefined : full ? `${title} · vyzualize` : title}
       className={className}
       style={{ display: "block", height: "auto", overflow: "visible", ...style }}
     >
@@ -90,7 +90,7 @@ export function Wordmark({
             letterSpacing: `${DESC_TRACKING}em`,
           }}
         >
-          visualize
+          vyzualize
         </text>
       )}
     </svg>

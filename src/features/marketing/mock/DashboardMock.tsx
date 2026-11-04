@@ -94,7 +94,7 @@ export function DashboardMock({ templateId, name, assemble, live = false, seed, 
           </ul>
           <div className="mt-auto rounded-[8px] border border-line bg-card p-2">
             <p className="truncate text-[10px] font-semibold">{name}</p>
-            <p className="text-[9px] text-fg-2">Pro · 4 projetos</p>
+            <p className="text-[9px] text-fg-2">Padrão · 3 projetos</p>
           </div>
         </aside>
 

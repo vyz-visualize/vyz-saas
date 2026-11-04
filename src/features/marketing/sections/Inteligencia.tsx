@@ -104,11 +104,13 @@ const METHODS: { title: string; text: string; visual: ReactNode; soon?: boolean 
     title: "Correlações",
     text: "O que anda junto com o resultado: investimento, frequência, criativo, dia da semana. O que pesa e o que é ruído.",
     visual: <CorrelationVisual />,
+    soon: true,
   },
   {
     title: "Estatística avançada",
     text: "Significância, intervalos e anomalias. Uma queda de ROAS só vira alerta quando é queda de verdade, não variação do dia.",
     visual: <StatsVisual />,
+    soon: true,
   },
 ];
 

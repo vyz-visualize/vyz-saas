@@ -77,7 +77,7 @@ export function nextTier(tier: Tier): Tier | null {
 export const LIMIT_ROWS: { label: string; value: (t: Tier) => string }[] = [
   { label: "Templates de dashboard", value: (t) => (t === "personalizado" ? `${ENTITLEMENTS[t].dashboardTemplates} + sob medida` : String(ENTITLEMENTS[t].dashboardTemplates)) },
   { label: "Templates de landing page", value: (t) => String(ENTITLEMENTS[t].landingTemplates) },
-  { label: "Plataformas", value: (t) => (ENTITLEMENTS[t].platforms === "core" ? "Meta, Google Ads, GA4" : "todas as 27") },
+  { label: "Plataformas", value: (t) => (ENTITLEMENTS[t].platforms === "core" ? "Meta e Google por login; GA4 em breve" : "Meta e Google por login; GA4 e mais plataformas em breve") },
   {
     label: "Páginas do dashboard",
     value: (t) => ({ base: "essenciais", pro: "+ Pro", avancado: "todas", personalizado: "todas" })[t],

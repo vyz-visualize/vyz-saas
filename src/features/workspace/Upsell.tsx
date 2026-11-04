@@ -47,7 +47,7 @@ function Preview({ bars = [40, 65, 52, 80, 70, 92], chips = 0, rows = 0 }: { bar
 
 const FEATURES: Record<Product, Feature[]> = {
   dash: [
-    { required: "pro", feature: "27 plataformas", text: "TikTok, LinkedIn, marketplaces e CRMs no mesmo dashboard.", preview: <Preview chips={8} bars={[30, 55, 45, 70, 60, 85]} /> },
+    { required: "pro", feature: "Mais plataformas em breve", text: "Mídia, marketplaces e CRMs no mesmo dashboard.", preview: <Preview chips={8} bars={[30, 55, 45, 70, 60, 85]} /> },
     { required: "avancado", feature: "Análise por áudio", text: "Pergunte em voz alta e ouça a leitura dos números.", preview: <Preview bars={[20, 70, 35, 90, 45, 75, 30, 60]} /> },
     { required: "personalizado", feature: "Marca própria", text: "Seu logo e suas cores no dashboard, no link e no PDF.", preview: <Preview rows={4} /> },
   ],

@@ -23,7 +23,7 @@ export function Footer() {
           <Wordmark className="w-full text-accent" title="VYZ" />
         </div>
         <p className="mt-6 text-center text-[clamp(1rem,2.6vw,1.75rem)] font-medium tracking-[0.34em] text-fg" aria-hidden>
-          visualize
+          vyzualize
         </p>
         <div className="mt-12 flex flex-col gap-4 border-t border-line pt-6 text-sm text-fg-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="tnum">

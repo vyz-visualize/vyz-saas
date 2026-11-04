@@ -14,7 +14,7 @@ import { SHOW_LANDING_PAGES } from "@/features/marketing/config";
 const STEPS = [
   {
     title: "Conecte as contas.",
-    text: "Login com Meta Ads, Google Ads e GA4. Mais plataformas em breve.",
+    text: "Meta e Google por login; GA4 e mais plataformas em breve.",
   },
   {
     title: "Escolha o template.",

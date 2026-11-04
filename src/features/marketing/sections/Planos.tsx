@@ -71,7 +71,7 @@ function dashCard(tier: PlanId, period: Period): Card {
     return {
       ...base,
       pitch: "Você conecta as contas e escolhe o template. Pronto em minutos.",
-      features: ["Meta Ads, Google Ads e GA4 por login", `${e.maxDashboards} dashboards, um para cada plataforma`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário", ...COMMON],
+      features: ["Meta e Google por login; GA4 em breve", `${e.maxDashboards} dashboards, um para cada plataforma`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário", ...COMMON],
     };
   }
   if (tier === "pro") {

@@ -107,7 +107,7 @@ export const INLINE_HEIGHT = ["h-[340px]", "", "h-[340px]"];
 // ---- passo 01 · contas --------------------------------------------------------
 
 const CHIPS: { label: string; soon?: boolean }[][] = [
-  [{ label: "Meta Ads" }, { label: "Google Ads" }, { label: "GA4" }],
+  [{ label: "Meta Ads" }, { label: "Google Ads" }, { label: "GA4 em breve", soon: true }],
   [{ label: "Mais em breve", soon: true }],
 ];
 
