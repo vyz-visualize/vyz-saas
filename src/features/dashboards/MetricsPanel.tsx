@@ -16,8 +16,8 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 
 export function CustomizeButton({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-[13.5px] font-medium outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent print:hidden">
-      <SlidersHorizontal size={15} aria-hidden /> Personalizar
+    <button type="button" onClick={onClick} className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-control border border-line px-3 text-[13.5px] font-medium whitespace-nowrap outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent print:hidden">
+      <SlidersHorizontal size={15} aria-hidden /> Personalizar métricas
     </button>
   );
 }
@@ -33,13 +33,21 @@ type Props = {
   onSave: () => void;
   pending: boolean;
   error: string | null;
+  section: MetricSection;
+  onSection: (section: MetricSection) => void;
+  /** Onde ficam os cards do contador ("nesta aba", "na Visão geral"). */
+  kpiPlace?: string;
+  /** Aviso abaixo do contador de cards. */
+  kpiNote?: string;
+  /** A aba aberta não tem fileira de cards. */
+  noKpis?: boolean;
 };
 
-export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle, onRestore, onSave, pending, error }: Props) {
-  const [section, setSection] = useState<MetricSection>("kpis");
+export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle, onRestore, onSave, pending, error, section, onSection, kpiPlace, kpiNote, noKpis = false }: Props) {
   const [query, setQuery] = useState("");
   const [help, setHelp] = useState<string | null>(null);
 
+  const cardsOff = section === "kpis" && noKpis;
   const sectionPrefs = prefs?.[section];
   const visible = useMemo(() => visibleIds(catalog, section, sectionPrefs), [catalog, section, sectionPrefs]);
   const max = sectionMax(catalog, section);
@@ -84,7 +92,7 @@ export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle,
               size="sm"
               block
               value={section}
-              onChange={setSection}
+              onChange={onSection}
               options={[
                 { value: "kpis", label: METRIC_SECTION_LABEL.kpis },
                 { value: "columns", label: METRIC_SECTION_LABEL.columns },
@@ -96,12 +104,17 @@ export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle,
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar métrica" className="h-full min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-fg-2/70" />
             </label>
             <p role="status" className="text-[12.5px] text-fg-2 tnum">
-              {max === null ? `${visible.length} ${visible.length === 1 ? "coluna visível" : "colunas visíveis"}` : `${visible.length} de ${max} cards`} · pelo menos 1
+              {cardsOff
+                ? "Esta aba não tem cards de KPI"
+                : max === null
+                  ? `${visible.length} ${visible.length === 1 ? "coluna visível" : "colunas visíveis"} · pelo menos 1`
+                  : `${visible.length} de ${max} cards${kpiPlace ? ` ${kpiPlace}` : ""} · pelo menos 1`}
             </p>
+            {section === "kpis" && kpiNote && !cardsOff && <p className="text-[12px] leading-snug text-fg-2">{kpiNote}</p>}
           </div>
 
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4">
-            {METRIC_GROUPS.map((group) => {
+            {!cardsOff && METRIC_GROUPS.map((group) => {
               const items = list.filter((m) => m.group === group);
               if (!items.length) return null;
               return (
@@ -140,7 +153,8 @@ export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle,
                 </section>
               );
             })}
-            {list.length === 0 && <p className="text-[13.5px] text-fg-2">Nenhuma métrica com esse nome.</p>}
+            {cardsOff && <p className="text-[13.5px] text-fg-2">Abra outra aba do dashboard para escolher os cards, ou use a opção Tabelas aqui.</p>}
+            {!cardsOff && list.length === 0 && <p className="text-[13.5px] text-fg-2">Nenhuma métrica com esse nome.</p>}
           </div>
 
           <footer className="border-t border-line p-3">

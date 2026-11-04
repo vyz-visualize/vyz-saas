@@ -10,6 +10,7 @@ import { btn } from "@/components/ui/styles";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { GOOGLE_CATALOG, META_CATALOG, type CatalogMetric } from "@/features/dashboards/metric-prefs";
 import { MetricVisibilityProvider, useMetricPrefsState, type SaveMetricPrefs } from "@/features/dashboards/metric-prefs-context";
+import { MetricNoticeBar } from "@/features/dashboards/MetricActions";
 import { CustomizeButton, MetricsPanel } from "@/features/dashboards/MetricsPanel";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
@@ -69,6 +70,9 @@ function syncedAt(iso: string, timeZone: string): string {
   }
 }
 
+/** A única aba com fileira de cards nos dashboards com dados reais. */
+const KPI_PAGE: PageId = "visao-geral";
+
 export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar, metricPrefs, canCustomize = false, saveMetrics }: LiveDashboardViewProps) {
   const metrics = useMetricPrefsState({ dashboardId: data.dashboard.id, scope: data.platform, catalog: CATALOG[data.platform], initial: metricPrefs, hideSpend: data.hideSpend, saveAction: saveMetrics });
   const pages = livePages(data.platform, pageIds);
@@ -99,19 +103,19 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
             {data.hideSpend && <span className="rounded-chip border border-dashed border-line px-2 py-0.5 text-fg-2">Investimento oculto</span>}
           </div>
         </div>
-        {(actions || canCustomize) && (
-          <div className="flex flex-wrap gap-2">
-            {canCustomize && <CustomizeButton onClick={() => metrics.setOpen(true)} />}
-            {actions}
-          </div>
-        )}
+        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </header>
 
-      <div className="flex flex-col gap-3 @[900px]:flex-row @[900px]:items-end @[900px]:justify-between">
+      <div className="flex flex-col gap-3 @[1000px]:flex-row @[1000px]:items-end @[1000px]:justify-between">
         <div className="min-w-0 flex-1">
           <Tabs label="Páginas do dashboard" value={active} onChange={setPage} items={pages.map((p) => ({ value: p, label: PAGES[p]?.name ?? p }))} />
         </div>
-        {toolbar && <div className="flex flex-wrap items-end gap-2">{toolbar}</div>}
+        {(toolbar || canCustomize) && (
+          <div className="flex flex-wrap items-end gap-2">
+            {toolbar}
+            {canCustomize && <CustomizeButton onClick={() => metrics.openPanel()} />}
+          </div>
+        )}
       </div>
 
       <p className="flex flex-wrap gap-x-2 text-[12.5px] text-fg-2">
@@ -153,8 +157,13 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
           onSave={metrics.save}
           pending={metrics.pending}
           error={metrics.error}
+          section={metrics.section}
+          onSection={metrics.setSection}
+          kpiPlace={active === KPI_PAGE ? undefined : `na ${PAGES[KPI_PAGE]?.name ?? "Visão geral"}`}
+          noKpis={!pages.includes(KPI_PAGE)}
         />
       )}
+      {canCustomize && <MetricNoticeBar notice={metrics.notice} onUndo={metrics.undo} onDismiss={metrics.dismiss} />}
     </div>
   );
 }

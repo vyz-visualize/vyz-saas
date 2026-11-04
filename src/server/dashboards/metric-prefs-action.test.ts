@@ -43,6 +43,16 @@ describe("salvar métricas", () => {
     expect(updates[0]).toEqual({ metric_prefs: { google: { kpis: { hidden: ["cpc"], shown: [] } } } });
   });
 
+  it("no exemplo, salvar numa aba não perde o que vale em outra", async () => {
+    const before = { templateId: current.templateId, pages: current.pages };
+    Object.assign(current, { templateId: "criativos-meta", pages: ["visao-geral", "criativos", "campanhas"] });
+    const { saveDashboardMetricPrefs } = await load();
+    // frequency é card de Criativos; spend é card de Campanhas e foi adicionado à Visão geral
+    await saveDashboardMetricPrefs(ID, "sample", { kpis: { hidden: ["frequency"], shown: ["spend"] } });
+    Object.assign(current, before);
+    expect(updates[0]).toMatchObject({ metric_prefs: { sample: { kpis: { hidden: ["frequency"], shown: ["spend"] } } } });
+  });
+
   it("recusa plataforma que não é a do dashboard", async () => {
     const { saveDashboardMetricPrefs } = await load();
     expect((await saveDashboardMetricPrefs(ID, "google", {})).ok).toBe(false);

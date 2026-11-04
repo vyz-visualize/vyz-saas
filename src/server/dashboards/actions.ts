@@ -180,7 +180,7 @@ export async function saveDashboardMetricPrefs(dashboardId: string, scope: Metri
     if (!t) throw appError("dashboard:template_unavailable");
     const catalog = catalogForTemplate(t, current.pages);
     if (scope !== catalog.scope) throw appError("validation");
-    const clean = normalizeScope(catalog.metrics, value);
+    const clean = normalizeScope(catalog.metrics, value, catalog.pageKpis);
     const db = await createServerSupabase();
     const next = withScope(current.metricPrefs, scope, clean);
     unwrap(await db.from("dashboards").update({ metric_prefs: next as Json }).eq("id", dashboardId));

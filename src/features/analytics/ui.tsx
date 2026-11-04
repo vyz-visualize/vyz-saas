@@ -8,6 +8,8 @@ import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { TrendSpark } from "@/components/charts/TrendSpark";
 import { decimal, pct } from "@/lib/format";
+import { AddMetricCard, HideMetricButton } from "@/features/dashboards/MetricActions";
+import { KPI_MAX } from "@/features/dashboards/metric-prefs";
 import { useColumnVisible, useMetricVisibility, useVisibleColumns } from "@/features/dashboards/metric-prefs-context";
 import { deltaText, deltaTone, FORMAT_LABEL, formatValue, HIDDEN, STATUS_LABEL } from "./format";
 import { kpiMetric } from "./metrics";
@@ -60,13 +62,13 @@ export function DeltaBadge({ delta, better, suffix }: { delta: number | null; be
   );
 }
 
-export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, metric }: { kpi: Kpi; currency: string; maturing: number; hideSpend?: boolean; featured?: boolean; /** Alvo do "Mostrar no painel" do assistente. */ metric?: string }) {
+export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, metric, onHide }: { kpi: Kpi; currency: string; maturing: number; hideSpend?: boolean; featured?: boolean; /** Alvo do "Mostrar no painel" do assistente. */ metric?: string; /** Atalho de ocultar (só para quem pode editar). */ onHide?: () => void }) {
   const hidden = hideSpend && kpi.spendBased;
   const value = hidden ? HIDDEN : formatValue(kpi.value, kpi.format, currency);
   const tone = deltaTone(kpi.delta, kpi.better);
   return (
     <article
-      className={`flex min-w-0 flex-col rounded-card border p-3.5 ${featured ? "border-accent/40 bg-accent-soft/50" : "border-line bg-card"}`}
+      className={`group/kpi relative flex min-w-0 flex-col rounded-card border p-3.5 ${featured ? "border-accent/40 bg-accent-soft/50" : "border-line bg-card"}`}
       aria-label={`${kpi.label}: ${value}`}
       data-vyz-metric={metric}
       title={kpi.help}
@@ -78,6 +80,7 @@ export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, 
         {kpi.note && <span className="text-[11px] text-fg-2">{kpi.note}</span>}
       </div>
       {!hidden && <TrendSpark values={kpi.spark} maturing={maturing} tone={tone === "bad" ? "bad" : "good"} className="mt-2.5 h-8" />}
+      {onHide && <HideMetricButton label={kpi.label} onClick={onHide} />}
     </article>
   );
 }
@@ -85,11 +88,13 @@ export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, 
 export function KpiGrid({ platform, kpis, extra = [], currency, maturing, hideSpend }: { platform: LivePlatform; kpis: Kpi[]; extra?: Kpi[]; currency: string; maturing: number; hideSpend?: boolean }) {
   const visibility = useMetricVisibility();
   const shown = visibility ? [...kpis, ...extra].filter((k) => visibility.kpis.has(k.id)) : kpis;
+  const edit = visibility?.edit;
   return (
     <div className="grid grid-cols-2 gap-2.5 @[640px]:grid-cols-3 @[1040px]:grid-cols-4 @[1280px]:grid-cols-5">
       {shown.map((k) => (
-        <KpiCard key={k.id} kpi={k} currency={currency} maturing={maturing} hideSpend={hideSpend} featured={k.id === "roas"} metric={kpiMetric(platform, k.id)} />
+        <KpiCard key={k.id} kpi={k} currency={currency} maturing={maturing} hideSpend={hideSpend} featured={k.id === "roas"} metric={kpiMetric(platform, k.id)} onHide={edit && shown.length > 1 ? () => edit.hide(k.id) : undefined} />
       ))}
+      {edit && shown.length < KPI_MAX && <AddMetricCard onClick={edit.add} />}
     </div>
   );
 }

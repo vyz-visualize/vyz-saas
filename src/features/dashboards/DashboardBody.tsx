@@ -15,8 +15,9 @@ import type { Brand } from "@/features/workspace/workspace";
 import { ddmmyyyy } from "@/lib/format";
 import { brandVars } from "./brand";
 import { datasetFor, pageLayout, sampleDefaultKpis } from "./data";
-import { sampleCatalog, isSampleSpendDerived, type MetricPrefs } from "./metric-prefs";
+import { pageCatalog, pageKpiIds, sampleCatalog, type MetricPrefs } from "./metric-prefs";
 import { useMetricPrefsState, type SaveMetricPrefs } from "./metric-prefs-context";
+import { MetricNoticeBar } from "./MetricActions";
 import { CustomizeButton, MetricsPanel } from "./MetricsPanel";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
@@ -51,22 +52,14 @@ type BodyProps = {
   saveMetrics?: SaveMetricPrefs;
 };
 
-/** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-/**
- * Os cards de uma página do exemplo: tira os ocultos e, na primeira página, soma
- * os que o usuário ligou. Página sem nenhum card visível mantém o primeiro
- * (mínimo por seção), menos no link com investimento oculto.
- */
-export function sampleLayout(layout: PageLayout, visible: ReadonlySet<string>, first: boolean, defaults: readonly MetricId[], hideSpend = false): PageLayout {
-  const blocked = (m: MetricId) => hideSpend && isSampleSpendDerived(m);
-  const kept = layout.kpis.filter((k) => visible.has(k.metric));
-  const extras = first ? ([...visible] as MetricId[]).filter((m) => !defaults.includes(m) && !kept.some((k) => k.metric === m)).map((metric) => ({ metric, sub: "delta" as const })) : [];
-  const kpis = [...kept, ...extras];
-  if (kpis.length) return { ...layout, kpis };
-  const fallback = layout.kpis.find((k) => !blocked(k.metric));
-  return { ...layout, kpis: fallback ? [fallback] : [] };
+/** Os cards de uma aba do exemplo: os dela que seguem visíveis e, depois, os adicionados. */
+export function sampleLayout(layout: PageLayout, visible: readonly string[]): PageLayout {
+  const kept = layout.kpis.filter((k) => visible.includes(k.metric));
+  const extras = (visible as MetricId[]).filter((m) => !layout.kpis.some((k) => k.metric === m)).map((metric) => ({ metric, sub: "delta" as const }));
+  return { ...layout, kpis: [...kept, ...extras] };
 }
 
+/** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
 export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(spec.pages[0] ?? "visao-geral");
@@ -78,11 +71,18 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   const ds = useMemo(() => datasetFor({ ...spec, settings: spec.settings }, days), [spec, days]);
   const defaults = useMemo(() => (t ? sampleDefaultKpis(t, spec.pages) : []), [t, spec.pages]);
   const catalog = useMemo(() => sampleCatalog(t?.profile ?? "ecommerce", defaults), [t, defaults]);
-  const metrics = useMetricPrefsState({ dashboardId: customizeId ?? null, scope: "sample", catalog, initial: spec.metricPrefs, hideSpend, saveAction: saveMetrics });
+  const pageKpis = useMemo(() => (t ? spec.pages.map((p) => pageLayout(t, p).kpis.map((k) => k.metric as string)) : []), [t, spec.pages]);
+  const active = spec.pages.includes(page) ? page : spec.pages[0];
+  const activeKpis = pageKpis[spec.pages.indexOf(active)];
+  // o painel conta os cards da aba aberta: os mesmos que a tela mostra
+  const activeCatalog = useMemo(() => pageCatalog(catalog, activeKpis ?? []), [catalog, activeKpis]);
+  const metrics = useMetricPrefsState({ dashboardId: customizeId ?? null, scope: "sample", catalog: activeCatalog, pageKpis, initial: spec.metricPrefs, hideSpend, saveAction: saveMetrics });
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
   const ctx = makeContext(ds, { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns });
-  const layoutOf = (p: PageId) => sampleLayout(pageLayout(t, p), metrics.visibility.kpis, p === spec.pages[0], defaults, hideSpend);
-  const active = spec.pages.includes(page) ? page : spec.pages[0];
+  const layoutOf = (p: PageId) => {
+    const layout = pageLayout(t, p);
+    return sampleLayout(layout, pageKpiIds(catalog, layout.kpis.map((k) => k.metric), metrics.prefs?.kpis, { hideSpend }));
+  };
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? "";
   const attribution = ATTRIBUTIONS.find((a) => a.value === spec.settings.attribution)?.label;
 
@@ -109,16 +109,11 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
               </div>
             </div>
           </div>
-          {(actions || customizeId) && (
-            <div className="flex flex-wrap gap-2">
-              {customizeId && <CustomizeButton onClick={() => metrics.setOpen(true)} />}
-              {actions}
-            </div>
-          )}
+          {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
         </header>
 
-        <div className="flex flex-col gap-3 @[600px]:flex-row @[600px]:items-end @[600px]:justify-between">
-          <div className="min-w-0 flex-1">
+        <div className="flex flex-col gap-3">
+          <div className="min-w-0">
             <Tabs label="Páginas do dashboard" value={active} onChange={setPage} items={spec.pages.map((p) => ({ value: p, label: PAGES[p].name }))} />
           </div>
           <div className="flex flex-wrap items-end gap-2">
@@ -140,6 +135,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
             <div className="flex h-10 items-center rounded-control border border-line px-3 text-[13px]">
               <Switch label="Comparar com o período anterior" checked={compare} onChange={setCompare} />
             </div>
+            {customizeId && <CustomizeButton onClick={() => metrics.openPanel()} />}
           </div>
         </div>
       </div>
@@ -152,7 +148,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         <div className="relative" data-anim={assemble ? "on" : "off"}>
           <div className="scanner" aria-hidden />
           <div className="m-unveil">
-            <PageView key={active} layout={layoutOf(active)} ctx={ctx} />
+            <PageView key={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} />
           </div>
         </div>
       )}
@@ -199,7 +195,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         <MetricsPanel
           open={metrics.open}
           onClose={metrics.close}
-          catalog={catalog}
+          catalog={activeCatalog}
           prefs={metrics.prefs}
           hasData={(id) => {
             const v = ctx.cur[id as MetricId];
@@ -210,8 +206,14 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
           onSave={metrics.save}
           pending={metrics.pending}
           error={metrics.error}
+          section={metrics.section}
+          onSection={metrics.setSection}
+          kpiPlace="nesta aba"
+          kpiNote={pageKpis.filter((r) => r.length).length > 1 ? "Ocultar ou adicionar vale para todas as abas com cards." : undefined}
+          noKpis={!activeKpis?.length}
         />
       )}
+      {customizeId && <MetricNoticeBar notice={metrics.notice} onUndo={metrics.undo} onDismiss={metrics.dismiss} />}
     </div>
   );
 }

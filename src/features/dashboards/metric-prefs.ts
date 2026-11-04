@@ -170,9 +170,29 @@ export function visibleIds(catalog: readonly CatalogMetric[], section: MetricSec
   const p = prefs ?? EMPTY;
   const list = inSection(catalog, section).filter((m) => !(opts.hideSpend && m.spendDerived));
   const visible = list.filter((m) => (isDefault(m, section) ? !p.hidden.includes(m.id) : p.shown.includes(m.id))).map((m) => m.id);
-  if (visible.length) return visible;
+  const max = sectionMax(catalog, section);
+  if (visible.length) return max === null ? visible : visible.slice(0, max);
   const fallback = list.find((m) => isDefault(m, section)) ?? list[0];
   return fallback ? [fallback.id] : [];
+}
+
+/**
+ * Nos dashboards de exemplo, cada aba tem os próprios cards. O padrão vale por
+ * aba: o que é da aba vem ligado, o resto é opcional. Oculto some de todas as
+ * abas; adicionado aparece em todas as que têm fileira de cards.
+ */
+export function pageCatalog(catalog: readonly CatalogMetric[], pageKpis: readonly string[]): CatalogMetric[] {
+  return catalog.map((m) => (m.kpi ? { ...m, kpi: pageKpis.includes(m.id) ? ("default" as const) : ("optional" as const) } : m));
+}
+
+/**
+ * Cards de uma aba: é daqui que saem a tela, o PDF, o link e o contador do
+ * painel. Aba sem fileira de cards continua sem, e a reserva do mínimo nunca
+ * traz para a aba um card que não é dela.
+ */
+export function pageKpiIds(catalog: readonly CatalogMetric[], pageKpis: readonly string[], prefs: SectionPrefs | undefined, opts: { hideSpend?: boolean } = {}): string[] {
+  if (!pageKpis.length) return [];
+  return visibleIds(pageCatalog(catalog, pageKpis), "kpis", prefs, opts).filter((id) => pageKpis.includes(id) || prefs?.shown.includes(id));
 }
 
 export type ToggleBlock = "min" | "max" | null;
@@ -210,10 +230,25 @@ export function normalizeSection(catalog: readonly CatalogMetric[], section: Met
   return out;
 }
 
-export function normalizeScope(catalog: readonly CatalogMetric[], prefs: ScopePrefs | undefined): ScopePrefs {
+/** Exemplo: o oculto precisa ser de alguma aba; o adicionado, faltar em alguma aba com cards. */
+function normalizePageKpis(catalog: readonly CatalogMetric[], pageKpis: readonly (readonly string[])[], prefs: SectionPrefs | undefined): SectionPrefs {
+  const p = prefs ?? EMPTY;
+  const rows = pageKpis.filter((r) => r.length);
+  const list = inSection(catalog, "kpis");
+  return {
+    hidden: list.filter((m) => p.hidden.includes(m.id) && rows.some((r) => r.includes(m.id))).map((m) => m.id),
+    shown: list
+      .filter((m) => p.shown.includes(m.id) && !p.hidden.includes(m.id) && rows.some((r) => !r.includes(m.id)))
+      .map((m) => m.id)
+      .slice(0, KPI_MAX),
+  };
+}
+
+/** `pageKpis`: os cards de cada aba, nos dashboards de exemplo. */
+export function normalizeScope(catalog: readonly CatalogMetric[], prefs: ScopePrefs | undefined, pageKpis?: readonly (readonly string[])[]): ScopePrefs {
   const out: ScopePrefs = {};
   for (const section of ["kpis", "columns"] as const) {
-    const n = normalizeSection(catalog, section, prefs?.[section]);
+    const n = section === "kpis" && pageKpis ? normalizePageKpis(catalog, pageKpis, prefs?.kpis) : normalizeSection(catalog, section, prefs?.[section]);
     if (n.hidden.length || n.shown.length) out[section] = n;
   }
   return out;
@@ -225,6 +260,13 @@ export function withScope(all: MetricPrefs, scope: MetricScope, value: ScopePref
   if (value.kpis || value.columns) next[scope] = value;
   else delete next[scope];
   return next;
+}
+
+/** Oculta um card pelo atalho. Devolve as escolhas novas, ou null se ele é o último visível. */
+export function hideKpi(catalog: readonly CatalogMetric[], scope: MetricScope, prefs: MetricPrefs, id: string, pageKpis?: readonly (readonly string[])[]): MetricPrefs | null {
+  const current = prefs[scope];
+  if (!visibleIds(catalog, "kpis", current?.kpis).includes(id) || toggleBlock(catalog, "kpis", current?.kpis, id)) return null;
+  return withScope(prefs, scope, normalizeScope(catalog, { ...current, kpis: toggleMetric(catalog, "kpis", current?.kpis, id) }, pageKpis));
 }
 
 // ---- tabelas ------------------------------------------------------------------------------------

@@ -11,7 +11,7 @@ import type { AgentContext, ClientData } from "@/features/agent/engine/types";
 import { kpiMetric } from "@/features/analytics/metrics";
 import { monthToDate, periodTotals, type WarehouseDay } from "@/features/agent/engine/warehouse";
 import { datasetFor, pageLayout, sampleDefaultKpis } from "@/features/dashboards/data";
-import { GOOGLE_CATALOG, META_CATALOG, parseMetricPrefs, sampleCatalog, visibleIds } from "@/features/dashboards/metric-prefs";
+import { GOOGLE_CATALOG, META_CATALOG, pageKpiIds, parseMetricPrefs, sampleCatalog, visibleIds } from "@/features/dashboards/metric-prefs";
 import type { MetricId } from "@/features/metrics/definitions";
 import { currentTotals, previousTotals } from "@/features/metrics/compute";
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
@@ -123,8 +123,6 @@ export async function loadAgentContext(now = new Date()): Promise<AgentContext> 
 
 /** Cards que aparecem na primeira página de um dashboard de exemplo (alvos do "Mostrar no painel"). */
 function visibleSampleKpis(t: DashboardTemplate, pages: PageId[], first: PageId, raw: unknown): MetricId[] {
-  const defaults = sampleDefaultKpis(t, pages);
-  const visible = visibleIds(sampleCatalog(t.profile, defaults), "kpis", parseMetricPrefs(raw).sample?.kpis);
-  const onPage = pageLayout(t, first).kpis.map((k) => k.metric);
-  return (visible as MetricId[]).filter((m) => onPage.includes(m) || !defaults.includes(m));
+  const catalog = sampleCatalog(t.profile, sampleDefaultKpis(t, pages));
+  return pageKpiIds(catalog, pageLayout(t, first).kpis.map((k) => k.metric), parseMetricPrefs(raw).sample?.kpis) as MetricId[];
 }

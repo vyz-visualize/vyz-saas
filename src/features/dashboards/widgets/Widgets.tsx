@@ -13,6 +13,7 @@ import { formatValue, isGood, metric, type MetricDef, type MetricId, type Profil
 import type { Dataset } from "@/features/metrics/source";
 import type { KpiSpec, WidgetSpec } from "@/features/templates/types";
 import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
+import { HideMetricButton } from "../MetricActions";
 import { isSampleSpendDerived } from "../metric-prefs";
 
 export type WidgetContext = {
@@ -69,7 +70,7 @@ function Delta({ cur, prev, id, profile, suffix = "" }: { cur: number; prev: num
 
 // ---- KPI ------------------------------------------------------------------
 
-export function Kpi({ spec, ctx, delay, size = "md" }: { spec: KpiSpec; ctx: WidgetContext; delay: number; size?: "md" | "lg" }) {
+export function Kpi({ spec, ctx, delay, size = "md", onHide }: { spec: KpiSpec; ctx: WidgetContext; delay: number; size?: "md" | "lg"; /** Atalho de ocultar (só para quem pode editar). */ onHide?: () => void }) {
   const lg = size === "lg";
   const { cur, prev, ds, profile } = ctx;
   const def = metric(spec.metric, profile);
@@ -105,7 +106,7 @@ export function Kpi({ spec, ctx, delay, size = "md" }: { spec: KpiSpec; ctx: Wid
   return (
     <div
       data-vyz-metric={spec.metric}
-      className={`m-in min-w-0 rounded-[10px] border ${lg ? "p-3.5" : "p-2.5"} ${strong ? "border-transparent bg-accent text-on-accent" : "border-line bg-card"}`}
+      className={`group/kpi m-in relative min-w-0 rounded-[10px] border ${lg ? "p-3.5" : "p-2.5"} ${strong ? "border-transparent bg-accent text-on-accent" : "border-line bg-card"}`}
       style={{ "--d": `${delay}ms` } as CSSProperties}
       title={def.help}
     >
@@ -114,6 +115,7 @@ export function Kpi({ spec, ctx, delay, size = "md" }: { spec: KpiSpec; ctx: Wid
         <Odometer value={value} />
       </p>
       <p className={`mt-1.5 leading-tight ${lg ? "text-[12px]" : "text-[10px]"} ${strong ? "[&_span]:text-inherit" : "text-fg-2"}`}>{sub}</p>
+      {onHide && <HideMetricButton label={def.label} onClick={onHide} />}
     </div>
   );
 }

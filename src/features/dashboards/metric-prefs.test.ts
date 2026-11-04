@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { sampleLayout } from "./DashboardBody";
 import { catalogForTemplate, pageLayout, sampleDefaultKpis } from "./data";
-import { GOOGLE_CATALOG, KPI_MAX, META_CATALOG, normalizeScope, normalizeSection, parseMetricPrefs, pickColumns, sampleCatalog, sectionMax, toggleBlock, toggleMetric, visibleIds, withScope } from "./metric-prefs";
-import { dashboardTemplate } from "@/features/templates/dashboards";
+import { GOOGLE_CATALOG, hideKpi, KPI_MAX, META_CATALOG, normalizeScope, normalizeSection, pageCatalog, pageKpiIds, parseMetricPrefs, pickColumns, sampleCatalog, sectionMax, toggleBlock, toggleMetric, visibleIds, withScope, type SectionPrefs } from "./metric-prefs";
+import { DASHBOARD_TEMPLATES, dashboardTemplate } from "@/features/templates/dashboards";
+import type { PageId } from "@/features/templates/types";
 import { LIVE_TEMPLATES } from "@/features/templates/live";
 
 const meta = (prefs?: Parameters<typeof visibleIds>[2]) => visibleIds(META_CATALOG, "kpis", prefs);
@@ -88,12 +89,99 @@ describe("mínimo e máximo", () => {
     expect(pickColumns(cols, new Set(["ctr"]), () => false).map((c) => c.key)).toEqual(["name", "a"]);
   });
 
-  it("uma página de exemplo nunca fica sem card", () => {
+  it("uma aba de exemplo com cards nunca fica sem nenhum", () => {
     const t = dashboardTemplate("ecommerce-visao-geral")!;
-    const layout = pageLayout(t, "visao-geral");
-    expect(sampleLayout(layout, new Set(), true, []).kpis).toHaveLength(1);
-    expect(sampleLayout(layout, new Set(["ctr", ...layout.kpis.map((k) => k.metric)]), true, layout.kpis.map((k) => k.metric)).kpis.at(-1)?.metric).toBe("ctr");
-    expect(sampleLayout(layout, new Set(["ctr"]), false, ["cpa"]).kpis.some((k) => k.metric === "ctr")).toBe(false);
+    const own = pageLayout(t, "visao-geral").kpis.map((k) => k.metric);
+    const catalog = sampleCatalog(t.profile, own);
+    const ids = pageKpiIds(catalog, own, { hidden: own, shown: [] });
+    expect(ids).toHaveLength(1);
+    expect(own).toContain(ids[0]);
+  });
+});
+
+describe("o contador e os cards sempre batem", () => {
+  // o dashboard Teste: 7 cards somando as abas, 4 na Visão geral
+  const teste = dashboardTemplate("criativos-meta")!;
+  const testePages: PageId[] = ["visao-geral", "publico", "criativos", "campanhas", "metas"];
+  const kpisOf = (t: typeof teste, p: PageId) => pageLayout(t, p).kpis.map((k) => k.metric as string);
+  const catalogOf = (t: typeof teste, pages: readonly PageId[]) => sampleCatalog(t.profile, sampleDefaultKpis(t, pages));
+
+  /** O que o painel conta e o que a tela desenha, na mesma aba. */
+  const both = (t: typeof teste, pages: readonly PageId[], page: PageId, prefs?: SectionPrefs) => {
+    const catalog = catalogOf(t, pages);
+    const own = kpisOf(t, page);
+    return { counter: visibleIds(pageCatalog(catalog, own), "kpis", prefs).length, cards: sampleLayout(pageLayout(t, page), pageKpiIds(catalog, own, prefs)).kpis.length };
+  };
+
+  it("o caso do dashboard Teste: conta 4, não 7", () => {
+    expect(visibleIds(catalogOf(teste, testePages), "kpis", undefined)).toHaveLength(7);
+    expect(both(teste, testePages, "visao-geral")).toEqual({ counter: 4, cards: 4 });
+    const catalog = pageCatalog(catalogOf(teste, testePages), kpisOf(teste, "visao-geral"));
+    expect(visibleIds(catalog, "kpis", undefined)).not.toContain("spend");
+    const on = toggleMetric(catalog, "kpis", undefined, "spend");
+    expect(both(teste, testePages, "visao-geral", on)).toEqual({ counter: 5, cards: 5 });
+    expect(sampleLayout(pageLayout(teste, "visao-geral"), pageKpiIds(catalogOf(teste, testePages), kpisOf(teste, "visao-geral"), on)).kpis.map((k) => k.metric)).toContain("spend");
+  });
+
+  it("em todo modelo, em toda aba com cards e com qualquer escolha", () => {
+    let checked = 0;
+    for (const t of DASHBOARD_TEMPLATES) {
+      for (const page of t.pages) {
+        const own = kpisOf(t, page);
+        if (!own.length) continue;
+        const optional = catalogOf(t, t.pages)
+          .filter((m) => !own.includes(m.id))
+          .map((m) => m.id);
+        const choices: SectionPrefs[] = [
+          { hidden: [], shown: [] },
+          { hidden: [own[0]], shown: [] },
+          { hidden: own, shown: [] },
+          { hidden: [], shown: optional.slice(0, 2) },
+          { hidden: [own[0]], shown: optional.slice(0, 3) },
+          { hidden: [], shown: optional },
+        ];
+        for (const prefs of choices) {
+          const r = both(t, t.pages, page, prefs);
+          expect([t.id, page, r.counter]).toEqual([t.id, page, r.cards]);
+          expect(r.cards).toBeGreaterThan(0);
+          expect(r.cards).toBeLessThanOrEqual(KPI_MAX);
+          checked++;
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(300);
+  });
+
+  it("aba sem fileira de cards continua sem, mesmo com métrica adicionada", () => {
+    const catalog = catalogOf(teste, testePages);
+    expect(kpisOf(teste, "publico")).toEqual([]);
+    expect(pageKpiIds(catalog, [], { hidden: [], shown: ["spend"] })).toEqual([]);
+  });
+
+  it("oculto some de todas as abas; adicionado aparece em todas as que têm cards", () => {
+    const catalog = catalogOf(teste, testePages);
+    const prefs = { hidden: ["cpa"], shown: ["impressions"] };
+    for (const page of ["visao-geral", "criativos", "campanhas"] as PageId[]) {
+      const ids = pageKpiIds(catalog, kpisOf(teste, page), prefs);
+      expect(ids).not.toContain("cpa");
+      expect(ids).toContain("impressions");
+    }
+  });
+
+  it("salvar numa aba não perde o que vale em outra", () => {
+    const catalog = catalogOf(teste, testePages);
+    const pageKpis = testePages.map((p) => kpisOf(teste, p));
+    // spend é card de Campanhas e foi adicionado na Visão geral; frequency é de Criativos e foi oculto
+    const kept = normalizeScope(catalog, { kpis: { hidden: ["frequency", "impressions", "inventada"], shown: ["spend", "inventada"] } }, pageKpis);
+    expect(kept.kpis).toEqual({ hidden: ["frequency"], shown: ["spend"] });
+  });
+
+  it("ocultar pelo card: grava a diferença e barra o último", () => {
+    const next = hideKpi(META_CATALOG, "meta", {}, "cpm")!;
+    expect(next.meta?.kpis).toEqual({ hidden: ["cpm"], shown: [] });
+    const last = { meta: { kpis: { hidden: ["spend", "revenue", "purchases", "ticket", "cpa", "cpm", "linkCtr", "frequency"], shown: [] } } };
+    expect(hideKpi(META_CATALOG, "meta", last, "roas")).toBeNull();
+    expect(hideKpi(META_CATALOG, "meta", {}, "reach")).toBeNull();
   });
 });
 

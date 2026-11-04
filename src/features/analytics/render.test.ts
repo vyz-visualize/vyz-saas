@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { GOOGLE_CATALOG, META_CATALOG, visibleIds } from "@/features/dashboards/metric-prefs";
 import { redactSpend } from "./aggregate";
 import { LiveDashboardPreview } from "./LiveDashboardPreview";
 import { LIVE_PAGES, livePages, LiveDashboardView } from "./LiveDashboardView";
@@ -66,6 +67,56 @@ describe("renderização (smoke)", () => {
     const data = sampleDashboardData("meta-ecommerce", { today: TODAY })!;
     expect(renderToString(createElement(LiveDashboardView, { data }))).not.toContain("Personalizar");
     expect(renderToString(createElement(LiveDashboardView, { data, canCustomize: true }))).toContain("Personalizar");
+  });
+
+  describe("contador, cards e atalhos", () => {
+    const save = async () => ({ ok: true as const });
+    const view = (templateId: string, metricPrefs?: unknown, editor = true) =>
+      renderToString(createElement(LiveDashboardView, { data: sampleDashboardData(templateId, { today: TODAY })!, initialPage: "visao-geral", metricPrefs, canCustomize: editor, saveMetrics: editor ? save : undefined }));
+    const cards = (html: string) => (html.match(/<article /g) ?? []).length;
+    const eyes = (html: string) => (html.match(/aria-label="Ocultar /g) ?? []).length;
+
+    it.each([
+      ["meta-ecommerce", META_CATALOG, "meta"],
+      ["google-ecommerce", GOOGLE_CATALOG, "google"],
+    ] as const)("%s: a tela mostra o que o painel conta", (templateId, catalog, scope) => {
+      const first = visibleIds(catalog, "kpis", undefined)[0];
+      const extra = catalog.find((m) => m.kpi === "optional")!.id;
+      for (const kpis of [undefined, { hidden: [first], shown: [] }, { hidden: [], shown: [extra] }]) {
+        const html = view(templateId, kpis ? { [scope]: { kpis } } : undefined);
+        const counter = visibleIds(catalog, "kpis", kpis).length;
+        expect(cards(html)).toBe(counter);
+        expect(eyes(html)).toBe(counter);
+      }
+    });
+
+    it("card de adicionar só com menos de 10", () => {
+      expect(view("meta-ecommerce")).toContain("Adicionar métrica");
+      expect(view("meta-ecommerce", { meta: { kpis: { hidden: [], shown: ["reach"] } } })).not.toContain("Adicionar métrica");
+    });
+
+    it("o último card não tem o olho", () => {
+      const hidden = visibleIds(META_CATALOG, "kpis", undefined).slice(1);
+      const html = view("meta-ecommerce", { meta: { kpis: { hidden, shown: [] } } });
+      expect(cards(html)).toBe(1);
+      expect(eyes(html)).toBe(0);
+    });
+
+    it("sem poder editar não há atalho nem botão", () => {
+      const html = view("meta-ecommerce", undefined, false);
+      expect(eyes(html)).toBe(0);
+      expect(html).not.toContain("Adicionar métrica");
+      expect(html).not.toContain("Personalizar");
+    });
+
+    it("o botão fica ao lado do período, longe das ações", () => {
+      const html = renderToString(
+        createElement(LiveDashboardView, { data: sampleDashboardData("meta-ecommerce", { today: TODAY })!, canCustomize: true, saveMetrics: save, actions: createElement("span", null, "AÇÕES"), toolbar: createElement("span", null, "PERÍODO") }),
+      );
+      expect(html).toContain("Personalizar métricas");
+      expect(html.indexOf("AÇÕES")).toBeLessThan(html.indexOf("PERÍODO"));
+      expect(html.indexOf("PERÍODO")).toBeLessThan(html.indexOf("Personalizar métricas"));
+    });
   });
 
   it("sem personalização: os cards e as colunas de sempre", () => {

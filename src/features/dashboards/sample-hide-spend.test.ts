@@ -33,6 +33,40 @@ describe("dashboard de exemplo", () => {
     expect(render(spec("ecommerce-completo", "campanhas", prefs))).not.toMatch(header);
   });
 
+  const save = async () => ({ ok: true as const });
+  const count = (html: string, re: RegExp) => (html.match(re) ?? []).length;
+  const teste: DashboardSpec = { ...spec("criativos-meta", "visao-geral"), pages: ["visao-geral", "publico", "criativos", "campanhas", "metas"] };
+
+  it("o dashboard Teste desenha os 4 cards da Visão geral, sem Investimento", () => {
+    const html = render(teste);
+    expect(count(html, /data-vyz-metric=/g)).toBe(4);
+    expect(html).not.toContain('data-vyz-metric="spend"');
+  });
+
+  it("escolha salva vale no que a tela desenha, em qualquer aba", () => {
+    const html = render({ ...teste, metricPrefs: { sample: { kpis: { hidden: ["cpm"], shown: ["spend"] } } } });
+    expect(count(html, /data-vyz-metric=/g)).toBe(4);
+    expect(html).toContain('data-vyz-metric="spend"');
+    expect(html).not.toContain('data-vyz-metric="cpm"');
+  });
+
+  it("atalhos nos cards só para quem pode editar", () => {
+    const edit = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save }));
+    expect(count(edit, /aria-label="Ocultar /g)).toBe(4);
+    expect(edit).toContain("Adicionar métrica");
+    for (const html of [render(teste), render(teste, { hideSpend: true })]) {
+      expect(html).not.toContain("Ocultar ");
+      expect(html).not.toContain("Adicionar métrica");
+    }
+  });
+
+  it("o botão fica na barra de filtros, depois de Comparar", () => {
+    const html = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, actions: createElement("span", null, "AÇÕES") }));
+    expect(html).toContain("Personalizar métricas");
+    expect(html.indexOf("Comparar com o período anterior")).toBeLessThan(html.indexOf("Personalizar métricas"));
+    expect(html.indexOf("AÇÕES")).toBeLessThan(html.indexOf("Comparar com o período anterior"));
+  });
+
   it("o botão Personalizar só aparece para quem pode editar", () => {
     const s = spec("ecommerce-visao-geral", "visao-geral");
     expect(render(s)).not.toContain("Personalizar");
