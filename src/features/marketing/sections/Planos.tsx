@@ -2,13 +2,14 @@
 
 import { ArrowRight, Check, LayoutTemplate } from "lucide-react";
 import Link from "next/link";
-import { type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import { type PointerEvent, type ReactNode } from "react";
 import { CutReveal } from "@/components/motion/CutReveal";
 import { Reveal } from "@/components/motion/Reveal";
 import { SectionWipe } from "@/components/motion/SectionWipe";
 import { Odometer } from "@/components/ui/Odometer";
 import { Segmented } from "@/components/ui/Segmented";
 import { btn } from "@/components/ui/styles";
+import { SHOW_LANDING_PAGES } from "@/features/marketing/config";
 import { usePlan } from "@/features/marketing/state/PlanProvider";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import {
@@ -27,28 +28,25 @@ import {
 import { brl } from "@/lib/format";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 import { AudioWave } from "./AudioWave";
+import { SoonBadge } from "./SoonBadge";
 
-// Planos: dois produtos (dashboards e landing pages), três planos cada, e um
-// clique até o checkout. Contas a mais, extras e marca própria ficam dentro do app.
+// Planos: dois produtos (dashboards e landing pages, esta atrás de
+// SHOW_LANDING_PAGES), três planos cada, e um clique até o checkout. Contas a mais, extras e marca própria ficam dentro do app.
 
 const TIERS: PlanId[] = ["base", "pro", "avancado"];
-const PLATFORMS = ["M", "G", "GA", "Tk", "In", "ML", "Am", "Hs"];
 
-function PlatformFan() {
-  return (
-    <span className="ml-1 inline-flex align-middle" aria-hidden>
-      {PLATFORMS.map((p, i) => (
-        <span
-          key={p}
-          className="-ml-1.5 inline-flex size-6 items-center justify-center rounded-full border border-current/25 bg-current/10 text-[8.5px] font-bold transition-transform duration-300 ease-brand first:ml-0 group-hover/fan:translate-x-[calc(var(--i)*7px)] group-hover/fan:rotate-[calc(var(--i)*4deg-12deg)]"
-          style={{ "--i": i } as CSSProperties}
-        >
-          {p}
-        </span>
-      ))}
-    </span>
-  );
-}
+// Em todos os cartões: o que vale para qualquer plano.
+const COMMON: ReactNode[] = [
+  <>
+    Integre com sua IA (MCP)
+    <SoonBadge />
+  </>,
+  <>
+    App nativo iOS e Android
+    <SoonBadge />
+  </>,
+  "Dashboards responsivos",
+];
 
 type Card = {
   pitch: string;
@@ -73,28 +71,31 @@ function dashCard(tier: PlanId, period: Period): Card {
     return {
       ...base,
       pitch: "Você conecta as contas e escolhe o template. Pronto em minutos.",
-      features: ["Meta Ads, Google Ads e GA4 por login", `${e.maxDashboards} dashboards, um deles unindo Meta e Google`, "Link para o cliente e PDF", "1 usuário"],
+      features: ["Meta Ads, Google Ads e GA4 por login", `${e.maxDashboards} dashboards, um para cada plataforma`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário", ...COMMON],
     };
   }
   if (tier === "pro") {
     return {
       ...base,
-      pitch: "Tudo do Básico em 27 plataformas, com o tracking ligado pelo nosso time.",
+      pitch: "Tudo do Básico, com o tracking ligado pelo nosso time.",
       features: [
         "Tudo do Básico",
-        <span key="27" className="group/fan">
-          27 plataformas: mídia, marketplaces e CRMs <PlatformFan />
-        </span>,
+        <>
+          Mais plataformas: mídia, marketplaces e CRMs
+          <SoonBadge />
+        </>,
+        "Criativos em galeria, com previews",
         "API de Conversões da Meta, conversões otimizadas e GA4 configurados pelo time",
         `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,
+        ...COMMON,
       ],
     };
   }
   return {
     ...base,
     top: <AudioWave />,
-    pitch: "Tudo do Padrão, com análise por áudio em tempo real.",
-    features: ["Tudo do Padrão", "Pergunte em voz alta e ouça a leitura dos números", `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`],
+    pitch: "Tudo do Padrão, com análise por voz e comparativo de criativos.",
+    features: ["Tudo do Padrão", "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos", `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`, ...COMMON],
   };
 }
 
@@ -196,7 +197,8 @@ function PlanCard({ tier, product, period, card, featured, delay }: { tier: Plan
 
 export function Planos() {
   const { state, update } = usePlan();
-  const product = state.produto;
+  // com as LPs fora do site, ?produto=lp na URL também cai nos dashboards
+  const product: Product = SHOW_LANDING_PAGES ? state.produto : "dash";
 
   return (
     <section id="planos" aria-labelledby="planos-title" className="relative">
@@ -214,15 +216,17 @@ export function Planos() {
             />
           </div>
           <div className="flex flex-col items-start gap-3 lg:items-end">
-            <Segmented
-              label="Produto"
-              value={product}
-              onChange={(produto) => update({ produto })}
-              options={[
-                { value: "dash", label: "Dashboards" },
-                { value: "lp", label: "Landing pages" },
-              ]}
-            />
+            {SHOW_LANDING_PAGES && (
+              <Segmented
+                label="Produto"
+                value={product}
+                onChange={(produto) => update({ produto })}
+                options={[
+                  { value: "dash", label: "Dashboards" },
+                  { value: "lp", label: "Landing pages" },
+                ]}
+              />
+            )}
             {product === "dash" ? (
               <Segmented
                 size="sm"

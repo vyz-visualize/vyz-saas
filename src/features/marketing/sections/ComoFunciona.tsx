@@ -9,11 +9,12 @@ import { SectionWipe } from "@/components/motion/SectionWipe";
 import { PromptHeadline } from "./PromptHeadline";
 import { StoryStage, type SceneKey } from "./StoryPanel";
 import { WhyCards } from "./WhyCards";
+import { SHOW_LANDING_PAGES } from "@/features/marketing/config";
 
 const STEPS = [
   {
     title: "Conecte as contas.",
-    text: "Login com Meta Ads, Google Ads e GA4. No Pro, também TikTok, LinkedIn, marketplaces e CRMs por API.",
+    text: "Login com Meta Ads, Google Ads e GA4. Mais plataformas em breve.",
   },
   {
     title: "Escolha o template.",
@@ -181,17 +182,19 @@ export function ComoFunciona() {
           </div>
         </div>
 
-        <Reveal className="mt-6">
-          <div className="flex flex-col gap-4 rounded-card border border-line bg-bg p-5 sm:flex-row sm:items-center sm:p-6">
-            <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
-              <MousePointerClick size={20} aria-hidden />
-            </span>
-            <p className="text-[16px] leading-relaxed text-fg">
-              <strong className="font-semibold">Landing page desenhada e publicada pelo time</strong>, já com o GTM configurado
-              (container, tags base e publicação).
-            </p>
-          </div>
-        </Reveal>
+        {SHOW_LANDING_PAGES && (
+          <Reveal className="mt-6">
+            <div className="flex flex-col gap-4 rounded-card border border-line bg-bg p-5 sm:flex-row sm:items-center sm:p-6">
+              <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
+                <MousePointerClick size={20} aria-hidden />
+              </span>
+              <p className="text-[16px] leading-relaxed text-fg">
+                <strong className="font-semibold">Landing page desenhada e publicada pelo time</strong>, já com o GTM configurado
+                (container, tags base e publicação).
+              </p>
+            </div>
+          </Reveal>
+        )}
       </div>
     </section>
   );

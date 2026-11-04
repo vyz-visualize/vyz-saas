@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { LETTER_STEP, V_POLYS, Y_POLY, Z_BOTTOM, Z_TOP } from "@/components/brand/geometry";
 
-export const alt = "VYZ · Dashboards e landing pages para gestores de tráfego";
+export const alt = "VYZ · Dashboards para gestores de tráfego";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

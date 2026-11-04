@@ -56,7 +56,7 @@ No código: `Product` e as funções de plano em `features/pricing/pricing.ts` (
 Grupos de rota isolados: cada um tem o próprio layout, e nenhum importa o motion, o layout ou o estado de outro (regra de ESLint `no-restricted-imports`).
 
 ```
-(marketing)/page.tsx                    site: hero, como funciona, Inteligência, planos (toggle Dashboards/LP)
+(marketing)/page.tsx                    site: hero, como funciona, Inteligência, planos (LP oculta: SHOW_LANDING_PAGES em features/marketing/config.ts)
 (checkout)/assinar                      1. dados (Google ou e-mail) → pagamento/[id] → concluido/[id]
 (auth)/entrar, recuperar-senha,         login (e-mail e senha ou Google), senha, convite de equipe
        redefinir-senha, convite/[token]

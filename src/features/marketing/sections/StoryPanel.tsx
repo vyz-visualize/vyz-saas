@@ -106,14 +106,9 @@ export const INLINE_HEIGHT = ["h-[340px]", "", "h-[340px]"];
 
 // ---- passo 01 · contas --------------------------------------------------------
 
-const CHIPS: { label: string; pro?: boolean }[][] = [
+const CHIPS: { label: string; soon?: boolean }[][] = [
   [{ label: "Meta Ads" }, { label: "Google Ads" }, { label: "GA4" }],
-  [
-    { label: "TikTok Ads", pro: true },
-    { label: "LinkedIn Ads", pro: true },
-    { label: "Mercado Ads", pro: true },
-    { label: "HubSpot", pro: true },
-  ],
+  [{ label: "Mais em breve", soon: true }],
 ];
 
 function ConnectScene({ fill }: { fill: boolean }) {
@@ -130,7 +125,7 @@ function ConnectArt({ W, H }: { W: number; H: number }) {
   const fs = W < 460 ? 12 : 13.5;
   const chipH = fs + 16;
   // largura ocupada pelo chip (folgada) e o ponto onde o traço encosta (um pouco para dentro, por baixo do chip opaco)
-  const chipW = (c: { label: string; pro?: boolean }) => textWidth(c.label, fs) + 26 + (c.pro ? 34 : 0);
+  const chipW = (c: { label: string }) => textWidth(c.label, fs) + 26;
   const leftEdge = Math.max(...CHIPS[0].map(chipW));
   const rightEdge = W - Math.max(...CHIPS[1].map(chipW));
   // o hub fica no vão entre as duas colunas, nunca por baixo dos chips
@@ -161,7 +156,7 @@ function ConnectArt({ W, H }: { W: number; H: number }) {
               key={c.label}
               d={`M${fromX},${y1} C${mx},${y1} ${mx},${y2} ${toX},${y2}`}
               fill="none"
-              stroke={c.pro ? "var(--muted)" : "var(--accent)"}
+              stroke={c.soon ? "var(--muted)" : "var(--accent)"}
               strokeWidth="1.6"
               initial={play ? { pathLength: 0 } : false}
               animate={{ pathLength: 1 }}
@@ -191,14 +186,13 @@ function ConnectArt({ W, H }: { W: number; H: number }) {
       {chips.map((c, i) => (
         <m.span
           key={c.label}
-          className={`absolute inline-flex items-center gap-1.5 rounded-chip border px-3 font-medium whitespace-nowrap ${c.pro ? "border-line bg-card text-fg-2" : "border-transparent bg-accent text-on-accent"}`}
+          className={`absolute inline-flex items-center gap-1.5 rounded-chip border px-3 font-medium whitespace-nowrap ${c.soon ? "border-line bg-card text-fg-2" : "border-transparent bg-accent text-on-accent"}`}
           style={{ ...(c.side < 0 ? { left: 0 } : { right: 0 }), top: c.y, height: chipH, fontSize: fs }}
           initial={play ? { x: c.side * 160, opacity: 0 } : false}
           animate={{ x: 0, opacity: 1 }}
           transition={{ type: "spring", stiffness: 150, damping: 18, delay: i * 0.05 }}
         >
           {c.label}
-          {c.pro && <span className="rounded-chip bg-accent-soft px-1.5 text-[11px] text-fg">Pro</span>}
         </m.span>
       ))}
     </div>

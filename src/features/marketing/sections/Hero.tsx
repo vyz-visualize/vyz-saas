@@ -1,6 +1,8 @@
 import { CutReveal } from "@/components/motion/CutReveal";
 import { Reveal } from "@/components/motion/Reveal";
-import { MockGenerator } from "@/features/marketing/mock/MockGenerator";
+import { SHOW_LANDING_PAGES } from "@/features/marketing/config";
+import { DashboardMock } from "@/features/marketing/mock/DashboardMock";
+import { TiltFrame } from "@/features/marketing/mock/TiltFrame";
 import { brl } from "@/lib/format";
 import { startingPrice } from "@/features/pricing/pricing";
 import { GridBackdrop } from "./GridBackdrop";
@@ -15,7 +17,7 @@ export function Hero() {
           <Reveal trigger="intro">
             <p className="inline-flex max-w-full items-center gap-2 rounded-chip border border-line bg-bg/70 px-3 py-1.5 text-[13px] leading-snug font-medium text-fg-2">
               <span className="size-1.5 shrink-0 rounded-full bg-accent" aria-hidden />
-              <span>Para gestores de tráfego · Dashboards e landing pages</span>
+              <span>Para gestores de tráfego · {SHOW_LANDING_PAGES ? "Dashboards e landing pages" : "Dashboards"}</span>
             </p>
           </Reveal>
 
@@ -41,7 +43,7 @@ export function Hero() {
           <Reveal trigger="intro" delay={520}>
             <p className="mt-7 max-w-[34rem] text-[17px] leading-relaxed text-fg-2">
               Conecte Meta Ads, Google Ads e GA4 e receba o dashboard do seu cliente com CPA, ROAS e funil no topo, pronto para
-              mandar. Quando a campanha precisar de página, a landing page sai com o GTM configurado.
+              mandar.{SHOW_LANDING_PAGES && " Quando a campanha precisar de página, a landing page sai com o GTM configurado."}
             </p>
           </Reveal>
 
@@ -55,7 +57,14 @@ export function Hero() {
         </div>
 
         <Reveal trigger="intro" delay={300} className="min-w-0 lg:pt-6">
-          <MockGenerator />
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+            <p className="text-[15px] font-semibold text-fg">Dashboards prontos para cada segmento</p>
+            <p className="shrink-0 rounded-chip border border-line px-2.5 py-0.5 text-[11px] font-medium text-fg-2">Amostra · dados fictícios</p>
+          </div>
+          <TiltFrame className="overflow-hidden rounded-card border border-line bg-bg">
+            {/* a linha da intro pousa na meta deste preview */}
+            <DashboardMock templateId="ecommerce-visao-geral" name="Loja Verde" seed="Loja Verde|ecommerce|dashboard" assemble={false} live markGoal />
+          </TiltFrame>
         </Reveal>
       </div>
     </section>

@@ -4,6 +4,7 @@ import { useInView, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { PageView } from "@/features/dashboards/widgets/PageView";
+import { SHOW_LANDING_PAGES } from "@/features/marketing/config";
 import { makeContext } from "@/features/dashboards/widgets/Widgets";
 import { MockSource } from "@/features/metrics/source";
 import { dashboardTemplate } from "@/features/templates/dashboards";
@@ -13,7 +14,7 @@ type DashboardMockProps = {
   /** Template do cadastro do SaaS (o mock é o produto). */
   templateId: "ecommerce-visao-geral" | "imobiliario-leads";
   name: string;
-  /** Monta peça por peça (depois de trocar ou gerar). */
+  /** Monta peça por peça. */
   assemble: boolean;
   /** Vira "ao vivo" depois de montado e mexe nos números a cada ~5 s. */
   live?: boolean;
@@ -22,7 +23,7 @@ type DashboardMockProps = {
   markGoal?: boolean;
 };
 
-const NAV = ["Dashboards", "Landing pages", "Contas conectadas", "Relatórios"];
+const NAV = ["Dashboards", ...(SHOW_LANDING_PAGES ? ["Landing pages"] : []), "Contas conectadas", "Relatórios"];
 const ASSEMBLE_MS = 1900;
 
 export function DashboardMock({ templateId, name, assemble, live = false, seed, markGoal }: DashboardMockProps) {

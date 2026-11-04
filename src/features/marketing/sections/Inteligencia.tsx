@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CutReveal } from "@/components/motion/CutReveal";
 import { Reveal } from "@/components/motion/Reveal";
 import { SectionWipe } from "@/components/motion/SectionWipe";
+import { SoonBadge } from "./SoonBadge";
 
 // ---- mini visuais --------------------------------------------------------------
 
@@ -86,16 +87,18 @@ function StatsVisual() {
   );
 }
 
-const METHODS: { title: string; text: string; visual: ReactNode }[] = [
+const METHODS: { title: string; text: string; visual: ReactNode; soon?: boolean }[] = [
   {
     title: "MMM",
     text: "Marketing Mix Modeling: quanto cada canal realmente gerou de receita, além do último clique. Para saber onde colocar o próximo real.",
     visual: <MmmVisual />,
+    soon: true,
   },
   {
     title: "Análise preditiva",
     text: "Projeção de vendas, CPA e ROAS para as próximas semanas, com faixa de confiança. Você vê o fechamento do mês antes do mês fechar.",
     visual: <ForecastVisual />,
+    soon: true,
   },
   {
     title: "Correlações",
@@ -236,7 +239,10 @@ export function Inteligencia() {
                 <article className="flex h-full flex-col gap-4 rounded-card border border-line bg-card p-5 transition-colors hover:border-accent">
                   <div className="min-h-[70px]">{m.visual}</div>
                   <div>
-                    <h3 className="title text-xl text-fg">{m.title}</h3>
+                    <h3 className="title text-xl text-fg">
+                      {m.title}
+                      {m.soon && <SoonBadge />}
+                    </h3>
                     <p className="mt-1.5 text-[14.5px] leading-relaxed text-fg-2">{m.text}</p>
                   </div>
                 </article>
