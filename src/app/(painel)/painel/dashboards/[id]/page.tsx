@@ -8,6 +8,7 @@ import { LiveDashboard, LiveDashboardSkeleton } from "@/features/analytics/LiveD
 import { brandVars } from "@/features/dashboards/brand";
 import { DashboardActions } from "@/features/dashboards/DashboardActions";
 import { periodFromQuery } from "@/features/dashboards/model";
+import { BrandMark } from "@/features/dashboards/DashboardBody";
 import { PeriodNav } from "@/features/dashboards/PeriodNav";
 import { SampleDashboard } from "@/features/dashboards/SampleDashboard";
 import { hasRole } from "@/features/workspace/session";
@@ -51,13 +52,14 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   const ws = session.workspace;
   const whiteLabel = !!session.access.entitlements?.whiteLabel;
   const color = whiteLabel ? d.brand?.color || ws.brandColor : null;
+  const brand = whiteLabel ? { color: color ?? "", logo: ws.brandLogoUrl ?? undefined, hideVyz: ws.hideVyzBrand || !!d.brand?.hideVyz } : undefined;
   const actions = canEdit ? <DashboardActions dashboard={{ id: d.id, name: d.name, live: d.live }} period={period} pages={d.pages.length} /> : undefined;
 
   if (d.live) {
     return (
       <div style={brandVars(color)}>
         <Suspense key={`${period}:${customDays}`} fallback={<LiveDashboardSkeleton />}>
-          <LiveDashboard dashboardId={d.id} period={period} customDays={customDays} pageIds={d.pages} metricPrefs={d.metricPrefs} canCustomize={canEdit} actions={actions} toolbar={<PeriodNav period={period} customDays={customDays} />} />
+          <LiveDashboard dashboardId={d.id} period={period} customDays={customDays} pageIds={d.pages} metricPrefs={d.metricPrefs} canCustomize={canEdit} actions={actions} toolbar={<PeriodNav period={period} customDays={customDays} />} logo={<BrandMark brand={brand} />} />
         </Suspense>
       </div>
     );
@@ -66,7 +68,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   return (
     <SampleDashboard
       dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays }, metricPrefs: d.metricPrefs }}
-      brand={whiteLabel ? { color: color ?? "", logo: ws.brandLogoUrl ?? undefined, hideVyz: ws.hideVyzBrand || !!d.brand?.hideVyz } : undefined}
+      brand={brand}
       canEdit={canEdit}
       assemble={query.novo === "1"}
     />

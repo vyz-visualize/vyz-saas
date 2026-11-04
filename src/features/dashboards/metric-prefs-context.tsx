@@ -7,7 +7,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import { hideKpi, normalizeScope, parseMetricPrefs, pickColumns, toggleMetric, visibleIds, withScope, type CatalogMetric, type MetricPrefs, type MetricScope, type MetricSection, type ScopePrefs } from "./metric-prefs";
 
 /** Atalhos nos próprios cards. Só existem para quem pode editar. */
-export type KpiEdit = { hide: (id: string) => void; add: () => void };
+export type KpiEdit = { hide: (id: string) => void };
 
 export type MetricVisibility = { kpis: ReadonlySet<string>; columns: ReadonlySet<string>; blockedColumn: (id: string) => boolean; edit?: KpiEdit };
 
@@ -53,7 +53,6 @@ export function useMetricPrefsState({ dashboardId, scope, catalog, pageKpis, ini
   const [saved, setSaved] = useState<MetricPrefs>(() => parseMetricPrefs(initial));
   const [draft, setDraft] = useState<MetricPrefs>(saved);
   const [open, setOpen] = useState(false);
-  const [section, setSection] = useState<MetricSection>("kpis");
   const [notice, setNotice] = useState<MetricNotice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -97,13 +96,11 @@ export function useMetricPrefsState({ dashboardId, scope, catalog, pageKpis, ini
     void persist(notice.before, saved);
   }, [notice, persist, saved]);
   const dismiss = useCallback(() => setNotice(null), []);
-  const openPanel = useCallback((target?: MetricSection) => {
-    if (target) setSection(target);
+  const openPanel = useCallback(() => {
     setNotice(null);
     setOpen(true);
   }, []);
-  const add = useCallback(() => openPanel("kpis"), [openPanel]);
-  const edit = useMemo<KpiEdit | undefined>(() => (dashboardId && saveAction ? { hide, add } : undefined), [add, dashboardId, hide, saveAction]);
+  const edit = useMemo<KpiEdit | undefined>(() => (dashboardId && saveAction ? { hide } : undefined), [dashboardId, hide, saveAction]);
 
   const visibility = useMemo<MetricVisibility>(
     () => ({
@@ -139,5 +136,5 @@ export function useMetricPrefsState({ dashboardId, scope, catalog, pageKpis, ini
     setOpen(false);
   }, [catalog, dashboardId, draft, pageKpis, saveAction, scope]);
 
-  return { open, openPanel, close, save, restore, toggle, pending, error, prefs: current, visibility, section, setSection, edit, notice, undo, dismiss };
+  return { open, openPanel, close, save, restore, toggle, pending, error, prefs: current, visibility, catalog, edit, notice, undo, dismiss };
 }

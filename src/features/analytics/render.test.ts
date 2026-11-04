@@ -90,9 +90,12 @@ describe("renderização (smoke)", () => {
       }
     });
 
-    it("card de adicionar só com menos de 10", () => {
-      expect(view("meta-ecommerce")).toContain("Adicionar métrica");
-      expect(view("meta-ecommerce", { meta: { kpis: { hidden: [], shown: ["reach"] } } })).not.toContain("Adicionar métrica");
+    it("quem edita e quem só visualiza têm a mesma grade", () => {
+      const grid = (html: string) => /<div class="(grid grid-cols-2[^"]*)"/.exec(html)?.[1];
+      const edit = view("meta-ecommerce");
+      expect(grid(edit)).toBeTruthy();
+      expect(grid(edit)).toBe(grid(view("meta-ecommerce", undefined, false)));
+      expect(edit).not.toContain("Adicionar métrica");
     });
 
     it("o último card não tem o olho", () => {
@@ -105,16 +108,16 @@ describe("renderização (smoke)", () => {
     it("sem poder editar não há atalho nem botão", () => {
       const html = view("meta-ecommerce", undefined, false);
       expect(eyes(html)).toBe(0);
-      expect(html).not.toContain("Adicionar métrica");
       expect(html).not.toContain("Personalizar");
     });
 
-    it("o botão fica ao lado do período, longe das ações", () => {
+    it("a ordem do topo: ações, abas, período e o botão por último", () => {
       const html = renderToString(
         createElement(LiveDashboardView, { data: sampleDashboardData("meta-ecommerce", { today: TODAY })!, canCustomize: true, saveMetrics: save, actions: createElement("span", null, "AÇÕES"), toolbar: createElement("span", null, "PERÍODO") }),
       );
       expect(html).toContain("Personalizar métricas");
-      expect(html.indexOf("AÇÕES")).toBeLessThan(html.indexOf("PERÍODO"));
+      expect(html.indexOf("AÇÕES")).toBeLessThan(html.indexOf('role="tablist"'));
+      expect(html.indexOf('role="tablist"')).toBeLessThan(html.indexOf("PERÍODO"));
       expect(html.indexOf("PERÍODO")).toBeLessThan(html.indexOf("Personalizar métricas"));
     });
   });

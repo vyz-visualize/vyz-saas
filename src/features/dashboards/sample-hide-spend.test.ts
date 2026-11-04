@@ -53,18 +53,24 @@ describe("dashboard de exemplo", () => {
   it("atalhos nos cards só para quem pode editar", () => {
     const edit = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save }));
     expect(count(edit, /aria-label="Ocultar /g)).toBe(4);
-    expect(edit).toContain("Adicionar métrica");
-    for (const html of [render(teste), render(teste, { hideSpend: true })]) {
-      expect(html).not.toContain("Ocultar ");
-      expect(html).not.toContain("Adicionar métrica");
-    }
+    for (const html of [render(teste), render(teste, { hideSpend: true })]) expect(html).not.toContain("Ocultar ");
+    expect(edit).not.toContain("Adicionar métrica");
   });
 
-  it("o botão fica na barra de filtros, depois de Comparar", () => {
+  it("quem edita e quem só visualiza têm a mesma grade de 4 colunas", () => {
+    const grid = (html: string) => /<div class="(grid grid-cols-2[^"]*)"/.exec(html)?.[1];
+    const edit = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save }));
+    expect(grid(edit)).toBe(grid(render(teste)));
+    expect(grid(edit)).toContain("grid-cols-4");
+    expect(grid(edit)).not.toContain("grid-cols-5");
+  });
+
+  it("a ordem do topo: ações, abas, filtros com o botão por último", () => {
     const html = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, actions: createElement("span", null, "AÇÕES") }));
     expect(html).toContain("Personalizar métricas");
     expect(html.indexOf("Comparar com o período anterior")).toBeLessThan(html.indexOf("Personalizar métricas"));
-    expect(html.indexOf("AÇÕES")).toBeLessThan(html.indexOf("Comparar com o período anterior"));
+    expect(html.indexOf("AÇÕES")).toBeLessThan(html.indexOf('role="tablist"'));
+    expect(html.indexOf('role="tablist"')).toBeLessThan(html.indexOf("Comparar com o período anterior"));
   });
 
   it("o botão Personalizar só aparece para quem pode editar", () => {

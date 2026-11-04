@@ -1,6 +1,4 @@
 import type { PageLayout, Span } from "@/features/templates/types";
-import { AddMetricCard } from "../MetricActions";
-import { KPI_MAX } from "../metric-prefs";
 import type { KpiEdit } from "../metric-prefs-context";
 import { Kpi, Widget, type WidgetContext } from "./Widgets";
 
@@ -28,11 +26,10 @@ export function PageView({ layout, ctx, variant = "full", kpiEdit }: PageViewPro
   return (
     <div className="@container space-y-2">
       {layout.kpis.length > 0 && (
-        <div className={`grid grid-cols-2 gap-2 @[440px]:grid-cols-4 ${kpiEdit ? "@[900px]:grid-cols-5" : ""}`}>
+        <div className="grid grid-cols-2 gap-2 @[440px]:grid-cols-4">
           {layout.kpis.map((k, i) => (
             <Kpi key={k.metric} spec={k} ctx={ctx} delay={200 + i * 70} onHide={kpiEdit && layout.kpis.length > 1 ? () => kpiEdit.hide(k.metric) : undefined} />
           ))}
-          {kpiEdit && layout.kpis.length < KPI_MAX && <AddMetricCard onClick={kpiEdit.add} />}
         </div>
       )}
       <div className={compact ? "grid gap-2 @[440px]:grid-cols-[1.55fr_1fr]" : "grid grid-cols-1 gap-2 @[460px]:grid-cols-2 @[900px]:grid-cols-4"}>

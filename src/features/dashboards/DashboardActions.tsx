@@ -1,19 +1,25 @@
 "use client";
 
-// Botões do topo do dashboard no painel: editar, duplicar, compartilhar,
-// exportar PDF, agendar relatório e apagar. Tudo passa pelo servidor.
+// Botões do topo do dashboard no painel: editar, compartilhar e exportar PDF à
+// vista; duplicar, agendar relatório e excluir no menu. Os botões nunca quebram
+// linha: se faltar espaço, vão para o menu, a partir do último.
 
-import { CalendarClock, Copy, FileDown, Pencil, Share2, Trash2 } from "lucide-react";
+import { CalendarClock, Copy, FileDown, MoreHorizontal, Pencil, Share2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { FIT_HIDDEN, useFitItems } from "@/components/ui/fit-items";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/Menu";
 import { ReportModal } from "@/features/share/ReportModal";
 import { ShareModal } from "@/features/share/ShareModal";
 import { deleteDashboard, duplicateDashboard, recordExport } from "@/server/dashboards/actions";
 import { DeleteDashboardModal } from "./DashboardsList";
 
 const action =
-  "inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-[13.5px] font-medium outline-none hover:border-accent focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent disabled:opacity-50";
+  "inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-[13.5px] font-medium outline-none hover:border-accent focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent disabled:opacity-50 shrink-0 whitespace-nowrap";
+
+const GAP = 8;
+const TITLE_GAP = 16;
 
 type Props = {
   dashboard: { id: string; name: string; live: boolean };
@@ -73,29 +79,58 @@ export function DashboardActions({ dashboard, period, pages, onExport }: Props) 
     });
   }
 
+  const editHref = `/painel/dashboards/${dashboard.id}/editar`;
+  const exportLabel = exporter.pending ? "Preparando…" : "Exportar PDF";
+  // logo e título ficam com pelo menos metade da linha (até 360 px)
+  const { rootRef, moreRef, itemRef, visible } = useFitItems({ count: 3, gap: GAP, always: true, measureParent: true, available: (width) => width - TITLE_GAP - Math.min(360, width / 2), deps: [exporter.pending] });
+  const show = (i: number) => (visible.includes(i) ? "" : FIT_HIDDEN);
+
   const shown = error ?? exporter.error;
   return (
-    <div className="flex flex-wrap items-center gap-2 print:hidden">
-      <Link href={`/painel/dashboards/${dashboard.id}/editar`} className={action}>
+    <div ref={rootRef} className="relative flex shrink-0 items-center print:hidden" style={{ gap: GAP }}>
+      <Link ref={itemRef(0)} href={editHref} className={`${action} ${show(0)}`}>
         <Pencil size={15} aria-hidden /> Editar
       </Link>
-      <button type="button" onClick={duplicate} disabled={pending} className={action}>
-        <Copy size={15} aria-hidden /> {pending && !removing ? "Duplicando…" : "Duplicar"}
-      </button>
-      <button type="button" onClick={() => setShare(true)} className={action}>
+      <button ref={itemRef(1)} type="button" onClick={() => setShare(true)} className={`${action} ${show(1)}`}>
         <Share2 size={15} aria-hidden /> Compartilhar
       </button>
-      <button type="button" onClick={exporter.run} disabled={exporter.pending} className={action}>
-        <FileDown size={15} aria-hidden /> {exporter.pending ? "Preparando…" : "Exportar PDF"}
+      <button ref={itemRef(2)} type="button" onClick={exporter.run} disabled={exporter.pending} className={`${action} ${show(2)}`}>
+        <FileDown size={15} aria-hidden /> {exportLabel}
       </button>
-      <button type="button" onClick={() => setReport(true)} className={action}>
-        <CalendarClock size={15} aria-hidden /> Agendar relatório
-      </button>
-      <button type="button" onClick={() => setRemoving(true)} aria-label={`Apagar ${dashboard.name}`} className={`${action} px-2.5 hover:border-error`}>
-        <Trash2 size={15} aria-hidden />
-      </button>
+      <Menu modal={false}>
+        <MenuTrigger ref={moreRef as React.Ref<HTMLButtonElement>} aria-label="Mais ações" className={`${action} px-2.5`}>
+          <MoreHorizontal size={15} aria-hidden />
+        </MenuTrigger>
+        <MenuContent align="end">
+          {!visible.includes(0) && (
+            <MenuItem icon={<Pencil size={15} />} onSelect={() => router.push(editHref)}>
+              Editar
+            </MenuItem>
+          )}
+          {!visible.includes(1) && (
+            <MenuItem icon={<Share2 size={15} />} onSelect={() => setShare(true)}>
+              Compartilhar
+            </MenuItem>
+          )}
+          {!visible.includes(2) && (
+            <MenuItem icon={<FileDown size={15} />} disabled={exporter.pending} onSelect={exporter.run}>
+              {exportLabel}
+            </MenuItem>
+          )}
+          {visible.length < 3 && <MenuSeparator />}
+          <MenuItem icon={<Copy size={15} />} disabled={pending} onSelect={duplicate}>
+            {pending && !removing ? "Duplicando…" : "Duplicar"}
+          </MenuItem>
+          <MenuItem icon={<CalendarClock size={15} />} onSelect={() => setReport(true)}>
+            Agendar relatório
+          </MenuItem>
+          <MenuItem icon={<Trash2 size={15} />} className="text-error-fg" onSelect={() => setRemoving(true)}>
+            Excluir
+          </MenuItem>
+        </MenuContent>
+      </Menu>
       {shown && (
-        <p role="alert" className="w-full rounded-control bg-error-soft px-3 py-2 text-[13px] text-error-fg">
+        <p role="alert" className="absolute top-full right-0 z-10 mt-1 w-max max-w-[320px] rounded-control bg-error-soft px-3 py-2 text-[13px] text-error-fg">
           {shown}
         </p>
       )}

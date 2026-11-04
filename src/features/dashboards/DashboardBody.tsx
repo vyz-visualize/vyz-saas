@@ -3,7 +3,8 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { Switch } from "@/components/ui/controls";
-import { PendingChip, Tabs } from "@/components/ui/kit";
+import { PendingChip } from "@/components/ui/kit";
+import { OverflowTabs } from "@/components/ui/OverflowTabs";
 import { PeriodPicker, rangeDays, type Range } from "@/components/ui/PeriodPicker";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { dashboardTemplate } from "@/features/templates/dashboards";
@@ -79,10 +80,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   const metrics = useMetricPrefsState({ dashboardId: customizeId ?? null, scope: "sample", catalog: activeCatalog, pageKpis, initial: spec.metricPrefs, hideSpend, saveAction: saveMetrics });
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
   const ctx = makeContext(ds, { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns });
-  const layoutOf = (p: PageId) => {
-    const layout = pageLayout(t, p);
-    return sampleLayout(layout, pageKpiIds(catalog, layout.kpis.map((k) => k.metric), metrics.prefs?.kpis, { hideSpend }));
-  };
+  const idsOf = (p: PageId) => pageKpiIds(catalog, pageLayout(t, p).kpis.map((k) => k.metric), metrics.prefs?.kpis, { hideSpend });
+  const layoutOf = (p: PageId) => sampleLayout(pageLayout(t, p), idsOf(p));
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? "";
   const attribution = ATTRIBUTIONS.find((a) => a.value === spec.settings.attribution)?.label;
 
@@ -90,9 +89,9 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
     <div style={brandStyle(spec.brand)} className="space-y-4">
       {/* pela largura do contêiner, não da janela: o painel "Personalizar" encolhe esta área */}
       <div className="@container space-y-4 print:hidden">
-        <header className="flex flex-col gap-4 @[700px]:flex-row @[700px]:items-start @[700px]:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
-            <div className="hidden shrink-0 pt-1.5 @[600px]:block">
+        <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
+          <div className="flex min-w-0 flex-1 items-start gap-4">
+            <div className="hidden shrink-0 pt-1.5 @[500px]:block">
               <BrandMark brand={spec.brand} />
             </div>
             <div className="min-w-0">
@@ -109,15 +108,15 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
               </div>
             </div>
           </div>
-          {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+          {actions}
         </header>
 
         <div className="flex flex-col gap-3">
           <div className="min-w-0">
-            <Tabs label="Páginas do dashboard" value={active} onChange={setPage} items={spec.pages.map((p) => ({ value: p, label: PAGES[p].name }))} />
+            <OverflowTabs label="Páginas do dashboard" value={active} onChange={setPage} items={spec.pages.map((p) => ({ value: p, label: PAGES[p].name }))} />
           </div>
           <div className="flex flex-wrap items-end gap-2">
-            <div className="w-60">
+            <div className="w-full @[540px]:w-52 @[760px]:w-60">
               <PeriodPicker
                 period={period}
                 range={range}
@@ -132,10 +131,23 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                 }}
               />
             </div>
-            <div className="flex h-10 items-center rounded-control border border-line px-3 text-[13px]">
-              <Switch label="Comparar com o período anterior" checked={compare} onChange={setCompare} />
+            <div className="flex h-10 shrink-0 items-center rounded-control border border-line px-2.5 text-[13px] whitespace-nowrap [&>div]:gap-2">
+              <Switch
+                label={
+                  <>
+                    <span className="@[760px]:hidden">Comparar</span>
+                    <span className="hidden @[760px]:inline">Comparar com o período anterior</span>
+                  </>
+                }
+                checked={compare}
+                onChange={setCompare}
+              />
             </div>
-            {customizeId && <CustomizeButton onClick={() => metrics.openPanel()} />}
+            {customizeId && (
+              <div className="ml-auto">
+                <CustomizeButton onClick={() => metrics.openPanel()} />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -195,7 +207,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         <MetricsPanel
           open={metrics.open}
           onClose={metrics.close}
-          catalog={activeCatalog}
+          catalog={metrics.catalog}
+          visibleKpis={idsOf(active)}
           prefs={metrics.prefs}
           hasData={(id) => {
             const v = ctx.cur[id as MetricId];
@@ -206,8 +219,6 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
           onSave={metrics.save}
           pending={metrics.pending}
           error={metrics.error}
-          section={metrics.section}
-          onSection={metrics.setSection}
           kpiPlace="nesta aba"
           kpiNote={pageKpis.filter((r) => r.length).length > 1 ? "Ocultar ou adicionar vale para todas as abas com cards." : undefined}
           noKpis={!activeKpis?.length}

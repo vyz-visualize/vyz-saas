@@ -25,7 +25,7 @@ export function PeriodNav({ period, customDays }: { period: PeriodId; customDays
   }
 
   return (
-    <div className="w-full min-w-0 sm:w-64 print:hidden" aria-busy={pending}>
+    <div className="w-full min-w-0 @[540px]:w-60 print:hidden" aria-busy={pending}>
       <PeriodPicker period={period} range={null} customDays={customDays} maxDays={60} onChange={(p, r) => go(p, r ? rangeDays(r) : customDays)} />
       <p className="sr-only" aria-live="polite">
         {pending ? "Carregando o período" : ""}

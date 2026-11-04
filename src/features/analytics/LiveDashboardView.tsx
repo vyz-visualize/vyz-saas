@@ -5,7 +5,8 @@
 
 import Link from "next/link";
 import { useState, type ComponentType, type ReactNode } from "react";
-import { EmptyState, Tabs } from "@/components/ui/kit";
+import { EmptyState } from "@/components/ui/kit";
+import { OverflowTabs } from "@/components/ui/OverflowTabs";
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { GOOGLE_CATALOG, META_CATALOG, type CatalogMetric } from "@/features/dashboards/metric-prefs";
@@ -39,8 +40,10 @@ export type LiveDashboardViewProps = {
   initialPage?: PageId;
   /** Botões no topo (editar, compartilhar, exportar). */
   actions?: ReactNode;
-  /** Controles ao lado das abas (seletor de período). */
+  /** Controles abaixo das abas (seletor de período). */
   toolbar?: ReactNode;
+  /** Logo à esquerda do título (no link compartilhado, a marca já está no topo da página). */
+  logo?: ReactNode;
   /** Métricas escolhidas neste dashboard (dashboards.metric_prefs). */
   metricPrefs?: unknown;
   /** Mostra o botão "Personalizar" (member+ no painel; nunca no link). */
@@ -73,7 +76,7 @@ function syncedAt(iso: string, timeZone: string): string {
 /** A única aba com fileira de cards nos dashboards com dados reais. */
 const KPI_PAGE: PageId = "visao-geral";
 
-export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar, metricPrefs, canCustomize = false, saveMetrics }: LiveDashboardViewProps) {
+export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar, logo, metricPrefs, canCustomize = false, saveMetrics }: LiveDashboardViewProps) {
   const metrics = useMetricPrefsState({ dashboardId: data.dashboard.id, scope: data.platform, catalog: CATALOG[data.platform], initial: metricPrefs, hideSpend: data.hideSpend, saveAction: saveMetrics });
   const pages = livePages(data.platform, pageIds);
   const [page, setPage] = useState<PageId>(initialPage && pages.includes(initialPage) ? initialPage : pages[0]);
@@ -88,8 +91,9 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
 
   return (
     <div className="@container space-y-4">
-      <header className="flex flex-col gap-3 @[900px]:flex-row @[900px]:items-start @[900px]:justify-between">
-        <div className="min-w-0">
+      <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
+        {logo && <div className="hidden shrink-0 pt-1.5 @[500px]:block">{logo}</div>}
+        <div className="min-w-0 flex-1">
           <h1 className="title truncate text-[1.55rem]">{data.dashboard.name}</h1>
           {data.dashboard.clientName && <p className="text-[14px] text-fg-2">{data.dashboard.clientName}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px]">
@@ -103,20 +107,21 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
             {data.hideSpend && <span className="rounded-chip border border-dashed border-line px-2 py-0.5 text-fg-2">Investimento oculto</span>}
           </div>
         </div>
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        {actions}
       </header>
 
-      <div className="flex flex-col gap-3 @[1000px]:flex-row @[1000px]:items-end @[1000px]:justify-between">
-        <div className="min-w-0 flex-1">
-          <Tabs label="Páginas do dashboard" value={active} onChange={setPage} items={pages.map((p) => ({ value: p, label: PAGES[p]?.name ?? p }))} />
+      <OverflowTabs label="Páginas do dashboard" value={active} onChange={setPage} items={pages.map((p) => ({ value: p, label: PAGES[p]?.name ?? p }))} />
+
+      {(toolbar || canCustomize) && (
+        <div className="flex flex-wrap items-end gap-2">
+          {toolbar}
+          {canCustomize && (
+            <div className="ml-auto">
+              <CustomizeButton onClick={() => metrics.openPanel()} />
+            </div>
+          )}
         </div>
-        {(toolbar || canCustomize) && (
-          <div className="flex flex-wrap items-end gap-2">
-            {toolbar}
-            {canCustomize && <CustomizeButton onClick={() => metrics.openPanel()} />}
-          </div>
-        )}
-      </div>
+      )}
 
       <p className="flex flex-wrap gap-x-2 text-[12.5px] text-fg-2">
         <span className="tnum">
@@ -149,7 +154,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
         <MetricsPanel
           open={metrics.open}
           onClose={metrics.close}
-          catalog={CATALOG[data.platform]}
+          catalog={metrics.catalog}
           prefs={metrics.prefs}
           hasData={(id) => liveHasData(data.view, id)}
           onToggle={metrics.toggle}
@@ -157,8 +162,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
           onSave={metrics.save}
           pending={metrics.pending}
           error={metrics.error}
-          section={metrics.section}
-          onSection={metrics.setSection}
+          visibleKpis={[...metrics.visibility.kpis]}
           kpiPlace={active === KPI_PAGE ? undefined : `na ${PAGES[KPI_PAGE]?.name ?? "Visão geral"}`}
           noKpis={!pages.includes(KPI_PAGE)}
         />

@@ -33,8 +33,8 @@ type Props = {
   onSave: () => void;
   pending: boolean;
   error: string | null;
-  section: MetricSection;
-  onSection: (section: MetricSection) => void;
+  /** Os cards que a tela está desenhando agora, inclusive com escolhas não salvas: o contador é isto. */
+  visibleKpis: readonly string[];
   /** Onde ficam os cards do contador ("nesta aba", "na Visão geral"). */
   kpiPlace?: string;
   /** Aviso abaixo do contador de cards. */
@@ -43,13 +43,14 @@ type Props = {
   noKpis?: boolean;
 };
 
-export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle, onRestore, onSave, pending, error, section, onSection, kpiPlace, kpiNote, noKpis = false }: Props) {
+export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle, onRestore, onSave, pending, error, visibleKpis, kpiPlace, kpiNote, noKpis = false }: Props) {
+  const [section, setSection] = useState<MetricSection>("kpis");
   const [query, setQuery] = useState("");
   const [help, setHelp] = useState<string | null>(null);
 
   const cardsOff = section === "kpis" && noKpis;
   const sectionPrefs = prefs?.[section];
-  const visible = useMemo(() => visibleIds(catalog, section, sectionPrefs), [catalog, section, sectionPrefs]);
+  const visible = useMemo(() => (section === "kpis" ? visibleKpis : visibleIds(catalog, section, sectionPrefs)), [catalog, section, sectionPrefs, visibleKpis]);
   const max = sectionMax(catalog, section);
   const list = useMemo(() => {
     const q = fold(query.trim());
@@ -92,7 +93,7 @@ export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle,
               size="sm"
               block
               value={section}
-              onChange={onSection}
+              onChange={setSection}
               options={[
                 { value: "kpis", label: METRIC_SECTION_LABEL.kpis },
                 { value: "columns", label: METRIC_SECTION_LABEL.columns },

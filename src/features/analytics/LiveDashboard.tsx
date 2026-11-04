@@ -31,8 +31,10 @@ export type LiveDashboardProps = {
   initialPage?: PageId;
   /** Botões no topo, à direita do título (editar, compartilhar, exportar). */
   actions?: ReactNode;
-  /** Controles ao lado das abas (seletor de período, que navega com o período novo). */
+  /** Controles abaixo das abas (seletor de período, que navega com o período novo). */
   toolbar?: ReactNode;
+  /** Logo à esquerda do título. */
+  logo?: ReactNode;
   /** Métricas escolhidas neste dashboard (valem também no link e no PDF). */
   metricPrefs?: unknown;
   /** Mostra o botão "Personalizar". */
@@ -41,7 +43,7 @@ export type LiveDashboardProps = {
   db?: DB;
 };
 
-export async function LiveDashboard({ dashboardId, period, customDays, pageIds, hideSpend, initialPage, actions, toolbar, metricPrefs, canCustomize, db }: LiveDashboardProps) {
+export async function LiveDashboard({ dashboardId, period, customDays, pageIds, hideSpend, initialPage, actions, toolbar, logo, metricPrefs, canCustomize, db }: LiveDashboardProps) {
   let data: LiveDashboardData;
   try {
     data = await loadLiveDashboard(dashboardId, { period, customDays, hideSpend, db });
@@ -51,7 +53,7 @@ export async function LiveDashboard({ dashboardId, period, customDays, pageIds, 
     console.error("[analytics] falha ao carregar o dashboard", dashboardId, err);
     return <LiveDashboardError message="Tente de novo em alguns instantes. Se continuar, fale com o suporte." />;
   }
-  return <LiveDashboardView data={data} pageIds={pageIds} initialPage={initialPage} actions={actions} toolbar={toolbar} metricPrefs={metricPrefs} canCustomize={canCustomize} saveMetrics={canCustomize ? saveDashboardMetricPrefs : undefined} />;
+  return <LiveDashboardView data={data} pageIds={pageIds} initialPage={initialPage} actions={actions} toolbar={toolbar} logo={logo} metricPrefs={metricPrefs} canCustomize={canCustomize} saveMetrics={canCustomize ? saveDashboardMetricPrefs : undefined} />;
 }
 
 export { LiveDashboardSkeleton } from "./ui";

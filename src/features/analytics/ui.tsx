@@ -8,8 +8,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { TrendSpark } from "@/components/charts/TrendSpark";
 import { decimal, pct } from "@/lib/format";
-import { AddMetricCard, HideMetricButton } from "@/features/dashboards/MetricActions";
-import { KPI_MAX } from "@/features/dashboards/metric-prefs";
+import { HideMetricButton } from "@/features/dashboards/MetricActions";
 import { useColumnVisible, useMetricVisibility, useVisibleColumns } from "@/features/dashboards/metric-prefs-context";
 import { deltaText, deltaTone, FORMAT_LABEL, formatValue, HIDDEN, STATUS_LABEL } from "./format";
 import { kpiMetric } from "./metrics";
@@ -94,7 +93,6 @@ export function KpiGrid({ platform, kpis, extra = [], currency, maturing, hideSp
       {shown.map((k) => (
         <KpiCard key={k.id} kpi={k} currency={currency} maturing={maturing} hideSpend={hideSpend} featured={k.id === "roas"} metric={kpiMetric(platform, k.id)} onHide={edit && shown.length > 1 ? () => edit.hide(k.id) : undefined} />
       ))}
-      {edit && shown.length < KPI_MAX && <AddMetricCard onClick={edit.add} />}
     </div>
   );
 }
