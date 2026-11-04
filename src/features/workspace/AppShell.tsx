@@ -385,7 +385,7 @@ export function AppShell({ children, simulatedBilling = false }: { children: Rea
             <div className="min-h-dvh bg-[var(--sidebar)] md:flex md:h-dvh md:overflow-hidden print:block print:h-auto print:bg-white">
               <Sidebar />
 
-              <div className="min-h-dvh min-w-0 flex-1 bg-[var(--panel)] md:my-3 md:mr-3 md:h-[calc(100dvh-24px)] md:min-h-0 md:overflow-y-auto md:rounded-[24px] print:m-0 print:h-auto print:overflow-visible print:rounded-none print:bg-white">
+              <div className="shell-content min-h-dvh min-w-0 flex-1 bg-[var(--panel)] md:my-3 md:mr-3 md:h-[calc(100dvh-24px)] md:min-h-0 md:overflow-y-auto md:rounded-[24px] print:m-0 print:h-auto print:overflow-visible print:rounded-none print:bg-white">
                 <header className="@container sticky top-0 z-30 border-b border-line bg-[color-mix(in_srgb,var(--panel)_82%,transparent)] backdrop-blur-md print:hidden">
                   <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
                     <Link href="/painel" aria-label="VYZ, início do painel" className="block w-14 md:hidden">

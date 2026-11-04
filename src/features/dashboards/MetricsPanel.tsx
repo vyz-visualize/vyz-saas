@@ -1,11 +1,12 @@
 "use client";
 
-// Painel "Personalizar": mostra ou oculta as métricas da plataforma. Fica ao lado
-// da página, que muda na hora; tela cheia no celular. Radix Dialog: foco preso, Esc fecha.
+// Painel "Personalizar": mostra ou oculta as métricas da plataforma. A partir de
+// 1280 px o dashboard encolhe para o lado dele (regra em globals.css); abaixo disso
+// fica por cima, e em tela cheia no celular. Radix Dialog: foco preso, Esc fecha.
 
 import { Info, Search, SlidersHorizontal, X } from "lucide-react";
 import { Dialog } from "radix-ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Switch } from "@/components/ui/controls";
 import { Segmented } from "@/components/ui/Segmented";
 import { btn } from "@/components/ui/styles";
@@ -47,13 +48,25 @@ export function MetricsPanel({ open, onClose, catalog, prefs, hasData, onToggle,
     return catalog.filter((m) => (section === "kpis" ? !!m.kpi : !!m.column) && (!q || fold(`${m.label} ${m.help}`).includes(q)));
   }, [catalog, query, section]);
 
+  // o Dialog trava a página; a roda do mouse fora do painel continua rolando o dashboard, para ver as tabelas mudarem
+  useEffect(() => {
+    if (!open) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.target instanceof Element && e.target.closest("[data-metrics-panel]")) return;
+      document.querySelector(".shell-content")?.scrollBy({ top: e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY });
+    };
+    window.addEventListener("wheel", onWheel, { passive: true });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, [open]);
+
   return (
     <Dialog.Root open={open} onOpenChange={(v) => !v && onClose()}>
       <Dialog.Portal>
         {/* sem fundo escuro: a página atrás mostra o resultado. Clique fora não descarta a escolha */}
         <Dialog.Content
+          data-metrics-panel
           onInteractOutside={(e) => e.preventDefault()}
-          className="fixed inset-0 z-[110] flex flex-col bg-card text-fg outline-none sm:inset-y-3 sm:right-3 sm:left-auto sm:w-[400px] sm:rounded-[20px] sm:border sm:border-line"
+          className="fixed inset-0 z-[110] flex flex-col bg-card text-fg outline-none sm:inset-y-3 sm:right-3 sm:left-auto sm:w-[400px] sm:rounded-[20px] sm:border sm:border-line xl:rounded-[24px] print:hidden"
         >
           <header className="flex items-start gap-3 border-b border-line px-4 py-3">
             <div className="min-w-0 flex-1">

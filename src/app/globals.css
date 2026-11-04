@@ -819,6 +819,15 @@ details.lines summary::-webkit-details-marker {
   }
 }
 
+/* Painel "Personalizar" aberto em tela larga: o conteúdo abre espaço para ele
+   (400 px + 2 × 12 px de margem) e as grades se reorganizam pela largura do
+   contêiner. Abaixo de 1280 px o painel fica por cima. */
+@media screen and (width >= 80rem) {
+  body:has([data-metrics-panel]) .shell-content {
+    margin-right: 424px;
+  }
+}
+
 /* ---- Sidebar do painel: aba ativa com cantos côncavos ------------------- */
 .side-tab::before,
 .side-tab::after {

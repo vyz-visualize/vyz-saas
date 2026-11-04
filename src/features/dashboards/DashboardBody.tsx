@@ -88,55 +88,58 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
 
   return (
     <div style={brandStyle(spec.brand)} className="space-y-4">
-      <header className="flex flex-col gap-4 print:hidden lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 items-start gap-4">
-          <div className="hidden shrink-0 pt-1.5 sm:block">
-            <BrandMark brand={spec.brand} />
-          </div>
-          <div className="min-w-0">
-            <h1 className="title truncate text-[1.6rem]">{spec.name}</h1>
-            <p className="text-[14px] text-fg-2">{spec.client}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {t.sources.map((s) => (
-                <span key={s} className="rounded-chip border border-line px-2 py-0.5 text-[11.5px] text-fg-2">
-                  {PLATFORMS[s].name}
-                </span>
-              ))}
-              <span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium text-fg">Amostra · dados fictícios</span>
-              {actions && <PendingChip label="Modelo com dados de exemplo" detail="Os números são fictícios. Para os números das suas contas, crie um dashboard Meta Ads ou Google Ads · E-commerce." />}
+      {/* pela largura do contêiner, não da janela: o painel "Personalizar" encolhe esta área */}
+      <div className="@container space-y-4 print:hidden">
+        <header className="flex flex-col gap-4 @[700px]:flex-row @[700px]:items-start @[700px]:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="hidden shrink-0 pt-1.5 @[600px]:block">
+              <BrandMark brand={spec.brand} />
+            </div>
+            <div className="min-w-0">
+              <h1 className="title truncate text-[1.6rem]">{spec.name}</h1>
+              <p className="text-[14px] text-fg-2">{spec.client}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {t.sources.map((s) => (
+                  <span key={s} className="rounded-chip border border-line px-2 py-0.5 text-[11.5px] text-fg-2">
+                    {PLATFORMS[s].name}
+                  </span>
+                ))}
+                <span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium text-fg">Amostra · dados fictícios</span>
+                {actions && <PendingChip label="Modelo com dados de exemplo" detail="Os números são fictícios. Para os números das suas contas, crie um dashboard Meta Ads ou Google Ads · E-commerce." />}
+              </div>
             </div>
           </div>
-        </div>
-        {(actions || customizeId) && (
-          <div className="flex flex-wrap gap-2">
-            {customizeId && <CustomizeButton onClick={() => metrics.setOpen(true)} />}
-            {actions}
-          </div>
-        )}
-      </header>
+          {(actions || customizeId) && (
+            <div className="flex flex-wrap gap-2">
+              {customizeId && <CustomizeButton onClick={() => metrics.setOpen(true)} />}
+              {actions}
+            </div>
+          )}
+        </header>
 
-      <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <Tabs label="Páginas do dashboard" value={active} onChange={setPage} items={spec.pages.map((p) => ({ value: p, label: PAGES[p].name }))} />
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="w-60">
-            <PeriodPicker
-              period={period}
-              range={range}
-              customDays={customDays}
-              maxDays={60}
-              onChange={(p, r) => {
-                setPeriod(p);
-                if (r) {
-                  setRange(r);
-                  setCustomDays(Math.max(3, rangeDays(r)));
-                }
-              }}
-            />
+        <div className="flex flex-col gap-3 @[600px]:flex-row @[600px]:items-end @[600px]:justify-between">
+          <div className="min-w-0 flex-1">
+            <Tabs label="Páginas do dashboard" value={active} onChange={setPage} items={spec.pages.map((p) => ({ value: p, label: PAGES[p].name }))} />
           </div>
-          <div className="flex h-10 items-center rounded-control border border-line px-3 text-[13px]">
-            <Switch label="Comparar com o período anterior" checked={compare} onChange={setCompare} />
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="w-60">
+              <PeriodPicker
+                period={period}
+                range={range}
+                customDays={customDays}
+                maxDays={60}
+                onChange={(p, r) => {
+                  setPeriod(p);
+                  if (r) {
+                    setRange(r);
+                    setCustomDays(Math.max(3, rangeDays(r)));
+                  }
+                }}
+              />
+            </div>
+            <div className="flex h-10 items-center rounded-control border border-line px-3 text-[13px]">
+              <Switch label="Comparar com o período anterior" checked={compare} onChange={setCompare} />
+            </div>
           </div>
         </div>
       </div>
