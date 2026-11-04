@@ -15,7 +15,6 @@ import { useToast } from "@/components/ui/Toast";
 import { ChangePasswordForm, SignOutEverywhereButton } from "@/features/auth/AccountSecurity";
 import { formatPhone } from "@/features/checkout/phone";
 import { relativeTime } from "@/features/integrations/sync-label";
-import { availableIn } from "@/features/pricing/entitlements";
 import { removeBrandLogo, updateProfile, updateWorkspace, uploadBrandLogo } from "@/server/workspace/actions";
 import type { AccessEvent, ActivityItem, SettingsData } from "./dto";
 import { LOGO_ACCEPT, LOGO_HINT, logoProblem } from "./logo";
@@ -265,7 +264,7 @@ export function SettingsPage({ data }: { data: SettingsData }) {
         </Section>
       </div>
 
-      <Section id="h-marca" title="Marca própria (white-label)" aside={!white && <LockBadge label={availableIn("personalizado")} />}>
+      <Section id="h-marca" title="Marca própria (white-label)" aside={!white && <LockBadge label="Sob consulta" />}>
         <p className="-mt-2 text-[14px] text-fg-2">Seu logo e suas cores no dashboard, no link e no PDF, sem a marca VYZ.</p>
         {white ? (
           <BrandForm canEdit={admin} notify={toast.show} />

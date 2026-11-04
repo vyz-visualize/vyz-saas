@@ -229,10 +229,10 @@ export function Inteligencia() {
           id="inteligencia-title"
           className="display mt-5 text-[clamp(2.4rem,6.4vw,5.6rem)] text-fg"
           lineClassName={(i) => (i === 1 ? "text-accent" : "")}
-          lines={["Não é só dashboard.", "É análise de verdade."]}
+          lines={["Não é só dashboard.", "O que vem por aí."]}
         />
         <p className="mt-6 max-w-2xl text-[17px] leading-relaxed text-fg-2">
-          Os métodos que as grandes agências usam para decidir verba, rodando nos dados das suas contas. E um assistente que responde na hora.
+          Análises que nenhum relatório comum entrega. E, desde já, um assistente que responde na hora.
         </p>
 
         <div className="mt-12 grid grid-cols-[minmax(0,1fr)] gap-4 lg:mt-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">

@@ -12,7 +12,7 @@ import { btn } from "@/components/ui/styles";
 import { TIER_LABEL, canUse, type Tier } from "@/features/pricing/entitlements";
 import { msgUpgrade, waLink } from "@/lib/whatsapp";
 
-/** Para onde vai o "Liberar": a troca de plano no painel (Personalizado: especialista). */
+/** Para onde vai o botão: a troca de plano no painel (Personalizado: especialista). */
 export function unlockHref(required: Tier, current: Tier | null, feature: string): { href: string; external: boolean } {
   if (required === "personalizado") {
     return { href: waLink(msgUpgrade(current ? TIER_LABEL[current] : "sem plano", TIER_LABEL.personalizado, `Quero ${feature.toLowerCase()}.`)), external: true };
@@ -22,7 +22,8 @@ export function unlockHref(required: Tier, current: Tier | null, feature: string
 
 export function UnlockButton({ required, current, feature, className = "" }: { required: Tier; current: Tier | null; feature: string; className?: string }) {
   const { href, external } = unlockHref(required, current, feature);
-  const label = `Liberar no ${TIER_LABEL[required]}`;
+  // o Personalizado é sob consulta: conversa com o especialista, não troca de plano
+  const label = required === "personalizado" ? "Falar com especialista" : `Liberar no ${TIER_LABEL[required]}`;
   return external ? (
     <a href={href} target="_blank" rel="noopener noreferrer" className={`${btn.small} ${className}`}>
       <WhatsAppIcon size={15} /> {label}
@@ -65,7 +66,7 @@ export function Paywall({
             <Lock size={16} aria-hidden />
           </span>
           <p className="title text-[15px] text-fg">
-            {feature} <span className="text-fg-2">· {TIER_LABEL[required]}</span>
+            {feature} <span className="text-fg-2">· {required === "personalizado" ? "sob consulta" : TIER_LABEL[required]}</span>
           </p>
           {text && <p className="text-[13px] text-fg-2">{text}</p>}
           <UnlockButton required={required} current={current} feature={feature} />

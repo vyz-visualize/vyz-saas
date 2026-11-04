@@ -1,7 +1,7 @@
 "use client";
 
 // Página "Landing pages · em breve": o que vem (templates reais, editor e leads,
-// com dados de exemplo e sem ação) e a lista de espera.
+// com dados de exemplo, borrados e sem ação) e a lista de espera.
 
 import { Check } from "lucide-react";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
@@ -95,8 +95,10 @@ function PreviewBlock({ title, text, children }: { title: string; text: string; 
         </div>
         <SampleBadge />
       </div>
-      {/* só para ver: nada aqui recebe clique nem foco */}
-      <div inert>{children}</div>
+      {/* vitrine borrada: dá para reconhecer o layout, mas nada recebe clique, foco ou leitor de tela */}
+      <div inert aria-hidden className="pointer-events-none opacity-80 blur-[3px] select-none">
+        {children}
+      </div>
     </section>
   );
 }
