@@ -235,7 +235,7 @@ export function LineLegend({ avg, goal, previous, maturing, large = false }: { a
       </span>
       {goal && (
         <span className="inline-flex items-center gap-1">
-          <span className="w-3 border-t border-dashed border-fg-2" /> meta
+          <span className="w-3 border-t border-dashed border-fg-2" /> alvo
         </span>
       )}
       {previous && (

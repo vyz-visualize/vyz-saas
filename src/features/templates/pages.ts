@@ -133,7 +133,7 @@ export const PAGES: Record<PageId, PageDef> = {
       widgets: [
         profile === "ecommerce" || profile === "marketplace" || profile === "executivo" || profile === "infoproduto"
           ? { type: "bars", source: "campaigns", metric: "roas", reference: "breakEven", span: 4, title: "ROAS por campanha · linha de equilíbrio" }
-          : { type: "bars", source: "campaigns", metric: "cpa", reference: "goal", span: 4, title: "Custo por conversão, por campanha · meta" },
+          : { type: "bars", source: "campaigns", metric: "cpa", reference: "goal", span: 4, title: "Custo por conversão, por campanha · alvo" },
         { type: "table", source: "campaigns", span: 4, title: "Todas as campanhas" },
       ],
     }),
@@ -171,7 +171,7 @@ export const PAGES: Record<PageId, PageDef> = {
       kpis: [{ metric: "spend", sub: "budget", highlight: true }, { metric: "conversions", sub: "delta" }, { metric: "cpa", sub: "goal" }, { metric: "roas", sub: "breakEven" }],
       widgets: [
         { type: "goals", span: 2, title: "Metas do mês" },
-        { type: "line", metric: "cpa", goal: true, span: 2, title: "Custo por conversão × meta" },
+        { type: "line", metric: "cpa", goal: true, span: 2, title: "Custo por conversão × alvo" },
       ],
     }),
   },
@@ -256,7 +256,7 @@ export const PAGES: Record<PageId, PageDef> = {
       kpis: [{ metric: "cpa", sub: "goal" }, { metric: "frequency", sub: "delta" }, { metric: "ctr", sub: "delta" }, { metric: "spend", sub: "budget" }],
       widgets: [
         { type: "alerts", span: 2, title: "Alertas" },
-        { type: "line", metric: "cpa", goal: true, span: 2, title: "CPA × meta" },
+        { type: "line", metric: "cpa", goal: true, span: 2, title: "CPA × alvo" },
       ],
     }),
   },

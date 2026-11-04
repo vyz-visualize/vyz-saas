@@ -223,7 +223,7 @@ export function Widget({ spec, ctx: shown, delay }: { spec: WidgetSpec; ctx: Wid
       );
     case "bars":
       return (
-        <Card title={title} delay={delay} note={note}>
+        <Card title={spec.reference === "goal" && title ? `${title} ${brl(ds.goal, { decimals: false })}` : title} delay={delay} note={note}>
           <BarsWidget spec={spec} ctx={ctx} />
         </Card>
       );
@@ -371,7 +371,7 @@ export function barData(spec: BarsSpec, ctx: WidgetContext) {
     spec.reference === "breakEven"
       ? { value: ds.breakEven, label: `equilíbrio ${decimal(ds.breakEven)}` }
       : spec.reference === "goal"
-        ? { value: ds.goal, label: `meta ${brl(ds.goal, { decimals: false })}` }
+        ? { value: ds.goal, label: `alvo ${brl(ds.goal, { decimals: false })}` }
         : undefined;
   const better: "up" | "down" = spec.metric === "cpa" ? "down" : "up";
   const def = metric(spec.metric === "roas" ? "roas" : spec.metric === "cpa" ? "cpa" : spec.metric === "spend" ? "spend" : "conversions", profile);
@@ -438,7 +438,7 @@ export function lineData(spec: Extract<WidgetSpec, { type: "line" }>, ctx: Widge
   const def = metric(spec.metric, profile);
   const goal = spec.goal ? ds.goal : undefined;
   const last = avg.filter(Number.isFinite).at(-1) ?? 0;
-  const summary = `${def.label} diário dos últimos ${values.length} dias, com média móvel de 7 dias em ${formatValue(last, def.format)}${goal ? `, meta de ${brl(goal)}` : ""}. Os últimos 3 dias estão em maturação.`;
+  const summary = `${def.label} diário dos últimos ${values.length} dias, com média móvel de 7 dias em ${formatValue(last, def.format)}${goal ? `, alvo de ${brl(goal)}` : ""}. Os últimos 3 dias estão em maturação.`;
   return { values, avg, goal, goalLabel: goal ? brl(goal, { decimals: false }) : undefined, maturingDays: 3, summary, ago: rows.map((r) => r.ago), formatY: axisFormat(def.format) };
 }
 
@@ -670,7 +670,7 @@ function Goals({ ctx }: { ctx: WidgetContext }) {
       marker: pacing,
       text: `${int(convToDate)} de ${int(targetConv)}`,
       // meta × conversões daria a verba: fica de fora com o investimento oculto
-      note: ctx.hideSpend ? `Dia ${b.day} de ${b.daysInMonth}` : `Meta a ${brl(ds.goal, { decimals: false })} por conversão`,
+      note: ctx.hideSpend ? `Dia ${b.day} de ${b.daysInMonth}` : `Alvo de ${brl(ds.goal, { decimals: false })} por conversão`,
       warn: convToDate / targetConv < pacing * 0.9,
     },
     {
@@ -678,8 +678,8 @@ function Goals({ ctx }: { ctx: WidgetContext }) {
       label: "Custo por conversão",
       value: Math.min(1, ds.goal / Math.max(1, cur.cpa)),
       marker: 1,
-      text: `${brl(cur.cpa)} · meta ${brl(ds.goal, { decimals: false })}`,
-      note: cur.cpa <= ds.goal ? "Dentro da meta" : "Acima da meta",
+      text: `${brl(cur.cpa)} · alvo ${brl(ds.goal, { decimals: false })}`,
+      note: cur.cpa <= ds.goal ? "Dentro do alvo" : "Acima do alvo",
       warn: cur.cpa > ds.goal,
     },
   ];
