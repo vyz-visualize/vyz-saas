@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { creativeAnalysis } from "@/features/agent/engine/creative-analysis";
-import { pct } from "@/lib/format";
+import { compactCount, compactMoney, creativeAnalysis, perExposure, plainPct } from "@/features/agent/engine/creative-analysis";
+import { decimal, pct } from "@/lib/format";
+import { money } from "../format";
 import type { CompareAd } from "../types";
-import { adStats, axisFromZero, axisLabel, bestOf, BLOCK_DAYS, chartRange, defaultAds, compareTable, deliveryDays, diffLabel, diffVsBest, evolution, formatMetric, metricById, metricValue, COMPARE_METRICS, objectiveHighlights, objectivesDiffer, objectiveWarning, sumsOf } from "./compare";
+import { adStats, axisFromZero, axisLabel, bestOf, BLOCK_DAYS, chartRange, defaultAds, compareTable, deliveryDays, diffLabel, diffVsBest, evolution, metricById, metricValue, COMPARE_METRICS, objectiveHighlights, objectivesDiffer, objectiveWarning, shortName, sumsOf } from "./compare";
 import { objectiveKey, objectiveResult } from "./objectives";
 
 type Day = CompareAd["days"][number];
@@ -270,81 +271,171 @@ describe("investimento oculto", () => {
 });
 
 describe("texto da análise", () => {
-  /** Todo número que o texto pode citar, calculado à parte. */
-  function allowed(stats: ReturnType<typeof adStats>[], currency = "BRL") {
-    const set = new Set<string>();
-    const addNumbers = (s: string) => {
+  /** Constantes da explicação: "de cada 100", "de cada 1.000", "cada R$ 1", "primeiros 3 segundos". */
+  const WORDING = ["100", "1.000", "1", "3"];
+
+  /** Todo número que o texto pode citar, calculado à parte a partir dos dados. */
+  function allowed(stats: ReturnType<typeof adStats>[]) {
+    const set = new Set<string>(WORDING);
+    const add = (s: string) => {
       for (const n of s.match(/\d[\d.,]*\d|\d/g) ?? []) set.add(n);
     };
     for (const s of stats) {
       set.add(String(s.activeDays));
-      for (const metric of COMPARE_METRICS) addNumbers(formatMetric(metric, metricValue(metric, s.sums, "total"), currency));
-      if (s.fatigue) {
-        addNumbers(pct(s.fatigue.frequencyChange, 0));
-        addNumbers(pct(Math.abs(s.fatigue.ctrChange), 0));
-      }
-    }
-    for (const a of stats) {
-      for (const b of stats) {
-        for (const metric of COMPARE_METRICS) {
-          const x = metricValue(metric, a.sums, "total");
-          const y = metricValue(metric, b.sums, "total");
-          if (x != null && y) addNumbers(pct(Math.abs(x - y) / Math.abs(y), 0));
+      for (const metric of COMPARE_METRICS) {
+        const v = metricValue(metric, s.sums, "total");
+        if (v == null) continue;
+        for (const text of [compactCount(v), compactMoney(v), money(v), plainPct(v), pct(v, 0), decimal(v, 1), decimal(v, 2)]) add(text);
+        if (metric.format === "pct") {
+          const per = perExposure(v);
+          if (per) set.add(String(per.count));
         }
+      }
+      if (s.fatigue) {
+        add(pct(s.fatigue.frequencyChange, 0));
+        add(pct(Math.abs(s.fatigue.ctrChange), 0));
       }
     }
     return set;
   }
-  const numbersIn = (text: string, names: string[]) => {
+  /** Os números do texto que não saíram dos dados (nomes de anúncio não contam). */
+  function invented(text: string, stats: ReturnType<typeof adStats>[]) {
     let clean = text;
-    for (const n of names) clean = clean.split(n).join(" ");
-    return clean.match(/\d[\d.,]*\d|\d/g) ?? [];
-  };
+    for (const s of stats) clean = clean.split(s.ad.name).join(" ").split(shortName(s.ad.name)).join(" ");
+    const ok = allowed(stats);
+    return (clean.match(/\d[\d.,]*\d|\d/g) ?? []).filter((n) => !ok.has(n));
+  }
 
+  const venda = (id: string, over: Partial<Day> = {}, days = 9) => ad(id, range(1, days, { spend: 120, impressions: 3000, reach: 2500, clicks: 90, linkClicks: 40, conversions: 3, conversionValue: 480, ...over }));
   const cases: [string, CompareAd[]][] = [
-    ["mesmo objetivo", [ad("a", range(1, 9, { spend: 120, impressions: 3000 })), ad("b", range(1, 6, { spend: 300, impressions: 2100, conversions: 1 }))]],
-    ["objetivos diferentes", [ad("a", range(1, 8)), ad("b", range(1, 8, { leads: 12, postEngagement: 40 }), "OUTCOME_LEADS"), ad("c", range(1, 4, { postEngagement: 90 }), "OUTCOME_ENGAGEMENT")]],
+    ["mesmo objetivo", [venda("a"), venda("b", { spend: 300, impressions: 2100, conversions: 1, conversionValue: 100, linkClicks: 12 }, 6)]],
+    ["números grandes", [venda("a", { spend: 2400, impressions: 120000, reach: 95000, clicks: 3400, linkClicks: 1800, conversions: 40, conversionValue: 9000 }, 30), venda("b", { spend: 900, impressions: 40000, reach: 30000 }, 30)]],
+    ["com vídeo", [venda("a", { videoViews: 900, videoThruplays: 200 }), venda("b", { videoViews: 500, videoThruplays: 90 })]],
+    ["objetivos diferentes", [venda("a"), ad("b", range(1, 8, { leads: 12, postEngagement: 40 }), "OUTCOME_LEADS"), ad("c", range(1, 4, { postEngagement: 90 }), "OUTCOME_ENGAGEMENT")]],
+    ["só leads", [ad("a", range(1, 8, { leads: 12 }), "OUTCOME_LEADS"), ad("b", range(1, 8, { leads: 30, spend: 90 }), "OUTCOME_LEADS")]],
+    ["só engajamento", [ad("a", range(1, 8, { postEngagement: 40 }), "OUTCOME_ENGAGEMENT"), ad("b", range(1, 8, { postEngagement: 70 }), "OUTCOME_ENGAGEMENT")]],
+    ["tráfego", [ad("a", range(1, 5), "OUTCOME_TRAFFIC"), ad("b", range(1, 5, { spend: 40 }), "OUTCOME_TRAFFIC")]],
     ["nome com número não conta", [ad("a", range(1, 5), "OUTCOME_SALES", { name: "VID · UGC provador 15s" }), ad("b", range(1, 7), "OUTCOME_SALES", { name: "IMG · 2 por R$ 299" })]],
   ];
 
   it.each(cases)("%s: nenhum número inventado", (_, ads) => {
     const stats = ads.map(adStats);
     const a = creativeAnalysis(stats);
-    const ok = allowed(stats);
-    for (const n of numbersIn(a.text, ads.map((x) => x.name))) expect([n, ok.has(n)]).toEqual([n, true]);
+    expect(invented(a.text, stats)).toEqual([]);
     expect(a.perAd).toHaveLength(ads.length);
     expect(a.comparison.length).toBeGreaterThan(10);
   });
 
+  it.each(cases)("%s: sem investimento oculto escapando e sem número inventado", (_, ads) => {
+    const hidden = ads.map((x) => ({ ...x, days: x.days.map((d) => ({ ...d, spend: null as never })) })).map(adStats);
+    const a = creativeAnalysis(hidden, { hideSpend: true });
+    expect(invented(a.text, hidden)).toEqual([]);
+    for (const term of ["investimento", "investido", "custou", "barato", "ROAS"]) expect([term, a.text.includes(term)]).toEqual([term, false]);
+  });
+
   it("o teste pega número inventado", () => {
     const stats = cases[0][1].map(adStats);
-    expect(allowed(stats).has("987654")).toBe(false);
+    const a = creativeAnalysis(stats);
+    expect(invented(`${a.text} Foi exibido 987,6 mil vezes.`, stats)).toEqual(["987,6"]);
   });
 
-  it("métrica sem dado não entra no texto", () => {
-    const text = creativeAnalysis([adStats(ad("a", range(1, 3))), adStats(ad("b", range(1, 3)))]).text;
-    expect(text).not.toContain("hook rate");
-    expect(text).not.toContain("leads");
+  describe("linguagem", () => {
+    const [big] = [cases[1][1].map(adStats)];
+    const text = creativeAnalysis(big).text;
+
+    it("números grandes abreviados, sem o rótulo com dois-pontos", () => {
+      expect(compactCount(331826)).toBe("331,8 mil");
+      expect(compactCount(1250000)).toBe("1,3 milhão");
+      expect(compactCount(2500000)).toBe("2,5 milhões");
+      expect(compactCount(950)).toBe("950");
+      expect(compactCount(156000)).toBe("156 mil");
+      expect(compactMoney(6700)).toBe("R$ 6,7 mil");
+      expect(compactMoney(94.5)).toBe("R$ 94,50");
+      expect(text).toContain("foi exibido 3,6 milhões vezes".replace("3,6 milhões", compactCount(120000 * 30)));
+      expect(text).not.toMatch(/impressões:/i);
+      expect(text).not.toMatch(/\d{3}\.\d{3}/);
+    });
+
+    it("traduz cada métrica no que ela significa", () => {
+      expect(text).toMatch(/alcançou em média .* pessoas por dia/);
+      expect(text).toMatch(/de cada 100 vezes que apareceu, cerca de \d+ (virou|viraram) clique no link/);
+      expect(text).toMatch(/cada compra custou em média R\$ [\d,.]+/);
+      expect(text).toMatch(/ROAS\) foi de [\d,]+: cada R\$ 1 investido voltou R\$ [\d,]+ em vendas/);
+    });
+
+    it("alcance é por dia: nunca diz um total de pessoas", () => {
+      expect(text).not.toMatch(/alcançou [\d,.]+ (mil )?pessoas\b(?! por dia)/);
+    });
+
+    it("sem jargão em inglês", () => {
+      const video = creativeAnalysis(cases[2][1].map(adStats)).text;
+      expect(video).not.toMatch(/hook|hold rate|thruplay/i);
+      expect(video).toContain("taxa de retenção nos primeiros 3 segundos");
+    });
+
+    it("base de 1.000 quando a taxa é baixa", () => {
+      expect(perExposure(0.0123)).toEqual({ base: 100, count: 1 });
+      expect(perExposure(0.004)).toEqual({ base: 1000, count: 4 });
+      expect(perExposure(0.0001)).toBeNull();
+    });
+
+    it("métrica sem dado não entra no texto", () => {
+      const plain = creativeAnalysis([adStats(ad("a", range(1, 3))), adStats(ad("b", range(1, 3)))]).text;
+      expect(plain).not.toContain("retenção");
+      expect(plain).not.toContain("leads");
+    });
+
+    it("sem compras: diz que não houve, sem custo nem retorno", () => {
+      const none = creativeAnalysis([adStats(ad("a", range(1, 3, { conversions: 0, conversionValue: 0 }))), adStats(ad("b", range(1, 3)))]).perAd[0].text;
+      expect(none).toContain("Não registrou compras");
+      expect(none).not.toContain("cada compra");
+      expect(none).not.toContain("ROAS");
+    });
   });
 
-  it("objetivos diferentes: não elege vencedor", () => {
-    const a = creativeAnalysis(cases[1][1].map(adStats));
-    expect(a.comparison).toContain("não para eleger um vencedor");
-    expect(a.comparison).not.toContain("o melhor");
-  });
+  describe("comparação", () => {
+    const a = venda("a", { spend: 100, conversionValue: 900, linkClicks: 30, reach: 2000 });
+    const b = venda("b", { spend: 200, conversionValue: 400, linkClicks: 60, reach: 2800 });
+    const same = creativeAnalysis([adStats(a), adStats(b)]).comparison;
 
-  it("investimento oculto: sem dinheiro no texto", () => {
-    const hidden = (id: string) => ad(id, range(1, 5, { spend: null as never, conversionValue: 0 }));
-    const a = creativeAnalysis([adStats(hidden("a")), adStats(hidden("b"))], { hideSpend: true });
-    expect(a.text).not.toContain("R$");
-    for (const term of ["investimento", "custo", "ROAS"]) expect(a.text).not.toContain(term);
-  });
+    it("cobre várias dimensões, com o vencedor certo em cada uma", () => {
+      expect(same).toMatch(/“Anúncio b” alcançou mais pessoas/);
+      expect(same).toMatch(/“Anúncio b” teve mais cliques proporcionalmente/);
+      expect(same).toMatch(/“Anúncio a” vendeu mais barato/);
+      expect(same).toMatch(/“Anúncio a” teve o melhor retorno/);
+    });
 
-  it("cansaço entra no texto com os números da regra", () => {
-    const first = range(1, 10, { impressions: 3000, reach: 2500, linkClicks: 90 });
-    const second = range(11, 20, { impressions: 3000, reach: 1500, linkClicks: 30 });
-    const stats = [adStats(ad("a", [...first, ...second])), adStats(ad("b", range(1, 20)))];
-    expect(stats[0].fatigue).not.toBeNull();
-    expect(creativeAnalysis(stats).perAd[0].text).toContain("sinal de cansaço");
+    it("fecha com uma leitura geral baseada nos números, sem recomendar", () => {
+      expect(same).toMatch(/Na leitura geral, “Anúncio a” entregou mais vendas por real investido\.$/);
+      for (const c of cases) {
+        const text = creativeAnalysis(c[1].map(adStats)).text;
+        expect(text).not.toMatch(/recomend|deveria|sugiro|aument[ea]|paus[ea]|renove|invista/i);
+      }
+    });
+
+    it("empate: não inventa destaque", () => {
+      const tie = creativeAnalysis([adStats(ad("a", range(1, 5))), adStats(ad("b", range(1, 5)))]).comparison;
+      expect(tie).toContain("nenhum anúncio se destacou");
+    });
+
+    it("cansaço é mencionado", () => {
+      const first = range(1, 10, { impressions: 3000, reach: 2500, linkClicks: 90 });
+      const second = range(11, 20, { impressions: 3000, reach: 1500, linkClicks: 30 });
+      const stats = [adStats(ad("a", [...first, ...second])), adStats(ad("b", range(1, 20)))];
+      expect(stats[0].fatigue).not.toBeNull();
+      const r = creativeAnalysis(stats);
+      expect(r.perAd[0].text).toContain("sinal de cansaço");
+      expect(r.comparison).toContain("“Anúncio a” mostra sinal de cansaço");
+      expect(invented(r.text, stats)).toEqual([]);
+    });
+
+    it("objetivos diferentes: só a métrica principal de cada um e o aviso", () => {
+      const r = creativeAnalysis(cases[3][1].map(adStats));
+      expect(r.comparison).toContain("em Vendas, custo por compra de");
+      expect(r.comparison).toContain("em Leads, custo por lead de");
+      expect(r.comparison).toContain("não para eleger um vencedor");
+      expect(r.comparison.match(/não para eleger/g)).toHaveLength(1);
+      for (const term of ["alcançou mais", "cliques proporcionalmente", "melhor retorno", "leitura geral"]) expect(r.comparison).not.toContain(term);
+    });
   });
 });

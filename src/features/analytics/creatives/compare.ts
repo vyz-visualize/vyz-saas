@@ -161,6 +161,9 @@ export const COMPARE_METRICS: CompareMetric[] = [
 
 export const metricById = (id: string) => COMPARE_METRICS.find((m) => m.id === id);
 
+/** "VID · UGC provador 15s" → "UGC provador 15s". */
+export const shortName = (name: string) => name.replace(/^[A-Z]{2,4} · /, "");
+
 /** Dias com entrega, em ordem: o "Dia 1" é o primeiro deles dentro do período. */
 export const deliveryDays = (ad: Pick<CompareAd, "days">): Day[] => ad.days.filter((d) => d.impressions > 0).sort((a, b) => a.date.localeCompare(b.date));
 

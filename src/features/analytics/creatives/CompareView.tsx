@@ -15,7 +15,7 @@ import { creativeAnalysis, type CreativeAnalysis } from "@/features/agent/engine
 import type { CompareAd, CreativesData } from "../types";
 import { Chip, NoData, Panel, Thumb } from "../ui";
 import { CompareChart } from "./CompareChart";
-import { adStats, axisLabel, chartRange, compareTable, COMPARE_METRICS, defaultAds, diffLabel, evolution, EVOLUTION_BLOCK_NOTE, formatMetric, objectiveHighlights, objectiveWarning, type AdStats, type CompareMode, type CompareGroup } from "./compare";
+import { adStats, axisLabel, chartRange, compareTable, COMPARE_METRICS, defaultAds, diffLabel, evolution, EVOLUTION_BLOCK_NOTE, objectiveHighlights, objectiveWarning, shortName, type AdStats, type CompareMode, type CompareGroup } from "./compare";
 import { MAX_COMPARE, MIN_COMPARE } from "./limits";
 import { OBJECTIVE_LABEL, objectiveKey } from "./objectives";
 import { setQueryParam } from "./query";
@@ -24,7 +24,6 @@ import { setQueryParam } from "./query";
 const COLORS = ["var(--accent)", "#C2703D", "#5B7FA6"] as const;
 
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-const shortName = (name: string) => name.replace(/^[A-Z]{2,4} · /, "");
 const postPlace = (url: string) => (/instagram/i.test(url) ? "Instagram" : /facebook|fb\.com/i.test(url) ? "Facebook" : null);
 
 export function CompareView({ data }: { data: Pick<CreativesData, "compare" | "initialAds" | "hideSpend" | "currency"> }) {
