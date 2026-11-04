@@ -18,7 +18,8 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
-        ]
+        ],
+        "NSHumanReadableCopyright": "© 2026 VYZ Intelligence"
       }
     },
     "android": {
@@ -42,7 +43,12 @@
         }
       ],
       "expo-secure-store",
-      ["@react-native-google-signin/google-signin", { "iosUrlScheme": "com.googleusercontent.apps.277727667716-etuaab5kl2al0t9f71hr1a0bhg8g5np8" }],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.277727667716-etuaab5kl2al0t9f71hr1a0bhg8g5np8"
+        }
+      ],
       "expo-apple-authentication",
       "expo-notifications"
     ],
