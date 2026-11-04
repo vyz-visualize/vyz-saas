@@ -6,7 +6,7 @@
 // Histórias:
 //   * "Pesquisa · Categorias genéricas" fica abaixo do equilíbrio (ROAS ~1,4),
 //     perde parcela de impressões por orçamento e tem termos que gastam sem
-//     converter (vestido de noiva aluguel, molde grátis…);
+//     converter (vestido de noiva aluguel, molde para baixar…);
 //   * "Pesquisa · Marca" domina a própria marca (parcela ~90%) com ROAS alto.
 
 import { apportion } from "../apportion";
@@ -160,8 +160,8 @@ function searchTermDays(ctx: MockContext, c: Campaign, date: string, total: Unit
     value: total.conversions > 0 ? Math.round((total.value * conversions) / total.conversions) : 0,
   };
   const parts: Part[] = terms.map((t) => {
-    const account = stream(ctx.accountExternalId, "google", "termo", t.term);
-    const day = stream(ctx.accountExternalId, "google", "termo", t.term, date);
+    const account = stream(ctx.accountExternalId, "google", "termo", t.seed ?? t.term);
+    const day = stream(ctx.accountExternalId, "google", "termo", t.seed ?? t.term, date);
     const present = day.next() < t.presence;
     return {
       weight: present ? t.weight * jitter(account, 0.2) * jitter(day, 0.25) : 0,

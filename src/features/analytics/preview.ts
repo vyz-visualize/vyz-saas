@@ -38,6 +38,15 @@ const SAMPLE_ACCOUNT: Record<LivePlatform, { id: string; name: string }> = {
 
 export type SampleOptions = { period?: PeriodId; customDays?: number; breakEvenRoas?: number | null; today?: string };
 
+/** As linhas do gerador para um período, antes de agregar. */
+export function sampleRows(platform: LivePlatform, opts: Pick<SampleOptions, "period" | "customDays" | "today"> = {}): WarehouseRows {
+  const today = opts.today ?? localDate(new Date(), DEFAULT_TIME_ZONE);
+  const { current, previous } = dashboardRanges(opts.period ?? "30d", opts.customDays ?? 30, today);
+  const account = SAMPLE_ACCOUNT[platform];
+  const ds = generateAccountData({ platform, accountExternalId: account.id, accountName: account.name, endDate: current.to, days: current.days + previous.days });
+  return datasetToRows(ds, current, previous);
+}
+
 /** Dados de amostra de um template live, no mesmo formato do servidor. */
 export function sampleDashboardData(templateId: string, opts: SampleOptions = {}): LiveDashboardData | null {
   const platform = TEMPLATE_PLATFORM[templateId];

@@ -89,9 +89,9 @@ export const META_CAMPAIGNS: readonly MetaCampaignSpec[] = [
     frequency: [1.08, 1.2],
     lpv: [0.7, 0.8],
     ads: [
-      { key: "asc-ugc", name: "VID · UGC provador 15s", format: "video", weight: 1, ctr: 1.15, cvr: 1.05, hook: [0.27, 0.34], headline: "Provou, amou: veja no corpo real", body: "Peças leves para a estação, com troca grátis em 30 dias.", cta: "Comprar agora", path: "/novidades" },
+      { key: "asc-ugc", name: "VID · UGC provador 15s", format: "video", weight: 1, ctr: 1.15, cvr: 1.05, hook: [0.27, 0.34], headline: "Provou, amou: veja no corpo real", body: "Peças leves para a estação, com troca sem custo em 30 dias.", cta: "Comprar agora", path: "/novidades" },
       { key: "asc-reels", name: "VID · Reels bastidores", format: "video", weight: 0.7, ctr: 0.95, cvr: 0.95, hook: [0.22, 0.29], headline: "Do ateliê para o seu guarda-roupa", body: "Conheça quem faz cada peça.", cta: "Saiba mais", path: "/sobre" },
-      { key: "asc-frete", name: "IMG · Frete zero acima de R$ 299", format: "image", weight: 0.55, ctr: 0.9, cvr: 1, headline: "Frete grátis acima de R$ 299", body: "Para todo o Brasil, em até 10x sem juros.", cta: "Comprar agora", path: "/ofertas" },
+      { key: "asc-frete", name: "IMG · Frete zero acima de R$ 299", format: "image", weight: 0.55, ctr: 0.9, cvr: 1, headline: "Frete zero acima de R$ 299", body: "Para todo o Brasil, em até 10x sem juros.", cta: "Comprar agora", path: "/ofertas" },
       { key: "asc-maisvendidos", name: "CAR · Mais vendidos da semana", format: "carousel", weight: 0.8, ctr: 1.05, cvr: 1.1, headline: "Os mais vendidos da semana", body: "Os favoritos de quem já comprou.", cta: "Comprar agora", path: "/mais-vendidos" },
       { key: "asc-primavera", name: "VID · Coleção Primavera", format: "video", weight: 0.75, ctr: 1.2, cvr: 1, hook: [0.3, 0.37], launch: -9, headline: "Chegou a coleção Primavera", body: "Cores e tecidos para os dias mais quentes.", cta: "Ver mais", path: "/colecao-primavera" },
     ],
@@ -145,7 +145,7 @@ export const META_CAMPAIGNS: readonly MetaCampaignSpec[] = [
       { key: "rmk-oferta", name: "IMG · Oferta 15% OFF", format: "image", weight: 1.3, ctr: 1.3, cvr: 1.1, frequency: 0.85, launch: -34, story: "fatigue", headline: "15% OFF só esta semana", body: "Aquela peça que você viu está com desconto.", cta: "Comprar agora", path: "/ofertas" },
       { key: "rmk-carrinho", name: "CAR · Você esqueceu no carrinho", format: "carousel", weight: 0.8, ctr: 1, cvr: 1.1, headline: "Ainda está aqui", body: "Os itens do seu carrinho estão esperando.", cta: "Comprar agora", path: "/carrinho" },
       { key: "rmk-depoimentos", name: "VID · Depoimentos 15s", format: "video", weight: 0.6, ctr: 0.9, cvr: 0.95, hook: [0.24, 0.32], headline: "Quem comprou, recomenda", body: "Avaliações reais de clientes.", cta: "Saiba mais", path: "/avaliacoes" },
-      { key: "rmk-troca", name: "IMG · Troca sem custo em 30 dias", format: "image", weight: 0.5, ctr: 0.85, cvr: 0.9, headline: "Troca grátis em 30 dias", body: "Compre sem medo de errar o tamanho.", cta: "Comprar agora", path: "/trocas" },
+      { key: "rmk-troca", name: "IMG · Troca sem custo em 30 dias", format: "image", weight: 0.5, ctr: 0.85, cvr: 0.9, headline: "Troca sem custo em 30 dias", body: "Compre sem medo de errar o tamanho.", cta: "Comprar agora", path: "/trocas" },
     ],
   },
   {
@@ -160,7 +160,7 @@ export const META_CAMPAIGNS: readonly MetaCampaignSpec[] = [
     lpv: [0.8, 0.88],
     catalog: true,
     ads: [
-      { key: "dpa-vistos", name: "CAR · Catálogo · Produtos vistos", format: "carousel", weight: 1, ctr: 1.05, cvr: 1.05, headline: "Os produtos que você viu", body: "Com frete grátis acima de R$ 299.", cta: "Comprar agora", path: "/catalogo" },
+      { key: "dpa-vistos", name: "CAR · Catálogo · Produtos vistos", format: "carousel", weight: 1, ctr: 1.05, cvr: 1.05, headline: "Os produtos que você viu", body: "Com frete zero acima de R$ 299.", cta: "Comprar agora", path: "/catalogo" },
       { key: "dpa-colecao", name: "COL · Catálogo · Coleção", format: "collection", weight: 0.6, ctr: 0.95, cvr: 0.95, headline: "Combine com o que você viu", body: "Peças que combinam com o seu estilo.", cta: "Ver mais", path: "/catalogo" },
       { key: "dpa-item", name: "IMG · Catálogo · Item único", format: "image", weight: 0.5, ctr: 0.95, cvr: 1, headline: "Volte e garanta o seu", body: "Estoque limitado.", cta: "Comprar agora", path: "/catalogo" },
     ],
@@ -234,7 +234,7 @@ export const GOOGLE_CAMPAIGNS: readonly GoogleCampaignSpec[] = [
     ctr: [0.03, 0.042],
     products: true,
     ads: [
-      { key: "pmax-moda", name: "Grupo de recursos · Moda feminina", format: "responsive", weight: 1, ctr: 1.05, cvr: 1, headline: "Moda feminina com frete grátis", body: "Vestidos, blusas e calças em até 10x sem juros.", path: "/moda-feminina" },
+      { key: "pmax-moda", name: "Grupo de recursos · Moda feminina", format: "responsive", weight: 1, ctr: 1.05, cvr: 1, headline: "Moda feminina com frete zero", body: "Vestidos, blusas e calças em até 10x sem juros.", path: "/moda-feminina" },
       { key: "pmax-casa", name: "Grupo de recursos · Casa e decoração", format: "responsive", weight: 0.8, ctr: 0.95, cvr: 1, headline: "Cama, banho e decoração", body: "Deixe a casa com a sua cara.", path: "/casa" },
     ],
   },
@@ -264,7 +264,7 @@ export const GOOGLE_CAMPAIGNS: readonly GoogleCampaignSpec[] = [
     impressionShare: { share: [0.86, 0.94], lostBudget: [0, 0.015] },
     searchTerms: "brand",
     ads: [
-      { key: "marca-inst", name: "RSA · Marca · Site oficial", format: "text", weight: 1, ctr: 1.05, cvr: 1, headline: "Site oficial · Frete grátis acima de R$ 299", body: "Moda e casa com troca grátis em 30 dias. Compre em até 10x.", path: "/" },
+      { key: "marca-inst", name: "RSA · Marca · Site oficial", format: "text", weight: 1, ctr: 1.05, cvr: 1, headline: "Site oficial · Frete zero acima de R$ 299", body: "Moda e casa com troca sem custo em 30 dias. Compre em até 10x.", path: "/" },
       { key: "marca-frete", name: "RSA · Marca · Ofertas", format: "text", weight: 0.6, ctr: 0.95, cvr: 1, headline: "Ofertas da semana no site oficial", body: "Peças selecionadas com até 30% off.", path: "/ofertas" },
     ],
   },
@@ -282,7 +282,7 @@ export const GOOGLE_CAMPAIGNS: readonly GoogleCampaignSpec[] = [
     searchTerms: "generic",
     story: "below_break_even",
     ads: [
-      { key: "gen-vestidos", name: "RSA · Vestidos", format: "text", weight: 1, ctr: 1.05, cvr: 1, headline: "Vestidos midi e longos", body: "Tecidos leves e caimento perfeito. Troca grátis.", path: "/vestidos" },
+      { key: "gen-vestidos", name: "RSA · Vestidos", format: "text", weight: 1, ctr: 1.05, cvr: 1, headline: "Vestidos midi e longos", body: "Tecidos leves e caimento perfeito. Troca sem custo.", path: "/vestidos" },
       { key: "gen-cama", name: "RSA · Cama e banho", format: "text", weight: 0.8, ctr: 0.95, cvr: 1.05, headline: "Jogos de cama 400 fios", body: "Algodão egípcio com entrega rápida.", path: "/cama-e-banho" },
       { key: "gen-decor", name: "RSA · Decoração", format: "text", weight: 0.6, ctr: 0.95, cvr: 0.95, headline: "Decoração artesanal", body: "Vasos, almofadas e luminárias.", path: "/decoracao" },
     ],
@@ -323,6 +323,8 @@ export const GOOGLE_CAMPAIGNS: readonly GoogleCampaignSpec[] = [
 export type SearchTermSpec = {
   /** "{marca}" vira o nome da loja. */
   term: string;
+  /** Semente dos sorteios, quando o texto mudou: trocar a redação não muda os números. */
+  seed?: string;
   matchType: MatchType;
   weight: number;
   ctr: number;
@@ -338,7 +340,7 @@ export const BRAND_TERMS: readonly SearchTermSpec[] = [
   { term: "site {marca}", matchType: "near_exact", weight: 0.2, ctr: 1, cvr: 1, presence: 0.95 },
   { term: "{marca} cupom", matchType: "phrase", weight: 0.25, ctr: 0.95, cvr: 1.15, presence: 0.95 },
   { term: "{marca} vestido", matchType: "phrase", weight: 0.18, ctr: 0.9, cvr: 0.9, presence: 0.9 },
-  { term: "{marca} frete grátis", matchType: "near_phrase", weight: 0.12, ctr: 0.9, cvr: 0.85, presence: 0.8 },
+  { term: "{marca} frete zero", seed: "{marca} frete gr\u00e1tis", matchType: "near_phrase", weight: 0.12, ctr: 0.9, cvr: 0.85, presence: 0.8 },
 ];
 
 export const GENERIC_TERMS: readonly SearchTermSpec[] = [
@@ -361,7 +363,7 @@ export const GENERIC_TERMS: readonly SearchTermSpec[] = [
   { term: "loja de decoração online", matchType: "broad", weight: 0.35, ctr: 0.8, cvr: 0.7, presence: 0.9 },
   { term: "vestido para casamento de dia", matchType: "near_phrase", weight: 0.3, ctr: 0.95, cvr: 0.8, presence: 0.8 },
   { term: "vestido de noiva aluguel", matchType: "broad", weight: 0.4, ctr: 0.85, cvr: 0, presence: 0.95 },
-  { term: "molde de vestido grátis", matchType: "broad", weight: 0.35, ctr: 0.9, cvr: 0, presence: 0.9 },
+  { term: "molde de vestido para baixar", seed: "molde de vestido gr\u00e1tis", matchType: "broad", weight: 0.35, ctr: 0.9, cvr: 0, presence: 0.9 },
   { term: "como fazer capa de almofada", matchType: "broad", weight: 0.25, ctr: 0.8, cvr: 0, presence: 0.85 },
   { term: "panela de pressão elétrica", matchType: "broad", weight: 0.3, ctr: 0.7, cvr: 0, presence: 0.85 },
   { term: "vaga de emprego loja de roupas", matchType: "broad", weight: 0.2, ctr: 0.75, cvr: 0, presence: 0.8 },

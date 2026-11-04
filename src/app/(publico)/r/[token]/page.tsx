@@ -65,7 +65,7 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
         brand={{ color: shared.brand.color ?? "", logo: undefined, hideVyz: true }}
         hideSpend={shared.hideSpend}
         initialPage={q.page}
-        creatives={template ? sampleCreatives(template, d.pages, access, { period, customDays, hideSpend: shared.hideSpend }) : undefined}
+        creatives={template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays, hideSpend: shared.hideSpend }) : undefined}
       />
     </PublicShell>
   );

@@ -78,7 +78,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
       canEdit={canEdit}
       assemble={query.novo === "1"}
       initialPage={q.page}
-      creatives={template ? sampleCreatives(template, d.pages, access, { period, customDays }) : undefined}
+      creatives={template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays }) : undefined}
     />
   );
 }

@@ -238,8 +238,8 @@ describe("Google", () => {
     ],
     searchTermDaily: [
       { campaignId: "s", date: "2026-10-02", searchTerm: "vestido", matchType: "phrase", spend: 40, impressions: 400, clicks: 40, conversions: 1.5, conversionValue: 200 },
-      { campaignId: "s", date: "2026-10-03", searchTerm: "grátis", matchType: "broad", spend: 25, impressions: 300, clicks: 20, conversions: 0, conversionValue: 0 },
-      { campaignId: "s", date: "2026-10-02", searchTerm: "grátis", matchType: "broad", spend: 5, impressions: 100, clicks: 5, conversions: 0, conversionValue: 0 },
+      { campaignId: "s", date: "2026-10-03", searchTerm: "molde para baixar", matchType: "broad", spend: 25, impressions: 300, clicks: 20, conversions: 0, conversionValue: 0 },
+      { campaignId: "s", date: "2026-10-02", searchTerm: "molde para baixar", matchType: "broad", spend: 5, impressions: 100, clicks: 5, conversions: 0, conversionValue: 0 },
     ],
     breakdownDaily: [
       { date: "2026-10-02", dimension: "hour", value: "09", spend: 10, impressions: 100, clicks: 5, conversions: 1, conversionValue: 100 },
@@ -267,7 +267,7 @@ describe("Google", () => {
   });
   it("termos somados por termo e tipo; desperdício = gasto sem conversão", () => {
     expect(view.searchTerms[0].term).toBe("vestido");
-    expect(view.wastedTerms.map((s) => [s.term, s.spend])).toEqual([["grátis", 30]]);
+    expect(view.wastedTerms.map((s) => [s.term, s.spend])).toEqual([["molde para baixar", 30]]);
     expect(view.wastedSpend).toBe(30);
     expect(view.wastedShare).toBeCloseTo(0.1);
   });

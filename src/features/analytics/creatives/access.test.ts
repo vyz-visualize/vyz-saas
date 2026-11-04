@@ -1,12 +1,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { creativesLevel, ENTITLEMENTS, LIMIT_ROWS, type Tier } from "@/features/pricing/entitlements";
-import { dashboardTemplate } from "@/features/templates/dashboards";
+import { datasetFor, DEFAULT_SETTINGS } from "@/features/dashboards/data";
+import { currentTotals } from "@/features/metrics/compute";
+import { DASHBOARD_TEMPLATES, dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
 import { redactSpend } from "../aggregate";
-import { sampleDashboardData } from "../preview";
+import { sampleDashboardData, sampleRows } from "../preview";
 import type { MetaView } from "../types";
 import { cutCreatives } from "./access";
+import { adStats, compareTable } from "./compare";
 import { creativesHref, parseCreativesQuery } from "./query";
 import { sampleCreatives, usesCreativesPage } from "./sample";
 
@@ -112,7 +115,8 @@ describe("código do recurso bloqueado", () => {
 });
 
 describe("amostras", () => {
-  const opts = { period: "30d" as const, customDays: 30 };
+  const opts = { period: "30d" as const, customDays: 30, today: "2026-10-30" };
+  const spec = { name: "Teste", client: "Loja", settings: DEFAULT_SETTINGS };
 
   it("só nos modelos que usam a Meta", () => {
     expect(usesCreativesPage(dashboardTemplate("criativos-meta")!, ["criativos"])).toBe(true);
@@ -121,14 +125,76 @@ describe("amostras", () => {
   });
 
   it("sem a página no dashboard, não gera nada", () => {
-    expect(sampleCreatives(dashboardTemplate("criativos-meta")!, ["visao-geral"], { tier: "avancado" }, opts)).toBeUndefined();
+    expect(sampleCreatives(dashboardTemplate("criativos-meta")!, spec, ["visao-geral"], { tier: "avancado" }, opts)).toBeUndefined();
   });
 
   it("passam pelo mesmo corte por plano", () => {
     const t = dashboardTemplate("criativos-meta")!;
-    expect(sampleCreatives(t, ["criativos"], { tier: "base", upsell: true }, opts)!.gallery).toEqual([]);
-    expect(sampleCreatives(t, ["criativos"], { tier: "avancado", tab: "comparativo" }, opts)!.compare.length).toBeGreaterThan(0);
-    expect(sampleCreatives(t, ["criativos"], { tier: "avancado", tab: "comparativo" }, { ...opts, hideSpend: true })!.compare[0].days[0].spend).toBeNull();
+    expect(sampleCreatives(t, spec, ["criativos"], { tier: "base", upsell: true }, opts)!.gallery).toEqual([]);
+    expect(sampleCreatives(t, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, opts)!.compare.length).toBeGreaterThan(0);
+    expect(sampleCreatives(t, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, { ...opts, hideSpend: true })!.compare[0].days[0].spend).toBeNull();
+  });
+
+  describe("a soma dos anúncios fecha com os cards do modelo", () => {
+    const metaTemplates = DASHBOARD_TEMPLATES.filter((t) => t.sources.includes("meta"));
+
+    it("cobre os modelos com Meta", () => {
+      expect(metaTemplates.length).toBeGreaterThan(5);
+    });
+
+    const cases = metaTemplates.flatMap((t) => [7, 30].map((days) => [t.id, days] as const));
+    it.each(cases)("%s em %i dias", (id, days) => {
+      const t = dashboardTemplate(id)!;
+      const period = days === 7 ? ("7d" as const) : ("30d" as const);
+      const s = { name: "Dashboard de teste", client: "Cliente", settings: DEFAULT_SETTINGS };
+      const cur = currentTotals(datasetFor({ templateId: id, ...s }, days));
+      const c = sampleCreatives(t, s, ["criativos"], { tier: "avancado", tab: "comparativo" }, { period, customDays: days, today: "2026-10-30" })!;
+      const rows = c.compare.flatMap((a) => a.days);
+      const sum = (pick: (r: (typeof rows)[number]) => number | null | undefined) => rows.reduce((acc, r) => acc + Number(pick(r) ?? 0), 0);
+
+      // investimento (em centavos, como o card), impressões e cliques: exatos
+      expect(Math.round(sum((r) => r.spend) * 100)).toBe(Math.round(cur.spend));
+      expect(sum((r) => r.impressions)).toBe(Math.round(cur.impressions));
+      expect(sum((r) => r.clicks)).toBe(Math.round(cur.clicks));
+      // resultados: a coluna da lista, que cada anúncio preenche pelo seu objetivo
+      expect(c.list.reduce((acc, r) => acc + r.result.value, 0)).toBe(Math.round(cur.conversions));
+      expect(Math.round(c.list.reduce((acc, r) => acc + (r.spend ?? 0), 0) * 100)).toBe(Math.round(cur.spend));
+
+      // as razões dos cards da aba Criativos saem iguais da soma
+      expect(sum((r) => r.clicks) / sum((r) => r.impressions)).toBeCloseTo(cur.ctr, 6);
+      expect((sum((r) => r.spend) * 100) / sum((r) => r.impressions)).toBeCloseTo(cur.cpm / 1000, 6);
+      expect(sum((r) => r.impressions) / sum((r) => r.reach)).toBeCloseTo(cur.frequency, 1);
+    });
+
+    it("alcance nunca passa de impressões e o cliques no link nunca passa de cliques", () => {
+      const c = sampleCreatives(dashboardTemplate("criativos-meta")!, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, opts)!;
+      for (const r of c.compare.flatMap((a) => a.days)) {
+        expect(r.reach ?? 0).toBeLessThanOrEqual(r.impressions);
+        expect(r.linkClicks ?? 0).toBeLessThanOrEqual(r.clicks);
+      }
+    });
+
+    it("o gerador da Meta continua igual: só a amostra é escalada", () => {
+      const before = sampleRows("meta", { today: "2026-10-30" }).adDaily.slice(0, 50);
+      sampleCreatives(dashboardTemplate("criativos-meta")!, spec, ["criativos"], { tier: "avancado" }, opts);
+      expect(sampleRows("meta", { today: "2026-10-30" }).adDaily.slice(0, 50)).toEqual(before);
+    });
+
+    it("modelo sem receita: sem ROAS nem valor por anúncio", () => {
+      const t = dashboardTemplate("criativos-meta")!;
+      expect(currentTotals(datasetFor({ templateId: t.id, ...spec }, 30)).revenue).toBe(0);
+      const c = sampleCreatives(t, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, opts)!;
+      expect(c.gallery.every((g) => g.roas == null)).toBe(true);
+      const ids = compareTable(c.compare.slice(0, 2).map(adStats), "total").flatMap((g) => g.rows.map((r) => r.metric.id));
+      expect(ids).not.toContain("roas");
+      expect(ids).not.toContain("value");
+    });
+
+    it("sem investimento oculto escapando na amostra escalada", () => {
+      const c = sampleCreatives(dashboardTemplate("ecommerce-completo")!, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, { ...opts, hideSpend: true })!;
+      expect(c.list.every((r) => r.spend == null)).toBe(true);
+      expect(c.compare.flatMap((a) => a.days).every((d) => d.spend == null)).toBe(true);
+    });
   });
 });
 

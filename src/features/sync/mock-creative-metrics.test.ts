@@ -9,8 +9,10 @@ const gen = (platform: "meta" | "google", id: string, name: string) => generateA
 /** Impressão digital dos números de antes do Bloco D: o gerador só pode acrescentar campos. */
 function fingerprint(d: ReturnType<typeof gen>) {
   const ad = d.adDaily.map((r) => AD_KEYS.map((k) => r[k]));
+  // só números: o texto dos termos de pesquisa pode mudar de redação
+  const terms = d.searchTermDaily.map(({ searchTerm: _text, ...r }) => r);
   return createHash("sha256")
-    .update(JSON.stringify([d.accountDaily, d.campaignDaily, ad, d.breakdownDaily, d.searchTermDaily, d.productDaily]))
+    .update(JSON.stringify([d.accountDaily, d.campaignDaily, ad, d.breakdownDaily, terms, d.productDaily]))
     .digest("hex");
 }
 
@@ -18,7 +20,7 @@ describe("gerador: métricas por anúncio", () => {
   it.each([
     ["meta", "act_111", "Loja Teste · Vendas", "350078b7db0be70d851feed12689192c5a6a7536d8de19ba19de37423f637536"],
     ["meta", "act_222", "Outra Loja", "3e57bbf84793207e67d35e642161acda337bc4f12d19e220a78d7b23ab4bd8df"],
-    ["google", "123-456-7890", "Loja Teste · Brasil", "1e97b63f11b2eed91cfa5bdfef3439d27382d9e79a521cd3607d8675c22d349f"],
+    ["google", "123-456-7890", "Loja Teste · Brasil", "f9fecb16989804f9840434472ec999d961ce0fdda131fec038b0bb682f4814e5"],
   ] as const)("%s %s: os números que já existiam não mudaram", (platform, id, name, hash) => {
     expect(fingerprint(gen(platform, id, name))).toBe(hash);
   });
@@ -60,8 +62,13 @@ describe("gerador: métricas por anúncio", () => {
     for (const a of meta.ads) expect(a.postUrl).toMatch(/^https:\/\/instagram\.[^/]+\.example\/p\//);
   });
 
-  it("os dois anúncios foram renomeados, sem a palavra proibida no nome", () => {
-    for (const a of meta.ads) expect(a.name).not.toMatch(/gr[áa]tis/i);
+  it.each([
+    ["meta", "act_111", "Loja Teste · Vendas"],
+    ["google", "123-456-7890", "Loja Teste · Brasil"],
+  ] as const)("%s: nenhum texto simulado usa a palavra proibida", (platform, id, name) => {
+    const d = gen(platform, id, name);
+    const texts = JSON.stringify([d.campaigns, d.ads, d.products, [...new Set(d.searchTermDaily.map((r) => r.searchTerm))]]);
+    expect(texts).not.toMatch(/gr[áa]tis/i);
   });
 
   it("Google não ganha métrica de anúncio", () => {

@@ -37,7 +37,7 @@ export type Sums = {
   clicks: number;
   linkClicks: number | null;
   conversions: number;
-  value: number;
+  value: number | null;
   videoViews: number | null;
   thruplays: number | null;
   leads: number | null;
@@ -77,7 +77,7 @@ export function sumsOf(days: readonly Day[]): Sums {
     clicks: sumOf(days, (d) => d.clicks) ?? 0,
     linkClicks: sumOf(days, (d) => d.linkClicks),
     conversions: sumOf(days, (d) => d.conversions) ?? 0,
-    value: sumOf(days, (d) => d.conversionValue) ?? 0,
+    value: sumOf(days, (d) => d.conversionValue),
     videoViews: sumOf(days, (d) => d.videoViews),
     thruplays: sumOf(days, (d) => d.videoThruplays),
     leads: sumOf(days, (d) => d.leads),
