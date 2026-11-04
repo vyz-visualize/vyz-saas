@@ -91,7 +91,7 @@ export const META_CAMPAIGNS: readonly MetaCampaignSpec[] = [
     ads: [
       { key: "asc-ugc", name: "VID · UGC provador 15s", format: "video", weight: 1, ctr: 1.15, cvr: 1.05, hook: [0.27, 0.34], headline: "Provou, amou: veja no corpo real", body: "Peças leves para a estação, com troca sem custo em 30 dias.", cta: "Comprar agora", path: "/novidades" },
       { key: "asc-reels", name: "VID · Reels bastidores", format: "video", weight: 0.7, ctr: 0.95, cvr: 0.95, hook: [0.22, 0.29], headline: "Do ateliê para o seu guarda-roupa", body: "Conheça quem faz cada peça.", cta: "Saiba mais", path: "/sobre" },
-      { key: "asc-frete", name: "IMG · Frete zero acima de R$ 299", format: "image", weight: 0.55, ctr: 0.9, cvr: 1, headline: "Frete zero acima de R$ 299", body: "Para todo o Brasil, em até 10x sem juros.", cta: "Comprar agora", path: "/ofertas" },
+      { key: "asc-frete", name: "IMG · Frete zero acima de R$ 299", format: "image", weight: 0.55, ctr: 0.9, cvr: 1, headline: "Frete zero acima de R$ 299", body: "Para todo o Brasil, em até 10x no cartão.", cta: "Comprar agora", path: "/ofertas" },
       { key: "asc-maisvendidos", name: "CAR · Mais vendidos da semana", format: "carousel", weight: 0.8, ctr: 1.05, cvr: 1.1, headline: "Os mais vendidos da semana", body: "Os favoritos de quem já comprou.", cta: "Comprar agora", path: "/mais-vendidos" },
       { key: "asc-primavera", name: "VID · Coleção Primavera", format: "video", weight: 0.75, ctr: 1.2, cvr: 1, hook: [0.3, 0.37], launch: -9, headline: "Chegou a coleção Primavera", body: "Cores e tecidos para os dias mais quentes.", cta: "Ver mais", path: "/colecao-primavera" },
     ],
@@ -234,7 +234,7 @@ export const GOOGLE_CAMPAIGNS: readonly GoogleCampaignSpec[] = [
     ctr: [0.03, 0.042],
     products: true,
     ads: [
-      { key: "pmax-moda", name: "Grupo de recursos · Moda feminina", format: "responsive", weight: 1, ctr: 1.05, cvr: 1, headline: "Moda feminina com frete zero", body: "Vestidos, blusas e calças em até 10x sem juros.", path: "/moda-feminina" },
+      { key: "pmax-moda", name: "Grupo de recursos · Moda feminina", format: "responsive", weight: 1, ctr: 1.05, cvr: 1, headline: "Moda feminina com frete zero", body: "Vestidos, blusas e calças em até 10x no cartão.", path: "/moda-feminina" },
       { key: "pmax-casa", name: "Grupo de recursos · Casa e decoração", format: "responsive", weight: 0.8, ctr: 0.95, cvr: 1, headline: "Cama, banho e decoração", body: "Deixe a casa com a sua cara.", path: "/casa" },
     ],
   },
