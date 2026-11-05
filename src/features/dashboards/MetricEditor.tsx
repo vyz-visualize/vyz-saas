@@ -478,7 +478,7 @@ export function MetricTray({ state }: { state: EditorState }) {
                               {note}
                             </span>
                             <span className="flex shrink-0 items-center gap-1">
-                              <button type="button" onClick={() => setHelp((h) => (h?.id === m.id ? null : m))} onFocus={() => setHelp(m)} aria-label={`O que é ${m.label}`} className="inline-flex size-6 items-center justify-center rounded-full text-fg-2 outline-none hover:text-fg focus-visible:ring-2 focus-visible:ring-accent">
+                              <button type="button" onClick={() => setHelp((h) => (h?.id === m.id ? null : m))} onFocus={(e) => e.currentTarget.matches(":focus-visible") && setHelp(m)} aria-label={`O que é ${m.label}`} className="inline-flex size-6 items-center justify-center rounded-full text-fg-2 outline-none hover:text-fg focus-visible:ring-2 focus-visible:ring-accent">
                                 <Info size={13} aria-hidden />
                               </button>
                               {used ? (

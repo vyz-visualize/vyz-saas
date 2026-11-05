@@ -7,9 +7,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { aggregateDashboard, redactSpend } from "../aggregate";
 import { sampleRows } from "../preview";
-import type { CreativeVM, MetaView, WarehouseRows } from "../types";
+import type { CompareAd, CreativeVM, MetaView, WarehouseRows } from "../types";
 import { CreativeGallery } from "./CreativeGallery";
 import { CreativeList } from "./CreativeList";
+import { adStats, compareTable, type AdStats } from "./compare";
 import { COMPARE_METRICS, RETENTION_HELP } from "./metrics";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -64,14 +65,19 @@ describe("resultado de cada anúncio", () => {
     expect(v.creatives.filter((c) => c.result.label === "compras").length).toBeGreaterThan(0);
   });
 
-  it("nunca há compras em campanha de leads, nem em quem não tem o dado", () => {
-    const missing = view({ ...rows, adDaily: rows.adDaily.map((r) => ({ ...r, leads: null, conversions: 0 })) });
-    for (const ad of adsOf(missing, "OUTCOME_LEADS")) expect(ad.result).toEqual({ label: "leads", value: 0 });
+  it("sem o dado do resultado: sem valor, nunca 0, e sem custo por resultado", () => {
+    const missing = view({ ...rows, adDaily: rows.adDaily.map((r) => ({ ...r, leads: null, postEngagement: null })) });
+    for (const ad of adsOf(missing, "OUTCOME_LEADS")) {
+      expect(ad.result).toEqual({ label: "leads", value: null });
+      expect(ad.costPerResult).toBeNull();
+      expect(missing.creativeList.find((l) => l.id === ad.id)!.result).toEqual({ label: "leads", value: null });
+    }
+    for (const ad of adsOf(missing, "OUTCOME_ENGAGEMENT")) expect(ad.result).toEqual({ label: "interações", value: null });
   });
 
   it("custo por resultado: investimento ÷ resultado", () => {
-    const ad = adsOf(v, "OUTCOME_LEADS").find((a) => a.result.value > 0)!;
-    expect(ad.costPerResult).toBeCloseTo(ad.spend! / ad.result.value, 6);
+    const ad = adsOf(v, "OUTCOME_LEADS").find((a) => (a.result.value ?? 0) > 0)!;
+    expect(ad.costPerResult).toBeCloseTo(ad.spend! / ad.result.value!, 6);
   });
 
   it("receita é da campanha: sem receita, não há ROAS", () => {
@@ -82,7 +88,7 @@ describe("resultado de cada anúncio", () => {
   it("investimento oculto: o custo por resultado não sai do servidor", () => {
     const clean = redactSpend(v);
     expect(clean.creatives.every((c) => c.costPerResult == null)).toBe(true);
-    expect(clean.creatives.some((c) => c.result.value > 0)).toBe(true);
+    expect(clean.creatives.some((c) => (c.result.value ?? 0) > 0)).toBe(true);
   });
 });
 
@@ -133,6 +139,14 @@ describe("na tela", () => {
     expect(labels()).toContain("Interações");
   });
 
+  it('sem o dado do resultado, o card mostra "—", nunca 0', async () => {
+    await gallery([card({ result: { label: "leads", value: null }, costPerResult: null })]);
+    const dd = [...host.querySelectorAll("dt")].find((d) => d.textContent === "Leads")!.nextElementSibling!;
+    expect(dd.textContent).toBe("—");
+    const cost = [...host.querySelectorAll("dt")].find((d) => d.textContent === "Custo por resultado")!.nextElementSibling!;
+    expect(cost.textContent).toBe("—");
+  });
+
   it("ordenar por ROAS só existe com receita em alguma campanha", async () => {
     await gallery([card({})]);
     expect(host.textContent).not.toMatch(/InvestimentoROAS/);
@@ -148,12 +162,61 @@ describe("na tela", () => {
     expect(labels()).toContain("Leads");
   });
 
-  it('"Retenção 3 s" no lugar de "Hook rate", com a explicação no hover', async () => {
-    await gallery([card({})]);
-    expect(labels()).toContain("Retenção 3 s");
-    expect(host.textContent).not.toContain("Hook rate");
-    const item = [...host.querySelectorAll("dt")].find((d) => d.textContent === "Retenção 3 s")!.parentElement!;
-    expect(item.getAttribute("title")).toBe("% de quem assistiu pelo menos 3 segundos");
+  describe('"Retenção 3 s" no lugar de "Hook rate"', () => {
+    const TEXT = "% de quem assistiu pelo menos 3 segundos";
+    const help = () => host.querySelector<HTMLElement>("[data-metric-help]")!;
+    const note = () => host.querySelector("[data-metric-help-note]")?.textContent;
+    const fire = (type: string, pointerType: string) => act(async () => void help().dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType, relatedTarget: document.body })));
+
+    it("tem o nome novo e o ⓘ, sem o title do navegador", async () => {
+      await gallery([card({})]);
+      expect(labels()).toContain("Retenção 3 s");
+      expect(host.textContent).not.toContain("Hook rate");
+      expect(help().getAttribute("aria-label")).toBe("O que é Retenção 3 s");
+      expect(host.querySelector(`[title="${TEXT}"]`)).toBeNull();
+      expect(note()).toBeUndefined();
+    });
+
+    it("no toque: tocar abre e tocar de novo fecha", async () => {
+      await gallery([card({})]);
+      await act(async () => help().click());
+      expect(note()).toBe(TEXT);
+      expect(help().getAttribute("aria-expanded")).toBe("true");
+      await act(async () => help().click());
+      expect(note()).toBeUndefined();
+    });
+
+    it("com o mouse: passar por cima mostra, e sair esconde", async () => {
+      await gallery([card({})]);
+      await fire("pointerover", "mouse");
+      expect(note()).toBe(TEXT);
+      await fire("pointerout", "mouse");
+      expect(note()).toBeUndefined();
+    });
+
+    it("no toque, o foco chega junto com o clique e não fecha o que acabou de abrir", async () => {
+      await gallery([card({})]);
+      // foco de toque: não é :focus-visible
+      help().matches = () => false;
+      await act(async () => void help().dispatchEvent(new FocusEvent("focusin", { bubbles: true })));
+      await act(async () => help().click());
+      expect(note()).toBe(TEXT);
+    });
+
+    it("no teclado, o foco mostra e sair esconde", async () => {
+      await gallery([card({})]);
+      help().matches = () => true;
+      await act(async () => void help().dispatchEvent(new FocusEvent("focusin", { bubbles: true })));
+      expect(note()).toBe(TEXT);
+      await act(async () => void help().dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
+      expect(note()).toBeUndefined();
+    });
+
+    it("o toque em si não abre por passar por cima: só o clique", async () => {
+      await gallery([card({})]);
+      await fire("pointerover", "touch");
+      expect(note()).toBeUndefined();
+    });
   });
 
   it("comparativo usa o mesmo nome e a mesma explicação", () => {
@@ -162,9 +225,64 @@ describe("na tela", () => {
     expect(m.help).toBe(RETENTION_HELP);
   });
 
+  it("a lista mostra o traço quando falta o dado", async () => {
+    await mount(createElement(CreativeList, { rows: [{ id: "a1", name: "Anúncio", campaignName: "Campanha", status: "active", spend: 100, result: { label: "leads", value: null } }], currency: "BRL", hideSpend: false }));
+    expect(host.textContent).toContain("— leads");
+  });
+
   it("a lista mostra o resultado do objetivo", async () => {
     await mount(createElement(CreativeList, { rows: [{ id: "a1", name: "Anúncio", campaignName: "Campanha", status: "active", spend: 100, result: { label: "leads", value: 7 } }], currency: "BRL", hideSpend: false }));
     expect(host.textContent).toContain("leads");
     expect(host.textContent).not.toContain("compras");
+  });
+});
+
+describe("linha de resultado do comparativo", () => {
+  const ad = (id: string, objective: string, day: Partial<CompareAd["days"][number]>): AdStats =>
+    adStats({ id, name: id, campaignName: "C", objective, format: "video", status: "active", headline: null, thumbnailUrl: null, postUrl: null, days: [{ date: "2026-10-01", spend: 100, impressions: 1000, reach: 500, clicks: 50, linkClicks: 40, conversions: 0, conversionValue: 0, videoViews: null, videoThruplays: null, ...day }] as CompareAd["days"] });
+  const rowsOf = (stats: AdStats[], mode: "total" | "day" = "total") => compareTable(stats, mode).flatMap((g) => g.rows);
+  const row = (stats: AdStats[], id: string, mode: "total" | "day" = "total") => rowsOf(stats, mode).find((r) => r.metric.id === id);
+
+  it("mesmo objetivo: a linha leva o nome dele e compara", () => {
+    const r = row([ad("a", "OUTCOME_LEADS", { leads: 20 }), ad("b", "OUTCOME_LEADS", { leads: 30 })], "result")!;
+    expect(r.metric.label).toBe("Leads");
+    expect(r.cells.map((c) => c.text)).toEqual(["20", "30"]);
+    expect(r.cells[1].isBest).toBe(true);
+  });
+
+  it("vendas: Compras; engajamento: Interações", () => {
+    expect(row([ad("a", "OUTCOME_SALES", { conversions: 5 })], "result")!.metric.label).toBe("Compras");
+    expect(row([ad("a", "OUTCOME_ENGAGEMENT", { postEngagement: 80 })], "result")!.metric.label).toBe("Interações");
+  });
+
+  it("objetivos diferentes: cada coluna mostra o seu tipo, e nada é melhor", () => {
+    const r = row([ad("a", "OUTCOME_LEADS", { leads: 20 }), ad("b", "OUTCOME_SALES", { conversions: 7 }), ad("c", "OUTCOME_ENGAGEMENT", { postEngagement: 90 })], "result")!;
+    expect(r.metric.label).toBe("Resultado");
+    expect(r.cells.map((c) => c.text)).toEqual(["20 leads", "7 compras", "90 interações"]);
+    expect(r.cells.some((c) => c.isBest)).toBe(false);
+    expect(r.cells.every((c) => c.diff == null)).toBe(true);
+  });
+
+  it('sem o dado do resultado: "—", nunca 0, e continua dizendo o tipo pelo nome da linha', () => {
+    const r = row([ad("a", "OUTCOME_LEADS", { leads: null })], "result")!;
+    expect(r.metric.label).toBe("Leads");
+    expect(r.cells[0].value).toBeNull();
+    expect(r.cells[0].text).toBe("—");
+  });
+
+  it("não repete: sem linha Compras em vendas, nem Leads em leads", () => {
+    expect(row([ad("a", "OUTCOME_SALES", { conversions: 5 })], "conversions")).toBeUndefined();
+    expect(row([ad("a", "OUTCOME_LEADS", { leads: 5 })], "leads")).toBeUndefined();
+  });
+
+  it('nunca "Compras 0" em anúncio de leads', () => {
+    expect(row([ad("a", "OUTCOME_LEADS", { leads: 5, conversions: 0 })], "conversions")).toBeUndefined();
+    const mixed = row([ad("a", "OUTCOME_LEADS", { leads: 5, conversions: 0 }), ad("b", "OUTCOME_LEADS", { leads: 5, conversions: 3 })], "conversions")!;
+    expect(mixed.cells.map((c) => c.text)).toEqual(["—", "3"]);
+  });
+
+  it("em Média/dia, divide pelos dias de veiculação", () => {
+    const two = adStats({ id: "a", name: "a", campaignName: "C", objective: "OUTCOME_LEADS", format: "video", status: "active", headline: null, thumbnailUrl: null, postUrl: null, days: [{ date: "2026-10-01", impressions: 10, clicks: 1, leads: 4 }, { date: "2026-10-02", impressions: 10, clicks: 1, leads: 6 }] as CompareAd["days"] });
+    expect(row([two], "result", "day")!.cells[0].value).toBe(5);
   });
 });

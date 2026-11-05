@@ -205,30 +205,37 @@ describe.each(BOTH)("gerador simulado · coerência (%s)", (_, ds) => {
     for (const p of ds.products) expect(p.price).toBeGreaterThan(0);
   });
 
+  // Checa todas as linhas e verifica uma vez só: um expect por campo eram milhares de
+  // chamadas, e com a máquina ocupada o teste passava do limite de 5 s.
   it("funil em ordem, nada negativo e conversões ≤ cliques em toda tabela", () => {
+    const problems: string[] = [];
+    const check = (ok: boolean, what: string, row: unknown) => {
+      if (!ok) problems.push(`${what}: ${JSON.stringify(row)}`);
+    };
     const funnelRows: DailyMetrics[] = [...ds.campaignDaily, ...ds.accountDaily];
     for (const r of funnelRows) {
-      expect(r.clicks).toBeLessThanOrEqual(r.impressions);
-      expect(r.conversions).toBeLessThanOrEqual(r.clicks);
-      if (r.reach !== null) expect(r.reach).toBeLessThanOrEqual(r.impressions);
+      check(r.clicks <= r.impressions, "cliques > impressões", r);
+      check(r.conversions <= r.clicks, "conversões > cliques", r);
+      if (r.reach !== null) check(r.reach <= r.impressions, "alcance > impressões", r);
       if (ds.platform === "meta") {
         const steps = [r.impressions, r.clicks, r.linkClicks!, r.landingPageViews!, r.addToCart!, r.initiateCheckout!, r.conversions];
-        for (let i = 1; i < steps.length; i++) expect(steps[i]).toBeLessThanOrEqual(steps[i - 1]);
+        for (let i = 1; i < steps.length; i++) check(steps[i] <= steps[i - 1], `funil fora de ordem na etapa ${i}`, r);
       } else {
-        expect([r.reach, r.linkClicks, r.landingPageViews, r.addToCart, r.initiateCheckout]).toEqual([null, null, null, null, null]);
+        check([r.reach, r.linkClicks, r.landingPageViews, r.addToCart, r.initiateCheckout].every((v) => v === null), "coluna da Meta no Google", r);
       }
-      if (r.videoThruplays !== null) expect(r.videoThruplays).toBeLessThanOrEqual(r.videoViews!);
-      if (r.videoViews !== null) expect(r.videoViews).toBeLessThanOrEqual(r.impressions);
+      if (r.videoThruplays !== null) check(r.videoThruplays <= r.videoViews!, "ThruPlays > visualizações", r);
+      if (r.videoViews !== null) check(r.videoViews <= r.impressions, "visualizações > impressões", r);
     }
     const all: (BasicMetrics & { linkClicks?: number | null; reach?: number | null })[] = [...funnelRows, ...ds.adDaily, ...ds.breakdownDaily, ...ds.searchTermDaily, ...ds.productDaily];
     for (const r of all) {
-      for (const v of [r.spend, r.impressions, r.clicks, r.conversions, r.conversionValue, r.linkClicks ?? 0, r.reach ?? 0]) expect(v).toBeGreaterThanOrEqual(0);
-      expect(r.clicks).toBeLessThanOrEqual(r.impressions);
-      expect(r.conversions).toBeLessThanOrEqual(r.clicks);
-      if (r.linkClicks != null) expect(r.linkClicks).toBeLessThanOrEqual(r.clicks);
+      for (const v of [r.spend, r.impressions, r.clicks, r.conversions, r.conversionValue, r.linkClicks ?? 0, r.reach ?? 0]) check(v >= 0, "valor negativo", r);
+      check(r.clicks <= r.impressions, "cliques > impressões", r);
+      check(r.conversions <= r.clicks, "conversões > cliques", r);
+      if (r.linkClicks != null) check(r.linkClicks <= r.clicks, "cliques no link > cliques", r);
       // valor só onde houve conversão
-      if (r.conversions === 0) expect(r.conversionValue).toBe(0);
+      if (r.conversions === 0) check(r.conversionValue === 0, "valor sem conversão", r);
     }
+    expect(problems.slice(0, 5)).toEqual([]);
   });
 
   it("parcela de impressões só na pesquisa, entre 0 e 1, somando 100% com as perdas", () => {

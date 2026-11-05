@@ -164,7 +164,7 @@ describe("amostras", () => {
       expect(sum((r) => r.impressions)).toBe(Math.round(cur.impressions));
       expect(sum((r) => r.clicks)).toBe(Math.round(cur.clicks));
       // resultados: a coluna da lista, que cada anúncio preenche pelo seu objetivo
-      expect(c.list.reduce((acc, r) => acc + r.result.value, 0)).toBe(Math.round(cur.conversions));
+      expect(c.list.reduce((acc, r) => acc + (r.result.value ?? 0), 0)).toBe(Math.round(cur.conversions));
       expect(Math.round(c.list.reduce((acc, r) => acc + (r.spend ?? 0), 0) * 100)).toBe(Math.round(cur.spend));
       // as razões dos cards da aba Criativos saem iguais da soma
       expect(sum((r) => r.clicks) / sum((r) => r.impressions)).toBeCloseTo(cur.ctr, 6);
@@ -178,7 +178,7 @@ describe("amostras", () => {
       expect(Math.round(sum((r) => r.spend) * 100)).toBe(Math.round(meta.spend));
       expect(sum((r) => r.impressions)).toBe(Math.round(meta.impressions));
       expect(sum((r) => r.clicks)).toBe(Math.round(meta.clicks));
-      expect(c.list.reduce((acc, r) => acc + r.result.value, 0)).toBe(Math.round(meta.conv));
+      expect(c.list.reduce((acc, r) => acc + (r.result.value ?? 0), 0)).toBe(Math.round(meta.conv));
       expect(Math.round(c.list.reduce((acc, r) => acc + (r.spend ?? 0), 0) * 100)).toBe(Math.round(meta.spend));
       // é a parte, não o total das plataformas
       expect(sum((r) => r.spend) * 100).toBeLessThan(cur.spend);
@@ -191,7 +191,7 @@ describe("amostras", () => {
       const { c, parts, ds } = load("ecommerce-completo", 30);
       const meta = parts.find((p) => p.id === "meta")!;
       expect(byPlatform(ds).find((p) => p.id === "meta")!.conv).toBe(meta.conv);
-      expect(c.list.reduce((acc, r) => acc + r.result.value, 0)).toBe(meta.conv);
+      expect(c.list.reduce((acc, r) => acc + (r.result.value ?? 0), 0)).toBe(meta.conv);
     });
 
     it("receita da parte da Meta: proporcional às compras atribuídas", () => {

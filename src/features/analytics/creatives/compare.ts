@@ -11,7 +11,7 @@ import { fatigueOf } from "../aggregate";
 import { formatValue } from "../format";
 import type { CompareAd } from "../types";
 import { COMPARE_METRICS, metricById, sumsOf, type CompareGroup, type CompareMetric, type Sums } from "./metrics";
-import { OBJECTIVE_LABEL, objectiveKey, type ObjectiveKey } from "./objectives";
+import { OBJECTIVE_LABEL, objectiveKey, objectiveResult, resultTitle, type ObjectiveKey } from "./objectives";
 
 export type CompareMode = "day" | "total";
 export type { CompareGroup } from "./metrics";
@@ -119,17 +119,49 @@ export type TableCell = { value: number | null; text: string; isBest: boolean; d
 export type TableRow = { metric: CompareMetric; cells: TableCell[] };
 export type TableGroup = { group: CompareGroup; label: string; rows: TableRow[] };
 
+/** O resultado do objetivo do anúncio, como na galeria: leads em campanha de leads, compras em vendas. */
+const resultOfAd = (s: Pick<AdStats, "ad" | "sums">) =>
+  objectiveResult(s.ad.objective, { conversions: s.sums.conversions, leads: s.sums.leads, postEngagement: s.sums.engagement, linkClicks: s.sums.linkClicks, clicks: s.sums.clicks, impressions: s.sums.impressions });
+
+/**
+ * A linha de resultado. Com o mesmo tipo em todos, ela leva o nome dele e compara. Com
+ * tipos diferentes, cada coluna diz o seu e nada é "melhor": leads e compras não se comparam.
+ */
+function resultRow(stats: readonly AdStats[], mode: CompareMode, currency: string): TableRow {
+  const results = stats.map(resultOfAd);
+  const kinds = new Set(results.map((r) => r.label));
+  const same = kinds.size === 1;
+  const metric: CompareMetric = { id: "result", label: same ? resultTitle(results[0].label) : "Resultado", group: "clicks", format: "int", better: same ? "up" : null, additive: true, value: () => null };
+  const values = results.map((r, i) => (r.value == null ? null : mode === "day" ? r.value / Math.max(1, stats[i].sums.days) : r.value));
+  const { best, winners } = bestOf(values, metric.better);
+  const cells = values.map((value, i) => {
+    const text = formatMetric(metric, value, currency, mode);
+    return { value, text: same || value == null ? text : `${text} ${results[i].label}`, isBest: winners.includes(i), diff: winners.includes(i) ? null : diffVsBest(value, best) };
+  });
+  return { metric, cells };
+}
+
+/** A linha de resultado já mostra o número: a do mesmo tipo só repetiria. */
+function repeatsResult(metric: CompareMetric, stats: readonly AdStats[]): boolean {
+  if (metric.id === "conversions") return stats.every((s) => s.objective === "sales" || s.sums.conversions === 0);
+  if (metric.id === "leads") return stats.every((s) => s.objective === "leads");
+  return false;
+}
+
 /** A tabela: só métricas com dado em algum dos anúncios e só grupos com alguma linha. */
 export function compareTable(stats: readonly AdStats[], mode: CompareMode, opts: { hideSpend?: boolean; currency?: string } = {}): TableGroup[] {
   const currency = opts.currency ?? "BRL";
   return COMPARE_GROUPS.flatMap((group) => {
-    const rows = COMPARE_METRICS.filter((m) => m.group === group && !(opts.hideSpend && m.spendDerived)).flatMap((metric) => {
-      const values = stats.map((s) => metricValue(metric, s.sums, mode));
+    const rows = COMPARE_METRICS.filter((m) => m.group === group && !(opts.hideSpend && m.spendDerived) && !repeatsResult(m, stats)).flatMap((metric) => {
+      // compras em anúncio de outro objetivo: sem nenhuma, não há o que mostrar (nunca "Compras 0" em campanha de leads)
+      const values = stats.map((s) => (metric.id === "conversions" && s.objective !== "sales" && s.sums.conversions === 0 ? null : metricValue(metric, s.sums, mode)));
       if (values.every((v) => v == null)) return [];
       const { best, winners } = bestOf(values, metric.better);
       const cells = values.map((value, i) => ({ value, text: formatMetric(metric, value, currency, mode), isBest: winners.includes(i), diff: winners.includes(i) ? null : diffVsBest(value, best) }));
       return [{ metric, cells }];
     });
+    // o resultado abre o grupo de cliques e conversões
+    if (group === "clicks") rows.unshift(resultRow(stats, mode, currency));
     return rows.length ? [{ group, label: COMPARE_GROUP_LABEL[group], rows }] : [];
   });
 }

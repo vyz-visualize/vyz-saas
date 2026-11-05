@@ -3,6 +3,7 @@
 // que a tela desenha. A agregação (aggregate.ts) liga um ao outro.
 
 import type { Tier } from "@/features/pricing/entitlements";
+import type { ObjectiveResult } from "./creatives/objectives";
 import type { FilterDim, FilterInfo } from "./filters";
 import type { AdCreativeMetrics, BreakdownDimension, CampaignExtraMetrics } from "@/features/sync/dataset";
 
@@ -174,7 +175,7 @@ export type CreativeVM = {
   linkCtr: number | null;
   frequency: number | null;
   /** Resultado principal do objetivo da campanha do anúncio. */
-  result: { label: string; value: number };
+  result: ObjectiveResult;
   /** Investimento ÷ resultado. */
   costPerResult: number | null;
   /** A campanha do anúncio teve receita no período: dá para falar em ROAS. */
@@ -197,7 +198,7 @@ export type CreativeListVM = {
   status: string;
   spend: number | null;
   /** Resultado principal do objetivo da campanha. */
-  result: { label: string; value: number };
+  result: ObjectiveResult;
 };
 
 /** Um anúncio com os dias dele, para o comparativo (só Avançado, só na aba Comparativo). */

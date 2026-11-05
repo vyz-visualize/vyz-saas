@@ -164,7 +164,7 @@ describe("anúncios simulados ligados às campanhas do modelo", () => {
       expect(Math.round(rows.reduce((a, r) => a + r.spend, 0) * 100)).toBe(camp.spend);
       expect(rows.reduce((a, r) => a + r.impressions, 0)).toBe(camp.impressions);
       expect(rows.reduce((a, r) => a + r.clicks, 0)).toBe(camp.clicks);
-      expect(c.list.filter((l) => l.campaignName === camp.name).reduce((a, l) => a + l.result.value, 0)).toBe(camp.conversions);
+      expect(c.list.filter((l) => l.campaignName === camp.name).reduce((a, l) => a + (l.result.value ?? 0), 0)).toBe(camp.conversions);
     }
     // nenhum anúncio fora das campanhas do modelo
     const names = new Set(ds.campaigns.map((x) => x.name));
@@ -195,7 +195,7 @@ describe("anúncios simulados ligados às campanhas do modelo", () => {
     expect(out.gallery.length).toBe(c.list.length);
     const t2 = currentTotals(filterDataset(ds, f({ ads: [ad.id] }), { today: TODAY, adSelection: out.selection }).ds);
     close(t2.spend, ad.spend! * 100, 1);
-    close(t2.conversions, ad.result.value, 2);
+    close(t2.conversions, ad.result.value!, 2);
     expect(t2.spend).toBeLessThan(currentTotals(ds).spend);
   });
 

@@ -37,7 +37,7 @@ export function CreativeList({ rows, currency, hideSpend }: { rows: CreativeList
       sort: (r) => r.result.value,
       render: (r) => (
         <span className="block whitespace-normal">
-          <span className="font-semibold text-fg">{int(r.result.value)}</span> <span className="text-[11.5px] text-fg-2">{r.result.label}</span>
+          <span className="font-semibold text-fg">{r.result.value == null ? "—" : int(r.result.value)}</span> <span className="text-[11.5px] text-fg-2">{r.result.label}</span>
         </span>
       ),
     },

@@ -80,7 +80,7 @@ const OVERVIEW: Record<Profile, (ctx: BuildContext) => PageLayout> = {
   agencia: () => ({
     kpis: [{ metric: "spend", sub: "delta" }, { metric: "conversions", sub: "delta" }, { metric: "cpa", sub: "delta", highlight: true }, { metric: "ctr", sub: "delta" }],
     widgets: [
-      { type: "table", source: "clients", span: 2, title: "Clientes e meta de CPA" },
+      { type: "table", source: "clients", span: 2, title: "Clientes e alvo de CPA" },
       { type: "bars", source: "clients", metric: "spend", span: 2, title: "Investimento por cliente" },
     ],
   }),

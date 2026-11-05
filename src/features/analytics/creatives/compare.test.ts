@@ -160,10 +160,11 @@ describe("objetivos diferentes", () => {
     expect(objectiveResult("OUTCOME_ENGAGEMENT", t)).toEqual({ label: "interações", value: 40 });
     expect(objectiveResult("OUTCOME_TRAFFIC", t)).toEqual({ label: "cliques no link", value: 20 });
     // o resultado segue o objetivo: nunca compras numa campanha de leads
-    expect(objectiveResult("OUTCOME_LEADS", { ...t, leads: null })).toEqual({ label: "leads", value: 0 });
-    expect(objectiveResult("OUTCOME_ENGAGEMENT", { ...t, postEngagement: null })).toEqual({ label: "interações", value: 0 });
+    // sem o dado: "—" na tela, nunca 0
+    expect(objectiveResult("OUTCOME_LEADS", { ...t, leads: null })).toEqual({ label: "leads", value: null });
+    expect(objectiveResult("OUTCOME_ENGAGEMENT", { ...t, postEngagement: null })).toEqual({ label: "interações", value: null });
     expect(objectiveResult("OUTRO", t)).toEqual({ label: "compras", value: 3 });
-    expect(objectiveResult("OUTRO", { ...t, conversions: 0 })).toEqual({ label: "resultados", value: 0 });
+    expect(objectiveResult("OUTRO", { ...t, conversions: 0 })).toEqual({ label: "resultados", value: null });
   });
 });
 

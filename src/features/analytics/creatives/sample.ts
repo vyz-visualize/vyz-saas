@@ -94,7 +94,7 @@ function adSelection(rows: WarehouseRows, f: DashFilters): SampleAdSelection | u
     spend: add((r) => r.spend) * 100,
     impressions: add((r) => r.impressions),
     clicks: add((r) => r.clicks),
-    conversions: list.reduce((a, r) => a + r.result.value, 0),
+    conversions: list.reduce((a, r) => a + (r.result.value ?? 0), 0),
     revenue: add((r) => r.conversionValue) * 100,
     frequency: add((r) => r.reach ?? 0) > 0 ? add((r) => r.impressions) / add((r) => r.reach ?? 0) : 0,
   };

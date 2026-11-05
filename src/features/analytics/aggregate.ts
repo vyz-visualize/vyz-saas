@@ -13,7 +13,7 @@
 import { breakdownLabel, parseAgeGender } from "@/features/sync/breakdowns";
 import type { BreakdownDimension } from "@/features/sync/dataset";
 import { dateRange, weekday } from "@/features/sync/dates";
-import { objectiveKey, objectiveResult } from "./creatives/objectives";
+import { objectiveKey, objectiveResult, type ObjectiveResult } from "./creatives/objectives";
 import { ADD_TO_CART_METRIC, EXTRA_SPEND_FIELDS, GOOGLE_EXTRA_METRICS, META_EXTRA_METRICS, RESULT_METRICS } from "./live-metrics";
 import { maturingStart, MATURING_DAYS } from "./ranges";
 import type {
@@ -210,7 +210,7 @@ export function reachPerDay(rows: readonly { date: string; reach: number | null 
 // ---- campanhas -------------------------------------------------------------------------------
 
 /** Resultado principal do objetivo, para um conjunto de linhas de anúncio. */
-function resultOf(objective: string | null | undefined, list: readonly AdDayRow[]): { label: string; value: number } {
+function resultOf(objective: string | null | undefined, list: readonly AdDayRow[]): ObjectiveResult {
   const tt = totalsOf(list as AdDayRow[]);
   return objectiveResult(objective, {
     conversions: tt.conversions,
@@ -239,7 +239,7 @@ function campaignExtras(platform: WarehouseRows["platform"], c: WarehouseRows["c
   const result = resultOf(c.objective, ads);
   const spend = sumNullable(ads, (r) => r.spend);
   extra.results = result.value;
-  extra.costPerResult = spend != null && result.value > 0 ? spend / result.value : null;
+  extra.costPerResult = ratio(spend, result.value);
   return { extra, resultLabel: result.label };
 }
 
@@ -797,7 +797,7 @@ function metaExtraKpis(rows: WarehouseRows, cur: AccountDayRow[], prev: AccountD
       toKpiDef<AdDayRow>(RESULT_METRICS[1], (r) => {
         const spend = sumNullable(r, (x) => x.spend);
         const value = resultOf(objective, r).value;
-        return spend != null && value > 0 ? spend / value : null;
+        return ratio(spend, value);
       }),
     ],
     adCur,

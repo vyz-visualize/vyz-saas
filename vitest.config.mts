@@ -11,5 +11,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // com a máquina ocupada, os testes que varrem o gerador simulado chegam a 3 s
+    testTimeout: 15_000,
   },
 });

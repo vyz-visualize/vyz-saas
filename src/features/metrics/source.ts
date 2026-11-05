@@ -421,7 +421,7 @@ export const MockSource: DataSource = {
     const worst = [...campaigns].sort((a, b) => b.spend / b.conversions - a.spend / a.conversions)[0];
     const tired = [...creatives].sort((a, b) => b.frequency - a.frequency)[0];
     const alerts: Alert[] = [
-      { level: "erro", title: `CPA ${Math.round(((worst.spend / worst.conversions) / goal - 1) * 100)}% acima da meta`, detail: `${worst.name}: vale revisar segmentação e lance.` },
+      { level: "erro", title: `CPA ${Math.round(((worst.spend / worst.conversions) / goal - 1) * 100)}% acima do alvo`, detail: `${worst.name}: vale revisar segmentação e lance.` },
       { level: "atencao", title: `Frequência ${tired.frequency.toFixed(1).replace(".", ",")} em ${tired.name}`, detail: "O criativo está saturando o público. Hora de renovar." },
       { level: "atencao", title: "Últimos 3 dias em maturação", detail: "Parte das conversões ainda vai chegar. Não corte verba por essa queda." },
       { level: "info", title: "Tag de conversão ativa", detail: "Eventos chegando normalmente nas últimas 24 h." },

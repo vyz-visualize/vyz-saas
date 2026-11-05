@@ -32,22 +32,25 @@ export const OBJECTIVE_LABEL: Record<ObjectiveKey, string> = {
 
 export type ResultInput = { conversions: number; leads: number | null; postEngagement: number | null; linkClicks: number | null; clicks: number; impressions: number };
 
+/** O resultado de um anúncio ou campanha. `value` null = sem o dado: a tela mostra "—", nunca 0. */
+export type ObjectiveResult = { label: string; value: number | null };
+
 /** Resultado principal do objetivo: sempre o tipo que a campanha busca, nunca compras numa campanha de leads. */
-export function objectiveResult(raw: string | null | undefined, t: ResultInput): { label: string; value: number } {
+export function objectiveResult(raw: string | null | undefined, t: ResultInput): ObjectiveResult {
   switch (objectiveKey(raw)) {
     case "sales":
       return { label: "compras", value: t.conversions };
     case "leads":
-      return { label: "leads", value: t.leads ?? 0 };
+      return { label: "leads", value: t.leads };
     case "engagement":
-      return { label: "interações", value: t.postEngagement ?? 0 };
+      return { label: "interações", value: t.postEngagement };
     case "traffic":
       return t.linkClicks != null ? { label: "cliques no link", value: t.linkClicks } : { label: "cliques", value: t.clicks };
     case "awareness":
       return { label: "impressões", value: t.impressions };
   }
-  // objetivo que o VYZ não conhece: compras, se houver; sem nenhuma, não afirma que era isso que buscava
-  return t.conversions > 0 ? { label: "compras", value: t.conversions } : { label: "resultados", value: 0 };
+  // objetivo que o VYZ não conhece: compras, se houver; sem nenhuma, não dá para dizer qual seria o resultado
+  return t.conversions > 0 ? { label: "compras", value: t.conversions } : { label: "resultados", value: null };
 }
 
 /** "cliques no link" → "Cliques no link". */

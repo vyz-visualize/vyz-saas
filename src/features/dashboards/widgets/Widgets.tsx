@@ -124,7 +124,7 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
       sub = filtered ? "no recorte" : hidden ? "da verba do mês" : `${pct(ds.budget.spent / ds.budget.monthly, 0)} da verba do mês`;
       break;
     case "goal":
-      sub = `meta ${brl(ds.goal, { decimals: false })}`;
+      sub = `alvo ${brl(ds.goal, { decimals: false })}`;
       break;
   }
 
@@ -526,11 +526,11 @@ function TableWidget({ source, ctx }: { source: "campaigns" | "products" | "clie
     head = ["Produto", "Vendidos", show("revenue") ? "Receita" : "", show("roas") ? "ROAS" : ""].filter(Boolean);
     rows = ds.products.map((p) => [p.name, int(p.sold), show("revenue") ? brlCompact(p.revenue) : null, show("roas") ? decimal(p.revenue / p.spend) : null].filter((v) => v !== null));
   } else {
-    head = ["Cliente", show("spend") ? "Investimento" : "", show("conversions") ? "Conversões" : "", show("cpa") ? "CPA" : "", ctx.hideSpend ? "" : "Meta", ctx.hideSpend ? "" : "Status"].filter(Boolean);
+    head = ["Cliente", show("spend") ? "Investimento" : "", show("conversions") ? "Conversões" : "", show("cpa") ? "CPA" : "", ctx.hideSpend ? "" : "Alvo", ctx.hideSpend ? "" : "Status"].filter(Boolean);
     rows = ds.clients.map((c) => {
       const cpa = c.spend / c.conversions;
       const ratio = cpa / c.goal;
-      const status = ratio <= 1 ? ["Na meta", "text-accent"] : ratio <= 1.15 ? ["Atenção", "text-warning"] : ["Fora da meta", "text-error-fg"];
+      const status = ratio <= 1 ? ["Dentro do alvo", "text-accent"] : ratio <= 1.15 ? ["Atenção", "text-warning"] : ["Fora do alvo", "text-error-fg"];
       return [
         c.name,
         show("spend") ? brlCompact(c.spend) : null,

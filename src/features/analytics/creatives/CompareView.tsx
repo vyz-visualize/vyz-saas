@@ -9,6 +9,7 @@ import { Popover } from "radix-ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePortalContainer } from "@/components/ui/portal";
 import { SelectField } from "@/components/ui/Select";
+import { MetricHelpNote, useMetricHelp } from "@/components/ui/MetricHelp";
 import { Segmented } from "@/components/ui/Segmented";
 import { btn } from "@/components/ui/styles";
 import { creativeAnalysis, type CreativeAnalysis } from "@/features/agent/engine/creative-analysis";
@@ -222,6 +223,17 @@ function AdPicker({ pool, chosen, current, onPick, label, icon }: { pool: Compar
 
 // ---- tabela ----------------------------------------------------------------------------------------
 
+function MetricLabel({ label, help }: { label: string; help: string }) {
+  const { open, button } = useMetricHelp(label);
+  return (
+    <>
+      {label}
+      {button}
+      {open && <MetricHelpNote text={help} />}
+    </>
+  );
+}
+
 function CompareTable({ stats, colors, mode, hideSpend, currency }: { stats: AdStats[]; colors: string[]; mode: CompareMode; hideSpend: boolean; currency: string }) {
   const groups = useMemo(() => compareTable(stats, mode, { hideSpend, currency }), [stats, mode, hideSpend, currency]);
   const highlights = useMemo(() => objectiveHighlights(stats, mode, { hideSpend, currency }), [stats, mode, hideSpend, currency]);
@@ -300,8 +312,8 @@ function CompareTable({ stats, colors, mode, hideSpend, currency }: { stats: AdS
               {open &&
                 g.rows.map((r) => (
                   <tr key={r.metric.id}>
-                    <th scope="row" title={r.metric.help} className={`${label} border-b border-line/60 font-normal text-fg-2 @[480px]:whitespace-nowrap`}>
-                      {r.metric.label}
+                    <th scope="row" className={`${label} border-b border-line/60 font-normal text-fg-2 @[480px]:whitespace-nowrap`}>
+                      {r.metric.help ? <MetricLabel label={r.metric.label} help={r.metric.help} /> : r.metric.label}
                       {r.metric.better === "down" && <span className="block text-[10.5px] text-fg-2/80">menor é melhor</span>}
                     </th>
                     {r.cells.map((c, i) => (

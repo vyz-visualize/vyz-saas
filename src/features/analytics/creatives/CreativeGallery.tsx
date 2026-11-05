@@ -7,6 +7,7 @@ import { Check, GitCompareArrows } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import { TrendSpark } from "@/components/charts/TrendSpark";
+import { MetricHelpNote, useMetricHelp } from "@/components/ui/MetricHelp";
 import { Segmented } from "@/components/ui/Segmented";
 import { btn } from "@/components/ui/styles";
 import { decimal, int, pct } from "@/lib/format";
@@ -121,7 +122,7 @@ function CreativeCard({ c, data, compare }: { c: CreativeVM; data: Props["data"]
         <dl className="mt-3 grid grid-cols-3 gap-x-2 gap-y-2 text-[11px] tnum">
           {!hideSpend && <Metric label="Investimento" value={moneyCompact(c.spend, currency)} />}
           {!hideSpend && (c.hasRevenue ? <Metric label="ROAS" value={<Roas value={c.roas} breakEven={breakEvenRoas} />} /> : <Metric label="Custo por resultado" value={money(c.costPerResult, currency)} />)}
-          <Metric label={resultTitle(c.result.label)} value={int(c.result.value)} />
+          <Metric label={resultTitle(c.result.label)} value={c.result.value == null ? "—" : int(c.result.value)} />
           <Metric label="CTR do link" value={formatValue(c.linkCtr, "pct")} />
           <Metric label="Freq. média" value={c.frequency == null ? "—" : decimal(c.frequency, 2)} />
           <Metric label="Retenção 3 s" help={RETENTION_HELP} value={c.hookRate == null ? "—" : pct(c.hookRate, 0)} />
@@ -153,8 +154,26 @@ function CreativeCard({ c, data, compare }: { c: CreativeVM; data: Props["data"]
 }
 
 function Metric({ label, value, help }: { label: string; value: ReactNode; help?: string }) {
+  return help ? <HelpMetric label={label} value={value} help={help} /> : <PlainMetric label={label} value={value} />;
+}
+
+function HelpMetric({ label, value, help }: { label: string; value: ReactNode; help: string }) {
+  const { open, button } = useMetricHelp(label);
   return (
-    <div className="flex min-w-0 flex-col justify-between" title={help}>
+    <div className="flex min-w-0 flex-col">
+      <dt className="leading-tight text-fg-2">
+        {label}
+        {button}
+      </dt>
+      <dd className="font-semibold text-fg">{value}</dd>
+      {open && <MetricHelpNote text={help} />}
+    </div>
+  );
+}
+
+function PlainMetric({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col justify-between">
       <dt className="leading-tight text-fg-2">{label}</dt>
       <dd className="font-semibold text-fg">{value}</dd>
     </div>

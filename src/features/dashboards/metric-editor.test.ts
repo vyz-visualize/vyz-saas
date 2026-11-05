@@ -223,6 +223,21 @@ describe("cards apagados", () => {
     expect(card?.querySelector('button[aria-label^="Adicionar"]')).toBeNull();
   });
 
+  it("ⓘ no toque: o primeiro toque já mostra a explicação", async () => {
+    await sample();
+    await enter();
+    const info = document.querySelector<HTMLElement>('[data-metric-tray] [aria-label^="O que é"]')!;
+    const line = () => document.querySelector("[data-metric-tray] p.truncate")?.textContent ?? "";
+    // foco de toque: chega antes do clique e não é :focus-visible
+    info.matches = () => false;
+    const before = line();
+    await act(async () => void info.dispatchEvent(new FocusEvent("focusin", { bubbles: true })));
+    await click(info);
+    expect(line()).not.toBe(before);
+    await click(info);
+    expect(line()).toBe(before);
+  });
+
   it("sem dados: com o aviso, não entra e não arrasta", async () => {
     await sample();
     await enter();
