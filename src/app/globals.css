@@ -1045,3 +1045,25 @@ button:hover > * > .vyz3d .vyz3d-mouth { transform: scale(1.2, 1.12); }
     display: none;
   }
 }
+
+/* VYZ do site: piscada de vez em quando (pausa fora da tela e com "reduzir movimento") */
+.vyz-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: vyz-blink 4.6s ease-in-out infinite;
+}
+@keyframes vyz-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vyz-blink {
+    animation: none;
+  }
+}

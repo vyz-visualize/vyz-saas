@@ -12,6 +12,7 @@ import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 
 const LINKS = [
+  { id: "demonstracao", label: "Demonstração" },
   { id: "como-funciona", label: "Como funciona" },
   { id: "inteligencia", label: "Inteligência" },
   { id: "planos", label: "Planos" },

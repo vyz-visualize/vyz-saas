@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { ComoFunciona } from "@/features/marketing/sections/ComoFunciona";
+import { Demonstracao } from "@/features/marketing/sections/Demonstracao";
 import { Footer } from "@/features/marketing/sections/Footer";
 import { Inteligencia } from "@/features/marketing/sections/Inteligencia";
 import { Hero } from "@/features/marketing/sections/Hero";
@@ -32,6 +33,9 @@ export default function Home() {
         {/* cada dobra numa fronteira própria: a hidratação sai fatiada, sem tarefa longa */}
         <Suspense>
           <Ticker />
+        </Suspense>
+        <Suspense>
+          <Demonstracao />
         </Suspense>
         <Suspense>
           <ComoFunciona />
