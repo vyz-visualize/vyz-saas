@@ -5,16 +5,18 @@
 // dashboard passam sozinhas); no celular, "Ver" abre a prévia grande. Layout
 // de plano acima aparece com cadeado e "Liberar no …" (upgrade em Plano).
 
-import { Check, Eye, Lock, Radio, Sparkles } from "lucide-react";
+import { Check, Eye, Lock, Radio, Sparkles, Target } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Modal } from "@/components/ui/kit";
 import { ScaledPreview } from "@/components/ui/ScaledPreview";
 import { btn } from "@/components/ui/styles";
 import { LiveDashboardPreview } from "@/features/analytics/LiveDashboardPreview";
-import { BUSINESS_TYPES, businessType } from "@/features/catalog/business-types";
+import { BUSINESS_TYPES, businessType, templateBusinessTypes } from "@/features/catalog/business-types";
 import { TemplatePreview } from "@/features/dashboards/TemplateGallery";
 import { TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
+import { startingPrice } from "@/features/pricing/pricing";
+import { brl } from "@/lib/format";
 import { PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { chooseLayout } from "@/server/onboarding/actions";
@@ -22,6 +24,18 @@ import { layoutOptions, type LayoutOption } from "./steps";
 import { StepFooter, StepHeader, useStepAction } from "./ui";
 
 const CYCLE_MS = 1800;
+
+const UPSELL_TIERS: Tier[] = ["pro", "avancado"];
+
+const TIER_PITCH: Partial<Record<Tier, string>> = {
+  pro: "Layouts por nicho, galeria de criativos com prévia e o tracking ligado pelo nosso time.",
+  avancado: "Todos os layouts e todas as páginas, comparativo de criativos e o VYZ por voz.",
+};
+
+const TIER_PERKS: Partial<Record<Tier, string[]>> = {
+  pro: ["Metas e pacing", "Público", "Comparativo de períodos", "Galeria de criativos", "Até 3 contas por plataforma"],
+  avancado: ["Todos os layouts", "Produtos e funil completo", "Comparativo de criativos", "VYZ por voz"],
+};
 
 /** Páginas que passam sozinhas enquanto `playing` (sem movimento se o sistema pede). */
 function useCycle(pages: readonly PageId[], playing: boolean) {
@@ -52,13 +66,14 @@ function Preview({ t, live, page, width }: { t: DashboardTemplate; live: boolean
 function LayoutCard({
   option,
   selected,
-  fitsNiche,
+  nicheName,
   onSelect,
   onOpen,
 }: {
   option: LayoutOption;
   selected: boolean;
-  fitsNiche: boolean;
+  /** Nome do nicho da aba (sem: aba Todos). */
+  nicheName: string | null;
   onSelect: () => void;
   onOpen: () => void;
 }) {
@@ -71,9 +86,11 @@ function LayoutCard({
     <li
       onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
       onPointerLeave={() => setHover(false)}
-      className={`group relative flex flex-col overflow-hidden rounded-card border bg-card transition-[border-color,box-shadow,transform] duration-200 ease-brand ${
-        selected ? "border-accent shadow-[0_0_0_1px_var(--accent)]" : "border-line hover:border-accent"
-      } ${hover ? "motion-safe:-translate-y-0.5" : ""}`}
+      className={`group relative flex flex-col overflow-hidden rounded-card border transition-[border-color,box-shadow,transform] duration-200 ease-brand ${
+        allowed ? "bg-card" : "bg-card/70"
+      } ${selected ? "border-accent shadow-[0_0_0_1px_var(--accent)]" : allowed ? "border-line hover:border-accent" : "border-line/70 hover:border-accent/70"} ${
+        hover ? "motion-safe:-translate-y-0.5" : ""
+      }`}
     >
       {/* a prévia tem botões próprios (abas): fica inerte dentro de uma área clicável que não é <button> */}
       <div
@@ -126,7 +143,11 @@ function LayoutCard({
               <Radio size={11} aria-hidden /> Dados reais
             </span>
           )}
-          {!option.fits && fitsNiche && <span className="rounded-chip border border-line px-2 py-0.5 text-[11px] text-fg-2">Outro nicho</span>}
+          {option.fits && nicheName && templateBusinessTypes(t.profile).length < BUSINESS_TYPES.length && (
+            <span className="inline-flex items-center gap-1 rounded-chip border border-accent/50 px-2 py-0.5 text-[11px] font-medium text-fg">
+              <Target size={11} aria-hidden /> Feito para {nicheName}
+            </span>
+          )}
           <span className="text-[12px] text-fg-2">
             {t.pages.length} {t.pages.length === 1 ? "página" : "páginas"}
           </span>
@@ -155,7 +176,28 @@ export function LayoutStep({ businessTypeId, tier }: { businessTypeId: string | 
   const [openPage, setOpenPage] = useState<PageId | null>(null);
   const { pending, error, run } = useStepAction();
   const name = businessType(businessTypeId)?.name;
-  const lockedCount = shown.filter((o) => !o.allowed).length;
+  const nicheName = niche === "todos" ? null : (businessType(niche)?.name ?? null);
+  // no plano (em destaque) e, por plano acima, a vitrine do upgrade
+  const mine = shown.filter((o) => o.allowed);
+  const fitsMine = mine.filter((o) => o.fits).length;
+  const upsells = UPSELL_TIERS.map((t) => ({
+    tier: t,
+    items: (niche === "todos" ? options : layoutOptions(niche, tier).filter((o) => o.fits)).filter((o) => !o.allowed && o.template.tier === t),
+  })).filter((u) => u.items.length > 0);
+  const [expanded, setExpanded] = useState<Partial<Record<Tier, boolean>>>({});
+  const card = (o: LayoutOption) => (
+    <LayoutCard
+      key={o.template.id}
+      option={o}
+      selected={chosen === o.template.id}
+      nicheName={nicheName}
+      onSelect={() => setChosen(o.template.id)}
+      onOpen={() => {
+        setOpen(o);
+        setOpenPage(o.template.pages[0]);
+      }}
+    />
+  );
   const chosenName = options.find((o) => o.template.id === chosen)?.template.name ?? null;
 
   return (
@@ -186,39 +228,74 @@ export function LayoutStep({ businessTypeId, tier }: { businessTypeId: string | 
         ))}
       </div>
 
-      {shown.length === 0 ? (
+      {mine.length === 0 && upsells.length === 0 ? (
         <p className="mt-8 rounded-card border border-dashed border-line p-6 text-[14px] text-fg-2">
           Ainda não há layouts para este nicho. Veja os outros nas abas.
         </p>
-      ) : (
-        <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {shown.map((o) => (
-            <LayoutCard
-              key={o.template.id}
-              option={o}
-              selected={chosen === o.template.id}
-              fitsNiche={niche !== "todos"}
-              onSelect={() => setChosen(o.template.id)}
-              onOpen={() => {
-                setOpen(o);
-                setOpenPage(o.template.pages[0]);
-              }}
-            />
-          ))}
-        </ul>
-      )}
+      ) : null}
 
-      {lockedCount > 0 && (
-        <div className="mt-6 flex flex-col gap-3 rounded-card border border-accent/40 bg-accent-soft/30 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="flex items-start gap-2 text-[14px] text-fg">
-            <Sparkles size={17} aria-hidden className="mt-0.5 shrink-0 text-accent" />
-            {lockedCount === 1 ? "1 layout é" : `${lockedCount} layouts são`} de um plano acima: páginas de criativos, funil, metas e comparativos.
-          </p>
-          <Link href="/painel/plano?liberar=pro#h-trocar" className={`${btn.secondary} shrink-0`}>
-            Ver planos
-          </Link>
+      {mine.length > 0 && (
+        <div className="mt-8">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="title flex items-center gap-2 text-[19px] text-fg">
+              <Check size={18} aria-hidden className="text-accent" /> No seu plano{tier ? ` · ${TIER_LABEL[tier]}` : ""}
+            </h2>
+            <p className="text-[13px] text-fg-2">
+              {mine.length} {mine.length === 1 ? "layout liberado" : "layouts liberados"}
+              {nicheName && fitsMine > 0 ? ` · ${fitsMine} feito${fitsMine === 1 ? "" : "s"} para ${nicheName}` : ""}
+            </p>
+          </div>
+          <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{mine.map(card)}</ul>
         </div>
       )}
+
+      {upsells.map(({ tier: next, items }) => {
+        const all = expanded[next];
+        const visible = all ? items : items.slice(0, 3);
+        const delta = tier && tier !== "personalizado" && next !== "personalizado" ? startingPrice(next, "anual") - startingPrice(tier, "anual") : null;
+        return (
+          <div
+            key={next}
+            className="relative mt-10 overflow-hidden rounded-[22px] border border-accent/35 bg-[linear-gradient(140deg,color-mix(in_srgb,var(--accent)_14%,transparent),transparent_55%)] p-5 sm:p-7"
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-2xl">
+                <p className="flex items-center gap-1.5 text-[12px] font-semibold tracking-wide text-accent uppercase">
+                  <Sparkles size={13} aria-hidden /> Próximo nível
+                </p>
+                <h2 className="title mt-1.5 text-[22px] text-fg">
+                  Mais no {TIER_LABEL[next]}: {items.length} {items.length === 1 ? "layout" : "layouts"}
+                  {nicheName ? ` para ${nicheName}` : ""}
+                </h2>
+                <p className="mt-1.5 text-[14px] text-fg-2">{TIER_PITCH[next]}</p>
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {(TIER_PERKS[next] ?? []).map((perk) => (
+                    <li key={perk} className="inline-flex items-center gap-1.5 rounded-chip bg-bg/60 px-2.5 py-1 text-[12.5px] text-fg">
+                      <Check size={12} aria-hidden className="text-accent" /> {perk}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
+                <Link href={`/painel/plano?liberar=${next}#h-trocar`} className={btn.primary}>
+                  <Lock size={15} aria-hidden /> Liberar no {TIER_LABEL[next]}
+                </Link>
+                {delta !== null && delta > 0 && <p className="text-[12.5px] text-fg-2 tnum">+ {brl(delta)}/mês no anual</p>}
+              </div>
+            </div>
+            <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{visible.map(card)}</ul>
+            {items.length > 3 && (
+              <button
+                type="button"
+                onClick={() => setExpanded((e) => ({ ...e, [next]: !all }))}
+                className="mt-4 text-[13.5px] font-semibold text-accent underline-offset-4 hover:underline"
+              >
+                {all ? "Mostrar menos" : `Ver os ${items.length} layouts do ${TIER_LABEL[next]}`}
+              </button>
+            )}
+          </div>
+        );
+      })}
 
       <StepFooter
         back="business"
