@@ -26,6 +26,7 @@ import { hitRateLimit, type RateRule } from "@/server/security/rate-limit";
 import { appError, toActionError, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 import { createCheckoutSession, payCheckoutSession } from "./checkout";
+import { startStripeCheckout } from "./stripe";
 import { CHECKOUT_CLOSED_MESSAGE, canCheckout } from "@/server/env";
 import { getCheckoutViewer } from "./queries";
 import { changeSubscriptionPlan, setSubscriptionCancel } from "./subscription";
@@ -197,6 +198,28 @@ export async function payCheckout(checkoutId: string, input: PaymentInput): Prom
     return toActionError(err);
   }
   redirect(`/assinar/concluido/${id}`);
+}
+
+/**
+ * Passo 2 com a Stripe: leva ao Checkout da Stripe (o cartão é digitado lá).
+ * A volta passa por /api/billing/stripe/retorno, que conclui o pedido.
+ */
+export async function payWithStripe(checkoutId: string): Promise<ActionResult> {
+  let url: string;
+  try {
+    const id = z.uuid().safeParse(checkoutId);
+    if (!id.success) throw appError("checkout:not_found");
+    const user = await getSessionUser();
+    if (!user) throw appError("auth:required");
+    if (!canCheckout(user.email)) throw appError("billing:closed", CHECKOUT_CLOSED_MESSAGE);
+    const ctx = await requestContext();
+    await limit("checkout_ip", ctx.ip, user.email);
+    url = await startStripeCheckout({ checkoutId: id.data, userId: user.id });
+  } catch (err) {
+    unstable_rethrow(err);
+    return toActionError(err);
+  }
+  redirect(url);
 }
 
 /** Troca plano, período ou contas (dono). Cobra a diferença proporcional; menos vira crédito. */

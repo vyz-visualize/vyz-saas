@@ -125,6 +125,13 @@ export async function changeSubscriptionPlan(input: { workspaceId: string; actor
     customerId: unwrap(customer)?.provider_customer_id ?? null,
     prorationCents: quote.prorationCents,
     currency: "BRL",
+    // o item do plano na Stripe (os extras são itens à parte), por período
+    next: {
+      planId: input.next.tier,
+      accounts: input.next.accounts,
+      amountCents: quote.planMonthlyCents * (input.next.period === "anual" ? 12 : 1),
+      interval: INTERVAL[input.next.period],
+    },
   });
 
   // assinatura, item do plano, fatura e transação numa transação só; o banco

@@ -8,6 +8,7 @@ import { btn } from "@/components/ui/styles";
 import { CheckoutSteps } from "@/features/checkout/CheckoutSteps";
 import { OrderSummary } from "@/features/checkout/OrderSummary";
 import { PaymentForm } from "@/features/checkout/PaymentForm";
+import { StripePay } from "@/features/checkout/StripePay";
 import { toQuery } from "@/features/pricing/pricing";
 import { getSessionUser } from "@/server/auth/session";
 import { getCheckout, getCheckoutReceipt, type CheckoutView } from "@/server/billing/queries";
@@ -16,19 +17,21 @@ import { isMockBilling } from "@/server/env";
 export const metadata: Metadata = { title: "Pagamento" };
 
 // O pedido é do usuário logado (RLS) e o id vem da URL: tudo dentro do Suspense.
-export default function Page({ params }: PageProps<"/assinar/pagamento/[id]">) {
+export default function Page({ params, searchParams }: PageProps<"/assinar/pagamento/[id]">) {
   return (
     <div className="mx-auto w-full max-w-[1180px] pt-2 lg:pt-6">
       <CheckoutSteps current={2} />
       <Suspense fallback={<PaymentSkeleton />}>
-        <Payment params={params} />
+        <Payment params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function Payment({ params }: { params: PageProps<"/assinar/pagamento/[id]">["params"] }) {
+async function Payment({ params, searchParams }: Pick<PageProps<"/assinar/pagamento/[id]">, "params" | "searchParams">) {
   const { id } = await params;
+  const query = await searchParams;
+  const notice = query.cancelado ? "cancelado" : typeof query.erro === "string" ? query.erro : null;
   // a sessão (validade do token) e a validade do pedido dependem da hora: só na requisição
   await connection();
   const user = await getSessionUser();
@@ -44,7 +47,7 @@ async function Payment({ params }: { params: PageProps<"/assinar/pagamento/[id]"
 
   // validade de exemplo para o cartão de teste: dezembro, daqui a 4 anos
   const sampleExpiry = `12/${String((new Date().getFullYear() + 4) % 100).padStart(2, "0")}`;
-  const query = toQuery(checkout.state);
+  const planQuery = toQuery(checkout.state);
 
   return (
     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-14">
@@ -60,13 +63,11 @@ async function Payment({ params }: { params: PageProps<"/assinar/pagamento/[id]"
           para conectar as contas.
         </p>
         <div className="mt-8">
-          <PaymentForm
-            checkoutId={checkout.id}
-            amountCents={checkout.amountDueNowCents}
-            holderName={checkout.fullName}
-            sampleExpiry={sampleExpiry}
-            simulated={isMockBilling()}
-          />
+          {isMockBilling() ? (
+            <PaymentForm checkoutId={checkout.id} amountCents={checkout.amountDueNowCents} holderName={checkout.fullName} sampleExpiry={sampleExpiry} simulated />
+          ) : (
+            <StripePay checkoutId={checkout.id} amountCents={checkout.amountDueNowCents} notice={notice} />
+          )}
         </div>
       </section>
 
@@ -76,7 +77,7 @@ async function Payment({ params }: { params: PageProps<"/assinar/pagamento/[id]"
           quote={checkout.quote}
           amountDueNowCents={checkout.amountDueNowCents}
           recurringCents={checkout.recurringCents}
-          editHref={`/?${query}#planos`}
+          editHref={`/?${planQuery}#planos`}
         />
       </aside>
     </div>

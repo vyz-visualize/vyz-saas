@@ -1,7 +1,6 @@
 import "server-only";
 
-// Provedor de cobrança atrás de uma interface: hoje o simulado (mock), depois
-// a Stripe. Quem chama não sabe qual está ligado (BILLING_PROVIDER).
+// Provedor de cobrança atrás de uma interface: o simulado (mock) ou a Stripe. Quem chama não sabe qual está ligado (BILLING_PROVIDER).
 
 import type { CardSummary } from "@/features/checkout/card";
 import { serverEnv } from "@/server/env";
@@ -42,6 +41,8 @@ export interface BillingProvider {
     customerId: string | null;
     prorationCents: number;
     currency: string;
+    /** O plano novo: valor por período (mês ou ano) e o intervalo. A Stripe troca o preço e cobra a diferença. */
+    next?: { planId: string; accounts: number; amountCents: number; interval: "month" | "year" };
   }): Promise<{ invoiceId: string | null; paymentId: string | null }>;
 
   /** Cancela no fim do período (ou desfaz o cancelamento). */
