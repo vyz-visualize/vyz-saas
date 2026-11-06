@@ -291,26 +291,30 @@ html.lenis body {
 }
 
 /* Risco e destaque no H1 */
-.strike {
-  position: relative;
-  display: inline-block;
-}
-.strike::after {
-  content: "";
-  position: absolute;
-  left: -0.04em;
-  right: -0.04em;
-  top: 47.5%;
-  height: 0.11em;
-  background: var(--accent);
-  transform-origin: left center;
-}
 .hl {
   color: var(--accent);
 }
-[data-cut="play"] .strike::after {
-  animation: draw-x 520ms var(--ease) both;
-  animation-delay: calc(var(--d, 0ms) + 900ms);
+/* Marca-texto no H1: se desenha da esquerda para a direita ao carregar */
+.mark-draw {
+  display: inline-block;
+  padding: 0 0.06em;
+  margin: 0 -0.06em;
+  background-image: linear-gradient(color-mix(in srgb, var(--accent) 42%, transparent), color-mix(in srgb, var(--accent) 42%, transparent));
+  background-repeat: no-repeat;
+  background-position: 0 86%;
+  background-size: 100% 0.36em;
+}
+[data-js] [data-cut="static"] .mark-draw {
+  animation: mark-draw 680ms var(--ease) 380ms both;
+}
+[data-js] [data-cut="play"] .mark-draw {
+  animation: mark-draw 680ms var(--ease) both;
+  animation-delay: calc(var(--d, 0ms) + 760ms);
+}
+@keyframes mark-draw {
+  from {
+    background-size: 0% 0.36em;
+  }
 }
 [data-cut="play"] .hl {
   animation: hl-in 400ms var(--ease) both;
@@ -1014,6 +1018,9 @@ button:hover > * > .vyz3d .vyz3d-mouth { transform: scale(1.2, 1.12); }
 
 /* ---- Movimento reduzido: tudo aparece direto -------------------------- */
 @media (prefers-reduced-motion: reduce) {
+  .mark-draw {
+    animation: none !important;
+  }
   *,
   *::before,
   *::after {
