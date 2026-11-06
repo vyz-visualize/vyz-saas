@@ -25,8 +25,16 @@ export default function Entrar() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: t.bg }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24, gap: 14 }} keyboardShouldPersistTaps="handled">
-        <Text accessibilityRole="header" style={{ color: t.fg, fontSize: 28, fontWeight: "700" }}>Entrar no VYZ</Text>
-        <Text style={{ color: t.fg2, fontSize: 15 }}>Use a mesma conta do painel.</Text>
+        <View style={{ gap: 10, marginBottom: 12 }}>
+          <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: t.accentSoft, borderWidth: 1, borderColor: t.accent, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ color: t.accent, fontSize: 20, fontWeight: "900", letterSpacing: -1 }}>VYZ</Text>
+          </View>
+          <Text accessibilityRole="header" style={{ color: t.fg, fontSize: 34, fontWeight: "800", letterSpacing: -1.1, lineHeight: 38 }}>
+            Seus números,{"\n"}
+            <Text style={{ color: t.accent }}>na palma da mão.</Text>
+          </Text>
+          <Text style={{ color: t.fg2, fontSize: 15, lineHeight: 21 }}>Entre com a mesma conta do painel e acompanhe receita, ROAS e campanhas de qualquer lugar.</Text>
+        </View>
         <Field label="E-mail" value={email} onChangeText={setEmail} autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="emailAddress" />
         <Field label="Senha" value={password} onChangeText={setPassword} secureTextEntry autoComplete="password" textContentType="password" />
         <Notice text={error} />
