@@ -32,59 +32,45 @@ type OrderSummaryProps = {
   editHref?: string;
   simulated?: boolean;
   className?: string;
-  /** Link do mesmo pedido com outra seleção: liga período, projetos e plataforma extra. */
-  adjustHref?: (patch: Partial<PlanState>) => string;
+  /** Muda o pedido na hora (período, projetos, plataforma extra); sem isso, o cupom só mostra. */
+  onAdjust?: (patch: (current: PlanState) => Partial<PlanState>) => void;
 };
 
 const stepBtn =
   "inline-flex size-9 items-center justify-center rounded-full border border-line text-[17px] font-semibold text-fg transition-colors hover:border-accent hover:text-accent";
 const off = "pointer-events-none opacity-30";
 
-function Stepper({ label, value, min, max, href }: { label: string; value: number; min: number; max: number; href: (n: number) => string }) {
+/** onChange recebe o passo (−1 ou +1): cliques seguidos somam. */
+function Stepper({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (step: number) => void }) {
   return (
     <div className="flex shrink-0 items-center gap-2.5">
-      <Link
-        href={href(value - 1)}
-        scroll={false}
-        replace
-        aria-label={`Menos: ${label}`}
-        aria-disabled={value <= min}
-        className={`${stepBtn} ${value <= min ? off : ""}`}
-      >
+      <button type="button" onClick={() => onChange(-1)} aria-label={`Menos: ${label}`} disabled={value <= min} className={`${stepBtn} ${value <= min ? off : ""}`}>
         −
-      </Link>
+      </button>
       <span className="w-8 text-center text-[20px] font-bold tnum" aria-live="polite">
         {value}
       </span>
-      <Link
-        href={href(value + 1)}
-        scroll={false}
-        replace
-        aria-label={`Mais: ${label}`}
-        aria-disabled={value >= max}
-        className={`${stepBtn} ${value >= max ? off : ""}`}
-      >
+      <button type="button" onClick={() => onChange(1)} aria-label={`Mais: ${label}`} disabled={value >= max} className={`${stepBtn} ${value >= max ? off : ""}`}>
         +
-      </Link>
+      </button>
     </div>
   );
 }
 
 /** Mensal × anual, com o desconto do anual no próprio botão. */
-function PeriodSwitch({ plan, period, href }: { plan: PlanId; period: Period; href: (p: Period) => string }) {
+function PeriodSwitch({ plan, period, onChange }: { plan: PlanId; period: Period; onChange: (p: Period) => void }) {
   const item = (p: Period, label: string, badge?: string) => (
-    <Link
-      href={href(p)}
-      scroll={false}
-      replace
-      aria-current={period === p ? "true" : undefined}
+    <button
+      type="button"
+      onClick={() => onChange(p)}
+      aria-pressed={period === p}
       className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[13.5px] font-semibold transition-colors ${
         period === p ? "bg-accent text-on-accent" : "text-fg-2 hover:text-fg"
       }`}
     >
       {label}
       {badge && <span className={`rounded-chip px-1.5 py-px text-[11px] ${period === p ? "bg-on-accent/15" : "bg-accent-soft text-fg"}`}>{badge}</span>}
-    </Link>
+    </button>
   );
   return (
     <div className="flex rounded-full border border-line bg-bg p-1" role="group" aria-label="Período de cobrança">
@@ -125,7 +111,7 @@ export function OrderSummary({
   editHref,
   simulated = false,
   className = "",
-  adjustHref,
+  onAdjust,
 }: OrderSummaryProps) {
   const noPlan = state.plano === "sem";
   const annual = state.periodo === "anual";
@@ -186,9 +172,9 @@ export function OrderSummary({
           </div>
         )}
 
-        {dash && adjustHref && (
+        {dash && onAdjust && (
           <div className="mt-4">
-            <PeriodSwitch plan={plan} period={state.periodo} href={(periodo) => adjustHref({ periodo })} />
+            <PeriodSwitch plan={plan} period={state.periodo} onChange={(periodo) => onAdjust(() => ({ periodo }))} />
           </div>
         )}
 
@@ -202,20 +188,20 @@ export function OrderSummary({
                   {INCLUDED_PROJECTS} inclusos · cada um a mais, <span className="whitespace-nowrap tnum">{brl(EXTRA_PROJECT[plan][state.periodo])}/mês</span>
                 </p>
               </div>
-              {adjustHref ? (
-                <Stepper label="projetos" value={q.projects} min={INCLUDED_PROJECTS} max={MAX_PROJECTS_IN_PLAN} href={(n) => adjustHref({ projetos: n })} />
+              {onAdjust ? (
+                <Stepper label="projetos" value={q.projects} min={INCLUDED_PROJECTS} max={MAX_PROJECTS_IN_PLAN} onChange={(step) => onAdjust((s) => ({ projetos: s.projetos + step }))} />
               ) : (
                 <span className="text-[20px] font-bold tnum">{q.projects}</span>
               )}
             </div>
             <ProjectHelp />
-            {plan === "base" && adjustHref && (
+            {plan === "base" && onAdjust && (
               <div className="mt-4 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[14px] font-semibold text-fg">Plataforma extra</p>
                   <p className="text-[12.5px] leading-snug text-fg-2">TikTok, LinkedIn e outras fora do Básico · {brl(EXTRA_PLATFORM_PRICE)}/mês cada</p>
                 </div>
-                <Stepper label="plataformas extras" value={state.plataformas} min={0} max={MAX_EXTRA} href={(n) => adjustHref({ plataformas: n })} />
+                <Stepper label="plataformas extras" value={state.plataformas} min={0} max={MAX_EXTRA} onChange={(step) => onAdjust((s) => ({ plataformas: s.plataformas + step }))} />
               </div>
             )}
           </div>

@@ -4,10 +4,9 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { btn } from "@/components/ui/styles";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
-import { CheckoutForm } from "@/features/checkout/CheckoutForm";
+import { CheckoutLive } from "@/features/checkout/CheckoutLive";
 import { CheckoutSteps } from "@/features/checkout/CheckoutSteps";
 import { BLOCK_MESSAGE, buildOrder, normalizeState, type Order } from "@/features/checkout/order";
-import { OrderSummary } from "@/features/checkout/OrderSummary";
 import { TestReset } from "@/features/checkout/TestReset";
 import { buildPlanMessage } from "@/features/pricing/messages";
 import { fromQuery, toQuery, type PlanState } from "@/features/pricing/pricing";
@@ -60,44 +59,28 @@ async function Checkout({ searchParams }: { searchParams: Promise<SearchParams> 
   if (viewer.subscribed) return <AlreadySubscribed workspaceName={viewer.subscribed.workspaceName} test={isTestAccount(viewer.user?.email)} />;
 
   return (
-    <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-14">
-      <section aria-labelledby="assinar-titulo" className="min-w-0">
-        <p className="label-caps text-fg-2">Assinatura</p>
-        <h1 id="assinar-titulo" className="display mt-3 text-[clamp(2.1rem,5vw,3.4rem)] text-fg">
-          {viewer.user ? "Falta pouco" : "Crie sua conta"}
-          <br />
-          <span className="text-accent">{viewer.user ? "para assinar." : "e assine."}</span>
-        </h1>
-        <p className="mt-4 max-w-xl text-[15px] text-fg-2">
-          {viewer.user
-            ? "Confira seus dados e siga para o pagamento."
-            : "Crie a conta com o Google ou com e-mail, depois o pagamento. Ao terminar, você já entra no painel."}
-        </p>
-
-        {viewer.user && <AccountNotice viewer={viewer} />}
-
-        <div className="mt-8">
-          <CheckoutForm
-            planQuery={query}
-            account={viewer.user ? { email: viewer.user.email, fullName: viewer.user.fullName, phone: viewer.user.phone } : null}
-            workspaceName={viewer.target?.workspaceName ?? null}
-            signInHref={`/entrar?next=${encodeURIComponent(`/assinar?${query}`)}`}
-          />
-        </div>
-      </section>
-
-      <aside aria-label="Resumo do pedido" className="order-first lg:sticky lg:top-6 lg:order-none lg:self-start">
-        <OrderSummary
-          state={state}
-          quote={order.quote}
-          amountDueNowCents={order.amountDueNowCents}
-          recurringCents={order.recurringCents}
-          editHref={editHref}
-          simulated={isMockBilling()}
-          adjustHref={(patch) => `/assinar?${toQuery(normalizeState({ ...state, ...patch }))}`}
-        />
-      </aside>
-    </div>
+    <CheckoutLive
+      initial={state}
+      account={viewer.user ? { email: viewer.user.email, fullName: viewer.user.fullName, phone: viewer.user.phone } : null}
+      workspaceName={viewer.target?.workspaceName ?? null}
+      simulated={isMockBilling()}
+      heading={
+        <>
+          <p className="label-caps text-fg-2">Assinatura</p>
+          <h1 id="assinar-titulo" className="display mt-3 text-[clamp(2.1rem,5vw,3.4rem)] text-fg">
+            {viewer.user ? "Falta pouco" : "Crie sua conta"}
+            <br />
+            <span className="text-accent">{viewer.user ? "para assinar." : "e assine."}</span>
+          </h1>
+          <p className="mt-4 max-w-xl text-[15px] text-fg-2">
+            {viewer.user
+              ? "Confira seus dados e siga para o pagamento."
+              : "Crie a conta com o Google ou com e-mail, depois o pagamento. Ao terminar, você já entra no painel."}
+          </p>
+          {viewer.user && <AccountNotice viewer={viewer} />}
+        </>
+      }
+    />
   );
 }
 
