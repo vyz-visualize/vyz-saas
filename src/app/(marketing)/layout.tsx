@@ -9,11 +9,14 @@ const title = SHOW_LANDING_PAGES ? "VYZ · Vyzualize · Dashboards e landing pag
 const description =
   `Conecte Meta e Google por login e tenha o dashboard do seu cliente pronto, com CPA, ROAS e funil no topo.${SHOW_LANDING_PAGES ? " Landing pages com GTM configurado." : ""}`;
 
+const SHARE_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: title };
+
 export const metadata: Metadata = {
   title: { absolute: title },
   description,
-  openGraph: { title, description, siteName: "VYZ · Vyzualize", locale: "pt_BR", type: "website" },
-  twitter: { card: "summary_large_image", title, description },
+  // a imagem precisa vir aqui: o openGraph deste layout substitui o da raiz, inclusive a imagem
+  openGraph: { title, description, siteName: "VYZ · Vyzualize", locale: "pt_BR", type: "website", images: [SHARE_IMAGE] },
+  twitter: { card: "summary_large_image", title, description, images: [SHARE_IMAGE] },
 };
 
 /** Área de marketing: a única com Lenis, intro e motion. */
