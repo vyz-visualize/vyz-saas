@@ -1,8 +1,12 @@
-# VYZ nas lojas: tudo para publicar
+# Vyzualize nas lojas: tudo para publicar
 
-Pacote para quem vai configurar as credenciais e publicar (App Store Connect,
-Google Play Console, Firebase, RevenueCat, Supabase, Vercel). Tudo o que é
-texto está pronto para colar; as imagens estão nesta pasta.
+Guia para o Claude Desktop, que faz toda a configuração nas contas da Apple e
+do Google e publica o app (App Store Connect, Apple Developer, Google Play
+Console, Google Cloud, Firebase, RevenueCat, Supabase e Vercel). Os textos
+estão prontos para colar, e as imagens estão nesta pasta.
+
+O app se chama **Vyzualize**. "VYZ" é só o nome do assistente dentro do app
+(a aba VYZ e as análises do VYZ).
 
 Regras que valem para tudo abaixo:
 
@@ -15,7 +19,7 @@ Regras que valem para tudo abaixo:
 
 | Campo | Valor |
 |---|---|
-| Nome do app | VYZ: Análise de Anúncios |
+| Nome do app | Vyzualize (embaixo do ícone também: `name` no `app.json`) |
 | Bundle ID (iOS) / Package (Android) | `app.vyz.painel` |
 | Versão | 1.0.0 (iOS build 1, Android versionCode 1) |
 | Idioma principal | Português (Brasil) |
@@ -28,9 +32,11 @@ Regras que valem para tudo abaixo:
 | Classificação etária | 4+ (Apple) / Livre (Google). Sem conteúdo sensível, sem chat entre usuários, sem itens aleatórios pagos. |
 | iPad | Não: o app é só para iPhone (`supportsTablet: false`), então não precisa de prints de iPad. |
 
-**Decisão do Gustavo antes de criar o app na Apple: com qual conta publicar.**
-O vendedor que aparece na loja é o nome da conta. O Xcode tem hoje "Gustavo
-Lemos" (pessoa física, time `93TPYZYG8P`) e "LL SERVICOS DIGITAIS LTDA" (time
+Se o nome "Vyzualize" já estiver em uso na App Store, use `Vyzualize: Análise de Anúncios` (30 caracteres).
+
+**Conta da Apple: confirmar com o Gustavo antes de criar o app.** O vendedor
+que aparece na loja é o nome da conta. O Xcode tem hoje "Gustavo Lemos"
+(pessoa física, time `93TPYZYG8P`) e "LL SERVICOS DIGITAIS LTDA" (time
 `875W4SVP8N`). O desejado é "VYZ Intelligence", o que exige a conta de
 organização da VYZ (o D-U-N-S já está no nome da empresa).
 
@@ -55,7 +61,7 @@ anúncios,meta ads,google ads,roas,cpa,tráfego pago,campanhas,marketing,dashboa
 **Descrição**:
 
 ```
-O VYZ coloca os números das suas campanhas de Meta Ads e Google Ads na palma da mão, com análises que dizem o que fazer.
+O Vyzualize coloca os números das suas campanhas de Meta Ads e Google Ads na palma da mão, com análises que dizem o que fazer.
 
 TUDO NUM TOQUE
 Entre e veja na hora a receita, o ROAS e a variação de cada cliente, com a curva dos últimos 30 dias.
@@ -75,17 +81,17 @@ PERGUNTE EM PORTUGUÊS
 RESUMO TODA MANHÃ
 Receba por notificação o destaque mais importante das suas contas. Tocar abre o dashboard certo.
 
-Use a mesma conta do painel VYZ. Seus dados ficam protegidos e você pode excluir sua conta a qualquer momento pelo próprio app.
+Use a mesma conta do painel Vyzualize. Seus dados ficam protegidos e você pode excluir sua conta a qualquer momento pelo próprio app.
 ```
 
-**Novidades desta versão**: `Primeira versão do VYZ para celular.`
+**Novidades desta versão**: `Primeira versão do Vyzualize para celular.`
 
 ### Google Play
 
-- **Título** (até 30): `VYZ: Análise de Anúncios`
+- **Título** (até 30): `Vyzualize: Análise de Anúncios`
 - **Descrição curta** (até 80): `Meta Ads e Google Ads no celular, com análises que dizem o que fazer.`
 - **Descrição completa**: a mesma da App Store, acima.
-- **Notas da versão**: `Primeira versão do VYZ para celular.`
+- **Notas da versão**: `Primeira versão do Vyzualize para celular.`
 
 ## 3. Imagens
 
@@ -112,12 +118,12 @@ node store/gerar/artes.mjs                                  # ícones, gráficos
 
 **Conta de teste**: `revisao.apple@vyzualize.com.br`
 - Plano Avançado ativo, com dashboards Meta e Google com dados.
-- A senha está com o Gustavo (não vai para o git); preencher no campo de senha da conta de demonstração das duas lojas.
+- A senha não vai para o git: pedir ao Gustavo e preencher no campo de senha da conta de demonstração das duas lojas.
 
 **Notas para a revisão** (App Store, "Notas"; Google Play, "Instruções de acesso"):
 
 ```
-O VYZ é o app de acompanhamento do painel VYZ (vyzualize.com.br): mostra os resultados das campanhas de anúncios das contas que o cliente já conectou no painel.
+O Vyzualize é o app de acompanhamento do painel Vyzualize (vyzualize.com.br): mostra os resultados das campanhas de anúncios das contas que o cliente já conectou no painel.
 
 Use a conta de demonstração informada: ela já tem dois dashboards com dados (Meta Ads e Google Ads).
 
@@ -125,7 +131,7 @@ Onde ver cada recurso:
 - Início: dashboards com o indicador principal e os destaques da semana.
 - Toque num dashboard: arraste o dedo no gráfico; toque numa campanha para filtrar.
 - Aba Análises: alertas automáticos.
-- Aba VYZ: toque numa pergunta pronta.
+- Aba VYZ (o assistente): toque numa pergunta pronta.
 - Aba Conta: plano, notificações, termos, privacidade, sair e "Excluir conta" (exclui de verdade, com confirmação).
 
 Login: e-mail e senha, Entrar com Apple e Google.
@@ -163,7 +169,7 @@ Rastreamento: **Não**. Nada é usado para publicidade nem compartilhado com cor
 
 Os IDs são fixos (não mudar). A lista completa com preços está em `planos-lojas.csv`: são 168 assinaturas (3 planos × mensal ou anual × 3 a 30 projetos). Para gerar a lista de novo: `npx tsx scripts/store/plan-products.ts`, na raiz do repositório.
 
-- **Grupo de assinaturas** (App Store): `VYZ Planos`.
+- **Grupo de assinaturas** (App Store): `Vyzualize Planos`.
   - Ordem de nível, do maior para o menor: Avançado, Padrão, Básico.
   - Dentro de cada plano, mais projetos ficam acima de menos.
 - **Google Play:** uma assinatura por `product_id`, com um base plan mensal ou anual conforme o id, renovação automática.
@@ -176,7 +182,7 @@ Os IDs são fixos (não mudar). A lista completa com preços está em `planos-lo
   - Sem as chaves, o app funciona, mas esconde as compras.
 - **Apple:**
   - As compras precisam ser anexadas à versão no mesmo envio para a revisão.
-  - O contrato de apps pagos precisa estar aceito, e isso é o Gustavo quem faz.
+  - O contrato de apps pagos precisa estar aceito: pedir ao Gustavo para aceitar (ele confirma termos, dados fiscais e bancários).
 
 ## 7. Credenciais a configurar
 
@@ -213,13 +219,13 @@ store/gerar/build.sh ios-check                     # só confere que o iOS compi
   - Guardar uma cópia dos dois num cofre de senhas.
   - No primeiro envio, aceitar o **Play App Signing**: o Google guarda a chave final, e se a chave de envio se perder dá para trocar pelo suporte.
 - **A cada novo envio:** subir `ios.buildNumber` e `android.versionCode` no `app.json`.
-- **Gerar o build de novo depois de pôr o `google-services.json` e as chaves do RevenueCat.** O `.aab` que já existe serve para o teste interno, mas não tem push no Android nem compras.
+- **Gerar o build de novo depois de pôr o `google-services.json` e as chaves do RevenueCat** (o build novo também traz o nome "Vyzualize" embaixo do ícone). O `.aab` que já existe serve para o teste interno, mas não tem push no Android nem compras.
 - **Auditoria do iOS:** roda sozinha no `build.sh ios`. Os "Android" que sobram são mensagens internas de bibliotecas, que nunca aparecem na tela.
 
 ## 9. Ordem sugerida
 
-1. O Gustavo decide a conta da Apple (seção 1).
-2. Criar o app no App Store Connect e no Play Console com os dados da seção 1.
+1. Confirmar com o Gustavo a conta da Apple (seção 1).
+2. Criar o app "Vyzualize" no App Store Connect e no Play Console com os dados da seção 1.
 3. Configurar as credenciais da seção 7 e fazer o redeploy da Vercel.
 4. Cadastrar os produtos e o RevenueCat (seção 6) e pôr as chaves no `.env.production.local`.
 5. Rodar `build.sh android` e `build.sh ios` e enviar os builds.
