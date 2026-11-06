@@ -43,3 +43,10 @@ example
 /android
 .env
 dist-audit/
+
+# credenciais das lojas (nunca no git)
+google-services.json
+*.jks
+*.keystore
+*.p8
+store/build/

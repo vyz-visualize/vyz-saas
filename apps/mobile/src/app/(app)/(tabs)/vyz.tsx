@@ -47,8 +47,8 @@ function Reply({ m, onAsk }: { m: Msg; onAsk: (q: string) => void }) {
       {r.chart && (
         <View style={{ borderRadius: radius.lg, padding: 14, backgroundColor: t.surface, borderWidth: 1, borderColor: t.line, gap: 10 }}>
           <Text style={{ color: t.fg2, fontSize: 12, fontWeight: "600", textTransform: "uppercase" }}>{r.chart.title}</Text>
-          {r.chart.items.slice(0, 8).map((i) => (
-            <View key={i.label} style={{ gap: 4 }}>
+          {r.chart.items.slice(0, 8).map((i, n) => (
+            <View key={`${n}:${i.label}`} style={{ gap: 4 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 <Text style={{ color: t.fg, fontSize: 13.5 }} numberOfLines={1}>{i.label}</Text>
                 <Text style={{ color: t.fg, fontSize: 13.5, fontWeight: "700", fontVariant: ["tabular-nums"] }}>{i.display}</Text>

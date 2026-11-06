@@ -36,6 +36,10 @@ npx expo run:ios                          # compila pelo Xcode e abre no simulad
 3. Antes de cada envio: `node scripts/audit-bundle.mjs ios` e conferir o resultado (os "Android" restantes são mensagens internas do React Native, fora da tela).
 4. General → Build: incrementar. Product → Archive → Distribute App → App Store Connect → Upload.
 
+## Lojas
+
+Tudo para publicar (textos, prints, privacidade, produtos, credenciais e builds): [apps/mobile/store/LOJAS.md](../apps/mobile/store/LOJAS.md).
+
 ## Checklist antes de cada envio
 
 - [ ] Número do build incrementado
