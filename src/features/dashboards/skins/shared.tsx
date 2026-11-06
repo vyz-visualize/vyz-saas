@@ -103,3 +103,47 @@ export function fit(values: number[], w: number, h: number, pad = 0.12): [number
   const span = max - min || 1;
   return values.map((v, i) => [values.length === 1 ? w / 2 : (i / (values.length - 1)) * w, h - (pad * h + ((v - min) / span) * h * (1 - 2 * pad))]);
 }
+
+// ---- peças das análises (seguem o tema do painel) -------------------------------------
+
+/** Cores das séries que funcionam no claro e no escuro. */
+export const SERIES = ["var(--accent)", "#6c8ebf", "#d08c60", "#9b7bc8", "#5fa8a0", "#c9a227"];
+
+export function Panel({ title, aside, children, className = "" }: { title?: string; aside?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`min-w-0 rounded-[14px] border border-line bg-card p-4 ${className}`}>
+      {(title || aside) && (
+        <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          {title && <h3 className="text-[13px] font-semibold text-fg">{title}</h3>}
+          {aside}
+        </header>
+      )}
+      {children}
+    </section>
+  );
+}
+
+export function Stat({ title, v, sub, tone }: { title: string; v: string; sub?: string; tone?: "good" | "bad" | null }) {
+  return (
+    <div className="min-w-0 rounded-[14px] border border-line bg-card p-4">
+      <p className="text-[11.5px] text-fg-2">{title}</p>
+      <p className="mt-1 text-[24px] leading-tight font-bold tracking-tight tnum">{v}</p>
+      {sub && <p className={`mt-1 text-[11.5px] ${tone === "good" ? "text-accent" : tone === "bad" ? "text-error-fg" : "text-fg-2"}`}>{sub}</p>}
+    </div>
+  );
+}
+
+/** Pseudoaleatório estável (0–1) a partir de números. */
+export function noise(...n: number[]): number {
+  let h = 2166136261;
+  for (const x of n) h = Math.imul(h ^ Math.round(x * 1000), 16777619);
+  return ((h >>> 0) % 10000) / 10000;
+}
+
+/** Função de distribuição da normal padrão. */
+export function normCdf(z: number): number {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989423 * Math.exp((-z * z) / 2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return z > 0 ? 1 - p : p;
+}

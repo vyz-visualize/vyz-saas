@@ -31,6 +31,9 @@ import ecommerceCompleto from "./catalog/ecommerce-completo";
 import painelLavanda from "./catalog/painel-lavanda";
 import painelPulso from "./catalog/painel-pulso";
 import painelMonocromo from "./catalog/painel-monocromo";
+import criativosAoVivo from "./catalog/criativos-ao-vivo";
+import previsaoKpis from "./catalog/previsao-kpis";
+import mmmMixMidia from "./catalog/mmm-mix-midia";
 
 export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
   // ---- Básico: os 2 templates com dados reais (live.ts) e os 3 com visual próprio
@@ -42,6 +45,9 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
   leadsVisaoGeral,
   metaEssencial,
   // ---- Avançado (todos)
+  criativosAoVivo,
+  previsaoKpis,
+  mmmMixMidia,
   imobiliarioLeads,
   localWhatsapp,
   varejoLocal,
