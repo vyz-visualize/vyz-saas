@@ -96,21 +96,28 @@ describe("webhook RevenueCat", () => {
     expect(syncStoreSubscription).not.toHaveBeenCalled();
   });
 
-  it("compra de vyz_creditos_500 credita 500 uma vez", async () => {
+  it("compra de vyz_creditos_5 credita 5 uma vez", async () => {
     const POST = await load({ REVENUECAT_WEBHOOK_SECRET: "s" });
     const res = await POST(
-      req("s", { id: "e6", type: "NON_RENEWING_PURCHASE", app_user_id: USER, product_id: "vyz_creditos_500", transaction_id: "GPA.1", store: "PLAY_STORE" }),
+      req("s", { id: "e6", type: "NON_RENEWING_PURCHASE", app_user_id: USER, product_id: "vyz_creditos_5", transaction_id: "GPA.1", store: "PLAY_STORE" }),
     );
     expect(res.status).toBe(200);
     const rpc = calls.find((c) => c.op === "rpc:credit_store_purchase");
-    expect(rpc?.args).toMatchObject({ p_user_id: USER, p_credits: 500, p_store: "play_store", p_reason: "purchase" });
+    expect(rpc?.args).toMatchObject({ p_user_id: USER, p_credits: 5, p_store: "play_store", p_reason: "purchase" });
+  });
+
+  it("produtos antigos vyz_creditos_100/500 não creditam", async () => {
+    const POST = await load({ REVENUECAT_WEBHOOK_SECRET: "s" });
+    const res = await POST(req("s", { id: "e8", type: "NON_RENEWING_PURCHASE", app_user_id: USER, product_id: "vyz_creditos_500", transaction_id: "GPA.2" }));
+    expect(res.status).toBe(200);
+    expect(calls.some((c) => c.op === "rpc:credit_store_purchase")).toBe(false);
   });
 
   it("evento repetido responde 200 sem creditar de novo", async () => {
     const POST = await load({ REVENUECAT_WEBHOOK_SECRET: "s" });
     insertError = { code: "23505" };
     const res = await POST(
-      req("s", { id: "e6", type: "NON_RENEWING_PURCHASE", app_user_id: USER, product_id: "vyz_creditos_100", transaction_id: "GPA.1" }),
+      req("s", { id: "e6", type: "NON_RENEWING_PURCHASE", app_user_id: USER, product_id: "vyz_creditos_1", transaction_id: "GPA.1" }),
     );
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ duplicate: true });

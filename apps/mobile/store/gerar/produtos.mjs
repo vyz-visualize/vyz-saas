@@ -42,10 +42,11 @@ const produtos = csv.map((l) => {
 });
 const TOTAL = 6;
 if (produtos.length !== TOTAL) throw new Error(`esperava ${TOTAL} produtos, li ${produtos.length}`);
-// Créditos (consumíveis), preços definidos pelo Gustavo em 06/11/2026.
+// Créditos (consumíveis), definidos pelo Gustavo em 06/11/2026: 1 crédito R$ 10, 5 créditos R$ 40.
+// vyz_creditos_100/500 foram abandonados (não reusar nem enviar para revisão).
 const CREDITOS = [
-  { id: "vyz_creditos_100", nome: "100 créditos", preco: 10.0 },
-  { id: "vyz_creditos_500", nome: "500 créditos", preco: 40.0 },
+  { id: "vyz_creditos_1", nome: "1 crédito", preco: 10.0 },
+  { id: "vyz_creditos_5", nome: "5 créditos", preco: 40.0 },
 ];
 const RANK = { avancado: 0, pro: 1, base: 2 };
 // Nível no grupo: 1 = maior. Avançado (1) > Padrão (2) > Básico (3); mensal e anual no mesmo nível.

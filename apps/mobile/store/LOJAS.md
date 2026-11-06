@@ -173,7 +173,7 @@ Os IDs são fixos (não mudar). A lista completa com preços está em `pacotes-l
   - Ordem de nível, do maior para o menor: Avançado, Padrão, Básico.
   - Dentro de cada plano, mais projetos ficam acima de menos.
 - **Google Play:** uma assinatura por `product_id`, com um base plan mensal ou anual conforme o id, renovação automática.
-- **Créditos** (consumíveis): `vyz_creditos_100` (100 créditos) e `vyz_creditos_500` (500 créditos).
+- **Créditos** (consumíveis): `vyz_creditos_1` (1 crédito, R$ 10) e `vyz_creditos_5` (5 créditos, R$ 40). Os antigos `vyz_creditos_100`/`vyz_creditos_500` foram abandonados: não enviar para revisão.
 - **RevenueCat:**
   - Projeto com os dois apps (iOS e Android).
   - Offering `default` com os pacotes de créditos.

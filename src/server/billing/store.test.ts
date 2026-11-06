@@ -23,7 +23,7 @@ describe("storeStateFrom", () => {
 
   it("ignora créditos e fica com o plano que vence por último (troca de plano)", () => {
     const s = storeStateFrom(
-      { vyz_creditos_100: sub(), "vyz_base_mensal_ate5:mensal": sub({ store: "play_store", expires_date: "2026-11-05T00:00:00Z" }), vyz_avancado_mensal_ate30: sub({ store: "play_store" }) },
+      { vyz_creditos_1: sub(), "vyz_base_mensal_ate5:mensal": sub({ store: "play_store", expires_date: "2026-11-05T00:00:00Z" }), vyz_avancado_mensal_ate30: sub({ store: "play_store" }) },
       now,
     );
     expect(s?.plan).toEqual({ tier: "avancado", period: "mensal", accounts: 30 });
@@ -38,7 +38,7 @@ describe("storeStateFrom", () => {
   });
 
   it("sem plano = null; produtos antigos ou com limite errado não contam", () => {
-    expect(storeStateFrom({ vyz_creditos_500: sub() }, now)).toBeNull();
+    expect(storeStateFrom({ vyz_creditos_5: sub() }, now)).toBeNull();
     expect(storeStateFrom({ vyz_pro_anual_3: sub(), vyz_base_mensal_ate15: sub() }, now)).toBeNull();
   });
 });
