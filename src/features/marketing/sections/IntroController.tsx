@@ -4,9 +4,9 @@ import { useEffect } from "react";
 import { getIntro, INTRO_KEY, setIntroPhase } from "@/features/marketing/intro";
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
-/** Fim da fase 1 (letras sobem e o corte abre), contado da primeira pintura. */
-const PHASE1_MS = 1040;
-const PHASE2_MS = 620;
+/** Fim da fase 1 (letras sobem e o corte abre), contado da primeira pintura. As duas fases somam menos de 1 s. */
+const PHASE1_MS = 480;
+const PHASE2_MS = 340;
 /** Altura do centro do corte no wordmark: (4,2 + 5,3) / 2 / 10. */
 const CUT_CENTER = 0.475;
 
@@ -37,7 +37,8 @@ export function IntroController() {
       animations.forEach((a) => a.cancel());
       html.removeAttribute("data-intro");
       try {
-        sessionStorage.setItem(INTRO_KEY, "1");
+        // primeira visita só uma vez: depois, nunca mais
+        localStorage.setItem(INTRO_KEY, "1");
       } catch {}
       setIntroPhase("done");
       removeSkip();
@@ -89,13 +90,13 @@ export function IntroController() {
             { transform: `translate(${tx}px, ${ty}px) scaleX(${ts})`, opacity: 1, offset: 0.85 },
             { transform: `translate(${tx}px, ${ty}px) scaleX(${ts})`, opacity: 0 },
           ],
-          { duration: PHASE2_MS + 240, easing: EASE, fill: "forwards" },
+          { duration: PHASE2_MS + 60, easing: EASE, fill: "forwards" },
         ),
       );
 
-      animations.push(bg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, delay: 160, easing: EASE, fill: "forwards" }));
+      animations.push(bg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, delay: 60, easing: EASE, fill: "forwards" }));
 
-      timer = window.setTimeout(finish, PHASE2_MS + 260);
+      timer = window.setTimeout(finish, PHASE2_MS + 80);
     }
 
     const fcp = performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? 0;

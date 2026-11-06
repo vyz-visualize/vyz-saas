@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { HtmlFlags } from "@/components/ui/HtmlFlags";
+import { INTRO_KEY, shouldPlayIntro } from "@/lib/intro-rule";
 import "./globals.css";
 
 const inter = Inter({
@@ -27,8 +28,8 @@ export const viewport: Viewport = {
 
 // Roda antes da primeira pintura: tema salvo (o padrão é o escuro), marca que
 // há JS, estado da sidebar do painel (recolhida abaixo de 1280 px, se nada
-// salvo) e decide se a intro da sessão roda (só na LP, em /).
-const bootScript = `(function(){var d=document.documentElement;d.setAttribute("data-js","");try{var t=localStorage.getItem("vyz-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}try{if(location.pathname.indexOf("/painel")===0){var b=localStorage.getItem("vyz:sidebar");d.setAttribute("data-sidebar",b==="open"||b==="closed"?b:innerWidth<1280?"closed":"open")}}catch(e){}try{if(location.pathname==="/"&&!sessionStorage.getItem("vyz-intro")&&!location.hash&&!matchMedia("(prefers-reduced-motion: reduce)").matches)d.setAttribute("data-intro","")}catch(e){}})()`;
+// salvo) e decide se a intro roda (primeira visita à home, sem campanha).
+const bootScript = `(function(){var d=document.documentElement;d.setAttribute("data-js","");try{var t=localStorage.getItem("vyz-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}try{if(location.pathname.indexOf("/painel")===0){var b=localStorage.getItem("vyz:sidebar");d.setAttribute("data-sidebar",b==="open"||b==="closed"?b:innerWidth<1280?"closed":"open")}}catch(e){}try{if((${shouldPlayIntro.toString()})({pathname:location.pathname,search:location.search,hash:location.hash,seen:!!localStorage.getItem("${INTRO_KEY}"),reducedMotion:matchMedia("(prefers-reduced-motion: reduce)").matches}))d.setAttribute("data-intro","")}catch(e){}})()`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

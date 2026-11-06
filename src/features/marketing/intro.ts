@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
-// Estado da intro da primeira carga. O script do <head> decide se ela roda
-// (marca data-intro no <html>); o IntroController conduz as fases.
+// Estado da intro da primeira visita. O script do <head> decide se ela roda
+// (marca data-intro no <html>, com shouldPlayIntro); o IntroController conduz as fases.
 
 export type IntroPhase = "off" | "playing" | "reveal" | "done";
 
@@ -37,7 +37,8 @@ export function subscribeIntro(listener: () => void) {
   };
 }
 
-export const INTRO_KEY = "vyz-intro";
+// a regra mora em lib: o layout raiz também a usa, e ele não pode importar do site
+export { INTRO_KEY, shouldPlayIntro, type IntroVisit } from "@/lib/intro-rule";
 
 export function useIntro() {
   return useSyncExternalStore(subscribeIntro, getIntro, () => SERVER_INTRO);

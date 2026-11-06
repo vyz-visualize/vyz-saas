@@ -452,17 +452,18 @@ html.lenis body {
     transform: translateY(-0.55px);
   }
 }
+/* fase 1 da intro: as letras sobem e o corte abre em menos de meio segundo */
 .intro-mark .wm-letter {
-  animation: wm-rise 560ms var(--ease) both;
-  animation-delay: calc(80ms + var(--i) * 110ms);
+  animation: wm-rise 340ms var(--ease) both;
+  animation-delay: calc(30ms + var(--i) * 60ms);
 }
 .intro-mark .wm-top {
-  animation: wm-open-top 420ms var(--ease) both;
-  animation-delay: 620ms;
+  animation: wm-open-top 240ms var(--ease) both;
+  animation-delay: 260ms;
 }
 .intro-mark .wm-bot {
-  animation: wm-open-bot 420ms var(--ease) both;
-  animation-delay: 620ms;
+  animation: wm-open-bot 240ms var(--ease) both;
+  animation-delay: 260ms;
 }
 
 /* Rodapé: as metades se juntam e o corte reabre. */
@@ -517,7 +518,7 @@ html.lenis body {
   display: block;
   pointer-events: none;
   /* se o JS não chegar, a intro some sozinha */
-  animation: intro-failsafe 300ms 4s both;
+  animation: intro-failsafe 200ms 1.6s both;
 }
 @keyframes intro-failsafe {
   to {
