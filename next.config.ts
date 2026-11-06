@@ -40,6 +40,9 @@ const landingTags = {
   frame: "https://www.googletagmanager.com https://td.doubleclick.net https://www.facebook.com",
 };
 
+// Site: GTM e Pixel da própria VYZ, só quando houver um ID configurado.
+const siteTags = process.env.NEXT_PUBLIC_GTM_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID ? landingTags : {};
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
@@ -56,7 +59,7 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
-      { source: "/:path((?!p/).*)", headers: [...common, { key: "Content-Security-Policy", value: csp() }] },
+      { source: "/:path((?!p/).*)", headers: [...common, { key: "Content-Security-Policy", value: csp(siteTags) }] },
       { source: "/p/:path*", headers: [...common, { key: "Content-Security-Policy", value: csp(landingTags) }] },
     ];
   },

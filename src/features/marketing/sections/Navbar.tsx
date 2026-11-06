@@ -104,7 +104,7 @@ export function Navbar() {
               <Link href="/entrar" className="inline-flex h-9 items-center rounded-control px-3 text-sm font-medium text-fg-2 transition-colors duration-200 hover:text-fg">
                 Entrar
               </Link>
-              <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={btn.small}>
+              <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={btn.small} data-track="whatsapp_click" data-track-origem="menu">
                 <WhatsAppIcon size={16} />
                 Falar com especialista
               </a>
@@ -186,7 +186,7 @@ export function Navbar() {
               Entrar
             </Link>
             <div className="flex items-center gap-3">
-              <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={`${btn.primary} flex-1`}>
+              <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={`${btn.primary} flex-1`} data-track="whatsapp_click" data-track-origem="menu_celular">
                 <WhatsAppIcon /> Falar com especialista
               </a>
               <ThemeToggle className="size-12" />

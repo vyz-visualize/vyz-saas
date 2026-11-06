@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { MotionRoot } from "@/components/motion/MotionRoot";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
+import { SiteTracking } from "@/features/marketing/SiteTracking";
+import { siteTagIds } from "@/features/marketing/track";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
 
 const title = SHOW_LANDING_PAGES ? "VYZ · Vyzualize · Dashboards e landing pages para gestores de tráfego" : "VYZ · Vyzualize · Dashboards para gestores de tráfego";
@@ -20,6 +22,8 @@ export default function MarketingLayout({ children }: LayoutProps<"/">) {
     <MotionRoot>
       <SmoothScroll />
       {children}
+      {/* GTM e Pixel só com o ID na variável de ambiente (lidos no build) */}
+      <SiteTracking ids={siteTagIds({ gtm: process.env.NEXT_PUBLIC_GTM_ID, pixel: process.env.NEXT_PUBLIC_META_PIXEL_ID })} />
     </MotionRoot>
   );
 }

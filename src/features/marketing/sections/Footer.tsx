@@ -35,6 +35,8 @@ export function Footer() {
           </nav>
           <a
             href={waLink(MSG_SPECIALIST)}
+            data-track="whatsapp_click"
+            data-track-origem="rodape"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 font-medium text-fg transition-colors hover:text-accent"

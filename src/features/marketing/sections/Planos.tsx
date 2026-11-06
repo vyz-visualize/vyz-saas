@@ -158,7 +158,7 @@ function ProjectFaq() {
       <div className="mt-5 divide-y divide-line rounded-card border border-line bg-card">
         {FAQ.map((f) => (
           <details key={f.q} className="group px-5 py-4">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[16px] font-semibold text-fg">
+            <summary data-track="faq_abrir" data-track-pergunta={f.q} className="flex cursor-pointer list-none items-center justify-between gap-4 text-[16px] font-semibold text-fg">
               {f.q}
               <span aria-hidden className="text-fg-2 transition-transform group-open:rotate-45">
                 +
@@ -239,6 +239,10 @@ function PlanCard({ tier, product, period, card, featured, delay }: { tier: Plan
 
           <Link
             href={href}
+            data-track="plano_assinar"
+            data-track-plano={tier}
+            data-track-periodo={product === "lp" ? "mensal" : period}
+            data-track-produto={product}
             className={`${featured ? "bg-on-accent text-accent hover:opacity-90" : "bg-accent text-on-accent hover:opacity-90"} mt-7 inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-control font-semibold transition-[opacity,transform] duration-200 active:scale-[0.98]`}
           >
             Assinar o {PLAN_LABEL[tier]}
@@ -323,7 +327,7 @@ export function Planos() {
               ? `Valores em reais · mais de ${MAX_PROJECTS_IN_PLAN} projetos, marca própria ou implementação sob medida: plano Personalizado, sob consulta.`
               : "Valores em reais · mais páginas e domínio próprio você liga dentro do painel"}
           </p>
-          <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={`${btn.ghost} -ml-3 w-fit sm:ml-0`}>
+          <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" data-track="whatsapp_click" data-track-origem="planos" className={`${btn.ghost} -ml-3 w-fit sm:ml-0`}>
             Dúvida? Fale com um especialista →
           </a>
         </div>
