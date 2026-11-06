@@ -37,7 +37,7 @@ describe("layouts", () => {
   it("liberados antes dos travados, e os do nicho na frente", () => {
     const opts = layoutOptions("ecommerce", "base");
     expect(opts[0].fits).toBe(true);
-    expect(opts.filter((o) => o.allowed).map((o) => o.template.id).sort()).toEqual(["google-ecommerce", "meta-ecommerce"]);
+    expect(opts.filter((o) => o.allowed).map((o) => o.template.id).sort()).toEqual(["google-ecommerce", "meta-ecommerce", "painel-lavanda", "painel-monocromo", "painel-pulso"]);
     const firstLocked = opts.findIndex((o) => o.fits && !o.allowed);
     expect(opts.slice(0, firstLocked).every((o) => o.allowed)).toBe(true);
   });

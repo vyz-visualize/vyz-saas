@@ -1,0 +1,105 @@
+// Peças comuns dos visuais próprios (skins): números da amostra já prontos para
+// desenhar e gráficos SVG simples, sem eixo, no estilo das referências.
+
+import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
+import { delta, series } from "@/features/metrics/compute";
+import { formatValue, metric, type MetricId } from "@/features/metrics/definitions";
+import type { DayRow } from "@/features/metrics/source";
+import type { PageId } from "@/features/templates/types";
+import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
+import type { WidgetContext } from "../widgets/Widgets";
+
+export type SkinProps = {
+  ctx: WidgetContext;
+  name: string;
+  client: string;
+  pages: PageId[];
+  active: PageId;
+  /** Troca de aba (sem isso, a navegação do visual fica só de enfeite: miniatura, PDF). */
+  onPage?: (p: PageId) => void;
+  periodLabel: string;
+};
+
+export const HIDDEN = "•••";
+
+/** Valor formatado de uma métrica do período (respeita o investimento oculto). */
+export function value(ctx: WidgetContext, id: MetricId, cur = ctx.cur): string {
+  if (ctx.hideSpend && (id === "spend" || id === "cpa" || id === "cpl" || id === "cpc" || id === "cpm" || id === "roas" || id === "cplq" || id === "cpv")) return HIDDEN;
+  return formatValue(cur[id], metric(id, ctx.profile).format);
+}
+
+export const label = (ctx: WidgetContext, id: MetricId) => metric(id, ctx.profile).label;
+
+export function money(ctx: WidgetContext, cents: number, compact = false): string {
+  if (ctx.hideSpend) return HIDDEN;
+  return compact ? brlCompact(cents) : brl(cents);
+}
+
+/** Variação contra o período anterior e se ela é boa. */
+export function change(ctx: WidgetContext, id: MetricId): { text: string; up: boolean; good: boolean | null } {
+  const d = delta(ctx.cur[id], ctx.prev[id]);
+  const better = metric(id, ctx.profile).better;
+  const good = better === "neutral" || !Number.isFinite(d) || d === 0 ? null : (d > 0) === (better === "up");
+  return { text: Number.isFinite(d) ? pct(Math.abs(d)) : "—", up: d >= 0, good };
+}
+
+/** Dias do mais antigo para o mais recente. */
+export const chrono = (rows: DayRow[]) => [...rows].sort((a, b) => b.ago - a.ago);
+
+export const daily = (ctx: WidgetContext, id: MetricId) => series(chrono(ctx.ds.current), id);
+
+/** Soma em n blocos seguidos (semanas, quinzenas). */
+export function buckets(values: number[], n: number): number[] {
+  const size = Math.max(1, Math.ceil(values.length / n));
+  const out: number[] = [];
+  for (let i = 0; i < values.length; i += size) out.push(values.slice(i, i + size).reduce((a, b) => a + b, 0));
+  return out;
+}
+
+export const platformName = (id: PlatformId) => PLATFORMS[id].name;
+export const platformShort = (id: PlatformId) => PLATFORMS[id].short;
+
+/** "Campanha Black Friday" → "CB". */
+export function initials(text: string): string {
+  const words = text.replace(/[^\p{L}\p{N} ]/gu, " ").split(/\s+/).filter(Boolean);
+  return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase() || "·";
+}
+
+/** Data do ponto "ago" dias atrás, no formato curto (06/11). */
+export function dayLabel(ago: number, today?: string): string {
+  // sem o dia de hoje (miniatura, render no servidor), rótulo relativo: nada de relógio no render
+  if (!today) return ago === 0 ? "hoje" : `−${ago}d`;
+  const base = new Date(`${today}T12:00:00`);
+  base.setDate(base.getDate() - ago);
+  return `${String(base.getDate()).padStart(2, "0")}/${String(base.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export { brl, decimal, int, pct };
+
+// ---- gráficos -------------------------------------------------------------------------
+
+/** Caminho suave (Catmull-Rom → Bézier) pelos pontos. */
+export function smoothPath(pts: [number, number][]): string {
+  if (pts.length < 2) return "";
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] ?? p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+
+/** Pontos de uma série num retângulo w×h (com folga em cima e embaixo). */
+export function fit(values: number[], w: number, h: number, pad = 0.12): [number, number][] {
+  const max = Math.max(...values, 0);
+  const min = Math.min(...values, max);
+  const span = max - min || 1;
+  return values.map((v, i) => [values.length === 1 ? w / 2 : (i / (values.length - 1)) * w, h - (pad * h + ((v - min) / span) * h * (1 - 2 * pad))]);
+}

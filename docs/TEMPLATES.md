@@ -50,6 +50,12 @@ Quem importa continua usando `@/features/templates/dashboards` e `@/features/tem
 - Página nova (widget novo) entra em `pages.ts` e em `PageId` (`types.ts`), e depois no `db:catalog`.
 - A quantidade de templates por plano que aparece no site e no painel é **contada no catálogo** (`features/pricing/entitlements.ts`); não existe número escrito à mão.
 
+### Templates com visual próprio (skin)
+
+Um template pode ter `skin` (`types.ts` → `SkinId`): a **primeira aba** dele é desenhada por um componente próprio em `src/features/dashboards/skins/<Nome>.tsx`, com paleta e composição fixas; as outras abas usam os widgets padrão. O visual lê os mesmos dados de exemplo (`WidgetContext`), respeita o investimento oculto e aparece também na galeria e no PDF.
+
+Hoje: `lavanda` (painel-lavanda), `pulso` (painel-pulso), `monocromo` (painel-monocromo). Visual novo: crie o componente, registre em `skins/index.tsx` e no `SkinId`.
+
 ### Dashboards com dados reais
 
 Os templates de `live.ts` (`dataMode: "live"`) leem o que a sincronização grava das contas conectadas e têm layout próprio em `src/features/analytics/meta` e `src/features/analytics/google`. Um template live novo precisa do layout dele nessa pasta e do mapeamento em `features/analytics/preview.ts` (`TEMPLATE_PLATFORM`).
@@ -107,6 +113,6 @@ Os templates de `live.ts` (`dataMode: "live"`) leem o que a sincronização grav
 
 | Plano | Dashboards | Landing pages |
 |---|---|---|
-| Básico | 8 (2 com dados reais) | 4 |
-| Padrão | 14 | 8 |
-| Avançado | 25 | 13 |
+| Básico | 5 (2 com dados reais, 3 com visual próprio) | 4 |
+| Padrão | 8 | 8 |
+| Avançado | 28 | 13 |

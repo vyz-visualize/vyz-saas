@@ -61,6 +61,9 @@ export type PageDef = {
 
 export type DashboardCategory = "E-commerce" | "Leads" | "Imobiliário" | "Negócio local" | "Agência" | "Mídia" | "Executivo";
 
+/** Visual próprio da primeira aba (features/dashboards/skins). */
+export type SkinId = "lavanda" | "pulso" | "monocromo";
+
 export type DashboardTemplate = {
   id: string;
   name: string;
@@ -72,4 +75,6 @@ export type DashboardTemplate = {
   description: string;
   /** live = lê os dados sincronizados das contas; sample (padrão) = dados de exemplo. */
   dataMode?: "sample" | "live";
+  /** Com visual próprio, a primeira aba é desenhada no estilo dele. */
+  skin?: SkinId;
 };

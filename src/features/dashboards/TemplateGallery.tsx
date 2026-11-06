@@ -14,6 +14,7 @@ import { LIVE_TEMPLATES } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { datasetFor, pageLayout } from "./data";
+import { SkinView } from "./skins";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
 
@@ -30,6 +31,10 @@ const SAMPLE_CLIENT: Record<string, string> = {
 export function TemplatePreview({ t, page, variant = "full" }: { t: DashboardTemplate; page?: PageId; variant?: "full" | "compact" }) {
   const client = SAMPLE_CLIENT[t.category];
   const ds = datasetFor({ templateId: t.id, name: t.name, client }, 30);
+  const p = page ?? t.pages[0];
+  if (t.skin && p === t.pages[0]) {
+    return <SkinView skin={t.skin} ctx={makeContext(ds)} name={t.name} client={client} pages={t.pages} active={p} periodLabel="Últimos 30 dias" />;
+  }
   return (
     <div className="bg-bg p-3">
       <p className="mb-2 text-[14px] font-bold tracking-[-0.02em]">
@@ -56,7 +61,7 @@ function Card({ t, locked, live, note, onOpen }: { t: DashboardTemplate; locked:
         className="group flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-card border border-line bg-card text-left transition-colors duration-200 hover:border-accent focus-visible:border-accent focus-visible:outline-none"
       >
         <div className="relative border-b border-line">
-          <ScaledPreview height={168} width={live ? 1100 : 760}>
+          <ScaledPreview height={168} width={live || t.skin ? 1100 : 760}>
             <div inert>
               {live ? (
                 <div className="bg-bg p-4">
@@ -131,7 +136,8 @@ export function TemplateGallery({ tier, enabledAccounts, canCreate, onUse }: Gal
     return (category === "Todos" || t.category === category) && (!q || `${t.name} ${t.description} ${t.category}`.toLowerCase().includes(q));
   };
   const live = LIVE_TEMPLATES.filter(match);
-  const samples = DASHBOARD_TEMPLATES.filter(match);
+  // templates com visual próprio abrem a lista: são os que a pessoa vê primeiro
+  const samples = DASHBOARD_TEMPLATES.filter(match).sort((a, b) => Number(!!b.skin) - Number(!!a.skin));
 
   const locked = open ? !canUse(tier, open.tier) : false;
   const isLive = open?.dataMode === "live";

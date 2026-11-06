@@ -32,6 +32,7 @@ import { useMetricPrefsState, type SaveMetricPrefs } from "./metric-prefs-contex
 import { MetricNoticeBar } from "./MetricActions";
 import { MetricEditProvider } from "./metric-edit-context";
 import { CustomizeButton, MetricEditBar, MetricTray, useMetricEditorState } from "./MetricEditor";
+import { SkinView } from "./skins";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
 
@@ -153,6 +154,28 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   const metaIn = (when: "current" | "previous") => (ctx.ds.adPlatforms.includes("meta") ? platformPart(ctx.ds, "meta", when) : totals([]));
   const creativesCtx = creatives && ds.adPlatforms.length > 1 && ds.adPlatforms.includes("meta") ? { ...ctx, cur: metaIn("current"), prev: metaIn("previous"), labelSuffix: " · Meta" } : ctx;
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? "";
+  // template com visual próprio: a primeira aba dele sai no estilo da referência
+  const skinned = (p: PageId) => !!t.skin && p === t.pages[0];
+  const skinView = (p: PageId, nav: boolean) =>
+    t.skin ? (
+      <SkinView
+        skin={t.skin}
+        ctx={ctx}
+        name={spec.name}
+        client={spec.client}
+        pages={spec.pages}
+        active={p}
+        periodLabel={periodLabel}
+        onPage={
+          nav
+            ? (np) => {
+                setPage(np);
+                setQueryParam("pagina", np);
+              }
+            : undefined
+        }
+      />
+    ) : null;
   const attribution = ATTRIBUTIONS.find((a) => a.value === spec.settings.attribution)?.label;
 
   return (
@@ -271,6 +294,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                   <CreativesPage data={creatives} />
                 </div>
               </div>
+            ) : skinned(active) && !editing ? (
+              <div key={active}>{skinView(active, true)}</div>
             ) : (
               <PageView key={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
             )}
@@ -323,6 +348,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                   <PageView layout={{ ...layoutOf(p), widgets: [] }} ctx={creativesCtx} extraCards={extrasOf(p)} />
                   <CreativeList rows={creatives.list} currency={creatives.currency} hideSpend={creatives.hideSpend} />
                 </div>
+              ) : skinned(p) ? (
+                skinView(p, false)
               ) : (
                 <PageView layout={layoutOf(p)} ctx={ctx} extraCards={extrasOf(p)} />
               )}

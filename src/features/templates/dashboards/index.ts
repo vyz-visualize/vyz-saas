@@ -28,9 +28,15 @@ import educacaoMatriculas from "./catalog/educacao-matriculas";
 import youtubeVideo from "./catalog/youtube-video";
 import relatorioExecutivo from "./catalog/relatorio-executivo";
 import ecommerceCompleto from "./catalog/ecommerce-completo";
+import painelLavanda from "./catalog/painel-lavanda";
+import painelPulso from "./catalog/painel-pulso";
+import painelMonocromo from "./catalog/painel-monocromo";
 
 export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
-  // ---- Básico: só os 2 templates com dados reais (live.ts)
+  // ---- Básico: os 2 templates com dados reais (live.ts) e os 3 com visual próprio
+  painelLavanda,
+  painelPulso,
+  painelMonocromo,
   // ---- Padrão (+3)
   ecommerceVisaoGeral,
   leadsVisaoGeral,
