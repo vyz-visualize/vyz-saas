@@ -27,7 +27,8 @@ import { periodDays, type PeriodId } from "@/features/workspace/types";
 import { loadLiveDashboard } from "@/server/analytics/queries";
 import { authorize } from "@/server/auth/workspace";
 import { unwrap } from "@/server/supabase/errors";
-import { createServerSupabase } from "@/server/supabase/server";
+import { createServerSupabase, type DB } from "@/server/supabase/server";
+import type { WorkspaceSession } from "@/features/workspace/session";
 import { landingPagesEnabledFor } from "@/lib/flags";
 
 const PAGE_SIZE = 1000;
@@ -60,11 +61,14 @@ function engineTotals(t: ViewTotals): Totals {
   );
 }
 
-export async function loadAgentContext(now = new Date(), focus?: AgentFocus): Promise<AgentContext> {
-  const session = await authorize("viewer", { access: false });
+/** Sessão e cliente já resolvidos (o app manda o Bearer); sem isso, os cookies do site. */
+export type AgentDeps = { session: WorkspaceSession; db: DB };
+
+export async function loadAgentContext(now = new Date(), focus?: AgentFocus, deps?: AgentDeps): Promise<AgentContext> {
+  const session = deps?.session ?? (await authorize("viewer", { access: false }));
   const ws = session.workspace.id;
   const tier = session.access.tier ?? "base";
-  const supabase = await createServerSupabase();
+  const supabase = deps?.db ?? (await createServerSupabase());
 
   const dashboards =
     unwrap(
@@ -149,7 +153,7 @@ export async function loadAgentContext(now = new Date(), focus?: AgentFocus): Pr
     const { period, customDays } = periodFromQuery(Object.fromEntries(params), { period: open.period as PeriodId, customDays: open.custom_days ?? 14 });
     const days = periodDays({ period, customDays });
     if (live.includes(open)) {
-      const { view } = await loadLiveDashboard(open.id, { period, customDays, filters });
+      const { view } = await loadLiveDashboard(open.id, { period, customDays, filters, db: supabase });
       const info = view.filterInfo;
       if (info) {
         const when = info.filters.days ? `nos dias ${rangeLabel(info.filters.days)}` : `no período aberto (${days} dias)`;

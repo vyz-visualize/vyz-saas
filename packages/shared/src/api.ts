@@ -59,6 +59,10 @@ export type ApiCampaign = {
   conversions: number;
   roas: number | null;
   cpa: number | null;
+  ctr?: number | null;
+  cpc?: number | null;
+  belowBreakEven?: boolean;
+  resultLabel?: string;
 };
 
 export type ApiFunnelStep = { id: string; label: string; count: number; rate: number | null; cost: number | null };
@@ -73,9 +77,17 @@ export type ApiCreative = {
   conversions: number;
   roas: number | null;
   linkCtr: number | null;
+  hookRate?: number | null;
+  frequency?: number | null;
+  fatigue?: { frequencyChange: number; ctrChange: number } | null;
 };
 
-export type ApiSlice = { key: string; label: string; spend: number | null; value: number; conversions: number; roas: number | null };
+export type ApiSlice = { key: string; label: string; spend: number | null; spendShare?: number; value: number; valueShare?: number; conversions: number; roas: number | null };
+
+export type ApiAgeGender = { age: string; gender: string; spend: number | null; value: number; conversions: number; roas: number | null; valueShare: number };
+export type ApiHeatCell = { weekday: number; hour: number; conversions: number; value: number; spend: number | null };
+export type ApiSearchTerm = { term: string; matchType: string; campaignName: string; spend: number | null; clicks: number; conversions: number; value: number; roas: number | null };
+export type ApiProduct = { id: string; title: string; imageUrl: string | null; spend: number | null; value: number; valueShare: number; conversions: number; roas: number | null };
 
 export type ApiDashboardView = {
   kpis: ApiKpi[];
@@ -87,9 +99,47 @@ export type ApiDashboardView = {
   funnel?: ApiFunnelStep[];
   creatives?: ApiCreative[];
   placements?: ApiSlice[];
+  ageGender?: ApiAgeGender[];
+  regions?: ApiSlice[];
+  devices?: ApiSlice[];
   /** Google */
   channels?: { channel: string; label: string; spend: number | null; value: number; conversions: number; roas: number | null }[];
-  devices?: ApiSlice[];
+  heatmap?: ApiHeatCell[];
+  searchTerms?: ApiSearchTerm[];
+  wastedTerms?: ApiSearchTerm[];
+  wastedSpend?: number | null;
+  wastedShare?: number;
+  products?: ApiProduct[];
+  impressionShare?: { share: number | null; lostBudget: number | null; lostRank: number | null };
+  filterInfo?: { labels?: Record<string, Record<string, string>> };
+};
+
+/** Análise automática (o que mudou, o que vai bem, o que pede atenção). */
+export type ApiInsight = {
+  id: string;
+  dashboardId: string;
+  dashboardName: string;
+  tone: "good" | "bad" | "info";
+  title: string;
+  body: string;
+  metric?: string;
+  campaignId?: string;
+};
+
+export type InsightsResponse = {
+  period: "7d" | "30d" | "mes";
+  insights: ApiInsight[];
+  pulse: { id: string; name: string; platform: "meta" | "google"; currency: string; spend: number | null; value: number; conversions: number; roas: number | null }[];
+};
+
+/** Resposta do VYZ no app. */
+export type AgentReply = {
+  text: string;
+  card: { label: string; value: string; delta?: { text: string; good: boolean | null }; note?: string; hint?: string } | null;
+  chart: { title: string; items: { label: string; value: number; display: string }[] } | null;
+  dashboardId: string | null;
+  suggestions: string[] | null;
+  understood: boolean;
 };
 
 export type DashboardDataResponse = {
@@ -104,4 +154,5 @@ export type DashboardDataResponse = {
     maturingFrom?: string | null;
     view: ApiDashboardView;
   };
+  insights?: ApiInsight[];
 };

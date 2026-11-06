@@ -16,7 +16,7 @@ import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
 import type { Tables } from "@/lib/supabase/database.types";
 import { publicAssetUrl } from "@/lib/supabase/storage";
 import { appError } from "@/server/supabase/errors";
-import { createServerSupabase } from "@/server/supabase/server";
+import { createServerSupabase, type DB } from "@/server/supabase/server";
 import { getSessionUser, type SessionUser } from "./session";
 
 const isTier = (v: unknown): v is Tier => typeof v === "string" && (TIERS as string[]).includes(v);
@@ -38,7 +38,11 @@ export type Viewer = {
 export const getViewer = cache(async (): Promise<Viewer | null> => {
   const user = await getSessionUser();
   if (!user) return null;
-  const supabase = await createServerSupabase();
+  return loadViewer(await createServerSupabase(), user);
+});
+
+/** Perfil e workspaces de um usuário, com o cliente (RLS) de quem pergunta: cookies no site, Bearer no app. */
+export async function loadViewer(supabase: DB, user: SessionUser): Promise<Viewer> {
   const [profile, members] = await Promise.all([
     supabase.from("profiles").select("id, email, full_name, avatar_url, default_workspace_id").eq("id", user.id).maybeSingle(),
     supabase
@@ -54,7 +58,7 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     profile: profile.data ?? null,
     memberships: (members.data ?? []).map((m) => ({ role: m.role, workspace: m.workspace as WorkspaceRow })),
   };
-});
+}
 
 function toEntitlements(row: Tables<"workspace_access"> | null): Entitlements | null {
   if (!row?.plan_id || row.max_dashboards == null || row.max_landing_pages == null) return null;
@@ -79,15 +83,18 @@ function toEntitlements(row: Tables<"workspace_access"> | null): Entitlements | 
 /** Workspace aberto, com plano e uso. null = sem sessão ou sem workspace. */
 export const getWorkspaceSession = cache(async (): Promise<WorkspaceSession | null> => {
   const viewer = await getViewer();
-  if (!viewer || viewer.memberships.length === 0) return null;
+  if (!viewer) return null;
+  return composeWorkspaceSession(await createServerSupabase(), viewer, (await cookies()).get(ACTIVE_WORKSPACE_COOKIE)?.value);
+});
 
-  const preferred = (await cookies()).get(ACTIVE_WORKSPACE_COOKIE)?.value;
+/** Monta a sessão do workspace preferido (ou do padrão do perfil). null = sem workspace. */
+export async function composeWorkspaceSession(supabase: DB, viewer: Viewer, preferred?: string | null): Promise<WorkspaceSession | null> {
+  if (viewer.memberships.length === 0) return null;
   const current =
     viewer.memberships.find((m) => m.workspace.id === preferred) ??
     viewer.memberships.find((m) => m.workspace.id === viewer.profile?.default_workspace_id) ??
     viewer.memberships[0];
 
-  const supabase = await createServerSupabase();
   const [access, usage] = await Promise.all([
     supabase.from("workspace_access").select("*").eq("workspace_id", current.workspace.id).maybeSingle(),
     supabase.from("workspace_usage").select("*").eq("workspace_id", current.workspace.id).maybeSingle(),
@@ -141,7 +148,7 @@ export const getWorkspaceSession = cache(async (): Promise<WorkspaceSession | nu
     },
     memberships: viewer.memberships.map((m) => ({ id: m.workspace.id, name: m.workspace.name, role: m.role })),
   };
-});
+}
 
 export type WorkspaceRequirement = {
   /** Papel mínimo (padrão: viewer). */

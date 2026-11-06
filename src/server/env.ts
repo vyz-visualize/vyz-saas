@@ -46,6 +46,14 @@ const Schema = z
     GOOGLE_OAUTH_CLIENT_ID: optional,
     GOOGLE_OAUTH_CLIENT_SECRET: optional,
     GOOGLE_ADS_DEVELOPER_TOKEN: optional,
+    /** Push no iPhone (APNs): chave .p8 do Apple Developer (Keys), o Key ID e o Team ID. */
+    APNS_KEY_ID: optional,
+    APNS_TEAM_ID: optional,
+    /** Conteúdo do .p8 (com as quebras de linha ou com "\\n"). */
+    APNS_PRIVATE_KEY: optional,
+    APNS_BUNDLE_ID: z.string().trim().default("app.vyz.painel"),
+    /** Push no Android (FCM v1): JSON da conta de serviço do Firebase (cru ou em base64). */
+    FCM_SERVICE_ACCOUNT_JSON: optional,
   })
   .superRefine((env, ctx) => {
     const mocks = env.BILLING_PROVIDER === "mock" || env.INTEGRATIONS_MODE === "mock";
