@@ -1,0 +1,7 @@
+product_id,nome,plano,periodo,ate_projetos,preco_brl
+vyz_base_mensal_ate5,"Básico · até 5 projetos",base,mensal,5,59.90
+vyz_base_anual_ate5,"Básico · até 5 projetos",base,anual,5,579.00
+vyz_pro_mensal_ate15,"Padrão · até 15 projetos",pro,mensal,15,219.90
+vyz_pro_anual_ate15,"Padrão · até 15 projetos",pro,anual,15,2199.00
+vyz_avancado_mensal_ate30,"Avançado · até 30 projetos",avancado,mensal,30,499.90
+vyz_avancado_anual_ate30,"Avançado · até 30 projetos",avancado,anual,30,4899.00

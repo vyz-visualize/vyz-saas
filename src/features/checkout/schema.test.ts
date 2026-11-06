@@ -89,13 +89,10 @@ describe("pagamento", () => {
 });
 
 describe("troca de plano", () => {
-  it("plano self-service, período e 3 a 200 projetos", () => {
-    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 3 }).success).toBe(true);
-    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 2 }).success).toBe(false);
-    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 200 }).success).toBe(true);
-    expect(planChangeSchema.safeParse({ tier: "personalizado", period: "anual", accounts: 3 }).success).toBe(false);
-    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 0 }).success).toBe(false);
-    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 201 }).success).toBe(false);
-    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 2.5 }).success).toBe(false);
+  it("plano self-service e período; os projetos vêm do plano", () => {
+    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual" }).success).toBe(true);
+    expect(planChangeSchema.safeParse({ tier: "avancado", period: "mensal" }).success).toBe(true);
+    expect(planChangeSchema.safeParse({ tier: "personalizado", period: "anual" }).success).toBe(false);
+    expect(planChangeSchema.safeParse({ tier: "pro", period: "anual", accounts: 7 }).success).toBe(false);
   });
 });

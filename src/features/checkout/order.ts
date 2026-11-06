@@ -18,7 +18,7 @@ export type OrderItem = {
 };
 
 /** Por que o pedido não pode ser pago no checkout. */
-export type OrderBlock = "over_limit" | "recurring_without_plan" | "empty";
+export type OrderBlock = "recurring_without_plan" | "empty";
 
 export type Order = {
   product: Product;
@@ -40,7 +40,6 @@ export type Order = {
 };
 
 export const BLOCK_MESSAGE: Record<OrderBlock, string> = {
-  over_limit: "Acima de 200 projetos, o plano é montado com um especialista.",
   recurring_without_plan: "Itens mensais (hospedagem das LPs ou dashboard sob medida mensal) precisam de um plano.",
   empty: "Escolha um plano ou um extra para assinar.",
 };
@@ -54,17 +53,15 @@ export function normalizeState(patch: Partial<PlanState> | null | undefined): Pl
   // landing pages: só o pacote do plano, mensal, sem contas nem extras
   if (s.produto === "lp") {
     if (s.plano === "sem") s.plano = DEFAULT_STATE.plano;
-    return { ...DEFAULT_STATE, produto: "lp", plano: s.plano, periodo: "mensal", plataformas: 0, nicho: s.nicho };
+    return { ...DEFAULT_STATE, produto: "lp", plano: s.plano, periodo: "mensal", nicho: s.nicho };
   }
-  if (s.plano === "sem") Object.assign(s, { plataformas: 0, dash: 0 });
-  // só o Básico compra plataforma à parte: Padrão e Avançado já têm todas
-  if (s.plano !== "base") s.plataformas = 0;
+  if (s.plano === "sem") s.dash = 0;
   if (s.lp === 0) s.lpcare = false;
   return s;
 }
 
 export function planItemLabel(plan: PlanId, projects: number): string {
-  return `Plano ${PLAN_LABEL[plan]} · ${projects} ${projects === 1 ? "projeto" : "projetos"}`;
+  return `Plano ${PLAN_LABEL[plan]} · até ${projects} ${projects === 1 ? "projeto" : "projetos"}`;
 }
 
 export function buildOrder(state: PlanState): Order {
@@ -89,7 +86,6 @@ export function buildOrder(state: PlanState): Order {
     items.push({ kind: item.kind, billingItemId: id, quantity, amountCents: quantity * item.unitCents, label: item.name });
   };
   // mensais primeiro (entram na assinatura), depois os únicos (viram pedidos de serviço)
-  if (planId) extra("platform_extra", state.plataformas);
   if (state.lpcare) extra("lp_care", state.lp);
   if (state.sobm === "recorrente") extra("dash_custom_monthly", state.sob);
   extra("lp_team", state.lp);
@@ -98,13 +94,11 @@ export function buildOrder(state: PlanState): Order {
 
   const recurringCents = state.periodo === "anual" ? q.yearly : q.monthly;
   const recurringExtra = items.some((i) => i.kind === "recurring" && i.billingItemId);
-  const blocked: OrderBlock | undefined = q.overLimit
-    ? "over_limit"
-    : !planId && recurringExtra
+  const blocked: OrderBlock | undefined = !planId && recurringExtra
       ? "recurring_without_plan"
-      : items.length === 0
-        ? "empty"
-        : undefined;
+    : items.length === 0
+      ? "empty"
+      : undefined;
 
   return {
     product: "dash",

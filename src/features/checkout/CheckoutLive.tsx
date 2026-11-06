@@ -1,6 +1,6 @@
 "use client";
 
-// Checkout com o pedido vivo: período, projetos e plataforma extra mudam na
+// Checkout com o pedido vivo: plano e período mudam na
 // hora no navegador (o cupom recalcula com as mesmas funções do servidor) e a
 // URL acompanha sem recarregar. Ao enviar, o servidor recalcula tudo de novo.
 

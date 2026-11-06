@@ -18,10 +18,10 @@ function rows(state: Parameters<typeof normalizeState>[0]) {
 
 describe("stripeLineItems", () => {
   for (const plano of ["base", "pro", "avancado"] as const)
-    for (const periodo of ["mensal", "anual"] as const)
-      for (const projetos of [3, 4, 17]) {
-        it(`${plano} ${periodo} ${projetos} projetos: linhas somam o pedido`, () => {
-          const { order, row } = rows({ plano, periodo, projetos });
+    for (const periodo of ["mensal", "anual"] as const) {
+      {
+        it(`${plano} ${periodo}: linhas somam o pedido`, () => {
+          const { order, row } = rows({ plano, periodo });
           const lines = stripeLineItems(row);
           const total = lines.reduce((n, l) => n + l.price_data.unit_amount, 0);
           expect(total).toBe(order.amountDueNowCents);
@@ -30,16 +30,17 @@ describe("stripeLineItems", () => {
           expect(plan.price_data.recurring?.interval).toBe(periodo === "anual" ? "year" : "month");
         });
       }
+    }
 
-  it("Básico com plataforma extra: dois itens recorrentes", () => {
-    const { order, row } = rows({ plano: "base", periodo: "mensal", projetos: 3, plataformas: 1 });
+  it("Básico com sob medida mensal e dashboard adicional: linhas somam o pedido", () => {
+    const { order, row } = rows({ plano: "base", periodo: "mensal", sob: 1, sobm: "recorrente", dash: 1 });
     const lines = stripeLineItems(row);
     expect(lines.length).toBe(order.items.filter((i) => i.amountCents > 0).length);
     expect(lines.reduce((n, l) => n + l.price_data.unit_amount, 0)).toBe(order.amountDueNowCents);
   });
 
   it("recusa itens que não batem com o total", () => {
-    const { row } = rows({ plano: "pro", periodo: "mensal", projetos: 3 });
+    const { row } = rows({ plano: "pro", periodo: "mensal" });
     expect(() => stripeLineItems({ ...row, amount_due_now_cents: row.amount_due_now_cents + 1 })).toThrow(OrderMismatch);
   });
 });

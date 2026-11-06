@@ -1,5 +1,5 @@
 // POST /api/webhooks/revenuecat: compras na loja (App Store / Google Play).
-// Créditos: cada transação credita uma vez. Planos (vyz_<plano>_<período>_<contas>):
+// Créditos: cada transação credita uma vez. Planos (vyz_<plano>_<período>_ate<projetos>):
 // qualquer evento relê o estado no RevenueCat e grava a assinatura do workspace. O RevenueCat manda "Authorization: <REVENUECAT_WEBHOOK_SECRET>"
 // (configurado no painel dele). O app_user_id é o id do usuário no Supabase
 // (o app chama Purchases.logIn(userId) ao entrar). Idempotente: cada evento é

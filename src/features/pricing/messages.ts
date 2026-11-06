@@ -1,12 +1,10 @@
-import { brl, joinPt } from "@/lib/format";
-import { DASH_CUSTOM, LP_CARE_MONTHLY, NICHO_LABEL, PERIOD_LABEL, PLAN_LABEL, type PlanState, type Quote } from "./pricing";
+import { brl } from "@/lib/format";
+import { DASH_CUSTOM, LP_CARE_MONTHLY, NICHO_LABEL, PERIOD_LABEL, PLAN_LABEL, PLAN_PROJECTS, type PlanState, type Quote } from "./pricing";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function describeProjects(s: PlanState): string {
-  const parts = [plural(s.projetos, "projeto", "projetos")];
-  if (s.plataformas && s.plano === "base") parts.push(plural(s.plataformas, "plataforma extra", "plataformas extras"));
-  return joinPt(parts);
+  return s.plano === "sem" ? "" : `até ${plural(PLAN_PROJECTS[s.plano], "projeto", "projetos")}`;
 }
 
 export function describeExtras(s: PlanState): string[] {
@@ -27,13 +25,6 @@ export function describeExtras(s: PlanState): string[] {
 }
 
 export function buildPlanMessage(s: PlanState, q: Quote, url: string): string {
-  if (q.overLimit) {
-    return [
-      `Olá, VYZ! Tenho ${s.projetos} projetos (clientes) e quero montar um plano com um especialista.`,
-      `Simulação: ${url}`,
-    ].join("\n");
-  }
-
   const extras = describeExtras(s);
 
   if (s.plano === "sem") {
@@ -71,17 +62,13 @@ export function buildSummary(s: PlanState, q: Quote, url: string, date: string):
       ? "VYZ · Sem plano (só extras)"
       : `VYZ · Plano ${PLAN_LABEL[s.plano]}, ${PERIOD_LABEL[s.periodo]}`;
   const lines = [head];
-  if (q.overLimit) {
-    lines.push(`${s.projetos} projetos · Sob consulta`);
-  } else {
-    for (const l of q.lines) {
-      const value = l.kind === "included" ? "R$ 0,00 (incluso)" : brl(l.amount);
-      lines.push(`${l.label}${l.detail && l.kind !== "included" ? ` (${l.detail})` : ""}: ${value}`);
-    }
-    if (q.monthly > 0) lines.push(`Todo mês: ${brl(q.monthly)}`);
-    if (q.oneTime > 0) lines.push(`Uma vez: ${brl(q.oneTime)}`);
-    lines.push(`Em 12 meses: ${brl(q.twelveMonths)}`);
+  for (const l of q.lines) {
+    const value = l.kind === "included" ? "R$ 0,00 (incluso)" : brl(l.amount);
+    lines.push(`${l.label}${l.detail && l.kind !== "included" ? ` (${l.detail})` : ""}: ${value}`);
   }
+  if (q.monthly > 0) lines.push(`Todo mês: ${brl(q.monthly)}`);
+  if (q.oneTime > 0) lines.push(`Uma vez: ${brl(q.oneTime)}`);
+  lines.push(`Em 12 meses: ${brl(q.twelveMonths)}`);
   lines.push(`Simulação · não é cobrança · ${date}`, url);
   return lines.join("\n");
 }

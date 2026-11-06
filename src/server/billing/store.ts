@@ -4,7 +4,7 @@ import "server-only";
 // do RevenueCat só avisa que algo mudou; o estado vem sempre da API dele
 // (GET /v1/subscribers/:id), então eventos fora de ordem ou repetidos dão no
 // mesmo resultado. A regra do plano é a do site: o produto diz plano,
-// período e contas (packages/shared/src/store-plans.ts).
+// período e limite de projetos (packages/shared/src/store-plans.ts).
 
 import { parseStorePlan, type StorePlan } from "@vyz/shared";
 import { z } from "zod";

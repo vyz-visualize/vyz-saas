@@ -62,7 +62,6 @@ async function remove() {
 async function create() {
   const plan = values.plan as PlanId;
   const period = values.period as Period;
-  const accounts = Math.max(1, Math.min(30, Number(values.accounts)));
   if (!["base", "pro", "avancado"].includes(plan)) throw new Error("--plan inválido");
   if (!["mensal", "anual"].includes(period)) throw new Error("--period inválido");
 
@@ -79,7 +78,7 @@ async function create() {
   }
 
   const product = values.product === "lp" ? "lp" : "dash";
-  const state = normalizeState({ produto: product, plano: plan, periodo: period, projetos: accounts, nicho: "ecommerce" });
+  const state = normalizeState({ produto: product, plano: plan, periodo: period, nicho: "ecommerce" });
   const order = buildOrder(state);
 
   const { data: checkout, error: cErr } = await admin

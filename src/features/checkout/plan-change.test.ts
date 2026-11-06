@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { planMonthly } from "@/features/pricing/pricing";
-import { addMonths, planChangeBlocker, quotePlanChange, samePlan } from "./plan-change";
+import { addMonths, planChangeBlocker, planSelection, quotePlanChange, samePlan } from "./plan-change";
 
 const start = new Date("2026-10-01T00:00:00Z");
 const monthEnd = new Date("2026-11-01T00:00:00Z");
@@ -14,23 +14,29 @@ describe("troca de plano no mesmo período", () => {
       extrasMonthlyCents: 0,
       now: half,
     });
-    const diff = planMonthly("pro", "mensal", 2) - planMonthly("base", "mensal", 2);
+    const diff = planMonthly("pro", "mensal") - planMonthly("base", "mensal");
     expect(q.prorationCents).toBe(Math.round(diff / 2));
     expect(q.creditCents).toBe(0);
     expect(q.resetsPeriod).toBe(false);
     expect(q.periodEnd).toEqual(monthEnd);
-    expect(q.recurringCents).toBe(planMonthly("pro", "mensal", 2));
+    expect(q.recurringCents).toBe(planMonthly("pro", "mensal"));
   });
 
-  it("menos projetos vira crédito, sem cobrança", () => {
+  it("plano menor vira crédito, sem cobrança", () => {
     const q = quotePlanChange({
-      current: { tier: "pro", period: "mensal", accounts: 4, periodStart: start, periodEnd: monthEnd },
-      next: { tier: "pro", period: "mensal", accounts: 3 },
+      current: { ...planSelection("pro", "mensal"), periodStart: start, periodEnd: monthEnd },
+      next: planSelection("base", "mensal"),
       extrasMonthlyCents: 0,
       now: half,
     });
     expect(q.prorationCents).toBe(0);
-    expect(q.creditCents).toBe(Math.round(1890 / 2));
+    expect(q.creditCents).toBe(Math.round((21990 - 5990) / 2));
+  });
+
+  it("a seleção do plano traz os projetos fixos", () => {
+    expect(planSelection("base", "anual").accounts).toBe(5);
+    expect(planSelection("pro", "anual").accounts).toBe(15);
+    expect(planSelection("avancado", "mensal").accounts).toBe(30);
   });
 
   it("os extras mensais entram na recorrência, não na diferença", () => {
@@ -64,10 +70,10 @@ describe("troca de período", () => {
       extrasMonthlyCents: 0,
       now: half,
     });
-    const yearly = planMonthly("pro", "anual", 2) * 12;
+    const yearly = planMonthly("pro", "anual") * 12;
     expect(q.resetsPeriod).toBe(true);
     expect(q.recurringCents).toBe(yearly);
-    expect(q.prorationCents).toBe(yearly - Math.round(planMonthly("pro", "mensal", 2) / 2));
+    expect(q.prorationCents).toBe(yearly - Math.round(planMonthly("pro", "mensal") / 2));
     expect(q.periodStart).toEqual(half);
     expect(q.periodEnd).toEqual(addMonths(half, 12));
   });
@@ -81,7 +87,7 @@ describe("troca de período", () => {
       now: start,
     });
     expect(q.prorationCents).toBe(0);
-    expect(q.creditCents).toBe(planMonthly("pro", "anual", 2) * 12 - planMonthly("pro", "mensal", 2));
+    expect(q.creditCents).toBe(planMonthly("pro", "anual") * 12 - planMonthly("pro", "mensal"));
     expect(q.periodEnd).toEqual(monthEnd);
   });
 });
@@ -109,7 +115,7 @@ describe("uso atual no plano novo", () => {
   it("menos projetos do que os ativos", () => {
     expect(planChangeBlocker({ tier: "pro", period: "anual", accounts: 1 }, usage)).toEqual({
       code: "limit:projects_in_use",
-      message: "Você tem 2 projetos ativos. Arquive projetos em Projetos antes de contratar 1.",
+      message: "Você tem 2 projetos ativos. O Padrão vai até 1. Arquive projetos em Projetos antes de trocar.",
     });
   });
 

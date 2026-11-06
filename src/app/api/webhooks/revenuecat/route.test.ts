@@ -78,6 +78,24 @@ describe("webhook RevenueCat", () => {
     expect((await POST(req("Bearer x", { id: "e5", type: "TEST" }))).status).toBe(503);
   });
 
+  it("evento de plano (vyz_<plano>_<período>_ate<projetos>) relê a assinatura no RevenueCat", async () => {
+    const POST = await load({ REVENUECAT_WEBHOOK_SECRET: "s" });
+    const { syncStoreSubscription } = await import("@/server/billing/store");
+    const res = await POST(req("s", { id: "p1", type: "INITIAL_PURCHASE", app_user_id: USER, product_id: "vyz_avancado_anual_ate30", store: "APP_STORE" }));
+    expect(res.status).toBe(200);
+    expect(syncStoreSubscription).toHaveBeenCalledWith(USER);
+    expect(calls.some((c) => c.op.startsWith("rpc:credit"))).toBe(false);
+  });
+
+  it("produto de plano antigo (por projeto) não vira plano nem crédito", async () => {
+    const POST = await load({ REVENUECAT_WEBHOOK_SECRET: "s" });
+    const { syncStoreSubscription } = await import("@/server/billing/store");
+    vi.mocked(syncStoreSubscription).mockClear();
+    const res = await POST(req("s", { id: "p2", type: "INITIAL_PURCHASE", app_user_id: USER, product_id: "vyz_pro_mensal_7", store: "APP_STORE" }));
+    expect(res.status).toBe(200);
+    expect(syncStoreSubscription).not.toHaveBeenCalled();
+  });
+
   it("compra de vyz_creditos_500 credita 500 uma vez", async () => {
     const POST = await load({ REVENUECAT_WEBHOOK_SECRET: "s" });
     const res = await POST(

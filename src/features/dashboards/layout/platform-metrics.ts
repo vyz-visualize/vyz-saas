@@ -91,6 +91,20 @@ export const PLATFORM_API: Record<PlatformId, PlatformApi> = {
     api: "API do CRM (RD Station, HubSpot, Pipedrive)",
     metrics: [m("leads", "contatos"), m("qualified", "negócios qualificados"), m("conversions", "negócios ganhos"), m("revenue", "valor ganho")],
   },
+  rdstation: {
+    status: "soon",
+    api: "RD Station CRM API (token)",
+    metrics: [m("leads", "contacts"), m("qualified", "deals · qualificados"), m("conversions", "deals · win"), m("revenue", "deals · amount_total")],
+  },
+  hubspot: {
+    status: "soon",
+    api: "HubSpot CRM API (token de app privado)",
+    metrics: [m("leads", "contacts"), m("qualified", "deals · dealstage"), m("conversions", "deals · closedwon"), m("revenue", "deals · amount")],
+  },
+  x: { status: "soon", api: "X Ads API (stats)", metrics: [m("spend", "billed_charge_local_micro"), m("impressions", "impressions"), m("clicks", "clicks"), m("ctr", "clicks ÷ impressions")] },
+  spotify: { status: "soon", api: "Spotify Ads API", metrics: [m("spend", "spend"), m("impressions", "impressions"), m("clicks", "clicks")] },
+  globo: { status: "soon", api: "Globo Ads", metrics: [] },
+  chatgpt: { status: "soon", api: "ChatGPT Ads", metrics: [] },
 };
 
 export const API_STATUS_LABEL: Record<ApiStatus, string> = { sync: "Sincroniza hoje", soon: "Na API · conexão em breve" };

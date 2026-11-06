@@ -14,6 +14,7 @@ import { PASSWORD_MESSAGES } from "@/features/auth/password-rules";
 import { isExpired } from "@/features/checkout/card";
 import { CHECKOUT_MESSAGES } from "@/features/checkout/fields";
 import { BLOCK_MESSAGE, buildOrder, normalizeState } from "@/features/checkout/order";
+import { planSelection } from "@/features/checkout/plan-change";
 import { checkoutFormSchema, paymentInputSchema, planChangeSchema, type PaymentInput, type PlanChangeInput } from "@/features/checkout/schema";
 import { fromQuery } from "@/features/pricing/pricing";
 import { ACTIVE_WORKSPACE_COOKIE, WORKSPACE_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
@@ -228,7 +229,7 @@ export async function changePlan(input: PlanChangeInput): Promise<ActionResult<{
     const parsed = planChangeSchema.safeParse(input);
     if (!parsed.success) throw appError("validation", "Confira o plano, o período e as contas.");
     const session = await authorize("owner");
-    const result = await changeSubscriptionPlan({ workspaceId: session.workspace.id, actorId: session.user.id, next: parsed.data });
+    const result = await changeSubscriptionPlan({ workspaceId: session.workspace.id, actorId: session.user.id, next: planSelection(parsed.data.tier, parsed.data.period) });
     const chargedCents = result.quote?.prorationCents ?? 0;
     const creditCents = result.quote?.creditCents ?? 0;
     if (result.changed) {

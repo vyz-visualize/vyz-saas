@@ -1,21 +1,22 @@
 // Resumo do pedido no checkout, no visual de cupom (picote e linhas
 // pontilhadas). Em cima, o preço em destaque (no anual, a parcela em 12x);
-// depois o período, os projetos (com a explicação para quem nunca ouviu o
-// termo), o que entra no pedido e o que sai hoje. Sem motion: só marcação.
+// depois o plano e o período (os projetos são fixos por plano, com a
+// explicação para quem nunca ouviu o termo), o que o plano inclui, o que entra
+// no pedido e o que sai hoje. Sem motion: só marcação.
 
 import { Check, CircleHelp } from "lucide-react";
 import Link from "next/link";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { PendingChip } from "@/components/ui/kit";
 import { brl } from "@/lib/format";
+import { platformsForTier } from "@/features/accounts/platforms";
+import { ENTITLEMENTS } from "@/features/pricing/entitlements";
+import { waLink } from "@/lib/whatsapp";
 import {
-  EXTRA_PLATFORM_PRICE,
-  EXTRA_PROJECT,
-  INCLUDED_PROJECTS,
   LP_PLAN_PAGES,
-  MAX_EXTRA,
   MAX_PROJECTS_IN_PLAN,
   PLAN_LABEL,
+  PLAN_PROJECTS,
   annualSavingPct,
   type Period,
   type PlanId,
@@ -32,27 +33,28 @@ type OrderSummaryProps = {
   editHref?: string;
   simulated?: boolean;
   className?: string;
-  /** Muda o pedido na hora (período, projetos, plataforma extra); sem isso, o cupom só mostra. */
+  /** Muda o pedido na hora (plano e período); sem isso, o cupom só mostra. */
   onAdjust?: (patch: (current: PlanState) => Partial<PlanState>) => void;
 };
 
-const stepBtn =
-  "inline-flex size-9 items-center justify-center rounded-full border border-line text-[17px] font-semibold text-fg transition-colors hover:border-accent hover:text-accent";
-const off = "pointer-events-none opacity-30";
+const PLAN_IDS: PlanId[] = ["base", "pro", "avancado"];
 
-/** onChange recebe o passo (−1 ou +1): cliques seguidos somam. */
-function Stepper({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (step: number) => void }) {
+/** Os três planos, com os projetos de cada um. Subir de plano é o único upsell. */
+function PlanSwitch({ plan, onChange }: { plan: PlanId; onChange: (p: PlanId) => void }) {
   return (
-    <div className="flex shrink-0 items-center gap-2.5">
-      <button type="button" onClick={() => onChange(-1)} aria-label={`Menos: ${label}`} disabled={value <= min} className={`${stepBtn} ${value <= min ? off : ""}`}>
-        −
-      </button>
-      <span className="w-8 text-center text-[20px] font-bold tnum" aria-live="polite">
-        {value}
-      </span>
-      <button type="button" onClick={() => onChange(1)} aria-label={`Mais: ${label}`} disabled={value >= max} className={`${stepBtn} ${value >= max ? off : ""}`}>
-        +
-      </button>
+    <div className="grid grid-cols-3 gap-1 rounded-[14px] border border-line bg-bg p-1" role="group" aria-label="Plano">
+      {PLAN_IDS.map((p) => (
+        <button
+          key={p}
+          type="button"
+          onClick={() => onChange(p)}
+          aria-pressed={plan === p}
+          className={`rounded-[10px] px-2 py-2 text-center transition-colors ${plan === p ? "bg-accent text-on-accent" : "text-fg-2 hover:text-fg"}`}
+        >
+          <span className="block text-[13.5px] font-semibold">{PLAN_LABEL[p]}</span>
+          <span className="block text-[11.5px] tnum">até {PLAN_PROJECTS[p]} projetos</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -97,7 +99,7 @@ function ProjectHelp() {
           <span className="text-fg">Clínica Sorriso</span>. São 3 projetos. Em cada um você conecta o Meta Ads e o Google Ads daquela empresa e monta os
           dashboards dela.
         </p>
-        <p>Começou um cliente novo? Some um projeto quando quiser, no painel.</p>
+        <p>Passou do limite do plano? Suba para o plano de cima quando quiser, no painel.</p>
       </div>
     </details>
   );
@@ -119,7 +121,6 @@ export function OrderSummary({
   const plan = noPlan ? null : (state.plano as PlanId);
   const pages = !plan || !lp ? 0 : LP_PLAN_PAGES[plan];
   const dash = !!plan && !lp;
-  const extraProjects = Math.max(0, q.projects - INCLUDED_PROJECTS);
   // no anual, a parcela em 12x é o que todo mês custaria (sem juros)
   const installment = annual && recurringCents > 0 ? Math.round(recurringCents / 12) : 0;
   const lines = q.lines.filter((l) => l.kind !== "included");
@@ -173,37 +174,43 @@ export function OrderSummary({
         )}
 
         {dash && onAdjust && (
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
+            <PlanSwitch plan={plan} onChange={(plano) => onAdjust(() => ({ plano }))} />
             <PeriodSwitch plan={plan} period={state.periodo} onChange={(periodo) => onAdjust(() => ({ periodo }))} />
           </div>
         )}
 
-        {/* projetos */}
+        {/* o que o plano inclui */}
         {dash && (
           <div className="dotted mt-5 pt-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[15px] font-semibold text-fg">Projetos</p>
-                <p className="text-[12.5px] leading-snug text-fg-2">
-                  {INCLUDED_PROJECTS} inclusos · cada um a mais, <span className="whitespace-nowrap tnum">{brl(EXTRA_PROJECT[plan][state.periodo])}/mês</span>
-                </p>
-              </div>
-              {onAdjust ? (
-                <Stepper label="projetos" value={q.projects} min={INCLUDED_PROJECTS} max={MAX_PROJECTS_IN_PLAN} onChange={(step) => onAdjust((s) => ({ projetos: s.projetos + step }))} />
-              ) : (
-                <span className="text-[20px] font-bold tnum">{q.projects}</span>
-              )}
-            </div>
+            <p className="text-[15px] font-semibold text-fg">O {PLAN_LABEL[plan]} inclui</p>
+            <ul className="mt-2 space-y-1.5 text-[13px] text-fg-2">
+              {[
+                `Até ${PLAN_PROJECTS[plan]} projetos (clientes ou marcas)`,
+                `${ENTITLEMENTS[plan].maxDashboards} dashboards`,
+                `${ENTITLEMENTS[plan].maxMembers} ${ENTITLEMENTS[plan].maxMembers === 1 ? "usuário" : "usuários"}`,
+                platformsForTier(plan)
+                  .map((p) => p.name)
+                  .join(", "),
+              ].map((t) => (
+                <li key={t} className="flex gap-2">
+                  <Check size={14} strokeWidth={2.5} aria-hidden className="mt-0.5 shrink-0 text-accent" />
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
             <ProjectHelp />
-            {plan === "base" && onAdjust && (
-              <div className="mt-4 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[14px] font-semibold text-fg">Plataforma extra</p>
-                  <p className="text-[12.5px] leading-snug text-fg-2">TikTok, LinkedIn e outras fora do Básico · {brl(EXTRA_PLATFORM_PRICE)}/mês cada</p>
-                </div>
-                <Stepper label="plataformas extras" value={state.plataformas} min={0} max={MAX_EXTRA} onChange={(step) => onAdjust((s) => ({ plataformas: s.plataformas + step }))} />
-              </div>
-            )}
+            <p className="mt-2 text-[12.5px] text-fg-2">
+              Mais de {MAX_PROJECTS_IN_PLAN} projetos?{" "}
+              <a
+                href={waLink(`Olá, VYZ! Tenho mais de ${MAX_PROJECTS_IN_PLAN} projetos e quero o plano Personalizado.`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-accent underline-offset-4 hover:underline"
+              >
+                Plano Personalizado, sob consulta
+              </a>
+            </p>
           </div>
         )}
         {lp && plan && (
@@ -217,7 +224,7 @@ export function OrderSummary({
           {lines.map((l) => (
             <li key={l.id} className="flex items-baseline justify-between gap-3 py-1 text-[13.5px]">
               <span className="min-w-0 text-fg">
-                {l.id === "plan" && dash ? `Plano ${PLAN_LABEL[plan]} · ${INCLUDED_PROJECTS} projetos` : l.label}
+                {l.label}
                 {l.detail && l.id !== "plan" && <span className="block text-[12px] text-fg-2">{l.detail}</span>}
               </span>
               <span className="shrink-0 text-right font-medium text-fg-2 tnum">
@@ -227,11 +234,6 @@ export function OrderSummary({
               </span>
             </li>
           ))}
-          {dash && extraProjects === 0 && (
-            <li className="text-[12px] text-fg-2">
-              Tem mais clientes? Use o + em Projetos: {brl(EXTRA_PROJECT[plan][state.periodo])}/mês cada, sem pacote fechado.
-            </li>
-          )}
         </ul>
 
         {/* hoje */}

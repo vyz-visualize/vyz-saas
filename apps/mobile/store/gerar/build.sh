@@ -34,12 +34,12 @@ case "${1:-}" in
     CI=1 npx expo prebuild --platform ios --clean
     (cd ios && pod install --repo-update --silent)
     if [[ "$1" == "ios-check" ]]; then
-      xcodebuild -workspace ios/VYZ.xcworkspace -scheme VYZ -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO -quiet build
+      xcodebuild -workspace ios/Vyzualize.xcworkspace -scheme Vyzualize -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO -quiet build
       echo "✓ iOS compila em Release"
       exit 0
     fi
     : "${TEAM_ID:?Defina TEAM_ID (time da Apple dono do app)}"
-    xcodebuild -workspace ios/VYZ.xcworkspace -scheme VYZ -configuration Release -destination 'generic/platform=iOS' \
+    xcodebuild -workspace ios/Vyzualize.xcworkspace -scheme Vyzualize -configuration Release -destination 'generic/platform=iOS' \
       -archivePath "$OUT/VYZ.xcarchive" DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic -allowProvisioningUpdates -quiet archive
     cat > "$OUT/ExportOptions.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

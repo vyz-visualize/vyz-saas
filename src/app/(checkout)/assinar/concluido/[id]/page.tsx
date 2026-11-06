@@ -126,7 +126,7 @@ function Receipt({ checkout, receipt }: { checkout: CheckoutView; receipt: Check
   const rows: [string, string][] = [];
   if (receipt.workspaceName) rows.push(["Workspace", receipt.workspaceName]);
   if (checkout.planId) {
-    const accounts = checkout.product === "lp" ? "landing pages" : `${checkout.accountsQuantity} projetos`;
+    const accounts = checkout.product === "lp" ? "landing pages" : `até ${checkout.accountsQuantity} projetos`;
     rows.push(["Plano", `${PLAN_LABEL[checkout.planId]} · ${INTERVAL_LABEL[checkout.interval]} · ${accounts}`]);
   }
   const method =

@@ -1,6 +1,21 @@
 import type { Tier } from "@/features/pricing/entitlements";
 
-export type PlatformId = "meta" | "google" | "ga4" | "tiktok" | "linkedin" | "youtube" | "mercado" | "shopee" | "crm";
+export type PlatformId =
+  | "meta"
+  | "google"
+  | "ga4"
+  | "tiktok"
+  | "linkedin"
+  | "rdstation"
+  | "hubspot"
+  | "crm"
+  | "youtube"
+  | "mercado"
+  | "shopee"
+  | "x"
+  | "spotify"
+  | "globo"
+  | "chatgpt";
 
 export type FieldKind =
   | "metaAccount"
@@ -26,7 +41,7 @@ export type Platform = {
   /** Sigla curta (selos e miniaturas). */
   short: string;
   kind: "ads" | "analytics" | "crm";
-  /** Plano mínimo. Meta, Google Ads e GA4 entram no Base. */
+  /** Plano mínimo. Básico: Meta, Google Ads e GA4. Padrão: + TikTok, LinkedIn e CRMs. Avançado: todas. */
   tier: Tier;
   /** Campo principal (o ID que identifica a conta). */
   fields: AccountField[];
@@ -87,7 +102,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "YouTube (Google Ads)",
     short: "YouTube",
     kind: "ads",
-    tier: "pro",
+    tier: "avancado",
     fields: [{ key: "account", label: "Customer ID do Google Ads", kind: "googleCustomer", placeholder: "123-456-7890" }],
   },
   mercado: {
@@ -95,7 +110,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "Mercado Ads",
     short: "Mercado",
     kind: "ads",
-    tier: "pro",
+    tier: "avancado",
     fields: [{ key: "account", label: "ID do vendedor", kind: "digits", placeholder: "123456789" }],
   },
   shopee: {
@@ -103,7 +118,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "Shopee Ads",
     short: "Shopee",
     kind: "ads",
-    tier: "pro",
+    tier: "avancado",
     fields: [{ key: "account", label: "ID da loja", kind: "digits", placeholder: "123456789" }],
   },
   crm: {
@@ -117,8 +132,77 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
       { key: "account", label: "ID da conta ou do portal", kind: "text", placeholder: "Ex.: 4512345" },
     ],
   },
+  rdstation: {
+    id: "rdstation",
+    name: "RD Station CRM",
+    short: "RD",
+    kind: "crm",
+    tier: "pro",
+    fields: [{ key: "account", label: "Token da API", kind: "text", placeholder: "Token do RD Station CRM", hint: "Em Perfil > Token da instância, no RD Station CRM." }],
+  },
+  hubspot: {
+    id: "hubspot",
+    name: "HubSpot",
+    short: "HubSpot",
+    kind: "crm",
+    tier: "pro",
+    fields: [{ key: "account", label: "ID do portal (Hub ID)", kind: "digits", placeholder: "4512345" }],
+  },
+  x: {
+    id: "x",
+    name: "X Ads",
+    short: "X",
+    kind: "ads",
+    tier: "avancado",
+    fields: [{ key: "account", label: "ID da conta de anúncios", kind: "text", placeholder: "18ce54d4x5t" }],
+  },
+  spotify: {
+    id: "spotify",
+    name: "Spotify Ads",
+    short: "Spotify",
+    kind: "ads",
+    tier: "avancado",
+    fields: [{ key: "account", label: "ID da conta de anúncios", kind: "text", placeholder: "Ex.: a1b2c3d4" }],
+  },
+  globo: {
+    id: "globo",
+    name: "Globo Ads",
+    short: "Globo",
+    kind: "ads",
+    tier: "avancado",
+    fields: [{ key: "account", label: "ID do anunciante", kind: "text", placeholder: "Ex.: 123456" }],
+  },
+  chatgpt: {
+    id: "chatgpt",
+    name: "ChatGPT Ads",
+    short: "ChatGPT",
+    kind: "ads",
+    tier: "avancado",
+    fields: [{ key: "account", label: "ID da conta de anúncios", kind: "text", placeholder: "Ex.: acct_123456" }],
+  },
 };
 
-export const PLATFORM_ORDER: PlatformId[] = ["meta", "google", "ga4", "tiktok", "linkedin", "youtube", "mercado", "shopee", "crm"];
+export const PLATFORM_ORDER: PlatformId[] = [
+  "meta",
+  "google",
+  "ga4",
+  "tiktok",
+  "linkedin",
+  "rdstation",
+  "hubspot",
+  "crm",
+  "youtube",
+  "mercado",
+  "shopee",
+  "x",
+  "spotify",
+  "globo",
+  "chatgpt",
+];
+
+const TIER_RANK: Record<Tier, number> = { base: 0, pro: 1, avancado: 2, personalizado: 3 };
+
+/** Plataformas que o plano libera, na ordem de exibição. */
+export const platformsForTier = (tier: Tier) => PLATFORM_ORDER.map((id) => PLATFORMS[id]).filter((p) => TIER_RANK[p.tier] <= TIER_RANK[tier]);
 
 export const isAdPlatform = (id: PlatformId) => PLATFORMS[id].kind === "ads";

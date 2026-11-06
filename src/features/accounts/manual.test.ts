@@ -8,7 +8,8 @@ describe("cadastro manual", () => {
     expect(MANUAL_PLATFORMS).toContain("ga4");
     expect(isManualPlatform("tiktok")).toBe(true);
     expect(isManualPlatform("meta")).toBe(false);
-    expect(isManualPlatform("x")).toBe(false);
+    expect(isManualPlatform("pinterest")).toBe(false);
+    expect(isManualPlatform("hubspot")).toBe(true);
   });
 
   it("GA4: normaliza a medição e guarda os campos", () => {

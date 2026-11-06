@@ -14,8 +14,9 @@ import { usePlan } from "@/features/marketing/state/PlanProvider";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import {
   DEFAULT_STATE,
-  EXTRA_PROJECT,
-  INCLUDED_PROJECTS,
+  MAX_PROJECTS_IN_PLAN,
+  PLAN,
+  PLAN_PROJECTS,
   annualSavingPct,
   LP_PLAN_PAGES,
   PLAN_LABEL,
@@ -33,8 +34,8 @@ import { AudioWave } from "./AudioWave";
 import { SoonBadge } from "./SoonBadge";
 
 // Planos: dois produtos (dashboards e landing pages, esta atrás de
-// SHOW_LANDING_PAGES), três planos cada, e um clique até o checkout. Projetos a mais e plataforma
-// extra se escolhem no checkout; marca própria fica dentro do app. Abaixo, as perguntas sobre projeto.
+// SHOW_LANDING_PAGES), três planos cada, e um clique até o checkout. Cada plano de dashboards tem
+// um número fixo de projetos (5, 15 ou 30); acima disso, Personalizado. Abaixo, as perguntas sobre projeto.
 
 const TIERS: PlanId[] = ["base", "pro", "avancado"];
 
@@ -67,14 +68,14 @@ function dashCard(tier: PlanId, period: Period): Card {
   const e = ENTITLEMENTS[tier];
   const base = {
     price: startingPrice(tier, period),
-    caption: `${period === "anual" ? "no anual" : "no mensal"} · ${INCLUDED_PROJECTS} projetos · + ${brl(EXTRA_PROJECT[tier][period])} por projeto extra`,
+    caption: `${period === "anual" ? `no anual · ${brl(PLAN[tier].anual * 12)} por ano` : "no mensal"} · até ${PLAN_PROJECTS[tier]} projetos`,
     templates: `${e.dashboardTemplates} templates de dashboard`,
   };
   if (tier === "base") {
     return {
       ...base,
       pitch: "Você conecta as contas e escolhe o template. Pronto em minutos.",
-      features: [`${INCLUDED_PROJECTS} projetos (clientes) inclusos`, "Meta e Google por login; GA4 em breve", "1 conta por plataforma em cada projeto", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário", ...COMMON],
+      features: [`Até ${PLAN_PROJECTS.base} projetos (clientes)`, "Meta Ads, Google Ads e GA4, com visão geral", "1 conta por plataforma em cada projeto", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário", ...COMMON],
     };
   }
   if (tier === "pro") {
@@ -83,9 +84,10 @@ function dashCard(tier: PlanId, period: Period): Card {
       pitch: "Tudo do Básico, com mais layouts, mais páginas e mais contas por cliente.",
       features: [
         "Tudo do Básico",
+        `Até ${PLAN_PROJECTS.pro} projetos (clientes)`,
         `Até ${e.maxAccountsPerPlatform} contas por plataforma em cada projeto`,
         <>
-          Mais plataformas: mídia, marketplaces e CRMs
+          + TikTok Ads, LinkedIn Ads e CRMs (RD Station e HubSpot)
           <SoonBadge />
         </>,
         "Criativos em galeria, com previews",
@@ -98,7 +100,17 @@ function dashCard(tier: PlanId, period: Period): Card {
     ...base,
     top: <AudioWave />,
     pitch: "Tudo do Padrão, com análise por voz e comparativo de criativos.",
-    features: ["Tudo do Padrão", "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos", `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`, ...COMMON],
+    features: [
+      "Tudo do Padrão",
+      `Até ${PLAN_PROJECTS.avancado} projetos (clientes)`,
+      <>
+        Todas as plataformas: + X, Spotify, Globo, ChatGPT, YouTube, Mercado e Shopee Ads
+        <SoonBadge />
+      </>,
+      "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos",
+      `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,
+      ...COMMON,
+    ],
   };
 }
 
@@ -126,12 +138,12 @@ const FAQ: { q: string; a: string }[] = [
     a: "É o cliente, a empresa ou a marca para quem você gera os dashboards. Dentro dele você conecta as contas (Meta Ads, Google Ads e as outras plataformas do plano) e cria os dashboards daquele cliente.",
   },
   {
-    q: `Preciso contratar mais de ${INCLUDED_PROJECTS} projetos?`,
-    a: `Todo plano já vem com ${INCLUDED_PROJECTS} projetos. Tem mais clientes? Você soma de um em um no checkout, sem pacote fechado: quem tem 6 clientes paga 6.`,
+    q: "Quantos projetos cabem em cada plano?",
+    a: `O Básico vai até ${PLAN_PROJECTS.base} projetos, o Padrão até ${PLAN_PROJECTS.pro} e o Avançado até ${PLAN_PROJECTS.avancado}. Tem mais de ${MAX_PROJECTS_IN_PLAN} clientes? O plano Personalizado é sob consulta, com um especialista.`,
   },
   {
-    q: "Posso mudar o número de projetos depois?",
-    a: "Sim. Aumente ou diminua quando quiser, na página Plano do painel. A diferença entra na próxima cobrança, proporcional aos dias.",
+    q: "E se eu passar do limite de projetos?",
+    a: "Suba de plano quando quiser, na página Plano do painel. A diferença entra na cobrança, proporcional aos dias que faltam no ciclo.",
   },
   {
     q: "Quantas contas cabem em cada projeto?",
@@ -161,7 +173,7 @@ function ProjectFaq() {
 }
 
 function PlanCard({ tier, product, period, card, featured, delay }: { tier: PlanId; product: Product; period: Period; card: Card; featured: boolean; delay: number }) {
-  // checkout direto: o plano, o período e os projetos inclusos (mais projetos no checkout)
+  // checkout direto: o plano e o período (os projetos vêm com o plano)
   const href = `/assinar?${toQuery({ ...DEFAULT_STATE, produto: product, plano: tier, periodo: product === "lp" ? "mensal" : period })}`;
 
   function spotlight(e: PointerEvent<HTMLElement>) {
@@ -308,7 +320,7 @@ export function Planos() {
         <div className="mt-8 flex flex-col gap-3 text-sm text-fg-2 sm:flex-row sm:items-center sm:justify-between">
           <p>
             {product === "dash"
-              ? "Valores em reais · projetos a mais você escolhe no checkout e muda quando quiser. Marca própria e implementação sob medida: plano Personalizado, sob consulta."
+              ? `Valores em reais · mais de ${MAX_PROJECTS_IN_PLAN} projetos, marca própria ou implementação sob medida: plano Personalizado, sob consulta.`
               : "Valores em reais · mais páginas e domínio próprio você liga dentro do painel"}
           </p>
           <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={`${btn.ghost} -ml-3 w-fit sm:ml-0`}>

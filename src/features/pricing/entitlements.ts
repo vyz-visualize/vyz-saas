@@ -86,9 +86,19 @@ export const LIMIT_TIERS: Tier[] = ["base", "pro", "avancado"];
 
 /** Linhas da tabela de limites (página Plano e documentação). */
 export const LIMIT_ROWS: { label: string; value: (t: Tier) => string }[] = [
+  { label: "Projetos", value: (t) => ({ base: "até 5", pro: "até 15", avancado: "até 30", personalizado: "sob consulta" })[t] },
   { label: "Templates de dashboard", value: (t) => String(ENTITLEMENTS[t].dashboardTemplates) },
   ...(SHOW_LANDING_PAGES ? [{ label: "Templates de landing page", value: (t: Tier) => String(ENTITLEMENTS[t].landingTemplates) }] : []),
-  { label: "Plataformas", value: (t) => (ENTITLEMENTS[t].platforms === "core" ? "Meta e Google por login; GA4 em breve" : "Meta e Google por login; GA4 e mais plataformas em breve") },
+  {
+    label: "Plataformas",
+    value: (t) =>
+      ({
+        base: "Meta Ads, Google Ads e GA4",
+        pro: "+ TikTok, LinkedIn, RD Station e HubSpot",
+        avancado: "todas: + X, Spotify, Globo, ChatGPT, YouTube, Mercado e Shopee",
+        personalizado: "todas",
+      })[t],
+  },
   {
     label: "Páginas do dashboard",
     value: (t) => ({ base: "essenciais", pro: "+ Padrão", avancado: "todas", personalizado: "todas" })[t],

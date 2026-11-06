@@ -11,7 +11,6 @@ import Link from "next/link";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { Modal, PageHeader, PendingChip } from "@/components/ui/kit";
 import { Segmented } from "@/components/ui/Segmented";
-import { Stepper } from "@/components/ui/Stepper";
 import { btn } from "@/components/ui/styles";
 import { useToast } from "@/components/ui/Toast";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
@@ -28,9 +27,9 @@ import {
   TRANSACTION_KIND_LABEL,
   TRANSACTION_STATUS_LABEL,
 } from "@/features/checkout/labels";
-import { planChangeBlocker, quotePlanChange, samePlan, type PlanSelection, type PlanUsage } from "@/features/checkout/plan-change";
+import { planChangeBlocker, planSelection, quotePlanChange, samePlan, type PlanSelection, type PlanUsage } from "@/features/checkout/plan-change";
 import { ENTITLEMENTS, LIMIT_ROWS, LIMIT_TIERS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
-import { INCLUDED_PROJECTS, LP_PLAN_PAGES, MAX_PROJECTS_IN_PLAN, lpMonthly, lpSetup, type Period, type PlanId } from "@/features/pricing/pricing";
+import { LP_PLAN_PAGES, MAX_PROJECTS_IN_PLAN, PLAN_PROJECTS, lpMonthly, lpSetup, type Period, type PlanId } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";
 import { msgUpgrade, waLink } from "@/lib/whatsapp";
 import { cancelSubscription, changePlan, resumeSubscription } from "@/server/billing/actions";
@@ -98,7 +97,7 @@ function ChangePlan({
     accounts: sub.accountsQuantity,
   };
   // "Liberar no Padrão" (vitrine do painel) já abre com o plano escolhido
-  const [next, setNext] = useState<PlanSelection>(unlock && PLAN_IDS.indexOf(unlock) > PLAN_IDS.indexOf(sub.tier) ? { ...current, tier: unlock } : current);
+  const [next, setNext] = useState<PlanSelection>(unlock && PLAN_IDS.indexOf(unlock) > PLAN_IDS.indexOf(sub.tier) ? planSelection(unlock, current.period) : current);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const unchanged = samePlan(current, next);
@@ -119,13 +118,14 @@ function ChangePlan({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sub, next, now],
   );
-  const set = (patch: Partial<PlanSelection>) => {
+  // o plano define os projetos (5, 15 ou 30): trocar o plano troca os dois
+  const set = (patch: { tier?: PlanId; period?: Period }) => {
     setError(null);
-    setNext((n) => ({ ...n, ...patch }));
+    setNext((n) => planSelection(patch.tier ?? n.tier, patch.period ?? n.period));
   };
   const submit = () =>
     start(async () => {
-      const res = await changePlan(next);
+      const res = await changePlan({ tier: next.tier, period: next.period });
       if (!res.ok) return setError(res.error.message);
       const { chargedCents, creditCents } = res.data;
       onDone(
@@ -164,15 +164,19 @@ function ChangePlan({
           />
         </div>
       </div>
-      <Stepper
-        label="Projetos contratados"
-        hint={`Cada cliente ou marca é um projeto. Pelo menos os ${usage.projects} em uso e no mínimo ${INCLUDED_PROJECTS}; até ${MAX_PROJECTS_IN_PLAN}.`}
-        unit="projeto contratado"
-        value={next.accounts}
-        min={Math.max(INCLUDED_PROJECTS, usage.projects)}
-        max={MAX_PROJECTS_IN_PLAN}
-        onChange={(accounts) => set({ accounts })}
-      />
+      <p className="text-[13px] text-fg-2">
+        O {TIER_LABEL[next.tier]} vai até <strong className="font-semibold text-fg">{PLAN_PROJECTS[next.tier]} projetos</strong> (clientes ou marcas); você usa{" "}
+        {usage.projects}. Mais de {MAX_PROJECTS_IN_PLAN}?{" "}
+        <a
+          href={waLink(`Olá, VYZ! Tenho mais de ${MAX_PROJECTS_IN_PLAN} projetos e quero o plano Personalizado.`)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-accent underline-offset-4 hover:underline"
+        >
+          Plano Personalizado, sob consulta
+        </a>
+        .
+      </p>
 
       {!unchanged && (
         <dl className="grid gap-3 rounded-control border border-line bg-bg p-4 text-[13.5px] sm:grid-cols-3" aria-live="polite">

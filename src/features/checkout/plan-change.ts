@@ -7,7 +7,7 @@
 
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { ENTITLEMENTS, TIER_LABEL, canUse } from "@/features/pricing/entitlements";
-import { planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
+import { PLAN_PROJECTS, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
 
 export type PlanSelection = { tier: PlanId; period: Period; accounts: number };
 
@@ -47,7 +47,7 @@ export function quotePlanChange(input: {
   now: Date;
 }): PlanChangeQuote {
   const { current, next, extrasMonthlyCents, now } = input;
-  const recurring = (s: PlanSelection) => (planMonthly(s.tier, s.period, s.accounts) + extrasMonthlyCents) * periodMonths(s.period);
+  const recurring = (s: PlanSelection) => (planMonthly(s.tier, s.period) + extrasMonthlyCents) * periodMonths(s.period);
   const oldRecurring = recurring(current);
   const newRecurring = recurring(next);
 
@@ -61,7 +61,7 @@ export function quotePlanChange(input: {
   const diff = resetsPeriod ? newRecurring - Math.round(oldRecurring * remaining) : Math.sign(delta) * Math.round(Math.abs(delta) * remaining);
 
   return {
-    planMonthlyCents: planMonthly(next.tier, next.period, next.accounts),
+    planMonthlyCents: planMonthly(next.tier, next.period),
     recurringCents: newRecurring,
     prorationCents: Math.max(0, diff),
     creditCents: Math.max(0, -diff),
@@ -70,6 +70,9 @@ export function quotePlanChange(input: {
     periodEnd: resetsPeriod ? addMonths(now, periodMonths(next.period)) : current.periodEnd,
   };
 }
+
+/** Seleção de um plano fixo: os projetos são os do plano. */
+export const planSelection = (tier: PlanId, period: Period): PlanSelection => ({ tier, period, accounts: PLAN_PROJECTS[tier] });
 
 export const samePlan = (a: PlanSelection, b: PlanSelection) => a.tier === b.tier && a.period === b.period && a.accounts === b.accounts;
 
@@ -85,7 +88,7 @@ export function planChangeBlocker(next: PlanSelection, usage: PlanUsage): { code
   if (usage.projects > next.accounts) {
     return {
       code: "limit:projects_in_use",
-      message: `Você tem ${plural(usage.projects, "projeto ativo", "projetos ativos")}. Arquive projetos em Projetos antes de contratar ${next.accounts}.`,
+      message: `Você tem ${plural(usage.projects, "projeto ativo", "projetos ativos")}. O ${tier} vai até ${next.accounts}. Arquive projetos em Projetos antes de trocar.`,
     };
   }
   if (usage.dashboards > limits.maxDashboards) {

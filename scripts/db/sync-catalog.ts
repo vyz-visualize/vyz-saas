@@ -12,7 +12,7 @@ import { PLATFORMS, PLATFORM_ORDER, type PlatformId } from "@/features/accounts/
 import { BUSINESS_TYPES, templateBusinessTypes } from "@/features/catalog/business-types";
 import { BILLING_ITEMS, INTERVAL, planPriceId } from "@/features/pricing/catalog";
 import { ENTITLEMENTS, TIER_LABEL, TIERS } from "@/features/pricing/entitlements";
-import { EXTRA_PROJECT, INCLUDED_PROJECTS, LP_PLAN_PAGES, PLAN, PLAN_LABEL, lpMonthly, planDbId, type Period, type PlanId } from "@/features/pricing/pricing";
+import { LP_PLAN_PAGES, PLAN, PLAN_LABEL, lpMonthly, planDbId, type Period, type PlanId } from "@/features/pricing/pricing";
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
@@ -91,9 +91,9 @@ async function main() {
         plan_id: plan,
         interval: INTERVAL[period],
         currency: "BRL",
-        // o banco calcula first + extra × (projetos − 1); o plano inclui INCLUDED_PROJECTS
-        first_account_cents: PLAN[plan][period] - (INCLUDED_PROJECTS - 1) * EXTRA_PROJECT[plan][period],
-        extra_account_cents: EXTRA_PROJECT[plan][period],
+        // o banco calcula first + extra × (projetos − 1); plano fixo: extra 0, first = preço do plano
+        first_account_cents: PLAN[plan][period],
+        extra_account_cents: 0,
         addon_cents: 0,
         is_active: true,
       })),

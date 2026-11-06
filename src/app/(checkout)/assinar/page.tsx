@@ -109,34 +109,21 @@ function AccountNotice({ viewer }: { viewer: CheckoutViewer }) {
 
 async function Blocked({ order, state, query, editHref }: { order: Order; state: PlanState; query: string; editHref: string }) {
   const message = buildPlanMessage(state, order.quote, `${await appOrigin()}/?${query}`);
-  const over = order.blocked === "over_limit";
   return (
     <section aria-labelledby="bloqueado-titulo" className="mt-8 max-w-2xl rounded-card border border-line bg-card p-6 sm:p-8">
-      <p className="label-caps text-fg-2">{over ? "Sob consulta" : "Assinatura"}</p>
+      <p className="label-caps text-fg-2">Assinatura</p>
       <h1 id="bloqueado-titulo" className="display mt-3 text-[clamp(1.9rem,4vw,2.8rem)] text-fg">
-        {over ? "Esse plano a gente monta com você." : order.blocked === "empty" ? "Monte o pedido primeiro." : "Esse pedido precisa de um plano."}
+        {order.blocked === "empty" ? "Monte o pedido primeiro." : "Esse pedido precisa de um plano."}
       </h1>
       <p className="mt-4 text-[15px] text-fg-2">{order.blocked && BLOCK_MESSAGE[order.blocked]}</p>
       <div className="mt-6 flex flex-wrap gap-3">
-        {over ? (
-          <a href={waLink(message)} target="_blank" rel="noopener noreferrer" className={btn.primary}>
+        <Link href={editHref} className={btn.primary}>
+          {order.blocked === "empty" ? "Monte seu plano" : "Escolher um plano"}
+        </Link>
+        {order.blocked !== "empty" && (
+          <a href={waLink(message)} target="_blank" rel="noopener noreferrer" className={btn.secondary}>
             <WhatsAppIcon /> Falar com especialista
           </a>
-        ) : (
-          <Link href={editHref} className={btn.primary}>
-            {order.blocked === "empty" ? "Monte seu plano" : "Escolher um plano"}
-          </Link>
-        )}
-        {over ? (
-          <Link href={editHref} className={btn.secondary}>
-            Alterar pedido
-          </Link>
-        ) : (
-          order.blocked !== "empty" && (
-            <a href={waLink(message)} target="_blank" rel="noopener noreferrer" className={btn.secondary}>
-              <WhatsAppIcon /> Falar com especialista
-            </a>
-          )
         )}
       </div>
     </section>
