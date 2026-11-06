@@ -18,10 +18,10 @@ import { isMockBilling } from "@/server/env";
 export const metadata: Metadata = { title: "Assinatura confirmada" };
 
 const NEXT_STEPS = [
-  { title: "Tipo de negócio", text: "Para o VYZ falar a língua do seu cliente." },
-  { title: "Plataformas", text: "Meta Ads, Google Ads e as outras do plano." },
-  { title: "Conectar as contas", text: "Login na plataforma, sem copiar ID." },
-  { title: "Escolher o dashboard", text: "Ele nasce com as métricas das contas." },
+  { title: "Nicho", text: "Para o VYZ falar a língua do seu cliente." },
+  { title: "Layout", text: "Passe o mouse e veja o dashboard funcionando antes de escolher." },
+  { title: "Conectar as contas", text: "Login no Meta e no Google, sem copiar ID. Dá para pular." },
+  { title: "Pronto", text: "O dashboard abre com as métricas das contas." },
 ];
 
 const LP_NEXT_STEPS = [
@@ -69,7 +69,7 @@ async function Done({ params }: { params: PageProps<"/assinar/concluido/[id]">["
             {checkout.planId
               ? checkout.product === "lp"
                 ? `O plano ${PLAN_LABEL[checkout.planId]} de landing pages já está valendo. Agora é escolher o template da primeira página.`
-                : `O plano ${PLAN_LABEL[checkout.planId]} já está valendo. Agora é conectar as contas e escolher o primeiro dashboard.`
+                : `O plano ${PLAN_LABEL[checkout.planId]} já está valendo. Agora é escolher o nicho e o layout do primeiro dashboard.`
               : "O time da VYZ chama você no WhatsApp para começar os serviços contratados."}
           </p>
         </div>

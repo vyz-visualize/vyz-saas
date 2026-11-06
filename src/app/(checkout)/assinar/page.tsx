@@ -8,12 +8,13 @@ import { CheckoutForm } from "@/features/checkout/CheckoutForm";
 import { CheckoutSteps } from "@/features/checkout/CheckoutSteps";
 import { BLOCK_MESSAGE, buildOrder, normalizeState, type Order } from "@/features/checkout/order";
 import { OrderSummary } from "@/features/checkout/OrderSummary";
+import { TestReset } from "@/features/checkout/TestReset";
 import { buildPlanMessage } from "@/features/pricing/messages";
 import { fromQuery, toQuery, type PlanState } from "@/features/pricing/pricing";
 import { waLink } from "@/lib/whatsapp";
 import { signOut } from "@/server/auth/actions";
 import { getCheckoutViewer, type CheckoutViewer } from "@/server/billing/queries";
-import { isMockBilling } from "@/server/env";
+import { isMockBilling, isTestAccount } from "@/server/env";
 import { appOrigin } from "@/server/http/request";
 
 export const metadata: Metadata = {
@@ -56,7 +57,7 @@ async function Checkout({ searchParams }: { searchParams: Promise<SearchParams> 
   const editHref = `/?${query}#planos`;
 
   if (order.blocked) return <Blocked order={order} state={state} query={query} editHref={editHref} />;
-  if (viewer.subscribed) return <AlreadySubscribed workspaceName={viewer.subscribed.workspaceName} />;
+  if (viewer.subscribed) return <AlreadySubscribed workspaceName={viewer.subscribed.workspaceName} test={isTestAccount(viewer.user?.email)} />;
 
   return (
     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] lg:gap-14">
@@ -159,7 +160,7 @@ async function Blocked({ order, state, query, editHref }: { order: Order; state:
   );
 }
 
-function AlreadySubscribed({ workspaceName }: { workspaceName: string }) {
+function AlreadySubscribed({ workspaceName, test }: { workspaceName: string; test: boolean }) {
   return (
     <section aria-labelledby="assinado-titulo" className="mt-8 max-w-2xl rounded-card border border-line bg-card p-6 sm:p-8">
       <p className="label-caps text-fg-2">Assinatura ativa</p>
@@ -178,6 +179,7 @@ function AlreadySubscribed({ workspaceName }: { workspaceName: string }) {
           Ir para o painel
         </Link>
       </div>
+      {test && <TestReset className="mt-6" />}
     </section>
   );
 }

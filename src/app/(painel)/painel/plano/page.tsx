@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { TestReset } from "@/features/checkout/TestReset";
 import { PageSkeleton } from "@/features/workspace/PageSkeleton";
 import { PlanPage } from "@/features/workspace/PlanPage";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { getBillingOverview } from "@/server/billing/queries";
+import { isTestAccount } from "@/server/env";
 import { listAdAccounts } from "@/server/integrations/queries";
 
 export const metadata: Metadata = { title: "Plano" };
@@ -29,5 +31,10 @@ async function Plano({ searchParams }: { searchParams: PageProps<"/painel/plano"
     enabledPlatforms: [...new Set(accounts.filter((a) => a.isEnabled).map((a) => a.platformId))],
   };
   const unlock = query.liberar === "base" || query.liberar === "pro" || query.liberar === "avancado" ? query.liberar : null;
-  return <PlanPage overview={overview} usage={usage} now={new Date().toISOString()} inactive={query.status === "inativo"} unlock={unlock} />;
+  return (
+    <>
+      <PlanPage overview={overview} usage={usage} now={new Date().toISOString()} inactive={query.status === "inativo"} unlock={unlock} />
+      {isTestAccount(session.user.email) && <TestReset className="mt-8" />}
+    </>
+  );
 }

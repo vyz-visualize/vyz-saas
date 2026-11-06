@@ -24,4 +24,14 @@ describe("acesso de teste com pagamento simulado", () => {
     const { canCheckout } = await load({ ...base, NODE_ENV: "development", BILLING_FREE_EMAILS: "" });
     expect(canCheckout("qualquer@vyz.dev")).toBe(true);
   });
+
+  it("Recomeçar teste: só a lista, e nunca com cobrança real", async () => {
+    const prod = await load({ ...base, NODE_ENV: "production", BILLING_FREE_EMAILS: "a@vyz.dev" });
+    expect(prod.isTestAccount("A@vyz.dev")).toBe(true);
+    expect(prod.isTestAccount("c@vyz.dev")).toBe(false);
+    const empty = await load({ ...base, NODE_ENV: "production", BILLING_FREE_EMAILS: "" });
+    expect(empty.isTestAccount("a@vyz.dev")).toBe(false);
+    const real = await load({ ...base, NODE_ENV: "production", BILLING_PROVIDER: "stripe", BILLING_FREE_EMAILS: "a@vyz.dev", STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec_x", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_x" });
+    expect(real.isTestAccount("a@vyz.dev")).toBe(false);
+  });
 });

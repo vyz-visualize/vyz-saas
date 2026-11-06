@@ -103,5 +103,18 @@ export function canCheckout(email: string | null | undefined): boolean {
   return !!email && list.includes(email.trim().toLowerCase());
 }
 
+/**
+ * Conta de teste: pagamento simulado e e-mail em BILLING_FREE_EMAILS (fora de
+ * produção, qualquer e-mail da lista ou, com a lista vazia, qualquer um). Só
+ * ela vê o "Recomeçar teste", que apaga a assinatura e volta ao checkout.
+ */
+export function isTestAccount(email: string | null | undefined): boolean {
+  const env = serverEnv();
+  if (env.BILLING_PROVIDER !== "mock" || !email) return false;
+  const list = env.BILLING_FREE_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (list.length === 0) return env.NODE_ENV !== "production";
+  return list.includes(email.trim().toLowerCase());
+}
+
 export const CHECKOUT_CLOSED_MESSAGE = "O pagamento online abre em breve. Fale com um especialista no WhatsApp para assinar agora.";
 export const isMockIntegrations = () => serverEnv().INTEGRATIONS_MODE === "mock";
