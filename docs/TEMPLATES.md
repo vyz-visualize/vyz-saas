@@ -56,6 +56,17 @@ Um template pode ter `skin` (`types.ts` → `SkinId`): a **primeira aba** dele �
 
 Hoje: `lavanda` (painel-lavanda), `pulso` (painel-pulso), `monocromo` (painel-monocromo), todos no Básico; e as análises do Avançado, que seguem o tema do painel: `criativos-ao-vivo` (ranking em tempo real, duelo com teste de CTR, fadiga), `previsao` (regressão com sazonalidade da semana, faixa de 95%, chance de bater a meta, simulador de verba) e `mmm` (base + canais com adstock e saturação, ROI marginal e otimizador da mesma verba). Todos calculam sobre os dados de exemplo. Visual novo: crie o componente, registre em `skins/index.tsx` e no `SkinId`.
 
+### Disposição e métricas por plataforma (modo Personalizar)
+
+Depois de criado, o dashboard de exemplo se arruma no próprio **Personalizar métricas**, que agora também edita a disposição:
+
+- Cada aba vira uma grade de 12 colunas (`features/dashboards/layout/model.ts`). Os blocos são os do template (cards de KPI = `kpis`, widgets = `w0`, `w1`…) e não aparecem blocos de fora: a pessoa move pelo cabeçalho, muda o tamanho pelo canto (com mínimo por tipo), esconde e traz de volta. Teclado: setas movem, Shift + setas mudam o tamanho, Delete esconde.
+- Na bandeja, a aba **Por plataforma** lista o que a API de cada fonte do template entrega (`layout/platform-metrics.ts`: campo na API e se a VYZ já sincroniza) e os blocos escondidos; arrastar para a grade cria o card `m:<plataforma>:<métrica>` (até 12 por aba).
+- **Plano:** mover e redimensionar é do Avançado (`canArrangeLayout`). Nos outros planos, o Personalizar só adiciona e oculta métricas; os cards de plataforma entram no próximo espaço livre e o servidor ignora qualquer posição mandada.
+- Salvar, Cancelar e Restaurar padrão valem para métricas e disposição juntos. O banco guarda só as abas mexidas em `dashboards.layout` (migração `20261106120000_dashboard_layout.sql`); o servidor valida tudo de novo (`saveDashboardLayout`).
+- Abas com visual próprio (skin) também entram na grade: a moldura do desenho (fundo, menu, topo) fica fixa e cada card ou painel é um bloco (`skins/blocks.ts`, ids `s-…`, com a disposição padrão de cada visual). A regra de cada aba (blocos aceitos e padrão) está em `layout/page-rules.ts`, usada pelo painel e pelo servidor. Visual novo: declare os blocos em `SKIN_BLOCKS` e desenhe com `<SkinGrid>`.
+- A página de Criativos com dados da Meta fica fora da grade. Telas estreitas mostram os blocos em uma coluna, na ordem da disposição.
+
 ### Dashboards com dados reais
 
 Os templates de `live.ts` (`dataMode: "live"`) leem o que a sincronização grava das contas conectadas e têm layout próprio em `src/features/analytics/meta` e `src/features/analytics/google`. Um template live novo precisa do layout dele nessa pasta e do mapeamento em `features/analytics/preview.ts` (`TEMPLATE_PLATFORM`).

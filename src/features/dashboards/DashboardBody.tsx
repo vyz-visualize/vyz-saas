@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { Switch } from "@/components/ui/controls";
 import { PendingChip } from "@/components/ui/kit";
@@ -32,11 +32,16 @@ import { useMetricPrefsState, type SaveMetricPrefs } from "./metric-prefs-contex
 import { MetricNoticeBar } from "./MetricActions";
 import { MetricEditProvider } from "./metric-edit-context";
 import { CustomizeButton, MetricEditBar, MetricTray, useMetricEditorState } from "./MetricEditor";
+import { pageRules } from "./layout/page-rules";
+import { GridPage, templateBlocksOf } from "./layout/GridPage";
+import { PlatformTray } from "./layout/LayoutEditor";
+import type { DashboardLayout } from "./layout/model";
+import { useDashboardLayout, type SaveLayout } from "./layout/useDashboardLayout";
 import { SkinView } from "./skins";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
 
-export type DashboardSpec = { templateId: string; name: string; client: string; pages: PageId[]; settings: DashboardSettings; brand?: Brand; metricPrefs?: MetricPrefs };
+export type DashboardSpec = { templateId: string; name: string; client: string; pages: PageId[]; settings: DashboardSettings; brand?: Brand; metricPrefs?: MetricPrefs; layout?: DashboardLayout };
 
 /** Variáveis de cor da marca própria (Personalizado), iguais nos dois modos. */
 export function brandStyle(brand?: Brand): CSSProperties | undefined {
@@ -64,6 +69,10 @@ type BodyProps = {
   /** Dashboard salvo que pode ser personalizado (member+ no painel). */
   customizeId?: string;
   saveMetrics?: SaveMetricPrefs;
+  /** Grava a disposição de uma aba (member+). */
+  saveLayout?: (dashboardId: string, page: PageId, items: unknown) => ReturnType<SaveLayout>;
+  /** Mover e redimensionar blocos (Avançado). Nos outros planos, só métricas entram e saem. */
+  canArrange?: boolean;
   /** Modelos que usam a Meta: a página de Criativos por plano, no lugar do widget. */
   creatives?: CreativesData;
   initialPage?: PageId;
@@ -85,7 +94,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate }: BodyProps) {
+export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
@@ -102,7 +111,23 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   const activeKpis = pageKpis[spec.pages.indexOf(active)];
   // o painel conta os cards da aba aberta: os mesmos que a tela mostra
   const activeCatalog = useMemo(() => pageCatalog(catalog, activeKpis ?? []), [catalog, activeKpis]);
-  const metrics = useMetricPrefsState({ dashboardId: customizeId ?? null, scope: "sample", catalog: activeCatalog, pageKpis, initial: spec.metricPrefs, hideSpend, saveAction: saveMetrics });
+  // disposição das abas: vai junto com as métricas no Personalizar
+  const templateOf = useCallback((p: PageId): PageLayout => (t ? pageLayout(t, p) : { kpis: [], widgets: [] }), [t]);
+  // cada aba diz que blocos aceita: os do template ou, na aba com visual próprio, os do visual
+  const rulesOf = useCallback((p: PageId) => (t ? pageRules(t, p, hideSpend) : null), [hideSpend, t]);
+  const accept = useCallback((p: PageId) => rulesOf(p)?.accept ?? (() => false), [rulesOf]);
+  const baseOf = useCallback((p: PageId) => rulesOf(p)?.base() ?? [], [rulesOf]);
+  const grid = useDashboardLayout({
+    initial: spec.layout,
+    pages: spec.pages,
+    templateOf,
+    accept,
+    baseOf,
+    save: customizeId && saveLayout ? (p, items) => saveLayout(customizeId, p, items) : undefined,
+    arrange: arrangePlan,
+  });
+  const canArrange = !!customizeId && !!saveLayout;
+  const metrics = useMetricPrefsState({ dashboardId: customizeId ?? null, scope: "sample", catalog: activeCatalog, pageKpis, initial: spec.metricPrefs, hideSpend, saveAction: saveMetrics, companion: canArrange ? grid.companion : undefined });
   const pagesWithCards = spec.pages.filter((p, i) => (pageKpis[i] ?? []).length > 0);
   const known = (id: string) => isSampleMetric(id) || extraById.has(id);
   const activeIds = pageKpiIds(catalog, activeKpis ?? [], metrics.prefs?.kpis, { hideSpend }).filter(known);
@@ -128,6 +153,24 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
     kpiNote: pageKpis.filter((r) => r.length).length > 1 ? "Ocultar ou adicionar vale para todas as abas com cards." : undefined,
     noKpis: !activeKpis?.length,
     goToCards: pagesWithCards[0] ? () => setPage(pagesWithCards[0]) : undefined,
+    arrange: canArrange ? arrangePlan : undefined,
+    extraTab:
+      canArrange && t && !(active === "criativos" && creatives)
+        ? {
+            label: "Por plataforma",
+            render: () => (
+              <PlatformTray
+                state={{ items: grid.items(active), hide: (id) => grid.hide(active, id), add: (id) => grid.add(active, id, undefined, (activeKpis ?? []).length), dirty: grid.companion.dirty }}
+                blocks={rulesOf(active)?.labels ?? templateBlocksOf(templateOf(active), (activeKpis ?? []).length)}
+                sources={t.sources}
+                ds={ds}
+                profile={t.profile}
+                hideSpend={hideSpend}
+                arrange={arrangePlan}
+              />
+            ),
+          }
+        : undefined,
   });
   const editing = metrics.open;
   const filterLabels = useMemo(
@@ -166,6 +209,13 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         pages={spec.pages}
         active={p}
         periodLabel={periodLabel}
+        grid={{
+          items: grid.items(p),
+          editing: nav && editing && canArrange && arrangePlan,
+          onChange: (g) => grid.change(p, g),
+          onHide: (id) => grid.hide(p, id),
+          onDropNew: (id, x, y) => grid.add(p, id, { x, y }),
+        }}
         onPage={
           nav
             ? (np) => {
@@ -294,10 +344,10 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                   <CreativesPage data={creatives} />
                 </div>
               </div>
-            ) : skinned(active) && !editing ? (
+            ) : skinned(active) ? (
               <div key={active}>{skinView(active, true)}</div>
             ) : (
-              <PageView key={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
+              <GridPage key={active} page={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} grid={grid} editing={editing && canArrange && arrangePlan} />
             )}
           </div>
         </div>

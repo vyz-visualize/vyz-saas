@@ -10,6 +10,9 @@ import { refresh, updateTag } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { catalogForTemplate } from "@/features/dashboards/data";
+import { pageRules } from "@/features/dashboards/layout/page-rules";
+import { canArrangeLayout, kindOf, normalizeGrid, withMetricCards, type DashboardLayout } from "@/features/dashboards/layout/model";
+import type { PageId } from "@/features/templates/types";
 import { normalizeScope, withScope, type MetricScope, type ScopePrefs } from "@/features/dashboards/metric-prefs";
 import { allowedPages, copyName, defaultPages, settingsToDb, type DashboardDetail } from "@/features/dashboards/model";
 import { createDashboardSchema, dashboardFieldsSchema, type CreateDashboardInput, type DashboardFields } from "@/features/dashboards/schema";
@@ -191,6 +194,37 @@ export async function saveDashboardMetricPrefs(dashboardId: string, scope: Metri
   }
 }
 
+/** Disposição de uma aba (member+). null = volta para a do template. Só dashboards de exemplo. */
+export async function saveDashboardLayout(dashboardId: string, page: string, items: unknown): Promise<ActionResult> {
+  try {
+    if (!Id.safeParse(dashboardId).success) throw appError("dashboard:not_found");
+    const session = await authorize("member", { access: false });
+    const arrange = canArrangeLayout(session.access.tier);
+    const current = await getDashboard(dashboardId);
+    if (!current) throw appError("dashboard:not_found");
+    const t = anyDashboardTemplate(current.templateId);
+    if (!t) throw appError("dashboard:template_unavailable");
+    if (current.live || !current.pages.includes(page as PageId)) throw appError("validation");
+    const pageId = page as PageId;
+    const next: DashboardLayout = { ...current.layout };
+    if (items == null) delete next[pageId];
+    else {
+      const rules = pageRules(t, pageId);
+      const valid = normalizeGrid(items, rules.accept, 1);
+      // fora do Avançado não se mexe na disposição: o modelo do template e os cards de plataforma no próximo espaço livre
+      const clean = arrange ? valid : withMetricCards(rules.base(), valid.filter((i) => kindOf(i.id) === "metric").map((i) => i.id));
+      if (clean.length === 0) throw appError("validation", "A aba precisa de pelo menos um bloco.");
+      next[pageId] = clean;
+    }
+    const db = await createServerSupabase();
+    unwrap(await db.from("dashboards").update({ layout: next as Json }).eq("id", dashboardId));
+    return { ok: true, data: undefined };
+  } catch (err) {
+    unstable_rethrow(err);
+    return toActionError(err);
+  }
+}
+
 /** Duplica com as páginas e contas que ainda valem (member). Conta no limite do plano. */
 export async function duplicateDashboard(dashboardId: string): Promise<ActionResult> {
   let id: string;
@@ -211,6 +245,8 @@ export async function duplicateDashboard(dashboardId: string): Promise<ActionRes
     id = await insertDashboard(db, session, { templateId: t.id, name: copyName(d.name), client: d.client, pages, accountIds, settings: settingsToDb(d.settings, d.margin) });
     // a cópia mantém as métricas escolhidas
     if (Object.keys(d.metricPrefs).length) unwrap(await db.from("dashboards").update({ metric_prefs: d.metricPrefs as Json }).eq("id", id));
+    // e a disposição de cada aba
+    if (Object.keys(d.layout).length) unwrap(await db.from("dashboards").update({ layout: d.layout as Json }).eq("id", id));
     if (d.brand && session.access.entitlements?.whiteLabel) {
       unwrap(await db.from("dashboards").update({ brand_color: d.brand.color || null, hide_vyz_brand: d.brand.hideVyz }).eq("id", id));
     }

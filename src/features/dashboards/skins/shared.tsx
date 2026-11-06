@@ -3,11 +3,16 @@
 
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { delta, series } from "@/features/metrics/compute";
-import { formatValue, metric, type MetricId } from "@/features/metrics/definitions";
+import {
+  formatValue,
+  metric,
+  type MetricId,
+} from "@/features/metrics/definitions";
 import type { DayRow } from "@/features/metrics/source";
 import type { PageId } from "@/features/templates/types";
 import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
 import type { WidgetContext } from "../widgets/Widgets";
+import type { SkinGridControl } from "./SkinGrid";
 
 export type SkinProps = {
   ctx: WidgetContext;
@@ -18,41 +23,72 @@ export type SkinProps = {
   /** Troca de aba (sem isso, a navegação do visual fica só de enfeite: miniatura, PDF). */
   onPage?: (p: PageId) => void;
   periodLabel: string;
+  /** Disposição dos blocos (salva e, no Personalizar do Avançado, editável). Sem isso, a padrão. */
+  grid?: SkinGridControl;
 };
 
 export const HIDDEN = "•••";
 
 /** Valor formatado de uma métrica do período (respeita o investimento oculto). */
 export function value(ctx: WidgetContext, id: MetricId, cur = ctx.cur): string {
-  if (ctx.hideSpend && (id === "spend" || id === "cpa" || id === "cpl" || id === "cpc" || id === "cpm" || id === "roas" || id === "cplq" || id === "cpv")) return HIDDEN;
+  if (
+    ctx.hideSpend &&
+    (id === "spend" ||
+      id === "cpa" ||
+      id === "cpl" ||
+      id === "cpc" ||
+      id === "cpm" ||
+      id === "roas" ||
+      id === "cplq" ||
+      id === "cpv")
+  )
+    return HIDDEN;
   return formatValue(cur[id], metric(id, ctx.profile).format);
 }
 
-export const label = (ctx: WidgetContext, id: MetricId) => metric(id, ctx.profile).label;
+export const label = (ctx: WidgetContext, id: MetricId) =>
+  metric(id, ctx.profile).label;
 
-export function money(ctx: WidgetContext, cents: number, compact = false): string {
+export function money(
+  ctx: WidgetContext,
+  cents: number,
+  compact = false,
+): string {
   if (ctx.hideSpend) return HIDDEN;
   return compact ? brlCompact(cents) : brl(cents);
 }
 
 /** Variação contra o período anterior e se ela é boa. */
-export function change(ctx: WidgetContext, id: MetricId): { text: string; up: boolean; good: boolean | null } {
+export function change(
+  ctx: WidgetContext,
+  id: MetricId,
+): { text: string; up: boolean; good: boolean | null } {
   const d = delta(ctx.cur[id], ctx.prev[id]);
   const better = metric(id, ctx.profile).better;
-  const good = better === "neutral" || !Number.isFinite(d) || d === 0 ? null : (d > 0) === (better === "up");
-  return { text: Number.isFinite(d) ? pct(Math.abs(d)) : "—", up: d >= 0, good };
+  const good =
+    better === "neutral" || !Number.isFinite(d) || d === 0
+      ? null
+      : d > 0 === (better === "up");
+  return {
+    text: Number.isFinite(d) ? pct(Math.abs(d)) : "—",
+    up: d >= 0,
+    good,
+  };
 }
 
 /** Dias do mais antigo para o mais recente. */
-export const chrono = (rows: DayRow[]) => [...rows].sort((a, b) => b.ago - a.ago);
+export const chrono = (rows: DayRow[]) =>
+  [...rows].sort((a, b) => b.ago - a.ago);
 
-export const daily = (ctx: WidgetContext, id: MetricId) => series(chrono(ctx.ds.current), id);
+export const daily = (ctx: WidgetContext, id: MetricId) =>
+  series(chrono(ctx.ds.current), id);
 
 /** Soma em n blocos seguidos (semanas, quinzenas). */
 export function buckets(values: number[], n: number): number[] {
   const size = Math.max(1, Math.ceil(values.length / n));
   const out: number[] = [];
-  for (let i = 0; i < values.length; i += size) out.push(values.slice(i, i + size).reduce((a, b) => a + b, 0));
+  for (let i = 0; i < values.length; i += size)
+    out.push(values.slice(i, i + size).reduce((a, b) => a + b, 0));
   return out;
 }
 
@@ -61,7 +97,10 @@ export const platformShort = (id: PlatformId) => PLATFORMS[id].short;
 
 /** "Campanha Black Friday" → "CB". */
 export function initials(text: string): string {
-  const words = text.replace(/[^\p{L}\p{N} ]/gu, " ").split(/\s+/).filter(Boolean);
+  const words = text
+    .replace(/[^\p{L}\p{N} ]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
   return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase() || "·";
 }
 
@@ -97,24 +136,53 @@ export function smoothPath(pts: [number, number][]): string {
 }
 
 /** Pontos de uma série num retângulo w×h (com folga em cima e embaixo). */
-export function fit(values: number[], w: number, h: number, pad = 0.12): [number, number][] {
+export function fit(
+  values: number[],
+  w: number,
+  h: number,
+  pad = 0.12,
+): [number, number][] {
   const max = Math.max(...values, 0);
   const min = Math.min(...values, max);
   const span = max - min || 1;
-  return values.map((v, i) => [values.length === 1 ? w / 2 : (i / (values.length - 1)) * w, h - (pad * h + ((v - min) / span) * h * (1 - 2 * pad))]);
+  return values.map((v, i) => [
+    values.length === 1 ? w / 2 : (i / (values.length - 1)) * w,
+    h - (pad * h + ((v - min) / span) * h * (1 - 2 * pad)),
+  ]);
 }
 
 // ---- peças das análises (seguem o tema do painel) -------------------------------------
 
 /** Cores das séries que funcionam no claro e no escuro. */
-export const SERIES = ["var(--accent)", "#6c8ebf", "#d08c60", "#9b7bc8", "#5fa8a0", "#c9a227"];
+export const SERIES = [
+  "var(--accent)",
+  "#6c8ebf",
+  "#d08c60",
+  "#9b7bc8",
+  "#5fa8a0",
+  "#c9a227",
+];
 
-export function Panel({ title, aside, children, className = "" }: { title?: string; aside?: React.ReactNode; children: React.ReactNode; className?: string }) {
+export function Panel({
+  title,
+  aside,
+  children,
+  className = "",
+}: {
+  title?: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <section className={`min-w-0 rounded-[14px] border border-line bg-card p-4 ${className}`}>
+    <section
+      className={`min-w-0 rounded-[14px] border border-line bg-card p-4 ${className}`}
+    >
       {(title || aside) && (
         <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          {title && <h3 className="text-[13px] font-semibold text-fg">{title}</h3>}
+          {title && (
+            <h3 className="text-[13px] font-semibold text-fg">{title}</h3>
+          )}
           {aside}
         </header>
       )}
@@ -123,12 +191,30 @@ export function Panel({ title, aside, children, className = "" }: { title?: stri
   );
 }
 
-export function Stat({ title, v, sub, tone }: { title: string; v: string; sub?: string; tone?: "good" | "bad" | null }) {
+export function Stat({
+  title,
+  v,
+  sub,
+  tone,
+}: {
+  title: string;
+  v: string;
+  sub?: string;
+  tone?: "good" | "bad" | null;
+}) {
   return (
     <div className="min-w-0 rounded-[14px] border border-line bg-card p-4">
       <p className="text-[11.5px] text-fg-2">{title}</p>
-      <p className="mt-1 text-[24px] leading-tight font-bold tracking-tight tnum">{v}</p>
-      {sub && <p className={`mt-1 text-[11.5px] ${tone === "good" ? "text-accent" : tone === "bad" ? "text-error-fg" : "text-fg-2"}`}>{sub}</p>}
+      <p className="mt-1 text-[24px] leading-tight font-bold tracking-tight tnum">
+        {v}
+      </p>
+      {sub && (
+        <p
+          className={`mt-1 text-[11.5px] ${tone === "good" ? "text-accent" : tone === "bad" ? "text-error-fg" : "text-fg-2"}`}
+        >
+          {sub}
+        </p>
+      )}
     </div>
   );
 }
@@ -144,6 +230,10 @@ export function noise(...n: number[]): number {
 export function normCdf(z: number): number {
   const t = 1 / (1 + 0.2316419 * Math.abs(z));
   const d = 0.3989423 * Math.exp((-z * z) / 2);
-  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  const p =
+    d *
+    t *
+    (0.3193815 +
+      t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
   return z > 0 ? 1 - p : p;
 }

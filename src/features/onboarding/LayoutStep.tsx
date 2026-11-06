@@ -20,6 +20,7 @@ import { brl } from "@/lib/format";
 import { PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { chooseLayout } from "@/server/onboarding/actions";
+import { FeatureShowcase } from "./FeatureShowcase";
 import { layoutOptions, type LayoutOption } from "./steps";
 import { StepFooter, StepHeader, useStepAction } from "./ui";
 
@@ -29,12 +30,12 @@ const UPSELL_TIERS: Tier[] = ["pro", "avancado"];
 
 const TIER_PITCH: Partial<Record<Tier, string>> = {
   pro: "Layouts por nicho, galeria de criativos com prévia e até 3 contas de cada plataforma por cliente.",
-  avancado: "Todos os layouts e todas as páginas, comparativo de criativos e o VYZ por voz.",
+  avancado: "Todos os layouts e todas as páginas, comparativo de criativos, criativos ao vivo, previsão de KPIs, MMM e o VYZ por voz.",
 };
 
 const TIER_PERKS: Partial<Record<Tier, string[]>> = {
   pro: ["Metas e pacing", "Público", "Comparativo de períodos", "Galeria de criativos", "Até 3 contas por plataforma"],
-  avancado: ["Todos os layouts", "Produtos e funil completo", "Comparativo de criativos", "VYZ por voz"],
+  avancado: ["Todos os layouts", "Produtos e funil completo", "Comparativo de criativos", "Criativos ao vivo", "Previsão de KPIs", "MMM", "VYZ por voz"],
 };
 
 /** Páginas que passam sozinhas enquanto `playing` (sem movimento se o sistema pede). */
@@ -283,6 +284,7 @@ export function LayoutStep({ businessTypeId, tier }: { businessTypeId: string | 
                 {delta !== null && delta > 0 && <p className="text-[12.5px] text-fg-2 tnum">+ {brl(delta)}/mês no anual</p>}
               </div>
             </div>
+            <FeatureShowcase tier={next} />
             <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{visible.map(card)}</ul>
             {items.length > 3 && (
               <button

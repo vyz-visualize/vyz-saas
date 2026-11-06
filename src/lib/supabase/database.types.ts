@@ -1164,6 +1164,7 @@ export type Database = {
           created_at: string
           updated_at: string
           metric_prefs: Json
+          layout: Json
           project_id: string | null
         }
         Insert: {
@@ -1186,6 +1187,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           metric_prefs?: Json
+          layout?: Json
           project_id?: string | null
         }
         Update: {
@@ -1208,6 +1210,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           metric_prefs?: Json
+          layout?: Json
           project_id?: string | null
         }
         Relationships: [

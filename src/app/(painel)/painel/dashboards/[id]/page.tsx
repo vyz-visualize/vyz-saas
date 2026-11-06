@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { canArrangeLayout } from "@/features/dashboards/layout/model";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -113,9 +114,11 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
           pages: d.pages,
           settings: { ...d.settings, period, customDays },
           metricPrefs: d.metricPrefs,
+          layout: d.layout,
         }}
         brand={brand}
         canEdit={canEdit}
+        canArrange={canArrangeLayout(session.access.tier)}
         assemble={query.novo === "1"}
         initialPage={q.page}
         initialFilters={filters}

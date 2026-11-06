@@ -49,9 +49,11 @@ type Input = {
   initial: unknown;
   hideSpend?: boolean;
   saveAction?: SaveMetricPrefs;
+  /** O que o Personalizar edita junto (a disposição): salva, cancela e restaura com as métricas. */
+  companion?: { dirty: boolean; reset: () => void; restore: () => void; save: () => Promise<string | null> };
 };
 
-export function useMetricPrefsState({ dashboardId, scope, catalog, normalizeCatalog, pageKpis, initial, hideSpend, saveAction }: Input) {
+export function useMetricPrefsState({ dashboardId, scope, catalog, normalizeCatalog, pageKpis, initial, hideSpend, saveAction, companion }: Input) {
   const [saved, setSaved] = useState<MetricPrefs>(() => parseMetricPrefs(initial));
   const [draft, setDraft] = useState<MetricPrefs>(saved);
   const [open, setOpen] = useState(false);
@@ -100,8 +102,9 @@ export function useMetricPrefsState({ dashboardId, scope, catalog, normalizeCata
   const dismiss = useCallback(() => setNotice(null), []);
   const openPanel = useCallback(() => {
     setNotice(null);
+    companion?.reset();
     setOpen(true);
-  }, []);
+  }, [companion]);
   const edit = useMemo<KpiEdit | undefined>(() => (dashboardId && saveAction ? { hide } : undefined), [dashboardId, hide, saveAction]);
 
   const visibility = useMemo<MetricVisibility>(
@@ -118,16 +121,25 @@ export function useMetricPrefsState({ dashboardId, scope, catalog, normalizeCata
     (section: MetricSection, id: string) => setDraft((d) => withScope(d, scope, { ...d[scope], [section]: toggleMetric(catalog, section, d[scope]?.[section], id) })),
     [catalog, scope],
   );
-  const restore = useCallback(() => setDraft((d) => withScope(d, scope, {})), [scope]);
+  const restore = useCallback(() => {
+    setDraft((d) => withScope(d, scope, {}));
+    companion?.restore();
+  }, [companion, scope]);
   const close = useCallback(() => {
     setDraft(saved);
     setError(null);
+    companion?.reset();
     setOpen(false);
-  }, [saved]);
+  }, [companion, saved]);
   const save = useCallback(async () => {
     if (!dashboardId || !saveAction) return;
     setPending(true);
     setError(null);
+    const companionError = companion ? await companion.save() : null;
+    if (companionError) {
+      setPending(false);
+      return setError(companionError);
+    }
     const value = normalizeScope(normalizeCatalog ?? catalog, draft[scope], pageKpis);
     const r = await saveAction(dashboardId, scope, value);
     setPending(false);
@@ -136,10 +148,10 @@ export function useMetricPrefsState({ dashboardId, scope, catalog, normalizeCata
     setSaved(next);
     setDraft(next);
     setOpen(false);
-  }, [catalog, dashboardId, draft, normalizeCatalog, pageKpis, saveAction, scope]);
+  }, [catalog, companion, dashboardId, draft, normalizeCatalog, pageKpis, saveAction, scope]);
 
   const writeCatalog = normalizeCatalog ?? catalog;
-  const dirty = open && JSON.stringify(normalizeScope(writeCatalog, draft[scope], pageKpis)) !== JSON.stringify(normalizeScope(writeCatalog, saved[scope], pageKpis));
+  const dirty = open && (!!companion?.dirty || JSON.stringify(normalizeScope(writeCatalog, draft[scope], pageKpis)) !== JSON.stringify(normalizeScope(writeCatalog, saved[scope], pageKpis)));
 
   return { open, openPanel, close, save, restore, toggle, pending, error, prefs: current, visibility, catalog, edit, notice, undo, dismiss, dirty };
 }

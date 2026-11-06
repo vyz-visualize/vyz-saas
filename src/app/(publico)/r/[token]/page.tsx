@@ -64,7 +64,7 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
   return (
     <PublicShell brand={shared.brand} note={note}>
       <SampleDashboard
-        dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays }, metricPrefs: d.metricPrefs }}
+        dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays }, metricPrefs: d.metricPrefs, layout: d.layout }}
         brand={{ color: shared.brand.color ?? "", logo: undefined, hideVyz: true }}
         hideSpend={shared.hideSpend}
         initialPage={q.page}

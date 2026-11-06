@@ -129,6 +129,10 @@ export type EditorInput = {
   noKpis?: boolean;
   /** Vai para uma aba com cards. */
   goToCards?: () => void;
+  /** Aba a mais na bandeja (Por plataforma: métricas de cada API e blocos escondidos). */
+  extraTab?: { label: string; render: () => ReactNode };
+  /** Mover e redimensionar blocos: true no Avançado, false abaixo dele, sem valor onde não existe grade. */
+  arrange?: boolean;
 };
 
 export function useMetricEditorState(input: EditorInput) {
@@ -249,7 +253,13 @@ export function MetricEditBar({ state }: { state: EditorState }) {
           <span className="text-fg-2"> · toque em + para adicionar uma coluna, ou no ✕ do cabeçalho para tirar</span>
         ) : (
           <>
-            <span className="hidden text-fg-2 md:inline"> · arraste da bandeja para um encaixe, ou toque em +</span>
+            <span className="hidden text-fg-2 md:inline">
+              {input.arrange
+                ? " · arraste os blocos pelo cabeçalho para mudar de lugar e pelo canto para mudar o tamanho; da bandeja, arraste métricas para um encaixe"
+                : input.arrange === false
+                  ? " · adicione ou oculte métricas, inclusive as de cada plataforma. Mudar os blocos de lugar e de tamanho é do Avançado"
+                  : " · arraste da bandeja para um encaixe, ou toque em +"}
+            </span>
             <span className="text-fg-2 md:hidden"> · toque em +</span>
           </>
         )}
@@ -376,6 +386,8 @@ export function MetricTray({ state }: { state: EditorState }) {
   const [tab, setTab] = useState<MetricGroup>("gerais");
   const [help, setHelp] = useState<CatalogMetric | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [extraOn, setExtraOn] = useState(false);
+  const extraTab = input.extraTab;
 
   useEffect(() => {
     if (focusTick > 0) searchRef.current?.focus();
@@ -407,16 +419,22 @@ export function MetricTray({ state }: { state: EditorState }) {
             {!collapsed && (
               <div className="flex h-[54dvh] flex-col gap-2 px-3 pb-3 md:h-[264px] md:px-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Segmented<MetricSection>
+                  <Segmented<MetricSection | "extra">
                     label="O que personalizar"
                     size="sm"
-                    value={section}
-                    onChange={setSection}
+                    value={extraOn && extraTab ? "extra" : section}
+                    onChange={(v) => {
+                      setExtraOn(v === "extra");
+                      if (v !== "extra") setSection(v);
+                    }}
                     options={[
                       { value: "kpis", label: "Cards" },
                       { value: "columns", label: "Colunas da tabela" },
+                      ...(extraTab ? [{ value: "extra" as const, label: extraTab.label }] : []),
                     ]}
                   />
+                  {!(extraOn && extraTab) && (
+                  <>
                   <label className="flex h-8 min-w-40 flex-1 items-center gap-2 rounded-control border border-line bg-field px-2.5 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent md:max-w-72">
                     <Search size={14} aria-hidden className="shrink-0 text-fg-2" />
                     <span className="sr-only">Buscar métrica</span>
@@ -429,7 +447,11 @@ export function MetricTray({ state }: { state: EditorState }) {
                       </button>
                     ))}
                   </div>
+                  </>
+                  )}
                 </div>
+                {extraOn && extraTab ? extraTab.render() : (
+                <>
                 <p className="min-h-[1.2em] truncate text-[12px] text-fg-2" title={help?.help}>
                   {help ? (
                     <>
@@ -496,6 +518,8 @@ export function MetricTray({ state }: { state: EditorState }) {
                       );
                   })}
                 </TrayRow>
+                </>
+                )}
               </div>
             )}
           </section>,

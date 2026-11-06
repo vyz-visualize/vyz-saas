@@ -10,7 +10,7 @@ import type { DashFilters } from "@/features/analytics/filters";
 import type { CreativesData, SampleExtraMetric } from "@/features/analytics/types";
 import type { PageId } from "@/features/templates/types";
 import type { Brand } from "@/features/workspace/workspace";
-import { saveDashboardMetricPrefs } from "@/server/dashboards/actions";
+import { saveDashboardLayout, saveDashboardMetricPrefs } from "@/server/dashboards/actions";
 import { DashboardActions } from "./DashboardActions";
 import { DashboardBody, type DashboardSpec } from "./DashboardBody";
 import { periodQuery } from "./model";
@@ -23,6 +23,8 @@ type Props = {
   hideSpend?: boolean;
   /** Montagem com scanner (logo depois de gerar). */
   assemble?: boolean;
+  /** Mover e redimensionar blocos no Personalizar (Avançado). */
+  canArrange?: boolean;
   /** Modelos que usam a Meta: a página de Criativos por plano. */
   creatives?: CreativesData;
   /** Métricas novas do Personalizar, na escala do modelo. */
@@ -32,7 +34,7 @@ type Props = {
   initialFilters?: DashFilters;
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -76,6 +78,8 @@ export function SampleDashboard({ dashboard, brand, canEdit, hideSpend, assemble
       }
       customizeId={canEdit ? dashboard.id : undefined}
       saveMetrics={canEdit ? saveDashboardMetricPrefs : undefined}
+      saveLayout={canEdit ? saveDashboardLayout : undefined}
+      canArrange={canEdit && canArrange}
       actions={
         canEdit ? (
           <DashboardActions dashboard={{ id: dashboard.id, name: dashboard.name, live: false }} period={dashboard.settings.period} pages={dashboard.pages.length} onExport={() => setPrinting(true)} />

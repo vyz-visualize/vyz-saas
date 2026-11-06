@@ -8,6 +8,7 @@ import { isLiveTemplate } from "@/features/templates/live";
 import { PAGE_LIBRARY, PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { ATTRIBUTIONS, type Dashboard, type DashboardSettings, type PeriodId } from "@/features/workspace/types";
+import { parseLayout, type DashboardLayout } from "./layout/model";
 import { parseMetricPrefs, type MetricPrefs } from "./metric-prefs";
 
 export const PERIOD_IDS: PeriodId[] = ["7d", "30d", "mes", "custom"];
@@ -35,6 +36,7 @@ export type DashboardRow = {
   brand_color: string | null;
   hide_vyz_brand: boolean;
   metric_prefs?: unknown;
+  layout?: unknown;
   created_at: string;
   updated_at: string;
 };
@@ -54,6 +56,8 @@ export type DashboardDetail = Dashboard & {
   margin: number | null;
   /** Métricas escolhidas (só a diferença para o padrão). */
   metricPrefs: MetricPrefs;
+  /** Disposição por aba (Editar disposição). {} = a do template. */
+  layout: DashboardLayout;
 };
 
 /** Conta que pode alimentar um dashboard com dados reais (escolha das fontes). */
@@ -98,6 +102,7 @@ export function toDashboard(row: DashboardRow, pages: PageRow[], sources: Source
     sources: list,
     margin: row.margin == null ? null : settings.margin,
     metricPrefs: parseMetricPrefs(row.metric_prefs),
+    layout: parseLayout(row.layout),
   };
 }
 
