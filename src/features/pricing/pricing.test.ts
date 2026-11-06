@@ -114,9 +114,8 @@ describe("regras", () => {
     expect(q.overLimit).toBe(false);
   });
 
-  it("Padrão e Avançado mostram o tracking incluso a R$ 0", () => {
-    expect(quote(s({ plano: "pro" })).lines.find((l) => l.id === "tracking")?.amount).toBe(0);
-    expect(quote(s({ plano: "base" })).lines.some((l) => l.id === "tracking")).toBe(false);
+  it("o plano não traz serviço incluso (só o plano e os extras)", () => {
+    expect(quote(s({ plano: "pro" })).lines.map((l) => l.id)).toEqual(["plan"]);
   });
 });
 

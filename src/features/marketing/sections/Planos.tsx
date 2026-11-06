@@ -80,7 +80,7 @@ function dashCard(tier: PlanId, period: Period): Card {
   if (tier === "pro") {
     return {
       ...base,
-      pitch: "Tudo do Básico, com o tracking ligado pelo nosso time.",
+      pitch: "Tudo do Básico, com mais layouts, mais páginas e mais contas por cliente.",
       features: [
         "Tudo do Básico",
         `Até ${e.maxAccountsPerPlatform} contas por plataforma em cada projeto`,
@@ -89,7 +89,6 @@ function dashCard(tier: PlanId, period: Period): Card {
           <SoonBadge />
         </>,
         "Criativos em galeria, com previews",
-        "API de Conversões da Meta, conversões otimizadas e GA4 configurados pelo time",
         `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,
         ...COMMON,
       ],

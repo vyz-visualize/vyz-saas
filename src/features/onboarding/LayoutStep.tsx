@@ -28,7 +28,7 @@ const CYCLE_MS = 1800;
 const UPSELL_TIERS: Tier[] = ["pro", "avancado"];
 
 const TIER_PITCH: Partial<Record<Tier, string>> = {
-  pro: "Layouts por nicho, galeria de criativos com prévia e o tracking ligado pelo nosso time.",
+  pro: "Layouts por nicho, galeria de criativos com prévia e até 3 contas de cada plataforma por cliente.",
   avancado: "Todos os layouts e todas as páginas, comparativo de criativos e o VYZ por voz.",
 };
 

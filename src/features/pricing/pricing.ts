@@ -32,7 +32,6 @@ export const EXTRA_PROJECT: Record<PlanId, Record<Period, number>> = {
 
 /** Plataforma fora do Básico (ex.: TikTok), por mês, sem desconto no anual. */
 export const EXTRA_PLATFORM_PRICE = 4990;
-export const PRO_TRACKING_VALUE = 177000; // R$ 1.770 (CAPI 690 + conversões otimizadas 490 + GA4 590), incluso no Padrão e no Avançado
 export const DASH_CUSTOM = { unico: 190000, recorrente: { setup: 99000, mensal: 19900 } }; // R$ 1.900 ou R$ 990 + R$ 199/mês
 export const LP_TEAM_PRICE = 95000; // "Landing page feita pelo time", já com GTM
 export const LP_CARE_MONTHLY = 9900; // hospedagem e ajustes, por LP, opcional
@@ -192,15 +191,6 @@ export function quote(s: PlanState): Quote {
         detail: `${extra} × ${brl(unit)}`,
         amount: extra * unit,
         kind: "monthly",
-      });
-    }
-    if (plan === "pro" || plan === "avancado") {
-      lines.push({
-        id: "tracking",
-        label: "Implantação do tracking",
-        detail: `CAPI, conversões otimizadas e GA4 · juntos, valeria ${brl(PRO_TRACKING_VALUE, { decimals: false })} avulso`,
-        amount: 0,
-        kind: "included",
       });
     }
   }
