@@ -61,6 +61,7 @@ const MESSAGES: Record<string, string> = {
   "invitation:email_mismatch": "Este convite é de outro e-mail.",
   "auth:invalid_credentials": "E-mail ou senha incorretos.",
   "auth:google_disabled": "Login com Google precisa ser ativado no Supabase.",
+  "auth:apple_disabled": "Login com Apple precisa ser ativado no Supabase.",
   "auth:recovery_expired": "O link de nova senha expirou. Peça outro.",
   "auth:reauthentication": "Por segurança, saia e entre de novo antes de trocar a senha.",
   "account:not_connected": "Só contas conectadas e ativas podem ser ligadas.",

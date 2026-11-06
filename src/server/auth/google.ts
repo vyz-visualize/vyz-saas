@@ -7,10 +7,19 @@ import "server-only";
 // um minuto.
 
 import { cacheLife } from "next/cache";
-import { googleStatusFrom, type GoogleStatus } from "@/features/auth/google";
+import { providerStatusFrom, type GoogleStatus, type OAuthProvider } from "@/features/auth/google";
 import { serverEnv } from "@/server/env";
 
 export async function googleSignInStatus(): Promise<GoogleStatus> {
+  return (await oauthStatus()).google;
+}
+
+export async function appleSignInStatus(): Promise<GoogleStatus> {
+  return (await oauthStatus()).apple;
+}
+
+/** Google e Apple numa consulta só. */
+export async function oauthStatus(): Promise<Record<OAuthProvider, GoogleStatus>> {
   "use cache";
   cacheLife("minutes");
   const env = serverEnv();
@@ -20,9 +29,10 @@ export async function googleSignInStatus(): Promise<GoogleStatus> {
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return googleStatusFrom(await res.json());
+    const settings = await res.json();
+    return { google: providerStatusFrom(settings, "google"), apple: providerStatusFrom(settings, "apple") };
   } catch (err) {
     console.error("[vyz] configurações do Supabase Auth indisponíveis", err);
-    return "unknown";
+    return { google: "unknown", apple: "unknown" };
   }
 }

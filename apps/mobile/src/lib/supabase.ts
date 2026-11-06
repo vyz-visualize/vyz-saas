@@ -7,7 +7,7 @@ import { ENV } from "./env";
 import { secureStorage } from "./secure-storage";
 
 export const supabase = createClient(ENV.supabaseUrl, ENV.supabaseKey, {
-  auth: { storage: secureStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
+  auth: { storage: secureStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false, flowType: "pkce" },
 });
 
 AppState.addEventListener("change", (state) => {

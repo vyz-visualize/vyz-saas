@@ -11,7 +11,7 @@ import { createClient, isAuthWeakPasswordError, type AuthError } from "@supabase
 import { cookies } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { fieldErrors, formText, type AuthFormState, type FormValues } from "@/features/auth/form";
-import { GOOGLE_PENDING } from "@/features/auth/google";
+import { APPLE_PENDING, GOOGLE_PENDING, type OAuthProvider } from "@/features/auth/google";
 import { AUTH_MESSAGES } from "@/features/auth/messages";
 import { PASSWORD_MESSAGES } from "@/features/auth/password";
 import { isRecentRecovery, RESET_PASSWORD_PATH } from "@/features/auth/recovery";
@@ -25,7 +25,7 @@ import { hitRateLimit, type RateRule } from "@/server/security/rate-limit";
 import { AppError, appError, toActionError, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 import { signInWithPasswordServer } from "./accounts";
-import { googleSignInStatus } from "./google";
+import { appleSignInStatus, googleSignInStatus } from "./google";
 import { getSessionUser } from "./session";
 
 // O Supabase só manda o e-mail quando a conta existe, e isso leva tempo:
@@ -117,21 +117,22 @@ export async function signIn(_prev: AuthFormState, formData: FormData): Promise<
 }
 
 /**
- * Entrar com Google: vai para o consentimento (pelo Supabase) e volta em
- * /auth/callback, que abre a sessão e segue para `next`.
+ * Entrar com Google ou Apple: vai para o consentimento (pelo Supabase) e volta
+ * em /auth/callback, que abre a sessão e segue para `next`.
  */
-export async function signInWithGoogle(next?: string | null): Promise<ActionResult> {
+async function signInWithProvider(provider: OAuthProvider, next?: string | null): Promise<ActionResult> {
   let url: string;
   try {
-    if ((await googleSignInStatus()) === "disabled") throw appError("auth:google_disabled", `${GOOGLE_PENDING.label}.`);
+    const status = provider === "google" ? await googleSignInStatus() : await appleSignInStatus();
+    if (status === "disabled") throw appError(`auth:${provider}_disabled`, `${(provider === "google" ? GOOGLE_PENDING : APPLE_PENDING).label}.`);
     const parsed = nextPathSchema.safeParse(next);
     const callback = new URL("/auth/callback", await appOrigin());
     callback.searchParams.set("next", safeNextPath(parsed.success ? parsed.data : null));
     const supabase = await createServerSupabase();
     // PKCE: o verificador fica num cookie deste navegador até a volta.
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: callback.toString(), queryParams: { prompt: "select_account" } },
+      provider,
+      options: provider === "google" ? { redirectTo: callback.toString(), queryParams: { prompt: "select_account" } } : { redirectTo: callback.toString(), scopes: "name email" },
     });
     if (error || !data.url) throw error ?? appError("unknown");
     url = data.url;
@@ -140,6 +141,14 @@ export async function signInWithGoogle(next?: string | null): Promise<ActionResu
     return toActionError(err);
   }
   redirect(url);
+}
+
+export async function signInWithGoogle(next?: string | null): Promise<ActionResult> {
+  return signInWithProvider("google", next);
+}
+
+export async function signInWithApple(next?: string | null): Promise<ActionResult> {
+  return signInWithProvider("apple", next);
 }
 
 /**

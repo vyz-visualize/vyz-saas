@@ -1,11 +1,13 @@
-// Sessão do app: e-mail e senha, Google (nativo, idToken) e Apple (só iOS,
-// com nonce). Os tokens do Google e da Apple são trocados pela sessão no
+// Sessão do app: e-mail e senha, Google (nativo, idToken) e Apple (nativo
+// no iPhone, com nonce; no Android, pelo navegador com PKCE). Os tokens do Google e da Apple são trocados pela sessão no
 // Supabase (signInWithIdToken): mesmo usuário do site.
 
 import { GoogleSignin, isSuccessResponse } from "@react-native-google-signin/google-signin";
 import type { Session } from "@supabase/supabase-js";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as Crypto from "expo-crypto";
+import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
 import { api } from "./api";
@@ -29,6 +31,23 @@ type Auth = {
 const AuthContext = createContext<Auth | null>(null);
 
 const GENERIC = "Não foi possível entrar agora. Tente de novo.";
+
+/** Apple fora do iPhone: consentimento no navegador e volta em vyz://auth com o code (PKCE). */
+async function appleInBrowser(): Promise<string | null> {
+  try {
+    const redirectTo = Linking.createURL("auth");
+    const { data, error } = await supabase.auth.signInWithOAuth({ provider: "apple", options: { redirectTo, skipBrowserRedirect: true, scopes: "name email" } });
+    if (error || !data.url) return GENERIC;
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type !== "success") return null;
+    const code = new URL(result.url).searchParams.get("code");
+    if (!code) return GENERIC;
+    const { error: exchange } = await supabase.auth.exchangeCodeForSession(code);
+    return exchange ? GENERIC : null;
+  } catch {
+    return GENERIC;
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -70,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     async signInWithApple() {
-      if (Platform.OS !== "ios") return GENERIC;
+      if (Platform.OS !== "ios") return appleInBrowser();
       try {
         const rawNonce = Crypto.randomUUID() + Crypto.randomUUID();
         const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);

@@ -12,7 +12,8 @@ import { PendingChip } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { GoogleMark } from "@/features/auth/GoogleMark";
 import { PASSWORD_HINT, passwordChecklist } from "@/features/auth/password-rules";
-import { signInWithGoogle } from "@/server/auth/actions";
+import { signInWithApple, signInWithGoogle } from "@/server/auth/actions";
+import { AppleMark } from "@/features/auth/AppleMark";
 import { startCheckout, type CheckoutFormState } from "@/server/billing/actions";
 import { Field } from "./Field";
 import { checkDetails, type CheckoutField, type CheckoutValues } from "./fields";
@@ -113,7 +114,8 @@ export function CheckoutForm({ planQuery, account, workspaceName, signInHref }: 
   const failure = state && !state.ok ? state.error : null;
   // Google: entra (ou cria a conta) e volta para este mesmo checkout, já logado
   const [googleState, googleAction, openingGoogle] = useActionState(signInWithGoogle.bind(null, `/assinar?${planQuery}`), null);
-  const googleError = googleState && !googleState.ok ? googleState.error.message : null;
+  const [appleState, appleAction, openingApple] = useActionState(signInWithApple.bind(null, `/assinar?${planQuery}`), null);
+  const googleError = googleState && !googleState.ok ? googleState.error.message : appleState && !appleState.ok ? appleState.error.message : null;
   // sem conta: primeiro a escolha (Google é o caminho curto); e-mail e senha abre o formulário
   const [withEmail, setWithEmail] = useState(false);
 
@@ -127,6 +129,12 @@ export function CheckoutForm({ planQuery, account, workspaceName, signInHref }: 
               <GoogleMark />
             </span>
             {openingGoogle ? "Abrindo o Google…" : "Criar conta com Google"}
+          </button>
+        </form>
+        <form action={appleAction}>
+          <button type="submit" disabled={openingApple} className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-[10px] bg-black px-4 text-[15.5px] font-semibold text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/85">
+            <AppleMark />
+            {openingApple ? "Abrindo a Apple…" : "Criar conta com Apple"}
           </button>
         </form>
         {googleError && <p className="text-[13px] text-error-fg">{googleError}</p>}

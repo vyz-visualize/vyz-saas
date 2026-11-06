@@ -15,3 +15,17 @@ export function googleStatusFrom(settings: unknown): GoogleStatus {
   if (typeof external !== "object" || external === null) return "unknown";
   return (external as { google?: unknown }).google === true ? "enabled" : "disabled";
 }
+
+export type OAuthProvider = "google" | "apple";
+
+export const APPLE_PENDING = {
+  label: "Login com Apple precisa ser ativado no Supabase",
+  detail: "No painel do Supabase: Authentication → Providers → Apple. Até lá, entre com o Google ou com e-mail e senha.",
+} as const;
+
+/** Estado de um provedor nas configurações públicas do Auth. */
+export function providerStatusFrom(settings: unknown, provider: OAuthProvider): GoogleStatus {
+  const external = typeof settings === "object" && settings !== null ? (settings as { external?: unknown }).external : undefined;
+  if (typeof external !== "object" || external === null) return "unknown";
+  return (external as Record<string, unknown>)[provider] === true ? "enabled" : "disabled";
+}

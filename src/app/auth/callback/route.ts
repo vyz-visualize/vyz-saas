@@ -1,4 +1,4 @@
-// Volta dos fluxos PKCE: login com Google e link de nova senha. Troca o code
+// Volta dos fluxos PKCE: login com Google ou Apple e link de nova senha. Troca o code
 // pela sessão (o verificador está no cookie do navegador que começou o fluxo)
 // e segue para um caminho interno. Falhou: volta com aviso para /entrar ou
 // para /recuperar-senha.
@@ -39,7 +39,11 @@ export async function GET(request: NextRequest) {
     return go(RESET_PASSWORD_PATH);
   }
   const methods = amrMethods(amr);
-  if (methods.includes("oauth")) await logAuthEvent({ event: "oauth_sign_in", userId: user.id, email: user.email, method: "google" });
+  if (methods.includes("oauth")) {
+    // o histórico só aceita "google" como método; a Apple vai no metadata
+    const provider = String(user.app_metadata?.provider ?? "google");
+    await logAuthEvent({ event: "oauth_sign_in", userId: user.id, email: user.email, ...(provider === "google" ? { method: "google" as const } : { metadata: { provider } }) });
+  }
   else await logAuthEvent({ event: "sign_in", userId: user.id, email: user.email, method: "magic_link", metadata: { flow: methods.join(",") || "pkce" } });
   return go(next);
 }
