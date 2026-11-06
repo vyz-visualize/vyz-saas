@@ -167,7 +167,7 @@ Rastreamento: **Não**. Nada é usado para publicidade nem compartilhado com cor
 
 ## 6. Compras dentro do app
 
-Os IDs são fixos (não mudar). A lista completa com preços está em `planos-lojas.csv`: são 168 assinaturas (3 planos × mensal ou anual × 3 a 30 projetos). Para gerar a lista de novo: `npx tsx scripts/store/plan-products.ts`, na raiz do repositório.
+Os IDs são fixos (não mudar). A lista completa com preços está em `pacotes-lojas.csv`: são 168 assinaturas (3 planos × mensal ou anual × 3 a 30 projetos). Para gerar a lista de novo: `npx tsx scripts/store/plan-products.ts`, na raiz do repositório.
 
 - **Grupo de assinaturas** (App Store): `Vyzualize Planos`.
   - Ordem de nível, do maior para o menor: Avançado, Padrão, Básico.
