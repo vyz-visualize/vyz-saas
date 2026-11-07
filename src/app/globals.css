@@ -1051,3 +1051,200 @@ button:hover > * > .vyz3d .vyz3d-mouth { transform: scale(1.2, 1.12); }
     animation: none;
   }
 }
+
+/* ---- Site: movimento contínuo, só com a dobra na tela ---------------- */
+/* a entrada (Reveal) roda sempre até o fim: só o movimento contínuo pausa */
+[data-play="off"] :not([data-reveal]),
+[data-play="off"] *::before,
+[data-play="off"] *::after {
+  animation-play-state: paused !important;
+}
+/* "carregando": um brilho que atravessa o chip do que vem em breve */
+.soon-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.soon-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--fg) 14%, transparent) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: soon-shimmer 2.4s ease-in-out infinite;
+}
+@keyframes soon-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+/* barras que se enchem em loop (painel do passo 1) */
+.fill-loop {
+  transform-origin: left center;
+  animation: fill-loop 3.2s var(--ease) infinite;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes fill-loop {
+  0% {
+    transform: scaleX(0.08);
+  }
+  45%,
+  80% {
+    transform: scaleX(1);
+  }
+  100% {
+    transform: scaleX(0.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .soon-shimmer::after {
+    display: none;
+  }
+  .fill-loop {
+    animation: none;
+  }
+}
+
+/* passo 3: o link digitado, a página abre, o cursor clica numa campanha e o painel filtra */
+.send-art {
+  --t: 7s;
+}
+.send-url {
+  animation: send-url var(--t) steps(26) infinite;
+}
+@keyframes send-url {
+  0% {
+    max-width: 0;
+  }
+  26%,
+  100% {
+    max-width: 100%;
+  }
+}
+.send-page {
+  animation: send-page var(--t) var(--ease) infinite;
+}
+@keyframes send-page {
+  0%,
+  28% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  36%,
+  96% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.send-cursor {
+  left: 0;
+  top: 0;
+  animation: send-cursor var(--t) var(--ease) infinite;
+}
+@keyframes send-cursor {
+  0%,
+  38% {
+    opacity: 0;
+    transform: translate(260px, 230px);
+  }
+  42% {
+    opacity: 1;
+    transform: translate(240px, 220px);
+  }
+  54% {
+    transform: translate(120px, 168px);
+  }
+  56% {
+    transform: translate(120px, 168px) scale(0.85);
+  }
+  58%,
+  90% {
+    opacity: 1;
+    transform: translate(120px, 168px);
+  }
+  96%,
+  100% {
+    opacity: 0;
+    transform: translate(120px, 168px);
+  }
+}
+.send-row {
+  animation: send-row var(--t) ease infinite;
+}
+@keyframes send-row {
+  0%,
+  56% {
+    background: transparent;
+  }
+  58%,
+  96% {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+}
+.send-other {
+  animation: send-other var(--t) ease infinite;
+}
+@keyframes send-other {
+  0%,
+  56% {
+    opacity: 1;
+  }
+  58%,
+  96% {
+    opacity: 0.4;
+  }
+}
+.send-a {
+  animation: send-a var(--t) ease infinite;
+}
+@keyframes send-a {
+  0%,
+  56% {
+    opacity: 1;
+  }
+  58%,
+  100% {
+    opacity: 0;
+  }
+}
+.send-b {
+  animation: send-b var(--t) ease infinite;
+}
+@keyframes send-b {
+  0%,
+  56% {
+    opacity: 0;
+  }
+  58%,
+  96% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.send-chip {
+  animation: send-b var(--t) ease infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .send-url,
+  .send-page,
+  .send-row,
+  .send-other,
+  .send-chip {
+    animation: none;
+  }
+  .send-a {
+    animation: none;
+    opacity: 0;
+  }
+  .send-b {
+    animation: none;
+    opacity: 1;
+  }
+  .send-cursor {
+    display: none;
+  }
+}
