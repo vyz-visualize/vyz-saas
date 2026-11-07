@@ -3140,6 +3140,177 @@ export type Database = {
           },
         ]
       }
+      task_automation_runs: {
+        Row: {
+          workspace_id: string
+          generated_at: string
+          created_count: number
+          closed_count: number
+        }
+        Insert: {
+          workspace_id: string
+          generated_at?: string
+          created_count?: number
+          closed_count?: number
+        }
+        Update: {
+          workspace_id?: string
+          generated_at?: string
+          created_count?: number
+          closed_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_automation_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_groups: {
+        Row: {
+          id: string
+          workspace_id: string
+          name: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          name: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          name?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_groups_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          id: string
+          workspace_id: string
+          project_id: string | null
+          group_id: string | null
+          dashboard_id: string | null
+          platform: string | null
+          title: string
+          detail: string | null
+          status: string
+          stage: string
+          priority: string
+          start_date: string | null
+          due_date: string | null
+          assignees: string[]
+          source: string
+          insight_key: string | null
+          auto_note: string | null
+          seen_at: string | null
+          edited_at: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          project_id?: string | null
+          group_id?: string | null
+          dashboard_id?: string | null
+          platform?: string | null
+          title: string
+          detail?: string | null
+          status?: string
+          stage?: string
+          priority?: string
+          start_date?: string | null
+          due_date?: string | null
+          assignees?: string[]
+          source?: string
+          insight_key?: string | null
+          auto_note?: string | null
+          seen_at?: string | null
+          edited_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          project_id?: string | null
+          group_id?: string | null
+          dashboard_id?: string | null
+          platform?: string | null
+          title?: string
+          detail?: string | null
+          status?: string
+          stage?: string
+          priority?: string
+          start_date?: string | null
+          due_date?: string | null
+          assignees?: string[]
+          source?: string
+          insight_key?: string | null
+          auto_note?: string | null
+          seen_at?: string | null
+          edited_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          completed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_fk"
+            columns: ["workspace_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "tasks_group_fk"
+            columns: ["workspace_id", "group_id"]
+            isOneToOne: false
+            referencedRelation: "task_groups"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "tasks_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_invitations: {
         Row: {
           id: string
@@ -3316,6 +3487,156 @@ export type Database = {
             columns: ["business_type_id"]
             isOneToOne: false
             referencedRelation: "business_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          id: string
+          subscription_id: string | null
+          direction: string
+          kind: string
+          template: string | null
+          status: string
+          provider_message_id: string | null
+          ref_key: string | null
+          body: string | null
+          error: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          subscription_id?: string | null
+          direction: string
+          kind: string
+          template?: string | null
+          status: string
+          provider_message_id?: string | null
+          ref_key?: string | null
+          body?: string | null
+          error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          subscription_id?: string | null
+          direction?: string
+          kind?: string
+          template?: string | null
+          status?: string
+          provider_message_id?: string | null
+          ref_key?: string | null
+          body?: string | null
+          error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_subscriptions: {
+        Row: {
+          id: string
+          workspace_id: string
+          user_id: string
+          phone: string
+          verified_at: string | null
+          opted_in_at: string | null
+          opt_in_source: string | null
+          opted_out_at: string | null
+          reports: string[]
+          paused: boolean
+          welcome_sent_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          user_id: string
+          phone: string
+          verified_at?: string | null
+          opted_in_at?: string | null
+          opt_in_source?: string | null
+          opted_out_at?: string | null
+          reports?: string[]
+          paused?: boolean
+          welcome_sent_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          user_id?: string
+          phone?: string
+          verified_at?: string | null
+          opted_in_at?: string | null
+          opt_in_source?: string | null
+          opted_out_at?: string | null
+          reports?: string[]
+          paused?: boolean
+          welcome_sent_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_subscriptions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_verification_codes: {
+        Row: {
+          id: string
+          subscription_id: string
+          phone: string
+          code_hash: string
+          expires_at: string
+          attempts: number
+          consumed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          subscription_id: string
+          phone: string
+          code_hash: string
+          expires_at: string
+          attempts?: number
+          consumed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          subscription_id?: string
+          phone?: string
+          code_hash?: string
+          expires_at?: string
+          attempts?: number
+          consumed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_verification_codes_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_subscriptions"
             referencedColumns: ["id"]
           },
         ]

@@ -54,6 +54,16 @@ const Schema = z
     APNS_BUNDLE_ID: z.string().trim().default("app.vyz.painel"),
     /** Push no Android (FCM v1): JSON da conta de serviço do Firebase (cru ou em base64). */
     FCM_SERVICE_ACCOUNT_JSON: optional,
+    /** WhatsApp Cloud API (Meta): id do número da VYZ no WhatsApp Manager. Sem ele (ou sem o token), o envio é simulado. */
+    WHATSAPP_PHONE_NUMBER_ID: optional,
+    /** Token permanente de um usuário do sistema do Meta Business com whatsapp_business_messaging. */
+    WHATSAPP_ACCESS_TOKEN: optional,
+    /** Chave secreta do app do Meta: confere o X-Hub-Signature-256 do webhook. */
+    WHATSAPP_APP_SECRET: optional,
+    /** Token que você inventa e repete no cadastro do webhook (hub.verify_token). */
+    WHATSAPP_VERIFY_TOKEN: optional,
+    /** Idioma dos templates aprovados. */
+    WHATSAPP_TEMPLATE_LANG: z.string().trim().default("pt_BR"),
   })
   .superRefine((env, ctx) => {
     const mocks = env.BILLING_PROVIDER === "mock" || env.INTEGRATIONS_MODE === "mock";
@@ -125,4 +135,6 @@ export function isTestAccount(email: string | null | undefined): boolean {
 }
 
 export const CHECKOUT_CLOSED_MESSAGE = "O pagamento online abre em breve. Fale com um especialista no WhatsApp para assinar agora.";
+/** WhatsApp sem número ou token: as mensagens são registradas como "simulado" e nada sai. */
+export const isMockWhatsapp = () => !serverEnv().WHATSAPP_PHONE_NUMBER_ID || !serverEnv().WHATSAPP_ACCESS_TOKEN;
 export const isMockIntegrations = () => serverEnv().INTEGRATIONS_MODE === "mock";

@@ -2,7 +2,7 @@
 // dashboards, cada um já com o número principal dos últimos 30 dias e a curva
 // (carregados em paralelo).
 
-import type { ApiInsight, ApiKpi, DashboardDataResponse, DashboardsResponse, InsightsResponse } from "@vyz/shared";
+import type { ApiInsight, ApiKpi, DashboardDataResponse, DashboardsResponse, InsightsResponse, TasksResponse } from "@vyz/shared";
 import { router, Stack } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, Modal, Pressable, RefreshControl, Text, View } from "react-native";
@@ -68,6 +68,25 @@ function DashboardCard({ item, preview }: { item: Summary; preview: Preview | nu
   );
 }
 
+function TodoCard({ open, late, fresh }: { open: number; late: number; fresh: number }) {
+  const t = useTheme();
+  const caption = open === 0 ? "Tudo em dia" : [late ? `${late} ${late === 1 ? "atrasada" : "atrasadas"}` : null, fresh ? `${fresh} ${fresh === 1 ? "nova do VYZ" : "novas do VYZ"}` : null].filter(Boolean).join(" · ") || "Por prioridade e prazo";
+  return (
+    <PressCard label={`A Fazer: ${open} ${open === 1 ? "tarefa aberta" : "tarefas abertas"}`} onPress={() => router.push("/a-fazer")} style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+      <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: late ? t.dangerSoft : t.accentSoft, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: late ? t.danger : t.accent, fontSize: 18, fontWeight: "800", fontVariant: ["tabular-nums"] }}>{open}</Text>
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ color: t.fg, fontSize: 16.5, fontWeight: "800" }}>A Fazer</Text>
+        <Text style={{ color: late ? t.danger : t.fg2, fontSize: 13 }} numberOfLines={1}>
+          {caption}
+        </Text>
+      </View>
+      <IconChevron color={t.fg2} size={18} />
+    </PressCard>
+  );
+}
+
 function WorkspacePicker({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useTheme();
   const { me, workspace, switchTo } = useWorkspace();
@@ -108,6 +127,7 @@ export default function Home() {
   const [items, setItems] = useState<Summary[]>([]);
   const [previews, setPreviews] = useState<Record<string, Preview | null>>({});
   const [highlights, setHighlights] = useState<ApiInsight[] | null>(null);
+  const [todo, setTodo] = useState<{ open: number; late: number; fresh: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [picker, setPicker] = useState(false);
@@ -123,6 +143,9 @@ export default function Home() {
       api<InsightsResponse>(`/workspaces/${ws}/insights?periodo=7d`)
         .then((r) => setHighlights(r.insights.slice(0, 3)))
         .catch(() => setHighlights([]));
+      api<TasksResponse>(`/workspaces/${ws}/tasks?abertas=1`)
+        .then((r) => setTodo({ open: r.tasks.length, late: r.tasks.filter((x) => x.situation === "atrasado").length, fresh: r.tasks.filter((x) => x.isNew).length }))
+        .catch(() => setTodo(null));
       // prévia de cada dashboard em paralelo (as que falham ficam sem número)
       void Promise.all(
         list.slice(0, 8).map(async (d) => {
@@ -145,6 +168,7 @@ export default function Home() {
     setItems([]);
     setPreviews({});
     setHighlights(null);
+    setTodo(null);
     void load();
   }, [load]);
 
@@ -195,6 +219,7 @@ export default function Home() {
               </Pressable>
             </View>
             <Notice text={error ?? meError} />
+            {todo && <TodoCard {...todo} />}
             {highlights === null && items.length > 0 ? <Skeleton height={110} /> : null}
             {highlights && highlights.length > 0 && (
               <View style={{ gap: 10 }}>

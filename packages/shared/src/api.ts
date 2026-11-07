@@ -156,3 +156,46 @@ export type DashboardDataResponse = {
   };
   insights?: ApiInsight[];
 };
+
+// ---- A Fazer ---------------------------------------------------------------------------------
+
+export type ApiTaskStatus = "planejado" | "em_andamento" | "concluido" | "cancelado";
+export type ApiTaskStage = "midia_paga" | "cro" | "crm" | "criativos" | "relatorio" | "outro";
+export type ApiTaskPriority = "alta" | "media" | "baixa";
+export type ApiTaskSituation = "no_prazo" | "atrasado" | "concluido" | "sem_prazo";
+
+export type ApiTask = {
+  id: string;
+  title: string;
+  detail: string | null;
+  status: ApiTaskStatus;
+  stage: ApiTaskStage;
+  priority: ApiTaskPriority;
+  situation: ApiTaskSituation;
+  startDate: string | null;
+  dueDate: string | null;
+  assignees: string[];
+  groupId: string | null;
+  projectId: string | null;
+  projectName: string | null;
+  dashboardId: string | null;
+  platform: string | null;
+  source: "manual" | "insight" | "playbook";
+  autoNote: string | null;
+  /** Criada pelo VYZ e ainda não aberta. */
+  isNew: boolean;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+/** GET /workspaces/:id/tasks (?abertas=1 só as abertas). */
+export type TasksResponse = { today: string; level: "basic" | "full"; canEdit: boolean; tasks: ApiTask[] };
+
+/** PATCH /workspaces/:id/tasks/:taskId (no app: status, prioridade, etapa, prazo). */
+export type TaskPatchRequest = Partial<{ title: string; status: ApiTaskStatus; stage: ApiTaskStage; priority: ApiTaskPriority; dueDate: string | null }>;
+export type TaskPatchResponse = { task: ApiTask };
+
+export const TASK_STATUS_LABEL: Record<ApiTaskStatus, string> = { planejado: "Planejado", em_andamento: "Em andamento", concluido: "Concluído", cancelado: "Cancelado" };
+export const TASK_STAGE_LABEL: Record<ApiTaskStage, string> = { midia_paga: "Mídia paga", cro: "CRO", crm: "CRM", criativos: "Criativos", relatorio: "Relatório", outro: "Outro" };
+export const TASK_PRIORITY_LABEL: Record<ApiTaskPriority, string> = { alta: "Alta", media: "Média", baixa: "Baixa" };
+export const TASK_SITUATION_LABEL: Record<ApiTaskSituation, string> = { no_prazo: "No prazo", atrasado: "Atrasado", concluido: "Concluído", sem_prazo: "Sem prazo" };

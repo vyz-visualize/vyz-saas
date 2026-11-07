@@ -7,7 +7,7 @@
 // fica no <html data-sidebar>, aplicado antes da primeira pintura. O topo
 // mostra o plano real da sessão e, quando há, o aviso da assinatura.
 
-import { AlertTriangle, BarChart3, Check, ChevronsUpDown, FolderKanban, Gem, Home, Inbox, Info, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PanelsTopLeft, Plug, Settings, Share2 } from "lucide-react";
+import { AlertTriangle, BarChart3, Check, ListChecks, ChevronsUpDown, FolderKanban, Gem, Home, Inbox, Info, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PanelsTopLeft, Plug, Settings, Share2 } from "lucide-react";
 import { LazyMotion, m, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -38,6 +38,7 @@ const NAVS: Record<Product, NavItem[]> = {
     { href: "/painel", label: "Início", icon: Home },
     { href: "/painel/projetos", label: "Projetos", icon: FolderKanban },
     { href: "/painel/dashboards", label: "Dashboards", icon: BarChart3 },
+    { href: "/painel/a-fazer", label: "A Fazer", icon: ListChecks },
     { href: "/painel/contas", label: "Contas", icon: Plug },
     { href: "/painel/compartilhar", label: "Compartilhar", icon: Share2 },
     ...(SHOW_LANDING_PAGES ? [] : [{ href: "/painel/landing-pages", label: "Landing pages", icon: PanelsTopLeft, short: "LPs", soon: true }]),

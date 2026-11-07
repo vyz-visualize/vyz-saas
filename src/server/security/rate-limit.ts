@@ -18,6 +18,9 @@ export const RATE_RULES = {
   oauth_start_user: { windowSeconds: 10 * 60, max: 20 },
   share_view_ip: { windowSeconds: 60, max: 120 },
   lp_submit_ip: { windowSeconds: 10 * 60, max: 20 },
+  whatsapp_code_user: { windowSeconds: 60 * 60, max: 5 },
+  whatsapp_code_phone: { windowSeconds: 60 * 60, max: 3 },
+  whatsapp_test_user: { windowSeconds: 60 * 60, max: 3 },
 } as const;
 
 export type RateRule = keyof typeof RATE_RULES;

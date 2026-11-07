@@ -4,7 +4,8 @@
 // servidor), segurança, equipe, histórico de acessos e atividade do
 // workspace. Tudo vem do servidor e grava por Server Actions.
 
-import { AlertTriangle, ImageOff, LogIn } from "lucide-react";
+import { AlertTriangle, ArrowRight, ImageOff, LogIn } from "lucide-react";
+import Link from "next/link";
 import { useState, useTransition, type ReactNode } from "react";
 import { ColorField } from "@/components/ui/ColorField";
 import { Switch } from "@/components/ui/controls";
@@ -273,6 +274,17 @@ export function SettingsPage({ data }: { data: SettingsData }) {
             <BrandForm canEdit={false} notify={toast.show} />
           </Paywall>
         )}
+      </Section>
+
+      <Section
+        id="h-whatsapp"
+        title="Relatórios no WhatsApp"
+        aside={!access.entitlements?.whatsappReports && <LockBadge label="Avançado" />}
+        text="Resumo diário, semanal e alertas no seu WhatsApp, pelo número oficial da VYZ. Responda PARAR para não receber mais."
+      >
+        <Link href="/painel/whatsapp" className={btn.small}>
+          Configurar WhatsApp <ArrowRight size={15} aria-hidden />
+        </Link>
       </Section>
 
       <Section id="h-seguranca" title="Segurança" text="Trocar a senha pede a senha atual. Os outros aparelhos saem da conta.">

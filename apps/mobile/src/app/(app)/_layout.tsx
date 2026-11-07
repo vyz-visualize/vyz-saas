@@ -1,4 +1,5 @@
-// Área logada: abas (Início, Análises, VYZ, Conta) e o dashboard por cima.
+// Área logada: abas (Início, Análises, VYZ, Conta) e, por cima, o dashboard
+// e o A Fazer (aberto pelo cartão do Início).
 // Tocar numa notificação abre o dashboard dela (com a campanha ou o KPI).
 
 import { router, Stack } from "expo-router";
@@ -23,6 +24,7 @@ export default function AppLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.bg } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="dashboards/[id]" />
+        <Stack.Screen name="a-fazer" />
       </Stack>
     </WorkspaceProvider>
   );

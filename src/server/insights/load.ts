@@ -10,7 +10,7 @@ import type { PeriodId } from "@/features/workspace/types";
 import { loadLiveDashboard } from "@/server/analytics/queries";
 import type { DB } from "@/server/supabase/server";
 
-export type DashboardPulse = { id: string; name: string; platform: "meta" | "google"; currency: string; spend: number | null; value: number; conversions: number; roas: number | null };
+export type DashboardPulse = { id: string; name: string; platform: "meta" | "google"; currency: string; spend: number | null; value: number; conversions: number; roas: number | null; previousSpend: number | null; previousConversions: number };
 
 export async function loadWorkspaceInsights(db: DB, workspaceId: string, period: PeriodId = "7d", max = 12): Promise<{ insights: Insight[]; pulse: DashboardPulse[] }> {
   const { data, error } = await db.from("dashboards").select("id, template_id").eq("workspace_id", workspaceId).order("updated_at", { ascending: false }).limit(50);
@@ -23,7 +23,8 @@ export async function loadWorkspaceInsights(db: DB, workspaceId: string, period:
     if (!d || d.status !== "ok") continue;
     insights.push(...dashboardInsights(d, 4));
     const t = d.view.totals;
-    pulse.push({ id: d.dashboard.id, name: d.dashboard.name, platform: d.platform, currency: d.currency, spend: t.spend, value: t.value, conversions: t.conversions, roas: t.roas });
+    const p = d.view.previousTotals;
+    pulse.push({ id: d.dashboard.id, name: d.dashboard.name, platform: d.platform, currency: d.currency, spend: t.spend, value: t.value, conversions: t.conversions, roas: t.roas, previousSpend: p.spend, previousConversions: p.conversions });
   }
   // o mais importante de cada dashboard primeiro, sem um só tomar a lista
   insights.sort((a, b) => b.weight - a.weight);

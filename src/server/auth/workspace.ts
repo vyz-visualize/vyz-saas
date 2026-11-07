@@ -74,6 +74,9 @@ function toEntitlements(row: Tables<"workspace_access"> | null): Entitlements | 
     agentChat: !!row.agent_chat,
     maxAccountsPerPlatform: ENTITLEMENTS[isTier(row.pages_plan_id) ? row.pages_plan_id : "base"].maxAccountsPerPlatform,
     agentVoice: !!row.agent_voice,
+    // como os criativos: vêm do plano do código (o banco não guarda)
+    todo: ENTITLEMENTS[isTier(row.pages_plan_id) ? row.pages_plan_id : "base"].todo,
+    whatsappReports: ENTITLEMENTS[isTier(row.pages_plan_id) ? row.pages_plan_id : "base"].whatsappReports,
     maxDashboards: row.max_dashboards,
     maxLandingPages: row.max_landing_pages,
     maxMembers: row.max_members ?? 1,

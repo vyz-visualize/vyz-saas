@@ -1,12 +1,14 @@
 // GET|POST /api/cron/digest
-// Resumo diário por push (agendado de manhã): para cada usuário com o app
-// instalado, a análise mais importante do workspace padrão dele. Só com
-// "Authorization: Bearer <CRON_SECRET>".
+// Rotina diária (de manhã): 1) gera as tarefas automáticas do A Fazer em cada
+// workspace com plano ativo (idempotente pela insight_key) e 2) manda por push,
+// para cada usuário com o app instalado, a análise mais importante do
+// workspace padrão dele. Só com "Authorization: Bearer <CRON_SECRET>".
 
 import { cronSecret, isAuthorizedCron } from "@/server/sync/cron";
 import { loadWorkspaceInsights } from "@/server/insights/load";
 import { pushConfigured, sendPush, type PushTarget } from "@/server/push/send";
 import { createAdminSupabase } from "@/server/supabase/admin";
+import { generateAutoTasks } from "@/server/todo/automation";
 
 export const maxDuration = 300;
 
@@ -19,19 +21,42 @@ async function handle(request: Request) {
   const secret = cronSecret();
   if (!secret) return Response.json({ ok: false, error: "cron:not_configured" }, { status: 503, headers: NO_STORE });
   if (!isAuthorizedCron(authorization, secret)) return Response.json({ ok: false, error: "unauthorized" }, { status: 401, headers: NO_STORE });
-  const cfg = pushConfigured();
-  if (!cfg.ios && !cfg.android) return Response.json({ ok: false, error: "push:not_configured" }, { status: 503, headers: NO_STORE });
-
   const started = Date.now();
   const db = createAdminSupabase();
+  // o mesmo workspace serve vários usuários: calcula uma vez
+  const cache = new Map<string, Awaited<ReturnType<typeof loadWorkspaceInsights>> | null>();
+
+  // 1. A Fazer: tarefas a partir das análises (metade do tempo, no máximo)
+  const tasks = { workspaces: 0, created: 0, closed: 0 };
+  const { data: active } = await db.from("workspace_access").select("workspace_id").eq("has_access", true);
+  const activeIds = (active ?? []).map((a) => a.workspace_id).filter((id): id is string => !!id);
+  const { data: zones } = activeIds.length ? await db.from("workspaces").select("id, timezone").in("id", activeIds) : { data: [] };
+  const zoneOf = new Map((zones ?? []).map((w) => [w.id, w.timezone]));
+  for (const workspaceId of activeIds) {
+    if (Date.now() - started > (maxDuration / 2) * 1000) break;
+    const a = { workspace_id: workspaceId };
+    const timeZone = zoneOf.get(workspaceId) || "America/Sao_Paulo";
+    try {
+      const loaded = await loadWorkspaceInsights(db, a.workspace_id, "7d", 10);
+      cache.set(a.workspace_id, loaded);
+      const r = await generateAutoTasks(db, a.workspace_id, { timeZone, loaded });
+      tasks.workspaces++;
+      tasks.created += r.created;
+      tasks.closed += r.closed;
+    } catch (err) {
+      console.error("[vyz] cron digest: a fazer", a.workspace_id, err);
+    }
+  }
+
+  // 2. resumo por push
+  const cfg = pushConfigured();
+  if (!cfg.ios && !cfg.android) return Response.json({ ok: true, tasks, error: "push:not_configured" }, { headers: NO_STORE });
   const { data: tokens, error } = await db.from("push_tokens").select("user_id, token, platform");
-  if (error) return Response.json({ ok: false, error: "unknown" }, { status: 500, headers: NO_STORE });
+  if (error) return Response.json({ ok: false, tasks, error: "unknown" }, { status: 500, headers: NO_STORE });
 
   const byUser = new Map<string, PushTarget[]>();
   for (const t of tokens ?? []) byUser.set(t.user_id, [...(byUser.get(t.user_id) ?? []), { token: t.token, platform: t.platform as PushTarget["platform"] }]);
 
-  // o mesmo workspace serve vários usuários: calcula uma vez
-  const cache = new Map<string, Awaited<ReturnType<typeof loadWorkspaceInsights>> | null>();
   let sent = 0;
   let users = 0;
   for (const [userId, targets] of byUser) {
@@ -59,7 +84,7 @@ async function handle(request: Request) {
     sent += r.sent;
     users++;
   }
-  return Response.json({ ok: true, users, sent }, { headers: NO_STORE });
+  return Response.json({ ok: true, tasks, users, sent }, { headers: NO_STORE });
 }
 
 export async function GET(request: Request) {
