@@ -36,7 +36,7 @@ import { SoonBadge } from "./SoonBadge";
 
 // Planos: dois produtos (dashboards e landing pages, esta atrás de
 // SHOW_LANDING_PAGES), três planos cada, e um clique até o checkout. Cada plano de dashboards tem
-// um número fixo de projetos (5, 15 ou 30); acima disso, Personalizado. Abaixo, as perguntas sobre projeto.
+// um número fixo de projetos (5, 15 ou 30); acima disso, Personalizado. As perguntas ficam na dobra seguinte.
 
 const TIERS: PlanId[] = ["base", "pro", "avancado"];
 
@@ -126,46 +126,6 @@ function lpCard(tier: PlanId): Card {
     return { ...base, pitch: "Três páginas para testar ofertas e públicos.", features: ["Tudo do Básico", "3 landing pages feitas pelo time", "Leads com a origem do clique (UTM)", `${e.maxMembers} usuários`] };
   }
   return { ...base, pitch: "Cinco páginas para quem roda várias campanhas.", features: ["Tudo do Padrão", "5 landing pages feitas pelo time", "Todos os templates", `${e.maxMembers} usuários`] };
-}
-
-const FAQ: { q: string; a: string }[] = [
-  {
-    q: "O que é um projeto?",
-    a: "É o cliente, a empresa ou a marca para quem você gera os dashboards. Dentro dele você conecta as contas (Meta Ads, Google Ads e as outras plataformas do plano) e cria os dashboards daquele cliente.",
-  },
-  {
-    q: "Quantos projetos cabem em cada plano?",
-    a: `O Básico vai até ${PLAN_PROJECTS.base} projetos, o Padrão até ${PLAN_PROJECTS.pro} e o Avançado até ${PLAN_PROJECTS.avancado}. Tem mais de ${MAX_PROJECTS_IN_PLAN} clientes? O plano Personalizado é sob consulta, com um especialista.`,
-  },
-  {
-    q: "E se eu passar do limite de projetos?",
-    a: "Suba de plano quando quiser, na página Plano do painel. A diferença entra na cobrança, proporcional aos dias que faltam no ciclo.",
-  },
-  {
-    q: "Quantas contas cabem em cada projeto?",
-    a: `No Básico, 1 conta de cada plataforma por projeto. No Padrão e no Avançado, até ${ENTITLEMENTS.pro.maxAccountsPerPlatform}. No Meta, as contas da mesma Business Manager contam como uma.`,
-  },
-];
-
-function ProjectFaq() {
-  return (
-    <div className="mt-14 border-t border-line pt-10">
-      <h3 className="title text-2xl text-fg">Perguntas sobre projetos</h3>
-      <div className="mt-5 divide-y divide-line rounded-card border border-line bg-card">
-        {FAQ.map((f) => (
-          <details key={f.q} className="group px-5 py-4">
-            <summary data-track="faq_abrir" data-track-pergunta={f.q} className="flex cursor-pointer list-none items-center justify-between gap-4 text-[16px] font-semibold text-fg">
-              {f.q}
-              <span aria-hidden className="text-fg-2 transition-transform group-open:rotate-45">
-                +
-              </span>
-            </summary>
-            <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-fg-2">{f.a}</p>
-          </details>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 function PlanCard({ tier, product, period, card, featured, delay }: { tier: PlanId; product: Product; period: Period; card: Card; featured: boolean; delay: number }) {
@@ -343,7 +303,6 @@ export function Planos() {
           </a>
         </div>
 
-        {product === "dash" && <ProjectFaq />}
       </div>
     </section>
   );

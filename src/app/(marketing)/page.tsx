@@ -10,6 +10,7 @@ import { Inteligencia } from "@/features/marketing/sections/Inteligencia";
 import { Hero } from "@/features/marketing/sections/Hero";
 import { Intro } from "@/features/marketing/sections/Intro";
 import { Navbar } from "@/features/marketing/sections/Navbar";
+import { Perguntas } from "@/features/marketing/sections/Perguntas";
 import { Planos } from "@/features/marketing/sections/Planos";
 import { PlanProvider } from "@/features/marketing/state/PlanProvider";
 import { UrlSync } from "@/features/marketing/state/UrlSync";
@@ -50,6 +51,7 @@ export default function Home() {
         <Suspense>
           <Planos />
         </Suspense>
+        <Perguntas />
       </main>
       <Suspense>
         <Footer />
