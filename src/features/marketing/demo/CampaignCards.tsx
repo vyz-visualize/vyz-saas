@@ -1,8 +1,8 @@
 "use client";
 
-// As campanhas da demonstração no celular: um card por campanha, com tudo o que a tabela
-// mostra (investimento, participação, ROAS e CPA) e nenhuma coluna cortada. Tocar filtra o
-// painel inteiro, igual à tabela. Só o site usa: a tabela do painel não muda.
+// As campanhas da demonstração: um card por campanha (empilhados no celular, 3 lado a lado
+// no desktop), com investimento, participação, ROAS e CPA, nenhuma coluna cortada. Clicar
+// filtra os números, igual à tabela do produto. Só o site usa: a tabela do painel não muda.
 
 import { filterAria, filterTone, useDashFilters } from "@/features/analytics/filter-context";
 import { money } from "@/features/analytics/format";
@@ -19,8 +19,8 @@ export function CampaignCards({ data, limit, kindLabel }: { data: LiveDashboardD
   const rows = [...view.campaigns.slice(0, limit), ...view.campaigns.slice(limit).filter((c) => chosen.includes(c.id))];
   const breakEven = view.breakEvenRoas;
   return (
-    <Panel title="Campanhas que mais investem" subtitle={`Toque numa campanha para filtrar. ROAS em vermelho fica abaixo do equilíbrio${breakEven ? ` (${decimal(breakEven, 1)})` : " (1,0)"}.`}>
-      <ul className="space-y-2" aria-label="Campanhas que mais investem no período">
+    <Panel title="Campanhas que mais investem" subtitle={`Escolha uma campanha para filtrar. ROAS em vermelho fica abaixo do equilíbrio${breakEven ? ` (${decimal(breakEven, 1)})` : " (1,0)"}.`}>
+      <ul className="grid gap-2 @[760px]:grid-cols-3" aria-label="Campanhas que mais investem no período">
         {rows.map((c) => {
           const tone = filterTone(filters, CAMPAIGN_ROW_FILTER.dim, c.id);
           return (
@@ -30,7 +30,7 @@ export function CampaignCards({ data, limit, kindLabel }: { data: LiveDashboardD
                 aria-pressed={tone === "selected"}
                 aria-label={filterAria(CAMPAIGN_ROW_FILTER.dim, c.name)}
                 onClick={(e) => filters?.toggle(CAMPAIGN_ROW_FILTER.dim, c.id, c.name, e)}
-                className={`block w-full rounded-control border p-3 text-left outline-none transition-[border-color,opacity] focus-visible:ring-2 focus-visible:ring-accent ${tone === "selected" ? "border-accent bg-accent-soft/40" : "border-line"} ${tone === "dimmed" ? "opacity-45" : ""}`}
+                className={`block h-full w-full rounded-control border p-3 text-left outline-none transition-[border-color,opacity] focus-visible:ring-2 focus-visible:ring-accent ${tone === "selected" ? "border-accent bg-accent-soft/40" : "border-line"} ${tone === "dimmed" ? "opacity-45" : ""}`}
               >
                 <span className="line-clamp-2 text-[14px] leading-snug font-medium text-fg">{c.name}</span>
                 <span className="block text-[11.5px] text-fg-2">{kindLabel(c.kind)}</span>

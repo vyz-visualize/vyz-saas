@@ -1,36 +1,29 @@
 "use client";
 
-// A demonstração do site: o produto de verdade, com dados de amostra, em quatro abas.
-// Carrega só quando a dobra chega perto (o código e os dados não pesam no começo).
+// A demonstração do site: o suficiente para dar vontade, sem expor o produto inteiro.
+// Três abas, com dados de amostra: filtrar por campanha (4 números e 3 campanhas), perguntar
+// ao VYZ (só os atalhos) e uma prévia do comparativo de criativos. Carrega só quando a dobra
+// chega perto da tela.
 
-import { ChevronDown } from "lucide-react";
 import { useMemo, useState } from "react";
-import { aggregateDashboard, CHANNEL_LABEL, FUNNEL_STAGE_LABEL } from "@/features/analytics/aggregate";
-import { cutCreatives } from "@/features/analytics/creatives/access";
-import { defaultAds } from "@/features/analytics/creatives/compare";
-import { MIN_COMPARE } from "@/features/analytics/creatives/limits";
-import { CompareView } from "@/features/analytics/creatives/CompareView";
-import { UrlWritesProvider } from "@/features/analytics/creatives/url-state";
+import { CHANNEL_LABEL, FUNNEL_STAGE_LABEL } from "@/features/analytics/aggregate";
 import { FilterBar, FilterProvider } from "@/features/analytics/filter-context";
 import { kpiMetric } from "@/features/analytics/metrics";
-import { HeroChart, maturingPoints, TopCampaigns } from "@/features/analytics/shared";
-import type { MetaView } from "@/features/analytics/types";
-import { KpiCard, Panel, SliceBars } from "@/features/analytics/ui";
+import { maturingPoints } from "@/features/analytics/shared";
+import { KpiCard } from "@/features/analytics/ui";
 import { track } from "@/features/marketing/track";
 import { CampaignCards } from "./CampaignCards";
-import { sampleData, sampleLabels, sampleRowsFor } from "./engine";
+import { CompareTeaser } from "./CompareTeaser";
+import { sampleData, sampleLabels } from "./engine";
 import { useLocalFilters } from "./local-filters";
-import { PersonalizeDemo } from "./PersonalizeDemo";
 import { VyzDemo } from "./VyzDemo";
-import { useSmUp } from "@/lib/hooks";
 
-export type DemoTab = "filtro" | "vyz" | "comparativo" | "personalizar";
+export type DemoTab = "filtro" | "vyz" | "comparativo";
 
-export const DEMO_TABS: { id: DemoTab; label: string; hint: string }[] = [
-  { id: "filtro", label: "Filtrar por campanha", hint: "Clique numa campanha ou arraste no gráfico: o painel inteiro filtra. O cliente também consegue, no link." },
-  { id: "vyz", label: "Perguntar ao VYZ", hint: "Pergunte sobre os números e ele responde na hora, com os dados do dashboard." },
-  { id: "comparativo", label: "Comparar criativos", hint: "Os anúncios lado a lado, com o melhor de cada métrica e uma leitura do resultado. No plano Avançado." },
-  { id: "personalizar", label: "Personalizar métricas", hint: "Cada cliente vê os cards que importam para ele." },
+export const DEMO_TABS: { id: DemoTab; label: string; short: string; hint: string }[] = [
+  { id: "filtro", label: "Filtrar por campanha", short: "Filtrar", hint: "Clique numa campanha: os números de cima filtram. O cliente também consegue, no link." },
+  { id: "vyz", label: "Perguntar ao VYZ", short: "Perguntar", hint: "Pergunte sobre os números e ele responde na hora, com os dados do dashboard." },
+  { id: "comparativo", label: "Comparar criativos", short: "Comparar", hint: "Os anúncios lado a lado, com o melhor de cada métrica. No plano Avançado." },
 ];
 
 const campaignKind = (k: string | null) => (k ? (FUNNEL_STAGE_LABEL[k] ?? CHANNEL_LABEL[k] ?? "Outras") : "Outras");
@@ -40,68 +33,19 @@ function FilterDemo() {
   const base = useMemo(() => sampleData("meta"), []);
   const filters = useLocalFilters(labels, base.current.days, () => track("demo_interacao", { local: "demonstracao", acao: "filtro" }));
   const data = useMemo(() => sampleData("meta", filters.filters), [filters.filters]);
-  const view = data.view as MetaView;
   const maturing = maturingPoints(data, filters.filters.days);
-  const smUp = useSmUp();
   return (
     <FilterProvider value={filters}>
       <div className="@container space-y-3">
         <div className="grid grid-cols-2 gap-2.5 @[640px]:grid-cols-4">
-          {/* no celular, os 4 primeiros; os outros 4 a partir de 640 px de largura */}
-          {view.kpis.slice(0, 8).map((k, i) => (
-            <div key={k.id} className={i >= 4 ? "hidden @[640px]:block" : undefined}>
-              <KpiCard kpi={k} currency={data.currency} maturing={maturing} featured={k.id === "roas"} metric={kpiMetric("meta", k.id)} />
-            </div>
+          {data.view.kpis.slice(0, 4).map((k) => (
+            <KpiCard key={k.id} kpi={k} currency={data.currency} maturing={maturing} featured={k.id === "roas"} metric={kpiMetric("meta", k.id)} />
           ))}
         </div>
         <FilterBar />
-        <HeroChart data={data} spendLabel="Investimento" valueLabel="Receita" />
-        <div className="grid gap-3 @[900px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          {/* no celular, um card por campanha: nenhuma coluna cortada */}
-          {smUp ? <TopCampaigns data={data} limit={6} kindLabel={campaignKind} /> : <CampaignCards data={data} limit={3} kindLabel={campaignKind} />}
-          <div className="hidden @[640px]:block">
-            <Panel section="breakdown" title="Dispositivos" subtitle="Participação na receita e ROAS.">
-              <SliceBars items={view.devices} breakEven={view.breakEvenRoas} label="Dispositivos" />
-            </Panel>
-          </div>
-        </div>
+        <CampaignCards data={data} limit={3} kindLabel={campaignKind} />
       </div>
     </FilterProvider>
-  );
-}
-
-function CompareDemo() {
-  const creatives = useMemo(() => {
-    const view = aggregateDashboard(sampleRowsFor("meta"), { breakEvenRoas: 2.5 }) as MetaView;
-    const data = cutCreatives(view, { tier: "avancado", tab: "comparativo", ads: [] }, { hideSpend: false, currency: "BRL" }).creatives!;
-    // já abre com dois escolhidos, como no produto, sem mexer no endereço do site
-    return { ...data, initialAds: defaultAds(data.compare, MIN_COMPARE) };
-  }, []);
-  const [open, setOpen] = useState(false);
-  // o comparativo inteiro é longo: abre com o começo e um clique mostra o resto
-  return (
-    <div className="relative">
-      <div className={`@container ${open ? "" : "max-h-[1180px] overflow-hidden"}`}>
-        {/* no site, a escolha dos anúncios fica só na memória: o endereço não muda */}
-        <UrlWritesProvider value={false}>
-          <CompareView data={creatives} />
-        </UrlWritesProvider>
-      </div>
-      {!open && (
-        <div className="absolute inset-x-0 bottom-0 flex h-48 items-end justify-center bg-linear-to-t from-card to-transparent pb-2">
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(true);
-              track("demo_interacao", { local: "demonstracao", acao: "comparativo_inteiro" });
-            }}
-            className="inline-flex h-11 items-center gap-2 rounded-control border border-line bg-card px-4 text-[14px] font-medium text-fg outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            Ver o comparativo inteiro <ChevronDown size={16} aria-hidden />
-          </button>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -110,7 +54,7 @@ export default function DemoTabs() {
   const current = DEMO_TABS.find((t) => t.id === tab)!;
   return (
     <div>
-      <div role="tablist" aria-label="O que ver na demonstração" className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+      <div role="tablist" aria-label="O que ver na demonstração" className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
         {DEMO_TABS.map((t) => (
           <button
             key={t.id}
@@ -123,19 +67,19 @@ export default function DemoTabs() {
               setTab(t.id);
               track("demo_interacao", { local: "demonstracao", acao: "aba", aba: t.id });
             }}
-            className={`min-h-11 rounded-control border px-3.5 py-2 text-left text-[14px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent sm:rounded-chip ${tab === t.id ? "border-accent bg-accent text-on-accent" : "border-line text-fg-2 hover:border-accent hover:text-fg"}`}
+            className={`min-h-11 rounded-control border px-3 py-2 text-[14px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent sm:rounded-chip sm:px-3.5 ${tab === t.id ? "border-accent bg-accent text-on-accent" : "border-line text-fg-2 hover:border-accent hover:text-fg"}`}
           >
-            {t.label}
+            <span className="sm:hidden">{t.short}</span>
+            <span className="hidden sm:inline">{t.label}</span>
           </button>
         ))}
       </div>
-      <p className="mt-4 min-h-[2.6em] max-w-3xl text-[15px] leading-snug text-fg-2">{current.hint}</p>
-      {/* uma aba por vez; as outras não montam (no celular, sem rolagem lateral) */}
-      <div id={`demo-painel-${tab}`} role="tabpanel" aria-labelledby={`demo-aba-${tab}`} className="mt-4">
+      <p className="mt-3 min-h-[2.6em] max-w-3xl text-[14.5px] leading-snug text-fg-2">{current.hint}</p>
+      {/* uma aba por vez; as outras não montam */}
+      <div id={`demo-painel-${tab}`} role="tabpanel" aria-labelledby={`demo-aba-${tab}`} className="mt-2">
         {tab === "filtro" && <FilterDemo />}
         {tab === "vyz" && <VyzDemo active />}
-        {tab === "comparativo" && <CompareDemo />}
-        {tab === "personalizar" && <PersonalizeDemo />}
+        {tab === "comparativo" && <CompareTeaser />}
       </div>
     </div>
   );

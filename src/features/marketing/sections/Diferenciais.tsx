@@ -11,7 +11,7 @@ const ITEMS: { icon: ReactNode; title: string; short: string; text: string; tag?
   { icon: <MousePointerClick size={20} />, title: "Dashboard interativo", short: "Clique numa campanha e tudo filtra.", text: "Clique numa campanha e o painel inteiro filtra. O seu cliente também consegue, no link." },
   { icon: <MessageCircle size={20} />, title: "Análise, não só gráfico", short: "Pergunte ao VYZ. Voz no Avançado.", text: "Pergunte ao VYZ sobre os números e ele responde na hora.", tag: "Voz no Avançado" },
   { icon: <GitCompareArrows size={20} />, title: "Comparativo de criativos", short: "Anúncios lado a lado, no Avançado.", text: "Anúncios lado a lado, com o melhor de cada métrica e uma leitura do resultado.", tag: "No Avançado" },
-  { icon: <BarChart3 size={20} />, title: "Métricas por cliente", short: "Cada cliente vê o que importa.", text: "Escolha os cards e as colunas de cada dashboard. Cada cliente vê o que importa para ele." },
+  { icon: <BarChart3 size={20} />, title: "Métricas por cliente", short: "Escolha os cards de cada cliente.", text: "Escolha os cards de cada cliente: cada um vê o que importa para ele." },
   { icon: <EyeOff size={20} />, title: "Investimento oculto no link", short: "O valor nem chega ao cliente.", text: "Mande o resultado sem mostrar quanto foi investido: o valor nem chega ao navegador do cliente." },
   { icon: <Smartphone size={20} />, title: "App para iOS e Android", short: "Os dashboards no seu celular.", text: "Os dashboards dos seus clientes no celular, com o VYZ junto." },
 ];

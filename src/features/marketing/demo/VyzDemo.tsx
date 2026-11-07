@@ -119,7 +119,7 @@ export function VyzDemo({ active }: { active: boolean }) {
   const mood: VyzMood = phase === "thinking" ? "thinking" : phase === "answer" ? "speaking" : "idle";
   return (
     <div ref={ref} className="grid gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-      <div className="flex flex-col gap-5 rounded-card bg-deep p-6 text-offwhite sm:p-7">
+      <div className="flex flex-col gap-4 rounded-card bg-deep p-5 text-offwhite sm:gap-5 sm:p-7">
         <div className="flex items-center gap-4">
           <VyzFace mood={mood} />
           <div>
@@ -127,7 +127,7 @@ export function VyzDemo({ active }: { active: boolean }) {
             <h3 className="display text-[clamp(1.9rem,3.6vw,2.6rem)] leading-none">VYZ</h3>
           </div>
         </div>
-        <p className="text-[15.5px] leading-relaxed text-offwhite/85">Pergunte sobre os números dos seus clientes e ele responde na hora, com os dados do dashboard.</p>
+        <p className="hidden text-[15.5px] leading-relaxed text-offwhite/85 sm:block">Pergunte sobre os números dos seus clientes e ele responde na hora, com os dados do dashboard.</p>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Perguntas de exemplo">
           {DEMO_QUESTIONS.map((q) => (
             <button
@@ -145,7 +145,7 @@ export function VyzDemo({ active }: { active: boolean }) {
             </button>
           ))}
         </div>
-        <div className="mt-auto flex items-center gap-3 rounded-full border border-offwhite/15 bg-offwhite/[0.06] py-2 pr-4 pl-2">
+        <div className="mt-auto hidden items-center gap-3 rounded-full border border-offwhite/15 bg-offwhite/[0.06] py-2 pr-4 pl-2 sm:flex">
           <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-sage text-deep">
             <Mic size={17} aria-hidden />
           </span>
@@ -153,7 +153,7 @@ export function VyzDemo({ active }: { active: boolean }) {
         </div>
       </div>
 
-      <div className="flex min-h-[420px] flex-col gap-4 rounded-card border border-line bg-card p-5 sm:p-6">
+      <div className="flex min-h-[300px] flex-col gap-4 rounded-card border border-line bg-card p-5 sm:min-h-[420px] sm:p-6">
         <div aria-live="polite" className="flex flex-col gap-3">
           {question && (
             <p className="ml-auto max-w-[85%] rounded-[14px] rounded-br-[4px] bg-accent px-3.5 py-2 text-[14.5px] text-on-accent">
@@ -170,7 +170,8 @@ export function VyzDemo({ active }: { active: boolean }) {
           )}
           {answer && <Answer answer={answer} />}
         </div>
-        <div className="mt-auto border-t border-line pt-4">
+        {/* no celular, os exemplos do alerta ficam de fora: a dobra cabe em tela e meia */}
+        <div className="mt-auto hidden border-t border-line pt-4 sm:block">
           <p className="flex items-center text-[13px] font-medium text-fg">
             Alerta diário
             <SoonBadge />
