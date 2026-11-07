@@ -242,6 +242,13 @@ html.lenis body {
   }
 }
 
+/* ---- Site: contraste do texto secundário ------------------------------ */
+/* no tema claro, o fg-2 do site escurece para passar de 4,5:1 sobre o fundo (AA);
+   o painel e o tema escuro não mudam */
+:root:not([data-theme="dark"]) .site-tone {
+  --fg-2: #62655d;
+}
+
 /* ---- Barra do menu --------------------------------------------------- */
 /* sem desfoque (ou com ele desligado), fundo sólido; com desfoque, vidro. O prefixo
    -webkit- é o que o Safari usa: o utilitário do Tailwind não chegava a aplicar lá. */

@@ -65,6 +65,8 @@ export function HeroStage() {
   const go = useWhenIdleAndNear(ref);
   return (
     <div ref={ref}>
+      {/* os cards do painel são h3: este h2 dá a eles um lugar no sumário do leitor de tela */}
+      <h2 className="sr-only">Dashboard de amostra</h2>
       <TiltFrame className="overflow-hidden rounded-card border border-line bg-bg">
         {/* o esqueleto já ocupa a altura do painel (medida): nada pula quando ele chega.
             Filtrar pode crescer o quadro, mas isso vem de um clique e não conta como CLS. */}

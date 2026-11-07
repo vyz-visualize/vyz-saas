@@ -28,7 +28,8 @@ export default function MarketingLayout({ children }: LayoutProps<"/">) {
   return (
     <MotionRoot>
       <SmoothScroll />
-      {children}
+      {/* display: contents: só carrega o tom do texto do site, sem caixa no layout */}
+      <div className="site-tone contents">{children}</div>
       {/* GTM e Pixel só com o ID na variável de ambiente (lidos no build) */}
       <SiteTracking ids={siteTagIds({ gtm: process.env.NEXT_PUBLIC_GTM_ID, pixel: process.env.NEXT_PUBLIC_META_PIXEL_ID })} />
     </MotionRoot>
