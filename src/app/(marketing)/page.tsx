@@ -4,6 +4,7 @@ import { ComoFunciona } from "@/features/marketing/sections/ComoFunciona";
 import { Demonstracao } from "@/features/marketing/sections/Demonstracao";
 import { Diferenciais } from "@/features/marketing/sections/Diferenciais";
 import { DorSolucao } from "@/features/marketing/sections/DorSolucao";
+import { PorQueFecha } from "@/features/marketing/sections/PorQueFecha";
 import { Footer } from "@/features/marketing/sections/Footer";
 import { Inteligencia } from "@/features/marketing/sections/Inteligencia";
 import { Hero } from "@/features/marketing/sections/Hero";
@@ -39,6 +40,9 @@ export default function Home() {
         <Diferenciais />
         <Suspense>
           <ComoFunciona />
+        </Suspense>
+        <Suspense>
+          <PorQueFecha />
         </Suspense>
         <Suspense>
           <Inteligencia />
