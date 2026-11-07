@@ -247,11 +247,6 @@ html.lenis body {
     opacity: 0;
   }
 }
-@keyframes marquee {
-  to {
-    transform: translateX(-50%);
-  }
-}
 @keyframes wave {
   0%,
   100% {
@@ -372,16 +367,6 @@ html.lenis body {
   display: block;
   height: 1.15em;
   line-height: 1.15em;
-}
-
-/* ---- Ticker --------------------------------------------------------- */
-.ticker-track {
-  display: flex;
-  width: max-content;
-  animation: marquee 60s linear infinite;
-}
-.ticker[data-paused] .ticker-track {
-  animation-play-state: paused;
 }
 
 /* ---- Onda sonora (Avançado) ----------------------------------------- */
@@ -1035,7 +1020,6 @@ button:hover > * > .vyz3d .vyz3d-mouth { transform: scale(1.2, 1.12); }
   [data-cut="play"] .cut-bot {
     animation: fade-in 150ms ease-out both !important;
   }
-  .ticker-track,
   .wave span,
   .live-dot::after,
   .caret {

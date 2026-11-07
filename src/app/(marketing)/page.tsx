@@ -2,13 +2,13 @@ import { Suspense } from "react";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { ComoFunciona } from "@/features/marketing/sections/ComoFunciona";
 import { Demonstracao } from "@/features/marketing/sections/Demonstracao";
+import { DorSolucao } from "@/features/marketing/sections/DorSolucao";
 import { Footer } from "@/features/marketing/sections/Footer";
 import { Inteligencia } from "@/features/marketing/sections/Inteligencia";
 import { Hero } from "@/features/marketing/sections/Hero";
 import { Intro } from "@/features/marketing/sections/Intro";
 import { Navbar } from "@/features/marketing/sections/Navbar";
 import { Planos } from "@/features/marketing/sections/Planos";
-import { Ticker } from "@/features/marketing/sections/Ticker";
 import { PlanProvider } from "@/features/marketing/state/PlanProvider";
 import { UrlSync } from "@/features/marketing/state/UrlSync";
 
@@ -31,9 +31,7 @@ export default function Home() {
       <main id="conteudo">
         <Hero />
         {/* cada dobra numa fronteira própria: a hidratação sai fatiada, sem tarefa longa */}
-        <Suspense>
-          <Ticker />
-        </Suspense>
+        <DorSolucao />
         <Suspense>
           <Demonstracao />
         </Suspense>
