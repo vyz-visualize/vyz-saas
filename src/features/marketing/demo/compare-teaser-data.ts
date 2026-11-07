@@ -1,14 +1,14 @@
 // Prévia do comparativo de criativos no site: dados fixos de amostra (fictícios), gerados
-// uma vez com o comparativo do produto. Ficam fixos para o site não levar a lista de
+// uma vez com o comparativo do produto, com os anúncios da própria VYZ. Ficam fixos para o site não levar a lista de
 // métricas, as fórmulas nem a tabela inteira; o teste confere o troféu e as diferenças.
 
-export type TeaserAd = { id: string; name: string; short: string; headline: string; format: string; objective: string; campaign: string };
+export type TeaserAd = { id: string; name: string; short: string; headline: string; format: string; objective: string; campaign: string; art: "mascote" | "dashboard" };
 export type TeaserCell = { text: string; best: boolean; diff: string | null };
 export type TeaserRow = { id: "spend" | "ctr" | "cpa" | "roas"; label: string; better: "up" | "down" | null; cells: [TeaserCell, TeaserCell] };
 
 export const TEASER_ADS: [TeaserAd, TeaserAd] = [
-  { id: "120274493679687818", name: "VID · UGC provador 15s", short: "UGC provador 15s", headline: "Provou, amou: veja no corpo real", format: "video", objective: "Vendas", campaign: "Prospecção · Advantage+ Shopping" },
-  { id: "120269375499423830", name: "CAR · Catálogo · Produtos vistos", short: "Catálogo · Produtos vistos", headline: "Os produtos que você viu", format: "carousel", objective: "Vendas", campaign: "Catálogo · Remarketing dinâmico" },
+  { id: "120274493679687818", name: "VID · Pergunte ao VYZ 15s", short: "Pergunte ao VYZ 15s", headline: "Pergunte ao VYZ", format: "video", objective: "Vendas", campaign: "Prospecção · Gestores de tráfego", art: "mascote" },
+  { id: "120269375499423830", name: "CAR · Pare de montar relatório na mão", short: "Pare de montar relatório", headline: "Pare de montar relatório na mão.", format: "carousel", objective: "Vendas", campaign: "Remarketing · Viu a demonstração", art: "dashboard" },
 ];
 
 export const TEASER_ROWS: TeaserRow[] = [

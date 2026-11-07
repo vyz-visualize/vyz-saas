@@ -6,9 +6,10 @@
 // vai para o site (nem no JS). Sem "Gerar análise".
 
 import { Lock, Trophy } from "lucide-react";
-import { Chip, Thumb } from "@/features/analytics/ui";
+import { Chip } from "@/features/analytics/ui";
 import { track } from "@/features/marketing/track";
 import { TEASER_ADS as ads, TEASER_ROWS as rows } from "./compare-teaser-data";
+import { FORMAT_LABEL, VyzCreative } from "./VyzCreatives";
 
 const COLORS = ["var(--accent)", "#C2703D"] as const;
 
@@ -19,9 +20,12 @@ export function CompareTeaser() {
         {ads.map((ad, i) => (
           <li key={ad.id} className="flex min-w-0 items-stretch overflow-hidden rounded-card border border-line bg-card">
             <span className="w-1.5 shrink-0" style={{ background: COLORS[i] }} aria-hidden />
-            <Thumb seed={ad.id} label={ad.headline} badge={ad.format} className="w-[84px] shrink-0 self-stretch" />
+            <VyzCreative art={ad.art} label={ad.headline} className="w-[84px] shrink-0 self-stretch" />
             <div className="min-w-0 flex-1 space-y-1 p-3">
-              <Chip tone="accent">{ad.objective}</Chip>
+              <span className="flex flex-wrap gap-1">
+                <Chip tone="accent">{ad.objective}</Chip>
+                <Chip>{FORMAT_LABEL[ad.format] ?? ad.format}</Chip>
+              </span>
               <p className="line-clamp-2 text-[13.5px] leading-snug font-semibold text-fg">{ad.name}</p>
               <p className="truncate text-[11.5px] text-fg-2">{ad.campaign}</p>
             </div>
