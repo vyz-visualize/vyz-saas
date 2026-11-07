@@ -8,6 +8,7 @@ import { SectionWipe } from "@/components/motion/SectionWipe";
 import { btn } from "@/components/ui/styles";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import { PlayWhenVisible } from "./PlayWhenVisible";
+import { SnapCarousel } from "./SnapCarousel";
 import { ConnectArt, SendArt, TemplatesArt } from "./StepsArt";
 
 const STEPS = [
@@ -24,13 +25,14 @@ export function ComoFunciona() {
   return (
     <section id="como-funciona" aria-labelledby="cf-title" className="relative">
       <SectionWipe />
-      <div className="mx-auto max-w-[1360px] px-4 pt-20 pb-24 sm:px-6 lg:px-10 lg:pt-28">
+      <div className="mx-auto max-w-[1360px] px-4 pt-14 pb-16 sm:px-6 sm:pt-20 sm:pb-24 lg:px-10 lg:pt-28">
         <p className="label-caps text-fg-2">Como funciona</p>
         <CutReveal as="h2" id="cf-title" className="display mt-5 text-[clamp(2.3rem,5.6vw,4.6rem)] text-fg" lines={["Do login ao link do cliente", <span key="a" className="text-accent">em três passos.</span>]} />
-        <PlayWhenVisible as="ul" className="mt-12 grid gap-6 lg:mt-16 lg:grid-cols-3 lg:gap-5">
-          {STEPS.map((s, i) => (
-            <li key={s.title}>
-              <Reveal delay={i * 90} className="h-full">
+        {/* no celular, um passo por vez (deslizar); no desktop, os três lado a lado */}
+        <PlayWhenVisible className="mt-10 lg:mt-16">
+          <SnapCarousel label="Os três passos" itemLabel="Passo">
+            {STEPS.map((s, i) => (
+              <Reveal key={s.title} delay={i * 90} className="h-full">
                 <article className="flex h-full flex-col rounded-card border border-line bg-card p-4 sm:p-5">
                   <div className="h-[244px] overflow-hidden rounded-[12px] bg-bg p-3" data-step-art>
                     {s.art}
@@ -45,10 +47,10 @@ export function ComoFunciona() {
                   <p className="mt-2 text-[16px] leading-relaxed text-fg-2">{s.text}</p>
                 </article>
               </Reveal>
-            </li>
-          ))}
+            ))}
+          </SnapCarousel>
         </PlayWhenVisible>
-        <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 lg:mt-8">
           <a href="#planos" className={`${btn.primary} group`}>
             Ver planos
             <ArrowRight size={18} aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5" />
