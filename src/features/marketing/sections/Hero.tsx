@@ -22,9 +22,10 @@ export function Hero() {
 
           {/* o título aparece de imediato; só o marca-texto se desenha (300 ms) */}
           <h1 id="hero-title" className="display mt-6 text-[clamp(3.1rem,11.5vw,4.6rem)] text-fg sm:text-[clamp(4rem,9vw,5.4rem)] lg:text-[clamp(3.6rem,5.2vw,5.9rem)]">
-            <span className="block">Pare de</span>
-            <span className="block">montar</span>
-            <span className="hl block">relatório</span>
+            {/* os espaços entre as linhas fazem o título ser lido "Pare de montar relatório na mão." */}
+            <span className="block">Pare de</span>{" "}
+            <span className="block">montar</span>{" "}
+            <span className="hl block">relatório</span>{" "}
             <span className="block">
               <span className="mark-draw">na mão.</span>
             </span>

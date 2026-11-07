@@ -88,7 +88,7 @@ export function Inteligencia() {
                 <div className="flex h-[78px] items-center">{m.art}</div>
                 <div>
                   <h3 className="title flex flex-wrap items-center text-[1.15rem] text-fg">
-                    {m.title}
+                    {m.title}{" "}
                     <SoonBadge />
                   </h3>
                   <p className="mt-1.5 text-[14.5px] leading-relaxed text-fg-2">{m.text}</p>
