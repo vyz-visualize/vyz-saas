@@ -68,10 +68,12 @@ export function HeroStage() {
       <TiltFrame className="overflow-hidden rounded-card border border-line bg-bg">
         {/* o esqueleto já ocupa a altura do painel (medida): nada pula quando ele chega.
             Filtrar pode crescer o quadro, mas isso vem de um clique e não conta como CLS. */}
-        <div data-hero-frame className="flex min-h-[var(--hero-h)] flex-col [--hero-h:930px] sm:[--hero-h:880px] lg:[--hero-h:850px] [&>*]:flex-1">{go ? <HeroDashboard /> : <Skeleton />}</div>
+        <div data-hero-frame className="flex min-h-[var(--hero-h)] flex-col [--hero-h:480px] sm:[--hero-h:880px] lg:[--hero-h:850px] [&>*]:flex-1">{go ? <HeroDashboard /> : <Skeleton />}</div>
       </TiltFrame>
       <p className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12.5px] text-fg-2">
-        <span>Clique numa campanha ou arraste no gráfico: o painel inteiro filtra.</span>
+        {/* no celular o hero mostra só os números: a dica fala do que dá para tocar ali */}
+        <span className="sm:hidden">Troque entre Meta e Google: cada plataforma com a sua venda.</span>
+        <span className="hidden sm:inline">Clique numa campanha ou arraste no gráfico: o painel inteiro filtra.</span>
         <span className="rounded-chip border border-line px-2.5 py-0.5 text-[11px] font-medium">Amostra · dados fictícios</span>
       </p>
     </div>

@@ -34,7 +34,10 @@ function Board({ platform, compact }: { platform: LivePlatform; compact?: boolea
           ))}
         </div>
         <FilterBar />
-        <HeroChart data={data} spendLabel={platform === "meta" ? "Investimento" : "Custo"} valueLabel={platform === "meta" ? "Receita" : "Valor de conversão"} />
+        {/* no celular o hero fica com os números; o gráfico está na demonstração, logo abaixo */}
+        <div className="hidden sm:block">
+          <HeroChart data={data} spendLabel={platform === "meta" ? "Investimento" : "Custo"} valueLabel={platform === "meta" ? "Receita" : "Valor de conversão"} />
+        </div>
         {/* no celular a tabela fica para a demonstração, logo abaixo */}
         {!compact && (
           <div className="hidden sm:block">
