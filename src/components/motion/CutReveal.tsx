@@ -27,9 +27,9 @@ type CutRevealProps = {
 };
 
 /**
- * Texto que se revela pela abertura do corte: a metade de cima sobe e a de
- * baixo desce. Cada linha existe duas vezes (metades recortadas); a cópia de
- * baixo é aria-hidden. Sem JS, o texto aparece inteiro.
+ * Texto que se revela linha a linha: cada linha sobe de dentro de uma máscara
+ * (overflow + translateY). Uma cópia só do texto, sem clip-path: igual no
+ * Safari e no Chrome, e sem mexer no layout. Sem JS, o texto aparece inteiro.
  */
 export function CutReveal({
   lines,
@@ -47,15 +47,10 @@ export function CutReveal({
   return (
     <Tag ref={ref as never} id={id} className={className} data-cut={state}>
       {lines.map((line, i) => (
-        <span
-          key={i}
-          className={`cut-line ${lineClassName?.(i) ?? ""}`}
-          style={{ "--d": `${delay + i * stagger}ms` } as CSSProperties}
-        >
-          <span className="cut-top">{line}</span>
-          <span className="cut-bot" aria-hidden>
+        <span key={i} className={`cut-line ${lineClassName?.(i) ?? ""}`}>
+          <span className="cut-in" style={{ "--d": `${delay + i * stagger}ms` } as CSSProperties}>
             {line}
-          </span>
+          </span>{" "}
         </span>
       ))}
     </Tag>

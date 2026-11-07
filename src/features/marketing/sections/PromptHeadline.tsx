@@ -9,7 +9,9 @@ const LINE2 = "Não gera critério.";
 
 /**
  * "Um prompt gera gráfico." é digitado numa caixa de prompt; "Não gera
- * critério." entra pela abertura do corte e a caixa se parte na linha do corte.
+ * critério." sobe por baixo e a caixa apaga, como um prompt que não resolveu.
+ * A caixa já nasce com o tamanho do texto inteiro (nada pula enquanto digita),
+ * e nenhum recorte com clip-path: igual no Safari e no Chrome.
  */
 export function PromptHeadline({ id }: { id: string }) {
   const ref = useRef<HTMLHeadingElement>(null);
@@ -17,7 +19,7 @@ export function PromptHeadline({ id }: { id: string }) {
   const motionOK = useMotionOK();
   // null = ainda não começou; depois, quantas letras já foram digitadas
   const [typed, setTyped] = useState<number | null>(null);
-  const [stage, setStage] = useState<"typing" | "line2" | "broken">("typing");
+  const [stage, setStage] = useState<"typing" | "line2" | "done">("typing");
 
   useEffect(() => {
     if (!inView || !motionOK) return;
@@ -29,7 +31,7 @@ export function PromptHeadline({ id }: { id: string }) {
       if (n >= LINE1.length) {
         window.clearInterval(iv);
         timers.push(window.setTimeout(() => setStage("line2"), 260));
-        timers.push(window.setTimeout(() => setStage("broken"), 900));
+        timers.push(window.setTimeout(() => setStage("done"), 900));
       }
     }, 46);
     return () => {
@@ -41,14 +43,18 @@ export function PromptHeadline({ id }: { id: string }) {
   const animating = motionOK;
   const shown = !animating ? LINE1 : LINE1.slice(0, typed ?? 0);
   const line2State = !animating ? "static" : stage === "typing" ? "idle" : "play";
-  const broken = animating && stage === "broken";
+  const done = animating && stage === "done";
 
   const box = (
-    <span className="flex items-start gap-3 rounded-card border border-line bg-bg px-4 py-4 sm:gap-5 sm:px-7 sm:py-6">
+    <span className={`flex items-start gap-3 rounded-card border bg-bg px-4 py-4 transition-[border-color,opacity] duration-500 ease-brand sm:gap-5 sm:px-7 sm:py-6 ${done ? "border-line opacity-60" : "border-line"}`}>
       <span className="mt-[0.18em] shrink-0 text-[0.5em] font-medium text-accent tnum">›_</span>
-      <span className="min-h-[1em]">
-        {shown}
-        {animating && !broken && <span className="caret text-accent" />}
+      {/* a frase inteira, invisível, reserva o espaço; a digitada fica por cima */}
+      <span className="grid min-w-0">
+        <span className="invisible col-start-1 row-start-1">{LINE1}</span>
+        <span className="col-start-1 row-start-1">
+          {shown}
+          {animating && !done && <span className="caret text-accent" />}
+        </span>
       </span>
     </span>
   );
@@ -59,25 +65,12 @@ export function PromptHeadline({ id }: { id: string }) {
         {LINE1} {LINE2}
       </span>
       <span aria-hidden className="block">
-        {/* a caixa existe duas vezes, recortada nas metades, para se partir no corte */}
-        <span className="relative block max-w-[16em]">
-          <span
-            className="block transition-transform duration-500 ease-brand"
-            style={{ clipPath: "inset(-10% -10% 50% -10%)", transform: broken ? "translateY(-0.045em) rotate(-0.4deg)" : undefined }}
-          >
-            {box}
-          </span>
-          <span
-            className="absolute inset-0 block transition-transform duration-500 ease-brand"
-            style={{ clipPath: "inset(50% -10% -10% -10%)", transform: broken ? "translate(0.04em, 0.045em) rotate(0.25deg)" : undefined }}
-          >
-            {box}
-          </span>
-        </span>
+        <span className="block max-w-[16em]">{box}</span>
         <span className="mt-3 block text-accent sm:mt-4" data-cut={line2State}>
-          <span className="cut-line" style={{ "--d": "0ms" } as CSSProperties}>
-            <span className="cut-top">{LINE2}</span>
-            <span className="cut-bot">{LINE2}</span>
+          <span className="cut-line">
+            <span className="cut-in" style={{ "--d": "0ms" } as CSSProperties}>
+              {LINE2}
+            </span>
           </span>
         </span>
       </span>

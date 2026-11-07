@@ -195,24 +195,9 @@ html.lenis body {
     transform: translateY(24px);
   }
 }
-@keyframes cut-top {
+@keyframes cut-rise {
   from {
-    clip-path: inset(50% -0.2em 50% -0.2em);
-    transform: translateY(0.22em);
-  }
-  to {
-    clip-path: inset(-0.3em -0.2em 50% -0.2em);
-    transform: none;
-  }
-}
-@keyframes cut-bot {
-  from {
-    clip-path: inset(50% -0.2em 50% -0.2em);
-    transform: translateY(-0.22em);
-  }
-  to {
-    clip-path: inset(50% -0.2em -0.3em -0.2em);
-    transform: none;
+    transform: translateY(108%);
   }
 }
 @keyframes draw-x {
@@ -272,30 +257,24 @@ html.lenis body {
 }
 
 /* ---- Revelação pelo corte (CutReveal) ------------------------------- */
+/* cada linha sobe de dentro da própria máscara; a folga em cima e embaixo guarda
+   acentos e descendentes sem mudar a altura da linha */
 .cut-line {
-  position: relative;
+  display: block;
+  overflow: hidden;
+  padding: 0.14em 0.08em 0.16em;
+  margin: -0.14em -0.08em -0.16em;
+}
+.cut-in {
   display: block;
 }
-.cut-top {
-  display: block;
-  clip-path: inset(-0.3em -0.2em 50% -0.2em);
+[data-js] [data-cut="idle"] .cut-in {
+  transform: translateY(108%);
 }
-.cut-bot {
-  position: absolute;
-  inset: 0;
-  display: block;
-  clip-path: inset(50% -0.2em -0.3em -0.2em);
-}
-[data-js] [data-cut="idle"] .cut-top,
-[data-js] [data-cut="idle"] .cut-bot {
-  clip-path: inset(50% -0.2em 50% -0.2em);
-}
-[data-cut="play"] .cut-top {
-  animation: cut-top 900ms var(--ease) both;
-  animation-delay: var(--d, 0ms);
-}
-[data-cut="play"] .cut-bot {
-  animation: cut-bot 900ms var(--ease) both;
+/* "backwards": ao terminar, a linha volta ao estilo normal e solta a camada composta
+   (no Safari, a camada presa ficava por cima do menu fixo) */
+[data-cut="play"] .cut-in {
+  animation: cut-rise 800ms var(--ease) backwards;
   animation-delay: var(--d, 0ms);
 }
 
@@ -327,7 +306,7 @@ html.lenis body {
 }
 [data-cut="play"] .hl {
   animation: hl-in 400ms var(--ease) both;
-  animation-delay: calc(var(--d, 0ms) + 1150ms);
+  animation-delay: calc(var(--d, 0ms) + 900ms);
 }
 @keyframes hl-in {
   from {
@@ -341,7 +320,7 @@ html.lenis body {
   transform: translateY(24px);
 }
 [data-reveal="play"] {
-  animation: rise 800ms var(--ease) both;
+  animation: rise 800ms var(--ease) backwards;
   animation-delay: var(--d, 0ms);
 }
 
@@ -1030,9 +1009,8 @@ button:hover > * > .vyz3d .vyz3d-mouth { transform: scale(1.2, 1.12); }
     transition-delay: 0ms !important;
   }
   [data-reveal="play"],
-  [data-cut="play"] .cut-top,
-  [data-cut="play"] .cut-bot {
-    animation: fade-in 150ms ease-out both !important;
+  [data-cut="play"] .cut-in {
+    animation: fade-in 150ms ease-out backwards !important;
   }
   .wave span,
   .live-dot::after,
