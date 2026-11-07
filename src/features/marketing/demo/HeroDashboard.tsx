@@ -6,6 +6,7 @@
 
 import { BriefcaseBusiness, ChartColumn, Check, Infinity as InfinityIcon, Music2, Play, Search, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
+import { Wordmark } from "@/components/brand/Wordmark";
 import { CHANNEL_LABEL, FUNNEL_STAGE_LABEL } from "@/features/analytics/aggregate";
 import { FilterBar, FilterProvider } from "@/features/analytics/filter-context";
 import { kpiMetric } from "@/features/analytics/metrics";
@@ -29,14 +30,14 @@ function ConnectedAccounts() {
   return (
     <div>
       <p className="label-caps text-[10.5px] text-fg-2">Contas conectadas</p>
-      <ul className="mt-1.5 grid grid-cols-2 gap-1.5 @[460px]:grid-cols-3 @[640px]:grid-cols-6">
+      <ul className="mt-1.5 grid grid-cols-2 gap-1 @[460px]:grid-cols-3 @[640px]:grid-cols-6">
         {HERO_ACCOUNTS.map(({ name, icon: Icon, live }) => (
-          <li key={name} className={`flex min-w-0 items-center gap-1.5 rounded-control border px-2 py-1.5 ${live ? "border-accent/40 bg-accent-soft/40" : "border-line border-dashed"}`}>
-            <span className={`inline-flex size-6 shrink-0 items-center justify-center rounded-[6px] ${live ? "bg-accent text-on-accent" : "bg-line/50 text-fg-2"}`} aria-hidden>
-              <Icon size={13} strokeWidth={2.2} />
+          <li key={name} className={`flex min-w-0 items-center gap-1.5 rounded-control border px-1.5 py-1.5 ${live ? "border-accent/40 bg-accent-soft/40" : "border-line border-dashed"}`}>
+            <span className={`inline-flex size-5 shrink-0 items-center justify-center rounded-[5px] ${live ? "bg-accent text-on-accent" : "bg-line/50 text-fg-2"}`} aria-hidden>
+              <Icon size={12} strokeWidth={2.2} />
             </span>
             <span className="min-w-0">
-              <span className={`block truncate text-[11.5px] leading-tight font-medium ${live ? "text-fg" : "text-fg-2"}`}>{name}</span>
+              <span className={`block truncate text-[11px] leading-tight font-medium ${live ? "text-fg" : "text-fg-2"}`}>{name}</span>
               <span className="flex items-center gap-0.5 text-[10px] leading-tight text-fg-2">
                 {live ? (
                   <>
@@ -89,8 +90,9 @@ function Board({ compact }: { compact?: boolean }) {
 export default function HeroDashboard({ compact = false }: { compact?: boolean }) {
   return (
     <div className="@container flex h-full flex-col gap-3 p-3 sm:p-4">
-      <header className="flex items-baseline justify-between gap-2">
-        <p className="truncate text-[15px] font-semibold text-fg">{SAMPLE_CLIENTS.meta.client}</p>
+      {/* a amostra é a própria VYZ: a marca no topo, como o cliente vê no link */}
+      <header className="flex items-center justify-between gap-2">
+        <Wordmark className="w-[58px] shrink-0 text-accent" title={SAMPLE_CLIENTS.meta.client} />
         <p className="shrink-0 text-[12px] text-fg-2">Visão geral · 30 dias</p>
       </header>
       <ConnectedAccounts />

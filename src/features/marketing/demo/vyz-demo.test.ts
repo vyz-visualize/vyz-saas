@@ -30,7 +30,7 @@ describe("VYZ na demonstração: só respostas certas", () => {
   });
 
   it("qualquer outra pergunta recebe a lista do que dá para perguntar, nunca uma resposta", () => {
-    for (const q of ["Qual o ROAS da Loja Verde?", "Quanto a Casa Norte investiu?", "Qual é o meu plano?", "oi", ""]) {
+    for (const q of ["Qual o ROAS da VYZ?", "Quanto a Casa Norte investiu?", "Qual é o meu plano?", "oi", ""]) {
       const r = demoAnswer(q, ctx);
       expect(r.text, q).toBe(DEMO_FALLBACK);
       expect(r.understood).toBe(false);

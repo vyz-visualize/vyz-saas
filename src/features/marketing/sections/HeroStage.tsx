@@ -64,13 +64,19 @@ export function HeroStage() {
   const ref = useRef<HTMLDivElement>(null);
   const go = useWhenIdleAndNear(ref);
   return (
-    <div ref={ref}>
+    <div ref={ref} className="@container">
       {/* os cards do painel são h3: este h2 dá a eles um lugar no sumário do leitor de tela */}
       <h2 className="sr-only">Dashboard de amostra</h2>
       <TiltFrame className="overflow-hidden rounded-card border border-line bg-bg">
         {/* o esqueleto já ocupa a altura do painel (medida): nada pula quando ele chega.
-            Filtrar pode crescer o quadro, mas isso vem de um clique e não conta como CLS. */}
-        <div data-hero-frame className="flex min-h-[var(--hero-h)] flex-col [--hero-h:560px] sm:[--hero-h:1000px] md:[--hero-h:920px] lg:[--hero-h:1000px] xl:[--hero-h:896px] [&>*]:flex-1">{go ? <HeroDashboard /> : <Skeleton />}</div>
+            A altura muda nos mesmos degraus do painel, pela largura dele (não da tela),
+            medidos: celular só com os números; do tablet para cima, 2×2 KPIs abaixo de
+            594 px, contas em duas linhas abaixo de 676 px. Filtrar pode crescer o quadro, mas isso
+            vem de um clique e não conta como CLS. */}
+        <div
+          data-hero-frame
+          className="flex min-h-[var(--hero-h)] flex-col [--hero-h:560px] sm:[--hero-h:912px] sm:@max-[675px]:[--hero-h:981px] sm:@max-[593px]:[--hero-h:1112px] [&>*]:flex-1"
+        >{go ? <HeroDashboard /> : <Skeleton />}</div>
       </TiltFrame>
       <p className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12.5px] text-fg-2">
         {/* no celular o hero mostra só os números: a dica do clique vale do tablet para cima */}

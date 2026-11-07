@@ -1,5 +1,6 @@
 // Motor da demonstração do site: os mesmos dados de amostra e a mesma agregação dos
-// dashboards de verdade, rodando no navegador. Nada vem do servidor e nada é salvo.
+// dashboards de verdade, rodando no navegador, com a VYZ como cliente (só os nomes mudam).
+// Nada vem do servidor e nada é salvo.
 // Gerar a amostra custa caro (centenas de ms num celular): fica em cache por plataforma
 // e período, e só roda quando a dobra pede.
 
@@ -11,11 +12,31 @@ import type { LiveDashboardData, LivePlatform, WarehouseRows } from "@/features/
 import { DEFAULT_TIME_ZONE } from "@/features/sync/dates";
 import type { PeriodId } from "@/features/workspace/types";
 
-/** Clientes fictícios das amostras. */
+/** Cliente das amostras do site: a própria VYZ anunciando a si mesma. */
 export const SAMPLE_CLIENTS: Record<LivePlatform, { client: string; account: string; dashboard: string }> = {
-  meta: { client: "Loja Verde", account: "Loja Verde · Vendas", dashboard: "Meta Ads · E-commerce" },
-  google: { client: "Loja Verde", account: "Loja Verde · Brasil", dashboard: "Google Ads · E-commerce" },
+  meta: { client: "VYZ", account: "VYZ · Assinaturas", dashboard: "Meta Ads · Visão geral" },
+  google: { client: "VYZ", account: "VYZ · Brasil", dashboard: "Google Ads · Visão geral" },
 };
+
+/**
+ * Nomes das campanhas da amostra Meta no site, coerentes com a VYZ anunciando a si mesma.
+ * Só o nome muda (mesmo id, mesma etapa do funil, mesmos números); a amostra do produto
+ * e o painel continuam com os nomes de antes.
+ */
+export const SITE_CAMPAIGN_NAMES: Record<string, string> = {
+  "Prospecção · Advantage+ Shopping": "Prospecção · Gestores de tráfego",
+  "Prospecção · Lookalike 1% compradores": "Prospecção · Lookalike assinantes",
+  "Prospecção · Interesses moda e casa": "Prospecção · Interesses marketing digital",
+  "Remarketing · Visitantes 30 dias": "Remarketing · Visitou planos",
+  "Catálogo · Remarketing dinâmico": "Remarketing · Viu a demonstração",
+  "Retenção · Clientes 180 dias": "Retenção · Assinantes ativos",
+};
+
+/** A amostra com os nomes do site, numa cópia: o cache da amostra do produto não muda. */
+export function withSiteNames(rows: WarehouseRows): WarehouseRows {
+  if (rows.platform !== "meta") return rows;
+  return { ...rows, campaigns: rows.campaigns.map((c) => ({ ...c, name: SITE_CAMPAIGN_NAMES[c.name] ?? c.name })) };
+}
 
 const BREAK_EVEN = 2.5;
 const cache = new Map<string, WarehouseRows>();
@@ -24,7 +45,7 @@ export function sampleRowsFor(platform: LivePlatform, period: PeriodId = "30d"):
   const key = `${platform}:${period}`;
   let rows = cache.get(key);
   if (!rows) {
-    rows = sampleRows(platform, { period });
+    rows = withSiteNames(sampleRows(platform, { period }));
     cache.set(key, rows);
   }
   return rows;

@@ -58,7 +58,7 @@ function Answer({ answer }: { answer: AgentAnswer }) {
 }
 
 const ALERTS = [
-  { when: "Hoje, 8h", text: "O custo por venda da Loja Verde subiu 18% em 3 dias no Remarketing. A frequência passou de 4: vale trocar o criativo." },
+  { when: "Hoje, 8h", text: "O custo por assinatura da VYZ subiu 18% em 3 dias no Remarketing. A frequência passou de 4: vale trocar o criativo." },
   { when: "Ontem, 8h", text: "A Casa Norte vendeu mais de terça a quinta. Vale concentrar a verba nesses dias." },
 ];
 

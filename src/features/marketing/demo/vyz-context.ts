@@ -17,8 +17,8 @@ function engineTotals(t: ViewTotals): Totals {
   );
 }
 
-/** Dois clientes para o VYZ comparar: a amostra da Meta e a do Google, com nomes diferentes. */
-export const DEMO_CLIENTS: Record<LivePlatform, string> = { meta: "Loja Verde", google: "Casa Norte" };
+/** Dois clientes para o VYZ comparar: a própria VYZ (amostra da Meta) e a Casa Norte (amostra do Google). */
+export const DEMO_CLIENTS: Record<LivePlatform, string> = { meta: "VYZ", google: "Casa Norte" };
 
 function client(platform: LivePlatform): ClientData {
   const view = aggregateDashboard(sampleRowsFor(platform, "mes"), { breakEvenRoas: 2.5 });

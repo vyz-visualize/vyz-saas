@@ -6,6 +6,7 @@
 
 import { useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { Wordmark } from "@/components/brand/Wordmark";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 
 // ---- passo 1: os dados correndo das contas até o painel ----------------------------------
@@ -131,10 +132,11 @@ export function TemplatesArt() {
 
 // ---- passo 3: o link sendo aberto e o filtro sendo clicado ---------------------------------
 
+// as campanhas da amostra do site (a VYZ anunciando a si mesma), com os mesmos números
 const ROWS = [
-  { name: "Prospecção · Advantage+", roas: "2,96" },
-  { name: "Catálogo · Remarketing", roas: "5,26" },
-  { name: "Lookalike 1% compradores", roas: "2,53" },
+  { name: "Prospecção · Gestores de tráfego", roas: "2,96" },
+  { name: "Remarketing · Viu a demonstração", roas: "5,26" },
+  { name: "Prospecção · Lookalike assinantes", roas: "2,53" },
 ];
 
 export function SendArt() {
@@ -152,8 +154,8 @@ export function SendArt() {
       </div>
       <div className="send-page flex flex-1 flex-col gap-2 p-3" aria-hidden>
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[12px] font-semibold text-fg">Loja Verde</span>
-          <span className="send-chip rounded-chip bg-accent-soft px-2 py-0.5 text-[10.5px] text-fg">Campanha: Catálogo</span>
+          <Wordmark className="w-[38px] shrink-0 text-accent" decorative />
+          <span className="send-chip rounded-chip bg-accent-soft px-2 py-0.5 text-[10.5px] text-fg">Campanha: Remarketing</span>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-[8px] border border-line bg-bg px-2 py-1.5">
