@@ -17,41 +17,55 @@ const LINES = [
 ];
 const HUB = { x: 252, y: 40, w: 136, h: 160 };
 
+const pct = (v: number, of: number) => `${(v / of) * 100}%`;
+
+/**
+ * O SVG desenha só as linhas e os pulsos; os chips e o painel são HTML posicionado por
+ * porcentagem na mesma caixa 400×240 (sem foreignObject: o Safari o desenhava fora do lugar).
+ */
 export function ConnectArt() {
   return (
-    <svg viewBox="0 0 400 240" className="h-full w-full" role="img" aria-label="Meta Ads e Google Ads conectados ao seu painel; GA4 e outras plataformas em breve">
-      {LINES.map((l, i) => {
-        const d = `M118,${l.y} C185,${l.y} 185,120 ${HUB.x},120`;
-        return (
-          <g key={l.label}>
-            <path id={`linha-${i}`} d={d} fill="none" stroke={l.live ? "var(--accent)" : "var(--line)"} strokeWidth="1.6" strokeDasharray={l.live ? undefined : "4 5"} />
-            {l.live &&
-              [0, 0.9].map((begin) => (
-                <circle key={begin} r="3.4" fill="var(--accent)">
-                  <animateMotion dur="1.8s" begin={`${begin + i * 0.3}s`} repeatCount="indefinite" path={d} keyPoints="0;1" keyTimes="0;1" calcMode="linear" />
-                  <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="1.8s" begin={`${begin + i * 0.3}s`} repeatCount="indefinite" />
-                </circle>
-              ))}
-            <foreignObject x="0" y={l.y - 15} width="122" height="30">
-              <span className={`inline-flex h-[30px] w-full items-center justify-center rounded-full text-[12.5px] font-medium ${l.live ? "bg-accent text-on-accent" : "soon-shimmer border border-line bg-card text-fg-2"}`}>{l.label}</span>
-            </foreignObject>
-          </g>
-        );
-      })}
-      <foreignObject x={HUB.x} y={HUB.y} width={HUB.w} height={HUB.h}>
-        <div className="flex h-full flex-col rounded-[12px] border border-line bg-card p-3">
-          <p className="text-[12px] font-semibold text-fg">Seu painel</p>
-          <div className="mt-2.5 space-y-2.5">
+    <div className="flex h-full items-center justify-center" role="img" aria-label="Meta Ads e Google Ads conectados ao seu painel; GA4 e outras plataformas em breve">
+      <div className="@container relative aspect-[400/240] max-h-full w-full max-w-full overflow-hidden" aria-hidden>
+        <svg viewBox="0 0 400 240" className="absolute inset-0 h-full w-full">
+          {LINES.map((l, i) => {
+            const d = `M118,${l.y} C185,${l.y} 185,120 ${HUB.x},120`;
+            return (
+              <g key={l.label}>
+                <path d={d} fill="none" stroke={l.live ? "var(--accent)" : "var(--line)"} strokeWidth="1.6" strokeDasharray={l.live ? undefined : "4 5"} />
+                {l.live &&
+                  [0, 0.9].map((begin) => (
+                    <circle key={begin} r="3.4" fill="var(--accent)">
+                      <animateMotion dur="1.8s" begin={`${begin + i * 0.3}s`} repeatCount="indefinite" path={d} keyPoints="0;1" keyTimes="0;1" calcMode="linear" />
+                      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="1.8s" begin={`${begin + i * 0.3}s`} repeatCount="indefinite" />
+                    </circle>
+                  ))}
+              </g>
+            );
+          })}
+        </svg>
+        {LINES.map((l) => (
+          <span
+            key={l.label}
+            className={`absolute flex items-center justify-center rounded-full text-[3cqw] leading-none font-medium whitespace-nowrap ${l.live ? "bg-accent text-on-accent" : "soon-shimmer border border-line bg-card text-fg-2"}`}
+            style={{ left: 0, top: pct(l.y - 15, 240), width: pct(122, 400), height: pct(30, 240) }}
+          >
+            {l.label}
+          </span>
+        ))}
+        <div className="absolute flex flex-col overflow-hidden rounded-[3cqw] border border-line bg-card p-[2.6cqw]" style={{ left: pct(HUB.x, 400), top: pct(HUB.y, 240), width: pct(HUB.w, 400), height: pct(HUB.h, 240) }}>
+          <p className="text-[3cqw] leading-tight font-semibold whitespace-nowrap text-fg">Seu painel</p>
+          <div className="mt-[2.4cqw] space-y-[2cqw]">
             {[92, 64, 78, 52].map((w, i) => (
-              <span key={i} className="block h-2 rounded-full bg-line/60">
+              <span key={i} className="block h-[1.6cqw] overflow-hidden rounded-full bg-line/60">
                 <span className="fill-loop block h-full rounded-full bg-accent" style={{ width: `${w}%`, opacity: 1 - i * 0.18, ["--d" as string]: `${i * 220}ms` }} />
               </span>
             ))}
           </div>
-          <span className="soon-shimmer mt-auto inline-flex h-6 items-center justify-center rounded-full border border-line text-[11px] text-fg-2">Mais em breve</span>
+          <span className="soon-shimmer relative mt-auto flex h-[5.4cqw] max-w-full items-center justify-center rounded-full border border-line text-[2.6cqw] whitespace-nowrap text-fg-2">Mais em breve</span>
         </div>
-      </foreignObject>
-    </svg>
+      </div>
+    </div>
   );
 }
 
@@ -96,7 +110,7 @@ export function TemplatesArt() {
   const t = MODELS[i];
   return (
     <div ref={ref} className="flex h-full flex-col justify-center px-1" aria-live="off">
-      <div key={t.id} className="rounded-[12px] border border-line bg-card p-3.5 motion-safe:animate-[fade-in_420ms_ease-out]">
+      <div key={t.id} className="tpl-in rounded-[12px] border border-line bg-card p-3.5">
         <div className="flex items-center justify-between gap-2">
           <span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-fg">{t.category}</span>
           <span className="text-[11px] text-fg-2 tnum">

@@ -1053,15 +1053,18 @@ button:hover > * > .vyz3d .vyz3d-mouth { transform: scale(1.2, 1.12); }
 }
 
 /* ---- Site: movimento contínuo, só com a dobra na tela ---------------- */
-/* a entrada (Reveal) roda sempre até o fim: só o movimento contínuo pausa */
+/* Fora da tela, o movimento contínuo desliga e recomeça do início quando a dobra volta.
+   Não usa animation-play-state: o Safari não retoma animações de opacity/transform
+   pausadas (ficavam no primeiro quadro, vazias). A entrada (Reveal) roda até o fim. */
 [data-play="off"] :not([data-reveal]),
 [data-play="off"] *::before,
 [data-play="off"] *::after {
-  animation-play-state: paused !important;
+  animation-name: none !important;
 }
 /* "carregando": um brilho que atravessa o chip do que vem em breve */
+/* quem usa precisa estar posicionado (relative ou absolute): a classe não impõe,
+   para não brigar com um chip absoluto */
 .soon-shimmer {
-  position: relative;
   overflow: hidden;
 }
 .soon-shimmer::after {
@@ -1075,6 +1078,21 @@ button:hover > * > .vyz3d .vyz3d-mouth { transform: scale(1.2, 1.12); }
 @keyframes soon-shimmer {
   to {
     transform: translateX(100%);
+  }
+}
+/* passo 2: o modelo novo entra sem nunca deixar o card vazio */
+.tpl-in {
+  animation: tpl-in 420ms ease-out backwards;
+}
+@keyframes tpl-in {
+  from {
+    opacity: 0.35;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tpl-in {
+    animation: none;
   }
 }
 /* barras que se enchem em loop (painel do passo 1) */
@@ -1107,6 +1125,17 @@ button:hover > * > .vyz3d .vyz3d-mouth { transform: scale(1.2, 1.12); }
 /* passo 3: o link digitado, a página abre, o cursor clica numa campanha e o painel filtra */
 .send-art {
   --t: 7s;
+}
+/* sem animação, o passo 3 mostra o estado final: link aberto e a campanha filtrada */
+.send-a,
+.send-cursor {
+  opacity: 0;
+}
+.send-other {
+  opacity: 0.4;
+}
+.send-row {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .send-url {
   animation: send-url var(--t) steps(26) infinite;
