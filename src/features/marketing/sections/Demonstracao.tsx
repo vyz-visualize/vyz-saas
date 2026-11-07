@@ -19,7 +19,7 @@ function Waiting() {
       </div>
       <div className="h-[2.6em]" />
       {/* a altura medida da primeira aba (Filtrar), em cada largura: nada pula quando ela chega */}
-      <div className="h-[1010px] rounded-card bg-line/20 sm:h-[1360px] lg:h-[1140px]" />
+      <div className="h-[1240px] rounded-card bg-line/20 sm:h-[1360px] lg:h-[1140px]" />
     </div>
   );
 }

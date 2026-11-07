@@ -17,6 +17,7 @@ import { HeroChart, maturingPoints, TopCampaigns } from "@/features/analytics/sh
 import type { MetaView } from "@/features/analytics/types";
 import { KpiCard, Panel, SliceBars } from "@/features/analytics/ui";
 import { track } from "@/features/marketing/track";
+import { CampaignCards } from "./CampaignCards";
 import { sampleData, sampleLabels, sampleRowsFor } from "./engine";
 import { useLocalFilters } from "./local-filters";
 import { PersonalizeDemo } from "./PersonalizeDemo";
@@ -31,6 +32,8 @@ export const DEMO_TABS: { id: DemoTab; label: string; hint: string }[] = [
   { id: "comparativo", label: "Comparar criativos", hint: "Os anúncios lado a lado, com o melhor de cada métrica e uma leitura do resultado. No plano Avançado." },
   { id: "personalizar", label: "Personalizar métricas", hint: "Cada cliente vê os cards que importam para ele." },
 ];
+
+const campaignKind = (k: string | null) => (k ? (FUNNEL_STAGE_LABEL[k] ?? CHANNEL_LABEL[k] ?? "Outras") : "Outras");
 
 function FilterDemo() {
   const labels = useMemo(() => sampleLabels("meta"), []);
@@ -54,7 +57,8 @@ function FilterDemo() {
         <FilterBar />
         <HeroChart data={data} spendLabel="Investimento" valueLabel="Receita" />
         <div className="grid gap-3 @[900px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <TopCampaigns data={data} limit={smUp ? 6 : 3} kindLabel={(k) => (k ? (FUNNEL_STAGE_LABEL[k] ?? CHANNEL_LABEL[k] ?? "Outras") : "Outras")} />
+          {/* no celular, um card por campanha: nenhuma coluna cortada */}
+          {smUp ? <TopCampaigns data={data} limit={6} kindLabel={campaignKind} /> : <CampaignCards data={data} limit={3} kindLabel={campaignKind} />}
           <div className="hidden @[640px]:block">
             <Panel section="breakdown" title="Dispositivos" subtitle="Participação na receita e ROAS.">
               <SliceBars items={view.devices} breakEven={view.breakEvenRoas} label="Dispositivos" />
