@@ -5,12 +5,13 @@ import Link from "next/link";
 import { useRef, useSyncExternalStore } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
-import { companyIdentity } from "@/features/legal/company";
+import { COMPANY, companyIdentity } from "@/features/legal/company";
 import { BILLING_LIVE } from "@/lib/flags";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 
 const noop = () => () => {};
-const SUPPORT_EMAIL = "suporte@vyzualize.com.br";
+// o mesmo e-mail dos Termos e da Privacidade
+const SUPPORT_EMAIL = COMPANY.supportEmail;
 
 export function Footer() {
   const ref = useRef<HTMLDivElement>(null);
