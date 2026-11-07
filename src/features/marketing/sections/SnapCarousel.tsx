@@ -4,7 +4,7 @@
 // A partir do breakpoint vira grade normal e os pontos somem. Sem lib: só CSS e o índice.
 
 import { useReducedMotion } from "motion/react";
-import { Children, useRef, useState, type ReactNode } from "react";
+import { Children, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 const LAYOUT = {
   md: {
@@ -17,12 +17,18 @@ const LAYOUT = {
     item: "w-[86%] shrink-0 snap-start sm:w-[62%] lg:w-auto",
     dots: "lg:hidden",
   },
+  // planos: o do meio um pouco mais largo e os cards esticados por igual
+  plans: {
+    track: "-mx-4 flex snap-x snap-mandatory scroll-pl-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:-mx-6 sm:scroll-pl-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-[1fr_1.12fr_1fr] lg:items-stretch lg:gap-4 lg:overflow-visible lg:px-0 lg:pb-0 [&::-webkit-scrollbar]:hidden",
+    item: "flex w-[88%] shrink-0 snap-start flex-col sm:w-[62%] lg:w-auto",
+    dots: "lg:hidden",
+  },
 } as const;
 
-export function SnapCarousel({ children, label, itemLabel = "Card", bp = "lg" }: { children: ReactNode; label: string; itemLabel?: string; bp?: keyof typeof LAYOUT }) {
+export function SnapCarousel({ children, label, itemLabel = "Card", bp = "lg", initial = 0 }: { children: ReactNode; label: string; itemLabel?: string; bp?: keyof typeof LAYOUT; initial?: number }) {
   const items = Children.toArray(children);
   const track = useRef<HTMLUListElement>(null);
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(initial);
   const reduce = useReducedMotion();
   const L = LAYOUT[bp];
 
@@ -40,6 +46,15 @@ export function SnapCarousel({ children, label, itemLabel = "Card", bp = "lg" }:
     if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 4) best = kids.length - 1;
     setActive(best);
   };
+
+  // abre num card do meio (ex.: o plano recomendado), sem animar e antes de pintar.
+  // Só a faixa rola na horizontal: a página não se mexe.
+  useLayoutEffect(() => {
+    const el = track.current;
+    if (!el || !initial || el.scrollWidth <= el.clientWidth) return;
+    const kids = [...el.children] as HTMLElement[];
+    el.scrollLeft = kids[initial].offsetLeft - kids[0].offsetLeft;
+  }, [initial]);
 
   const goTo = (i: number) => {
     const el = track.current;

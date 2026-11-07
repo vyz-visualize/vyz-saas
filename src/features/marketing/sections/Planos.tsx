@@ -31,6 +31,7 @@ import {
 import { brl } from "@/lib/format";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 import { AudioWave } from "./AudioWave";
+import { SnapCarousel } from "./SnapCarousel";
 import { SoonBadge } from "./SoonBadge";
 
 // Planos: dois produtos (dashboards e landing pages, esta atrás de
@@ -39,17 +40,14 @@ import { SoonBadge } from "./SoonBadge";
 
 const TIERS: PlanId[] = ["base", "pro", "avancado"];
 
-// Em todos os cartões: o que vale para qualquer plano.
+// O que vale para qualquer plano: sai dos cartões e vira uma linha só, abaixo deles.
 const COMMON: ReactNode[] = [
+  "Dashboards responsivos",
+  "App para iOS e Android",
   <>
     Integre com sua IA (MCP)
     <SoonBadge />
   </>,
-  <>
-    App nativo iOS e Android
-    <SoonBadge />
-  </>,
-  "Dashboards responsivos",
 ];
 
 type Card = {
@@ -75,7 +73,7 @@ function dashCard(tier: PlanId, period: Period): Card {
     return {
       ...base,
       pitch: "Você conecta as contas e escolhe o template. Pronto em minutos.",
-      features: [`Até ${PLAN_PROJECTS.base} projetos (clientes)`, "Meta Ads, Google Ads e GA4, com visão geral", "1 conta por plataforma em cada projeto", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário", ...COMMON],
+      features: [`Até ${PLAN_PROJECTS.base} projetos (clientes)`, "Meta Ads, Google Ads e GA4, com visão geral", "1 conta por plataforma em cada projeto", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário"],
     };
   }
   if (tier === "pro") {
@@ -92,7 +90,6 @@ function dashCard(tier: PlanId, period: Period): Card {
         </>,
         "Criativos em galeria, com previews",
         `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,
-        ...COMMON,
       ],
     };
   }
@@ -109,7 +106,6 @@ function dashCard(tier: PlanId, period: Period): Card {
       </>,
       "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos",
       `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,
-      ...COMMON,
     ],
   };
 }
@@ -184,7 +180,7 @@ function PlanCard({ tier, product, period, card, featured, delay }: { tier: Plan
 
   const id = `plano-${product}-${tier}`;
   return (
-    <Reveal delay={delay} className={featured ? "" : "lg:my-8"}>
+    <Reveal delay={delay} className={featured ? "flex-1" : "flex-1 lg:my-8"}>
       <article
         aria-labelledby={id}
         onPointerMove={spotlight}
@@ -205,7 +201,7 @@ function PlanCard({ tier, product, period, card, featured, delay }: { tier: Plan
             <h3 id={id} className="title text-2xl">
               {PLAN_LABEL[tier]}
             </h3>
-            {featured && <span className="rounded-chip bg-on-accent px-2.5 py-0.5 text-[12px] font-semibold text-accent">Mais escolhido</span>}
+            {featured && <span className="rounded-chip bg-on-accent px-2.5 py-0.5 text-[12px] font-semibold text-accent">Recomendado</span>}
           </div>
           <p className={`mt-2 text-[15px] leading-relaxed ${featured ? "" : "text-fg-2"}`}>{card.pitch}</p>
 
@@ -307,19 +303,34 @@ export function Planos() {
           </div>
         </div>
 
-        <div key={product} className="mt-12 grid items-stretch gap-4 lg:mt-14 lg:grid-cols-[1fr_1.12fr_1fr]">
-          {TIERS.map((tier, i) => (
-            <PlanCard
-              key={tier}
-              tier={tier}
-              product={product}
-              period={state.periodo}
-              card={product === "dash" ? dashCard(tier, state.periodo) : lpCard(tier)}
-              featured={tier === "pro"}
-              delay={i * 110}
-            />
-          ))}
+        {/* no celular, um plano por vez (deslizar), abrindo no recomendado */}
+        <div key={product} className="mt-8 lg:mt-14">
+          <SnapCarousel bp="plans" label="Planos" itemLabel="Plano" initial={TIERS.indexOf("pro")}>
+            {TIERS.map((tier, i) => (
+              <PlanCard
+                key={tier}
+                tier={tier}
+                product={product}
+                period={state.periodo}
+                card={product === "dash" ? dashCard(tier, state.periodo) : lpCard(tier)}
+                featured={tier === "pro"}
+                delay={i * 110}
+              />
+            ))}
+          </SnapCarousel>
         </div>
+
+        {product === "dash" && (
+          <p className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[14.5px] text-fg">
+            <span className="font-semibold">Em todos os planos:</span>
+            {COMMON.map((c, i) => (
+              <span key={i} className="inline-flex items-center gap-1.5 text-fg-2">
+                <Check size={15} aria-hidden className="text-accent" />
+                {c}
+              </span>
+            ))}
+          </p>
+        )}
 
         <div className="mt-8 flex flex-col gap-3 text-sm text-fg-2 sm:flex-row sm:items-center sm:justify-between">
           <p>
