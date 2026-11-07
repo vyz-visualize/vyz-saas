@@ -33,10 +33,12 @@ export function Demonstracao() {
     <section id="demonstracao" aria-labelledby="demo-title" className="relative bg-card">
       <SectionWipe />
       {/* no desktop, texto à esquerda e a demonstração à direita: a dobra cabe numa tela */}
-      <div className="mx-auto grid max-w-[1360px] gap-8 px-4 pt-14 pb-14 sm:px-6 sm:pt-20 sm:pb-20 lg:grid-cols-[minmax(0,0.36fr)_minmax(0,1fr)] lg:gap-12 lg:px-10 lg:pt-20">
-        <div>
+      <div className="mx-auto grid max-w-[1360px] gap-8 px-4 pt-14 pb-14 sm:px-6 sm:pt-20 sm:pb-20 lg:grid-cols-[minmax(0,0.4fr)_minmax(0,1fr)] lg:gap-12 lg:px-10 lg:pt-20">
+        {/* no desktop, a fonte do título segue a largura da coluna (cqw), não a da tela:
+            "funcionando." cabe inteiro em qualquer largura, com folga para o Safari */}
+        <div className="@container">
           <p className="label-caps text-fg-2">Demonstração</p>
-          <CutReveal as="h2" id="demo-title" className="display mt-5 text-[clamp(2.4rem,6.4vw,5.2rem)] text-fg lg:text-[clamp(2.6rem,3.6vw,3.6rem)]" lineClassName={(i) => (i === 1 ? "text-accent" : "")} lines={["Veja funcionando.", "Pode clicar."]} />
+          <CutReveal as="h2" id="demo-title" className="display mt-5 text-[clamp(2.4rem,6.4vw,5.2rem)] text-fg lg:text-[clamp(2rem,14.5cqw,3.6rem)]" lineClassName={(i) => (i === 1 ? "text-accent" : "")} lines={["Veja funcionando.", "Pode clicar."]} />
           <p className="mt-5 flex max-w-3xl flex-wrap items-center gap-x-3 gap-y-2 text-[16px] leading-relaxed text-fg-2 sm:text-[17px]">
             É o mesmo painel que o seu cliente recebe.
             <span className="rounded-chip border border-line px-2.5 py-0.5 text-[12px] font-medium">Amostra · dados fictícios</span>
