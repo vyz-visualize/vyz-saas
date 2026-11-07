@@ -444,3 +444,12 @@ describe("texto da análise", () => {
     });
   });
 });
+
+describe("nomes em português", () => {
+  it("Hold rate vira Retenção até o fim, com a explicação no ⓘ", () => {
+    const m = metricById("holdRate")!;
+    expect(m.label).toBe("Retenção até o fim");
+    expect(m.help).toMatch(/3 segundos.*até o fim/);
+    expect(COMPARE_METRICS.map((x) => x.label).join(" ")).not.toMatch(/hold rate/i);
+  });
+});

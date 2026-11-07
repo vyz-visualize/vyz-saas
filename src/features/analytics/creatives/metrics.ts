@@ -105,6 +105,9 @@ export type CompareMetric = {
 /** Explicação da Retenção 3 s, na galeria e no comparativo. */
 export const RETENTION_HELP = "% de quem assistiu pelo menos 3 segundos";
 
+/** Explicação da Retenção até o fim (ThruPlays ÷ reproduções de 3 s), no comparativo. */
+export const RETENTION_END_HELP = "Das pessoas que assistiram 3 segundos, quantas foram até o fim do vídeo (ou até 15 segundos, nos vídeos mais longos)";
+
 const count = (id: string, label: string, group: CompareGroup, value: (s: Sums) => number | null): CompareMetric => ({ id, label, group, format: "int", better: "up", additive: true, value });
 const rate = (id: string, label: string, group: CompareGroup, value: (s: Sums) => number | null): CompareMetric => ({ id, label, group, format: "pct", better: "up", additive: false, value });
 const cost = (id: string, label: string, group: CompareGroup, value: (s: Sums) => number | null): CompareMetric => ({ id, label, group, format: "money", better: "down", additive: false, spendDerived: true, value });
@@ -135,7 +138,7 @@ export const COMPARE_METRICS: CompareMetric[] = [
   count("videoViews", "Reproduções de 3 s", "video", (s) => s.videoViews),
   count("thruplays", "ThruPlays", "video", (s) => s.thruplays),
   { ...rate("hookRate", "Retenção 3 s", "video", (s) => per(s.videoViews, s.impressions)), help: RETENTION_HELP },
-  rate("holdRate", "Hold rate", "video", (s) => per(s.thruplays, s.videoViews)),
+  { ...rate("holdRate", "Retenção até o fim", "video", (s) => per(s.thruplays, s.videoViews)), help: RETENTION_END_HELP },
   cost("costPerThruplay", "Custo por ThruPlay", "video", (s) => per(s.videoSpend, s.thruplays)),
   count("p25", "Vídeo até 25%", "video", (s) => s.p25),
   count("p50", "Vídeo até 50%", "video", (s) => s.p50),

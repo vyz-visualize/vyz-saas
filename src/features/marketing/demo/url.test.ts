@@ -50,6 +50,16 @@ describe("comparativo e a URL", () => {
     await act(async () => root.unmount());
   });
 
+  it("no painel, a métrica de vídeo aparece como Retenção até o fim, com o ⓘ", async () => {
+    const root = await mount(null);
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("Retenção até o fim");
+    expect(text).not.toMatch(/hold rate/i);
+    const row = [...document.querySelectorAll("th")].find((th) => th.textContent?.includes("Retenção até o fim"))!;
+    expect(row.querySelector("button")).not.toBeNull();
+    await act(async () => root.unmount());
+  });
+
   it("no painel (sem o provider), continua levando a escolha para a URL", async () => {
     const root = await mount(null);
     expect(window.location.search).toMatch(/^\?anuncios=/);
