@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { ComoFunciona } from "@/features/marketing/sections/ComoFunciona";
 import { Demonstracao } from "@/features/marketing/sections/Demonstracao";
+import { Diferenciais } from "@/features/marketing/sections/Diferenciais";
 import { DorSolucao } from "@/features/marketing/sections/DorSolucao";
 import { Footer } from "@/features/marketing/sections/Footer";
 import { Inteligencia } from "@/features/marketing/sections/Inteligencia";
@@ -35,6 +36,7 @@ export default function Home() {
         <Suspense>
           <Demonstracao />
         </Suspense>
+        <Diferenciais />
         <Suspense>
           <ComoFunciona />
         </Suspense>
