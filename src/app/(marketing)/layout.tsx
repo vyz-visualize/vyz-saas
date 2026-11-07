@@ -3,7 +3,7 @@ import { MotionRoot } from "@/components/motion/MotionRoot";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { SiteTracking } from "@/features/marketing/SiteTracking";
 import { siteTagIds } from "@/features/marketing/track";
-import { SHOW_LANDING_PAGES } from "@/lib/flags";
+import { SHOW_LANDING_PAGES, SITE_INDEXABLE } from "@/lib/flags";
 
 const title = SHOW_LANDING_PAGES ? "VYZ · Vyzualize · Dashboards e landing pages para gestores de tráfego" : "VYZ · Vyzualize · Dashboards para gestores de tráfego";
 const description =
@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   // a imagem precisa vir aqui: o openGraph deste layout substitui o da raiz, inclusive a imagem
   openGraph: { title, description, siteName: "VYZ · Vyzualize", locale: "pt_BR", type: "website", images: [SHARE_IMAGE] },
   twitter: { card: "summary_large_image", title, description, images: [SHARE_IMAGE] },
+  // endereço canônico (resolvido pelo metadataBase da raiz)
+  alternates: { canonical: "/" },
+  // a raiz é noindex; no lançamento (SITE_INDEXABLE), só o site público abre
+  ...(SITE_INDEXABLE ? { robots: { index: true, follow: true } } : {}),
 };
 
 /** Área de marketing: a única com Lenis, intro e motion. */
