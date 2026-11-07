@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { ComoFunciona } from "@/features/marketing/sections/ComoFunciona";
+import { CtaFinal } from "@/features/marketing/sections/CtaFinal";
 import { Demonstracao } from "@/features/marketing/sections/Demonstracao";
 import { Diferenciais } from "@/features/marketing/sections/Diferenciais";
 import { DorSolucao } from "@/features/marketing/sections/DorSolucao";
@@ -52,6 +53,7 @@ export default function Home() {
           <Planos />
         </Suspense>
         <Perguntas />
+        <CtaFinal />
       </main>
       <Suspense>
         <Footer />
