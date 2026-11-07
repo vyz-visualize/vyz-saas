@@ -53,7 +53,7 @@ function icones() {
     "feature",
     1024,
     500,
-    `<div style="width:1024px;height:500px;background:radial-gradient(circle at 80% 30%,#2a2f17 0,#0E0F0D 60%);display:flex;align-items:center;gap:48px;padding:0 72px;font-family:${FONT}"><svg width=170 height=170 viewBox='0 0 100 100' style='flex:none'><rect width=100 height=100 rx=22 fill='#4B5320'/><g fill='#E8ECE1'>${V}</g></svg><div><div style='color:#F2F3EE;font-size:64px;font-weight:800;letter-spacing:-2px;line-height:1.02'>Seus números,<br><span style='color:#B5C477'>na palma da mão.</span></div><div style='color:#A7AA9F;font-size:26px;margin-top:18px;font-weight:500'>Meta Ads e Google Ads com análises do VYZ</div></div></div>`,
+    `<div style="width:1024px;height:500px;background:radial-gradient(circle at 80% 30%,#2a2f17 0,#0E0F0D 60%);display:flex;align-items:center;gap:48px;padding:0 72px;font-family:${FONT}"><svg width=170 height=170 viewBox='0 0 100 100' style='flex:none'><rect width=100 height=100 rx=22 fill='#4B5320'/><g fill='#E8ECE1'>${V}</g></svg><div><div style='color:#F2F3EE;font-size:64px;font-weight:800;letter-spacing:-2px;line-height:1.02'>Seus números,<br><span style='color:#B5C477'>na palma da mão.</span></div><div style='color:#A7AA9F;font-size:26px;margin-top:18px;font-weight:500'>Todas as suas campanhas, com análises do VYZ</div></div></div>`,
     join(TMP, "feature.png"),
   );
   jpeg(feat, join(g, "arte-destaque-play-1024x500.jpg"));
@@ -61,7 +61,7 @@ function icones() {
 }
 
 const PRINTS = [
-  ["1-inicio", "Suas contas, <span>num toque.</span>", "Meta Ads e Google Ads de todos os clientes, com o número que importa logo na entrada."],
+  ["1-inicio", "Suas contas, <span>num toque.</span>", "As campanhas de todos os clientes, com o número que importa logo na entrada."],
   ["3-dashboard", "Arraste o dedo, <span>leia cada dia.</span>", "Receita, ROAS, CPA e investimento com gráficos feitos para o celular."],
   ["2-analises", "O VYZ aponta <span>o que mudou.</span>", "Alertas e oportunidades das suas campanhas, sem abrir planilha."],
   ["4-analise-campanhas", "Saiba onde <span>escalar e cortar.</span>", "Campanhas, criativos e públicos lado a lado, com o filtro num toque."],
