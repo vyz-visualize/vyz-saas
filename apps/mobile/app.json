@@ -21,7 +21,7 @@
         ],
         "NSHumanReadableCopyright": "© 2026 VYZ Intelligence"
       },
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
       "adaptiveIcon": {
@@ -32,7 +32,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "app.vyz.painel",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE"
