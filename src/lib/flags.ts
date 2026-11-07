@@ -11,3 +11,10 @@ export const SHOW_LANDING_PAGES = false;
 
 /** Workspaces do produto LP já pagaram pelo módulo: seguem com ele mesmo com a flag desligada. */
 export const landingPagesEnabledFor = (product: Product, flag: boolean = SHOW_LANDING_PAGES) => flag || product === "lp";
+
+/**
+ * Cobrança de verdade ligada. false = o site avisa "Simulação · não é cobrança"
+ * (rodapé). Virar para true no dia em que o checkout cobrar.
+ */
+export const BILLING_LIVE = false;
+

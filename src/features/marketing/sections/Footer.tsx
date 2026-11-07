@@ -5,15 +5,19 @@ import Link from "next/link";
 import { useRef, useSyncExternalStore } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
+import { companyIdentity } from "@/features/legal/company";
+import { BILLING_LIVE } from "@/lib/flags";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 
 const noop = () => () => {};
+const SUPPORT_EMAIL = "suporte@vyzualize.com.br";
 
 export function Footer() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "0px 0px -10% 0px" });
   // ano do navegador; no HTML pré-renderizado fica vazio (Cache Components)
   const year = useSyncExternalStore(noop, () => String(new Date().getFullYear()), () => "");
+  const company = companyIdentity();
 
   return (
     <footer className="relative overflow-hidden border-t border-line pt-16 pb-10">
@@ -25,11 +29,20 @@ export function Footer() {
         <p className="mt-6 text-center text-[clamp(1rem,2.6vw,1.75rem)] font-medium tracking-[0.34em] text-fg" aria-hidden>
           vyzualize
         </p>
-        <div className="mt-12 flex flex-col gap-4 border-t border-line pt-6 text-sm text-fg-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="tnum">
-            Simulação · não é cobrança{year ? ` · ${year}` : ""}
-          </p>
-          <nav className="flex gap-5">
+        <div className="mt-12 flex flex-col gap-4 border-t border-line pt-6 text-sm text-fg-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            {/* "Simulação" sai quando a cobrança for de verdade (BILLING_LIVE) */}
+            <p className="tnum">
+              {BILLING_LIVE ? "VYZ · Vyzualize" : "Simulação · não é cobrança"}
+              {year ? ` · ${year}` : ""}
+            </p>
+            {/* razão social e CNPJ: só aparecem quando preenchidos em features/legal/company */}
+            {company && <p className="text-[12.5px]">{company}</p>}
+          </div>
+          <nav aria-label="Rodapé" className="flex flex-wrap gap-x-5 gap-y-2">
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="basis-full transition-colors hover:text-accent sm:basis-auto">
+              {SUPPORT_EMAIL}
+            </a>
             <Link href="/termos" className="transition-colors hover:text-accent">Termos de Uso</Link>
             <Link href="/privacidade" className="transition-colors hover:text-accent">Privacidade</Link>
           </nav>
