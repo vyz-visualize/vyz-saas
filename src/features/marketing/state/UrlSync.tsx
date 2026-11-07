@@ -2,17 +2,17 @@
 
 import { useSearchParams } from "next/navigation";
 import { startTransition, useEffect, useRef } from "react";
-import { fromQuery, toQuery } from "@/features/pricing/pricing";
+import { fromQuery } from "@/features/pricing/pricing";
 import { usePlan } from "./PlanProvider";
 
 /**
- * Lê a simulação da query string uma vez e grava as mudanças nela (debounce
- * de 300 ms) com history.replaceState, que o Next integra ao router.
+ * Lê a simulação da query string uma vez (links que chegam com ?periodo=anual, por
+ * exemplo). Não grava nada: no site, o estado fica só na memória da página.
  * Fica dentro de <Suspense>: o resto da página continua pré-renderizado.
  */
 export function UrlSync() {
   const params = useSearchParams();
-  const { state, update } = usePlan();
+  const { update } = usePlan();
   const restored = useRef(false);
 
   useEffect(() => {
@@ -23,20 +23,6 @@ export function UrlSync() {
     // estado da URL (senão o HTML pré-renderizado não bate com o novo estado)
     if (fromUrl) startTransition(() => update(fromUrl));
   }, [params, update]);
-
-  const first = useRef(true);
-  useEffect(() => {
-    // não grava o estado padrão por cima de uma URL ainda não lida
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    const t = window.setTimeout(() => {
-      const url = `${window.location.pathname}?${toQuery(state)}${window.location.hash}`;
-      window.history.replaceState(window.history.state, "", url);
-    }, 300);
-    return () => window.clearTimeout(t);
-  }, [state]);
 
   return null;
 }

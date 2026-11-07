@@ -19,7 +19,7 @@ import { CompareChart } from "./CompareChart";
 import { adStats, axisLabel, chartRange, compareTable, COMPARE_METRICS, defaultAds, diffLabel, evolution, EVOLUTION_BLOCK_NOTE, objectiveHighlights, objectiveWarning, shortName, type AdStats, type CompareMode, type CompareGroup } from "./compare";
 import { MAX_COMPARE, MIN_COMPARE } from "./limits";
 import { OBJECTIVE_LABEL, objectiveKey } from "./objectives";
-import { setQueryParam } from "./query";
+import { useQueryParamWriter } from "./url-state";
 
 /** Uma cor por anúncio. Mesmas cores nos temas claro e escuro. */
 const COLORS = ["var(--accent)", "#C2703D", "#5B7FA6"] as const;
@@ -40,6 +40,7 @@ export function CompareView({ data }: { data: Pick<CreativesData, "compare" | "i
   const chosen = slots.filter((id): id is string => !!id && byId.has(id));
   const key = chosen.join(",");
   const first = useRef(true);
+  const setQueryParam = useQueryParamWriter();
 
   useEffect(() => {
     // a URL já diz o que está aberto, a não ser que a escolha tenha vindo do padrão
@@ -48,7 +49,7 @@ export function CompareView({ data }: { data: Pick<CreativesData, "compare" | "i
       if (!preselected) return;
     }
     setQueryParam("anuncios", key || null);
-  }, [key, preselected]);
+  }, [key, preselected, setQueryParam]);
 
   const stats = useMemo(() => key.split(",").flatMap((id) => (byId.has(id) ? [adStats(byId.get(id)!)] : [])), [byId, key]);
   const colorOf = (id: string) => COLORS[slots.indexOf(id)] ?? COLORS[0];

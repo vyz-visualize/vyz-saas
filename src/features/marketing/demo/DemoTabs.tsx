@@ -10,6 +10,7 @@ import { cutCreatives } from "@/features/analytics/creatives/access";
 import { defaultAds } from "@/features/analytics/creatives/compare";
 import { MIN_COMPARE } from "@/features/analytics/creatives/limits";
 import { CompareView } from "@/features/analytics/creatives/CompareView";
+import { UrlWritesProvider } from "@/features/analytics/creatives/url-state";
 import { FilterBar, FilterProvider } from "@/features/analytics/filter-context";
 import { kpiMetric } from "@/features/analytics/metrics";
 import { HeroChart, maturingPoints, TopCampaigns } from "@/features/analytics/shared";
@@ -70,7 +71,10 @@ function CompareDemo() {
   return (
     <div className="relative">
       <div className={`@container ${open ? "" : "max-h-[1180px] overflow-hidden"}`}>
-        <CompareView data={creatives} />
+        {/* no site, a escolha dos anúncios fica só na memória: o endereço não muda */}
+        <UrlWritesProvider value={false}>
+          <CompareView data={creatives} />
+        </UrlWritesProvider>
       </div>
       {!open && (
         <div className="absolute inset-x-0 bottom-0 flex h-48 items-end justify-center bg-linear-to-t from-card to-transparent pb-2">
