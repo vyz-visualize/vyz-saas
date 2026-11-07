@@ -1,38 +1,28 @@
-"use client";
+// Faixa "Em breve": as análises que vão além do dashboard. Compacta, cada card com um
+// movimento próprio em CSS (pausado fora da tela; parado com "reduzir movimento").
 
-// Dobra "Inteligência": o que vai além do dashboard (MMM, previsão,
-// correlações, estatística, em breve) e o VYZ, que responde quando você pergunta,
-// por texto ou voz. O alerta diário vem depois. Visuais leves em SVG/CSS.
-
-import { Mic, Sparkles } from "lucide-react";
-import { useInView, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CutReveal } from "@/components/motion/CutReveal";
-import { Reveal } from "@/components/motion/Reveal";
-import { SectionWipe } from "@/components/motion/SectionWipe";
+import { PlayWhenVisible } from "./PlayWhenVisible";
 import { SoonBadge } from "./SoonBadge";
 
-// ---- mini visuais --------------------------------------------------------------
-
-/** MMM: quanto cada canal contribuiu para a receita (barras empilhadas). */
-function MmmVisual() {
+/** MMM: as fatias de cada canal se redistribuindo. */
+function MmmArt() {
   const parts = [
-    { w: 38, c: "bg-accent", label: "Meta" },
-    { w: 27, c: "bg-accent/70", label: "Google" },
-    { w: 14, c: "bg-accent/45", label: "TikTok" },
-    { w: 21, c: "bg-fg/20", label: "Orgânico" },
+    { label: "Meta", c: "bg-accent", cls: "mmm-a" },
+    { label: "Google", c: "bg-accent/60", cls: "mmm-b" },
+    { label: "Outros", c: "bg-fg/20", cls: "mmm-c" },
   ];
   return (
-    <div aria-hidden className="space-y-2">
+    <div aria-hidden className="w-full space-y-2.5">
       <div className="flex h-7 overflow-hidden rounded-[6px]">
         {parts.map((p) => (
-          <span key={p.label} className={`${p.c} h-full`} style={{ width: `${p.w}%` }} />
+          <span key={p.label} className={`${p.c} ${p.cls} h-full`} />
         ))}
       </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-fg-2">
+      <div className="flex gap-3 text-[11.5px] text-fg-2">
         {parts.map((p) => (
-          <span key={p.label} className="inline-flex items-center gap-1.5 tnum">
-            <span className={`size-2 rounded-full ${p.c}`} /> {p.label} {p.w}%
+          <span key={p.label} className="inline-flex items-center gap-1.5">
+            <span className={`size-2 rounded-full ${p.c}`} /> {p.label}
           </span>
         ))}
       </div>
@@ -40,222 +30,73 @@ function MmmVisual() {
   );
 }
 
-/** Previsão: linha real + projeção tracejada com faixa de confiança. */
-function ForecastVisual() {
+/** Preditiva: a linha se desenhando e a faixa de confiança abrindo. */
+function ForecastArt() {
   return (
-    <svg aria-hidden viewBox="0 0 200 70" className="h-[70px] w-full">
-      <path d="M120 30 C140 24 160 18 198 8 L198 34 C160 40 140 42 120 40 Z" className="fill-accent/15" />
-      <path d="M2 58 C20 52 34 56 50 46 S80 40 96 36 S112 32 120 34" className="fill-none stroke-accent" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M120 34 C140 30 160 26 198 20" className="fill-none stroke-accent" strokeWidth="2.5" strokeDasharray="5 5" strokeLinecap="round" />
-      <line x1="120" y1="4" x2="120" y2="66" className="stroke-line" strokeDasharray="2 3" />
+    <svg aria-hidden viewBox="0 0 200 70" className="h-[70px] w-full overflow-visible">
+      <path d="M120 34 C140 28 160 22 198 12 L198 30 C160 38 140 40 120 34 Z" className="forecast-band fill-accent/20" />
+      <path d="M2 58 C20 52 34 56 50 46 S80 40 96 36 S112 32 120 34" pathLength={1} className="forecast-line fill-none stroke-accent" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M120 34 C140 30 160 26 198 21" pathLength={1} className="forecast-next fill-none stroke-accent" strokeWidth="2.5" strokeDasharray="0.04 0.04" strokeLinecap="round" />
       <circle cx="120" cy="34" r="4" className="fill-accent" />
     </svg>
   );
 }
 
-/** Correlações: matriz de calor pequena. */
-function CorrelationVisual() {
-  const m = [
-    [1, 0.82, 0.31, -0.2],
-    [0.82, 1, 0.44, -0.1],
-    [0.31, 0.44, 1, 0.6],
-    [-0.2, -0.1, 0.6, 1],
-  ];
+/** Correlações: as células acendendo em onda. */
+function CorrelationArt() {
   return (
-    <div aria-hidden className="grid w-fit grid-cols-4 gap-1">
-      {m.flat().map((v, i) => (
-        <span
-          key={i}
-          className="size-6 rounded-[4px]"
-          style={{ background: v >= 0 ? `color-mix(in srgb, var(--accent) ${Math.round(v * 100)}%, transparent)` : `color-mix(in srgb, var(--error-fg) ${Math.round(-v * 100)}%, transparent)` }}
-        />
-      ))}
+    <div aria-hidden className="grid w-full grid-cols-8 gap-1">
+      {Array.from({ length: 24 }, (_, i) => {
+        const r = Math.floor(i / 8);
+        const c = i % 8;
+        return <span key={i} className="corr-cell h-[20px] rounded-[4px] bg-accent" style={{ ["--d" as string]: `${(r + c) * 110}ms` }} />;
+      })}
     </div>
   );
 }
 
-/** Estatística: distribuição com o intervalo de confiança marcado. */
-function StatsVisual() {
-  const bars = [6, 12, 22, 36, 52, 64, 58, 44, 28, 16, 9, 4];
+/** Estatística: as barras crescendo e a anomalia em destaque. */
+function StatsArt() {
+  const bars = [22, 30, 26, 34, 28, 31, 25, 68, 29, 33, 27, 30];
   return (
-    <div aria-hidden className="relative flex h-[70px] items-end gap-1">
+    <div aria-hidden className="relative flex h-[70px] w-full items-end gap-1">
+      <span className="absolute inset-x-0 bottom-[44%] border-t border-dashed border-fg/30" />
       {bars.map((h, i) => (
-        <span key={i} className={`flex-1 rounded-t-[3px] ${i >= 3 && i <= 8 ? "bg-accent/70" : "bg-fg/15"}`} style={{ height: `${h}px` }} />
+        <span key={i} className={`stat-bar flex-1 rounded-t-[3px] ${i === 7 ? "stat-anomaly bg-error" : "bg-accent/60"}`} style={{ height: `${h}px`, ["--d" as string]: `${i * 70}ms` }} />
       ))}
-      <span className="absolute top-0 left-1/2 h-full w-px -translate-x-1/2 bg-fg/50" />
     </div>
   );
 }
 
-const METHODS: { title: string; text: string; visual: ReactNode; soon?: boolean }[] = [
-  {
-    title: "MMM",
-    text: "Marketing Mix Modeling: quanto cada canal realmente gerou de receita, além do último clique. Para saber onde colocar o próximo real.",
-    visual: <MmmVisual />,
-    soon: true,
-  },
-  {
-    title: "Análise preditiva",
-    text: "Projeção de vendas, CPA e ROAS para as próximas semanas, com faixa de confiança. Você vê o fechamento do mês antes do mês fechar.",
-    visual: <ForecastVisual />,
-    soon: true,
-  },
-  {
-    title: "Correlações",
-    text: "O que anda junto com o resultado: investimento, frequência, criativo, dia da semana. O que pesa e o que é ruído.",
-    visual: <CorrelationVisual />,
-    soon: true,
-  },
-  {
-    title: "Estatística avançada",
-    text: "Significância, intervalos e anomalias. Uma queda de ROAS só vira alerta quando é queda de verdade, não variação do dia.",
-    visual: <StatsVisual />,
-    soon: true,
-  },
+const METHODS = [
+  { title: "MMM", text: "Quanto cada canal realmente gerou de receita, além do último clique.", art: <MmmArt /> },
+  { title: "Análise preditiva", text: "Projeção de vendas, CPA e ROAS, com faixa de confiança: o fechamento do mês antes do mês fechar.", art: <ForecastArt /> },
+  { title: "Correlações", text: "O que anda junto com o resultado: investimento, frequência, criativo, dia da semana.", art: <CorrelationArt /> },
+  { title: "Estatística avançada", text: "Uma queda só vira alerta quando é queda de verdade, não variação do dia.", art: <StatsArt /> },
 ];
-
-// ---- o VYZ ---------------------------------------------------------------------
-
-const INSIGHTS = [
-  { when: "Hoje, 8h", text: "O CPA do Meta subiu 18% em 3 dias no conjunto Remarketing. A frequência passou de 4. Troque o criativo ou amplie o público." },
-  { when: "Hoje, 8h", text: "Pela projeção, o mês fecha 12% abaixo da meta de receita. Mover R$ 1.500 do Google Search para Performance Max recupera metade." },
-  { when: "Ontem, 8h", text: "O ROAS de terça a quinta é 1,4× o de fim de semana, com 95% de confiança. Vale concentrar a verba nesses dias." },
-];
-
-type Mood = "idle" | "thinking" | "speaking";
-const CYCLE: Mood[] = ["idle", "thinking", "speaking"];
-
-/** O VYZ no site: a esfera com o rosto do logo, leve (sem o mascote do painel). */
-function VyzOrb({ mood, size = 72 }: { mood: Mood; size?: number }) {
-  return (
-    <span
-      aria-hidden
-      className={`relative inline-block shrink-0 rounded-full transition-transform duration-500 ease-brand ${mood === "thinking" ? "motion-safe:animate-pulse" : ""}`}
-      style={{
-        width: size,
-        height: size,
-        background: "radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--color-sage) 95%, white) 0%, var(--color-sage) 32%, color-mix(in srgb, var(--color-sage) 45%, black) 100%)",
-        boxShadow: "inset -6px -8px 16px rgb(0 0 0 / 0.35)",
-        transform: mood === "speaking" ? "scale(1.05)" : "scale(1)",
-      }}
-    >
-      <svg viewBox="0 0 100 100" className="absolute inset-0 size-full">
-        <polygon points="33,37.5 44,37.5 45.4,46.5 34.4,46.5" fill="var(--color-deep)" />
-        <polygon points="67,37.5 56,37.5 54.6,46.5 65.6,46.5" fill="var(--color-deep)" />
-        <path d={mood === "speaking" ? "M37.5,55 Q50,61 62.5,55 L60.6,62 Q50,68 39.4,62 Z" : "M37.5,56 Q50,60.5 62.5,56 L60.6,60 Q50,64.2 39.4,60 Z"} fill="var(--color-deep)" className="transition-all duration-300" />
-        <ellipse cx="30" cy="24" rx="10" ry="6" fill="white" opacity="0.35" />
-      </svg>
-    </span>
-  );
-}
-
-function VyzCard() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { margin: "0px 0px -20% 0px" });
-  const reduce = useReducedMotion();
-  const [tick, setTick] = useState(0);
-
-  // o VYZ "trabalhando": troca o estado e revela um insight por vez
-  useEffect(() => {
-    if (!inView || reduce) return;
-    const id = window.setInterval(() => setTick((t) => t + 1), 2400);
-    return () => window.clearInterval(id);
-  }, [inView, reduce]);
-
-  const shown = reduce ? INSIGHTS.length : Math.min(INSIGHTS.length, 1 + tick);
-  const state = reduce ? "idle" : CYCLE[tick % CYCLE.length];
-
-  return (
-    <div ref={ref} className="flex h-full flex-col gap-5 rounded-card bg-deep p-6 text-offwhite sm:p-8">
-      <div className="flex items-center gap-4">
-        <VyzOrb mood={state} />
-        <div>
-          <p className="label-caps text-sage">Seu assistente</p>
-          <h3 className="display text-[clamp(1.9rem,3.6vw,2.6rem)] leading-none">VYZ</h3>
-        </div>
-      </div>
-      <p className="max-w-lg text-[16px] leading-relaxed text-offwhite/85">
-        Pergunte por texto, ou por voz no Avançado: ele responde na hora, com os dados do seu cliente.
-      </p>
-
-      <p className="-mb-3 flex items-center text-[13px] font-medium text-offwhite/85">
-        Alerta diário
-        <SoonBadge />
-      </p>
-      <ul className="space-y-2.5" aria-label="Exemplos do alerta diário do VYZ, em breve">
-        {INSIGHTS.map((ins, i) => (
-          <li
-            key={ins.text}
-            className={`rounded-[12px] border border-offwhite/12 bg-offwhite/[0.06] px-4 py-3 transition-[opacity,transform] duration-500 ease-brand ${
-              i < shown ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
-            }`}
-          >
-            <p className="flex items-center gap-1.5 text-[11.5px] text-sage">
-              <Sparkles size={12} aria-hidden /> {ins.when}
-            </p>
-            <p className="mt-1 text-[14px] leading-relaxed text-offwhite/90">{ins.text}</p>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-auto flex items-center gap-3 rounded-full border border-offwhite/15 bg-offwhite/[0.06] py-2 pr-4 pl-2">
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-sage text-deep">
-          <Mic size={17} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[14px] text-offwhite/80">“VYZ, quanto investi esse mês?”</span>
-        <span aria-hidden className="flex h-5 items-center gap-[3px]">
-          {[8, 14, 20, 12, 18, 9, 15].map((h, i) => (
-            <span
-              key={i}
-              className="w-[3px] rounded-full bg-sage motion-safe:animate-pulse"
-              style={{ height: `${h}px`, animationDelay: `${i * 120}ms` }}
-            />
-          ))}
-        </span>
-      </div>
-      <p className="text-[12.5px] text-offwhite/60">Chat por texto em todos os planos · conversa por voz no Avançado</p>
-    </div>
-  );
-}
 
 export function Inteligencia() {
   return (
-    <section id="inteligencia" aria-labelledby="inteligencia-title" className="relative">
-      <SectionWipe />
-      <div className="mx-auto max-w-[1360px] px-4 pt-20 pb-24 sm:px-6 lg:px-10 lg:pt-28">
-        <p className="label-caps text-fg-2">Inteligência</p>
-        <CutReveal
-          as="h2"
-          id="inteligencia-title"
-          className="display mt-5 text-[clamp(2.4rem,6.4vw,5.6rem)] text-fg"
-          lineClassName={(i) => (i === 1 ? "text-accent" : "")}
-          lines={["Não é só dashboard.", "O que vem por aí."]}
-        />
-        <p className="mt-6 max-w-2xl text-[17px] leading-relaxed text-fg-2">
-          Análises que nenhum relatório comum entrega. E, desde já, um assistente que responde na hora.
-        </p>
-
-        <div className="mt-12 grid grid-cols-[minmax(0,1fr)] gap-4 lg:mt-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-          <Reveal>
-            <VyzCard />
-          </Reveal>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {METHODS.map((m, i) => (
-              <Reveal key={m.title} delay={80 + i * 90}>
-                <article className="flex h-full flex-col gap-4 rounded-card border border-line bg-card p-5 transition-colors hover:border-accent">
-                  <div className="min-h-[70px]">{m.visual}</div>
-                  <div>
-                    <h3 className="title text-xl text-fg">
-                      {m.title}
-                      {m.soon && <SoonBadge />}
-                    </h3>
-                    <p className="mt-1.5 text-[14.5px] leading-relaxed text-fg-2">{m.text}</p>
-                  </div>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-        </div>
+    <section id="inteligencia" aria-labelledby="inteligencia-title" className="relative border-t border-line">
+      <div className="mx-auto max-w-[1360px] px-4 pt-16 pb-20 sm:px-6 lg:px-10 lg:pt-20">
+        <CutReveal as="h2" id="inteligencia-title" className="display text-[clamp(1.9rem,4.2vw,3.2rem)] text-fg" lines={[<span key="a" className="text-accent">Em breve:</span>, "análise que vai além do dashboard."]} />
+        <p className="mt-4 max-w-2xl text-[16px] leading-relaxed text-fg-2">O que estamos construindo para o VYZ ler as suas contas por você.</p>
+        <PlayWhenVisible as="ul" className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {METHODS.map((m) => (
+            <li key={m.title}>
+              <article className="flex h-full flex-col gap-4 rounded-card border border-line bg-card p-5 transition-colors hover:border-accent">
+                <div className="flex h-[78px] items-center">{m.art}</div>
+                <div>
+                  <h3 className="title flex flex-wrap items-center text-[1.15rem] text-fg">
+                    {m.title}
+                    <SoonBadge />
+                  </h3>
+                  <p className="mt-1.5 text-[14.5px] leading-relaxed text-fg-2">{m.text}</p>
+                </div>
+              </article>
+            </li>
+          ))}
+        </PlayWhenVisible>
       </div>
     </section>
   );

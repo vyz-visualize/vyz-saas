@@ -1248,3 +1248,90 @@ button:hover > * > .vyz3d .vyz3d-mouth { transform: scale(1.2, 1.12); }
     display: none;
   }
 }
+
+/* faixa "Em breve": MMM, previsão, correlações e estatística */
+.mmm-a {
+  animation: mmm-a 6s var(--ease) infinite;
+}
+.mmm-b {
+  animation: mmm-b 6s var(--ease) infinite;
+}
+.mmm-c {
+  animation: mmm-c 6s var(--ease) infinite;
+}
+@keyframes mmm-a {
+  0%, 100% { width: 44%; }
+  33% { width: 36%; }
+  66% { width: 50%; }
+}
+@keyframes mmm-b {
+  0%, 100% { width: 33%; }
+  33% { width: 41%; }
+  66% { width: 28%; }
+}
+@keyframes mmm-c {
+  0%, 100% { width: 23%; }
+  33% { width: 23%; }
+  66% { width: 22%; }
+}
+.forecast-line {
+  stroke-dasharray: 1;
+  animation: forecast-line 5s var(--ease) infinite;
+}
+@keyframes forecast-line {
+  0% { stroke-dashoffset: 1; }
+  40%, 100% { stroke-dashoffset: 0; }
+}
+.forecast-next {
+  animation: forecast-fade 5s ease infinite;
+}
+.forecast-band {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: forecast-band 5s var(--ease) infinite;
+}
+@keyframes forecast-fade {
+  0%, 40% { opacity: 0; }
+  55%, 100% { opacity: 1; }
+}
+@keyframes forecast-band {
+  0%, 45% { transform: scaleY(0); opacity: 0; }
+  70%, 100% { transform: scaleY(1); opacity: 1; }
+}
+.corr-cell {
+  opacity: 0.18;
+  animation: corr-wave 3.2s ease-in-out infinite;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes corr-wave {
+  0%, 100% { opacity: 0.18; }
+  30% { opacity: 0.85; }
+  55% { opacity: 0.3; }
+}
+.stat-bar {
+  transform-origin: bottom;
+  animation: stat-grow 4.8s var(--ease) infinite;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes stat-grow {
+  0% { transform: scaleY(0.1); }
+  30%, 90% { transform: scaleY(1); }
+  100% { transform: scaleY(0.1); }
+}
+.stat-anomaly {
+  animation: stat-grow 4.8s var(--ease) infinite, stat-pulse 1.6s ease-in-out infinite;
+  animation-delay: var(--d, 0ms), 1.2s;
+}
+@keyframes stat-pulse {
+  0%, 100% { filter: none; }
+  50% { filter: brightness(1.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mmm-a, .mmm-b, .mmm-c, .forecast-line, .forecast-next, .forecast-band, .corr-cell, .stat-bar, .stat-anomaly {
+    animation: none;
+  }
+  .mmm-a { width: 44%; }
+  .mmm-b { width: 33%; }
+  .mmm-c { width: 23%; }
+  .corr-cell { opacity: 0.5; }
+}
