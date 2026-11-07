@@ -3,6 +3,7 @@
 import { m, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Reveal } from "@/components/motion/Reveal";
+import { SnapCarousel } from "./SnapCarousel";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -128,7 +129,8 @@ function Maturing({ phase }: { phase: number }) {
 
 export function WhyCards() {
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    // no celular, um card por vez (deslizar)
+    <SnapCarousel bp="md" label="As regras que o VYZ confere" itemLabel="Regra">
       <Card
         delay={0}
         title="Cada plataforma com a sua venda."
@@ -150,6 +152,6 @@ export function WhyCards() {
       >
         {(p) => <Maturing phase={p} />}
       </Card>
-    </div>
+    </SnapCarousel>
   );
 }
