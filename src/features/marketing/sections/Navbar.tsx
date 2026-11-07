@@ -69,9 +69,9 @@ export function Navbar() {
   }, [open]);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <header className="fixed inset-x-0 top-0 z-50 isolate">
       <div
-        className={`border-b bg-[var(--nav-bg)] backdrop-blur-md transition-colors duration-300 ${scrolled ? "border-line" : "border-transparent"}`}
+        className={`nav-bar border-b transition-colors duration-300 ${scrolled ? "border-line" : "border-transparent"}`}
       >
         <nav aria-label="Principal" className="mx-auto flex h-16 max-w-[1360px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
           <a href="#inicio" aria-label="VYZ, voltar ao início" className="block w-[72px] shrink-0" data-nav-mark>

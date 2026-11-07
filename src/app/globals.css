@@ -21,7 +21,7 @@
   --muted: #b9bdb0;
   --error-soft: #f3d9d2;
   --error-fg: #a3341f;
-  --nav-bg: rgb(232 236 225 / 0.72);
+  --nav-bg: rgb(232 236 225 / 0.84);
   /* painel: moldura na cor da sidebar, conteúdo num painel arredondado */
   --sidebar: #4b5320;
   --sidebar-fg: #e8ece1;
@@ -52,7 +52,7 @@
   --muted: #55574f;
   --error-soft: #3b2420;
   --error-fg: #f0a593;
-  --nav-bg: rgb(30 30 30 / 0.72);
+  --nav-bg: rgb(30 30 30 / 0.84);
   --sidebar: #2f3621;
   --sidebar-fg: #e8ece1;
   --sidebar-muted: #a3a69c;
@@ -254,6 +254,20 @@ html.lenis body {
   }
   50% {
     transform: scaleY(var(--hi, 0.8));
+  }
+}
+
+/* ---- Barra do menu --------------------------------------------------- */
+/* sem desfoque (ou com ele desligado), fundo sólido; com desfoque, vidro. O prefixo
+   -webkit- é o que o Safari usa: o utilitário do Tailwind não chegava a aplicar lá. */
+.nav-bar {
+  background-color: var(--bg);
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .nav-bar {
+    background-color: var(--nav-bg);
+    -webkit-backdrop-filter: saturate(1.5) blur(16px);
+    backdrop-filter: saturate(1.5) blur(16px);
   }
 }
 
