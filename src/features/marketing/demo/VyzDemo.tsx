@@ -6,11 +6,10 @@
 import { Mic, Sparkles } from "lucide-react";
 import { useInView, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { respond } from "@/features/agent/engine/local";
 import type { AgentAnswer } from "@/features/agent/engine/types";
 import { track } from "@/features/marketing/track";
 import { SoonBadge } from "@/features/marketing/sections/SoonBadge";
-import { DEMO_QUESTIONS, demoContext } from "./vyz-context";
+import { DEMO_QUESTIONS, demoAnswer, demoContext } from "./vyz-context";
 import { VyzFace, type VyzMood } from "./VyzFace";
 
 /** Texto com **negrito**. */
@@ -87,7 +86,7 @@ export function VyzDemo({ active }: { active: boolean }) {
       stop();
       setQuestion(q);
       setAnswer(null);
-      const result = respond(q, ctx);
+      const result = demoAnswer(q, ctx);
       if (reduce) {
         setTyped(q.length);
         setAnswer(result);

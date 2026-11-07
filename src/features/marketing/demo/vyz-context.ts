@@ -1,7 +1,8 @@
 // O contexto do VYZ na demonstração: dois clientes fictícios, com o mês até hoje e o
 // período anterior de mesmo tamanho (o mesmo que ele lê no painel), da mesma amostra.
 
-import type { AgentContext, ClientData } from "@/features/agent/engine/types";
+import { respond } from "@/features/agent/engine/local";
+import type { AgentAnswer, AgentContext, ClientData } from "@/features/agent/engine/types";
 import { aggregateDashboard } from "@/features/analytics/aggregate";
 import type { LivePlatform, Totals as ViewTotals } from "@/features/analytics/types";
 import { totals, type Totals } from "@/features/metrics/compute";
@@ -40,3 +41,17 @@ export function demoContext(now = new Date()): AgentContext {
 
 /** Perguntas que o VYZ responde com estes dados (testadas). */
 export const DEMO_QUESTIONS = ["Quanto investi esse mês?", "Quantas vendas esse mês?", "Qual cliente teve o melhor ROAS?", "Qual cliente teve o pior CPA?"] as const;
+
+/** O que o VYZ diz a qualquer pergunta fora dos atalhos: nunca uma resposta errada. */
+export const DEMO_FALLBACK = `Nesta amostra eu respondo estas perguntas: ${DEMO_QUESTIONS.join(" · ")}`;
+
+/**
+ * A resposta da demonstração: o motor do painel só para os atalhos (testados com estes
+ * dados); qualquer outra pergunta recebe a lista do que dá para perguntar aqui.
+ */
+export function demoAnswer(question: string, ctx: AgentContext): AgentAnswer {
+  const known = (DEMO_QUESTIONS as readonly string[]).includes(question.trim());
+  const answer = known ? respond(question, ctx) : null;
+  if (answer?.understood) return answer;
+  return { text: DEMO_FALLBACK, spoken: DEMO_FALLBACK, understood: false };
+}
