@@ -304,12 +304,12 @@ html.lenis body {
   background-position: 0 86%;
   background-size: 100% 0.36em;
 }
-[data-js] [data-cut="static"] .mark-draw {
-  animation: mark-draw 680ms var(--ease) 380ms both;
+/* 300 ms ao carregar; com a intro, começa quando ela sai (o atributo some do <html>) */
+[data-js]:not([data-intro]) .mark-draw {
+  animation: mark-draw 300ms var(--ease) both;
 }
-[data-js] [data-cut="play"] .mark-draw {
-  animation: mark-draw 680ms var(--ease) both;
-  animation-delay: calc(var(--d, 0ms) + 760ms);
+[data-intro] .mark-draw {
+  background-size: 0% 0.36em;
 }
 @keyframes mark-draw {
   from {

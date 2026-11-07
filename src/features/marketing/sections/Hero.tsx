@@ -1,4 +1,3 @@
-import { CutReveal } from "@/components/motion/CutReveal";
 import { Reveal } from "@/components/motion/Reveal";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { brl } from "@/lib/format";
@@ -21,24 +20,15 @@ export function Hero() {
             </p>
           </Reveal>
 
-          <CutReveal
-            as="h1"
-            id="hero-title"
-            trigger="intro"
-            delay={60}
-            stagger={120}
-            className="display mt-6 text-[clamp(3.1rem,11.5vw,4.6rem)] text-fg sm:text-[clamp(4rem,9vw,5.4rem)] lg:text-[clamp(3.6rem,5.2vw,5.9rem)]"
-            lines={[
-              "Pare de",
-              "montar",
-              <span key="r" className="hl">
-                relatório
-              </span>,
-              <span key="m" className="mark-draw">
-                na mão.
-              </span>,
-            ]}
-          />
+          {/* o título aparece de imediato; só o marca-texto se desenha (300 ms) */}
+          <h1 id="hero-title" className="display mt-6 text-[clamp(3.1rem,11.5vw,4.6rem)] text-fg sm:text-[clamp(4rem,9vw,5.4rem)] lg:text-[clamp(3.6rem,5.2vw,5.9rem)]">
+            <span className="block">Pare de</span>
+            <span className="block">montar</span>
+            <span className="hl block">relatório</span>
+            <span className="block">
+              <span className="mark-draw">na mão.</span>
+            </span>
+          </h1>
 
           <Reveal trigger="intro" delay={520}>
             <p className="mt-7 max-w-[34rem] text-[17px] leading-relaxed text-fg-2">
