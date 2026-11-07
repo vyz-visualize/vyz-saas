@@ -40,3 +40,15 @@ export function useMotionOK(): boolean {
   const hydrated = useHydrated();
   return hydrated && !reduce;
 }
+
+const smQuery = "(min-width: 640px)";
+const subscribeSm = subscribeMedia(smQuery);
+
+/** Tela a partir de 640 px (o "sm" do Tailwind). No servidor, false. */
+export function useSmUp(): boolean {
+  return useSyncExternalStore(
+    subscribeSm,
+    () => window.matchMedia(smQuery).matches,
+    () => false,
+  );
+}

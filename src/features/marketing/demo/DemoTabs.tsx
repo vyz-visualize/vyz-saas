@@ -21,6 +21,7 @@ import { sampleData, sampleLabels, sampleRowsFor } from "./engine";
 import { useLocalFilters } from "./local-filters";
 import { PersonalizeDemo } from "./PersonalizeDemo";
 import { VyzDemo } from "./VyzDemo";
+import { useSmUp } from "@/lib/hooks";
 
 export type DemoTab = "filtro" | "vyz" | "comparativo" | "personalizar";
 
@@ -38,21 +39,27 @@ function FilterDemo() {
   const data = useMemo(() => sampleData("meta", filters.filters), [filters.filters]);
   const view = data.view as MetaView;
   const maturing = maturingPoints(data, filters.filters.days);
+  const smUp = useSmUp();
   return (
     <FilterProvider value={filters}>
       <div className="@container space-y-3">
         <div className="grid grid-cols-2 gap-2.5 @[640px]:grid-cols-4">
-          {view.kpis.slice(0, 8).map((k) => (
-            <KpiCard key={k.id} kpi={k} currency={data.currency} maturing={maturing} featured={k.id === "roas"} metric={kpiMetric("meta", k.id)} />
+          {/* no celular, os 4 primeiros; os outros 4 a partir de 640 px de largura */}
+          {view.kpis.slice(0, 8).map((k, i) => (
+            <div key={k.id} className={i >= 4 ? "hidden @[640px]:block" : undefined}>
+              <KpiCard kpi={k} currency={data.currency} maturing={maturing} featured={k.id === "roas"} metric={kpiMetric("meta", k.id)} />
+            </div>
           ))}
         </div>
         <FilterBar />
         <HeroChart data={data} spendLabel="Investimento" valueLabel="Receita" />
         <div className="grid gap-3 @[900px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <TopCampaigns data={data} limit={6} kindLabel={(k) => (k ? (FUNNEL_STAGE_LABEL[k] ?? CHANNEL_LABEL[k] ?? "Outras") : "Outras")} />
-          <Panel section="breakdown" title="Dispositivos" subtitle="Participação na receita e ROAS.">
-            <SliceBars items={view.devices} breakEven={view.breakEvenRoas} label="Dispositivos" />
-          </Panel>
+          <TopCampaigns data={data} limit={smUp ? 6 : 3} kindLabel={(k) => (k ? (FUNNEL_STAGE_LABEL[k] ?? CHANNEL_LABEL[k] ?? "Outras") : "Outras")} />
+          <div className="hidden @[640px]:block">
+            <Panel section="breakdown" title="Dispositivos" subtitle="Participação na receita e ROAS.">
+              <SliceBars items={view.devices} breakEven={view.breakEvenRoas} label="Dispositivos" />
+            </Panel>
+          </div>
         </div>
       </div>
     </FilterProvider>
