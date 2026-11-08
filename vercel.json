@@ -3,6 +3,7 @@
   "crons": [
     { "path": "/api/cron/digest", "schedule": "0 11 * * *" },
     { "path": "/api/cron/whatsapp?mode=daily", "schedule": "0 11 * * *" },
-    { "path": "/api/cron/whatsapp?mode=weekly", "schedule": "0 11 * * 1" }
+    { "path": "/api/cron/whatsapp?mode=weekly", "schedule": "0 11 * * 1" },
+    { "path": "/api/cron/resumo-admin", "schedule": "0 11 * * 1" }
   ]
 }
