@@ -7,11 +7,11 @@
 // fica no <html data-sidebar>, aplicado antes da primeira pintura. O topo
 // mostra o plano real da sessão e, quando há, o aviso da assinatura.
 
-import { AlertTriangle, BarChart3, Check, ListChecks, ChevronsUpDown, FolderKanban, Gem, Home, Inbox, Info, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PanelsTopLeft, Plug, Settings, Share2 } from "lucide-react";
+import { AlertTriangle, BarChart3, Check, ListChecks, ChevronsUpDown, FolderKanban, Gem, Home, Inbox, Info, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PanelsTopLeft, Plug, Settings, Share2, ShieldCheck } from "lucide-react";
 import { LazyMotion, m, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Suspense, useEffect, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
+import { createContext, Suspense, use, useEffect, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { Modal, PendingChip } from "@/components/ui/kit";
 import { Menu as DropMenu, MenuCheckItem, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/ui/Menu";
@@ -53,8 +53,13 @@ const NAVS: Record<Product, NavItem[]> = {
   ],
 };
 
+// aba "Interno" só para os admins da Vyzualize (o servidor confere de novo na página)
+const AdminContext = createContext(false);
+const ADMIN_ITEM: NavItem = { href: "/painel/interno", label: "Interno", icon: ShieldCheck };
+
 function useNav(): NavItem[] {
-  return NAVS[useWorkspaceSession().workspace.product];
+  const nav = NAVS[useWorkspaceSession().workspace.product];
+  return use(AdminContext) ? [...nav, ADMIN_ITEM] : nav;
 }
 
 const isActive = (path: string | null, href: string) =>
@@ -376,7 +381,15 @@ function SubscriptionBanner() {
   );
 }
 
-export function AppShell({ children, simulatedBilling = false }: { children: ReactNode; simulatedBilling?: boolean }) {
+export function AppShell({ children, simulatedBilling = false, isAdmin = false }: { children: ReactNode; simulatedBilling?: boolean; isAdmin?: boolean }) {
+  return (
+    <AdminContext value={isAdmin}>
+      <Shell simulatedBilling={simulatedBilling}>{children}</Shell>
+    </AdminContext>
+  );
+}
+
+function Shell({ children, simulatedBilling }: { children: ReactNode; simulatedBilling: boolean }) {
   const [more, setMore] = useState(false);
   const nav = useNav();
   return (

@@ -2,6 +2,7 @@
 // de servidor: os números chegam prontos, nenhuma chave vai para o navegador.
 
 import type { ReactNode } from "react";
+import { PageHeader } from "@/components/ui/kit";
 import { delta, int, moneyText, pct, type AdminReport, type RevenueBlock, type Source } from "./types";
 
 function Card({ title, children, note }: { title: string; children: ReactNode; note?: string }) {
@@ -56,12 +57,12 @@ export function AdminDashboard({ report }: { report: AdminReport }) {
   const { users, ga4 } = report;
   const maxDay = users.ok ? Math.max(1, ...users.data.signupsByDay.map((d) => d.n)) : 1;
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <header>
-        <p className="text-[12px] font-medium tracking-[0.08em] text-fg-2 uppercase">Vyzualize · interno</p>
-        <h1 className="display text-[28px]">Usuários e receita</h1>
-        <p className="text-[13px] text-fg-2">Atualizado em {new Date(report.generatedAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (cache de 15 minutos).</p>
-      </header>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Só admin"
+        title="Interno"
+        text={`Usuários e receita da Vyzualize. Atualizado em ${new Date(report.generatedAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (cache de 15 minutos).`}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Usuários do site (Supabase)">

@@ -26,8 +26,8 @@ ${lines.map((l) => `<p style="margin:0 0 8px;font-size:14px">${esc(l)}</p>`).joi
 <table style="border-collapse:collapse;font-size:13px;width:100%"><thead><tr style="text-align:left;color:#555"><th style="padding:6px 8px">Fonte</th><th style="padding:6px 8px">MRR</th><th style="padding:6px 8px">Assinantes</th><th style="padding:6px 8px">Receita 30d</th><th style="padding:6px 8px">Churn · reembolsos</th></tr></thead><tbody>
 ${revenueRow("Site (Stripe)", r.stripe)}${revenueRow("App Store", r.appStore)}${revenueRow("Google Play", r.googlePlay)}${revenueRow("RevenueCat (lojas juntas)", r.revenueCat)}
 </tbody></table>
-<p style="font-size:12px;color:#777;margin-top:16px">O RevenueCat soma as duas lojas e não entra no total. Detalhes em https://vyzualize.com.br/interno</p>
+<p style="font-size:12px;color:#777;margin-top:16px">O RevenueCat soma as duas lojas e não entra no total. Detalhes em https://www.vyzualize.com.br/painel/interno</p>
 </body></html>`;
-  const text = [...lines, "", "Receita: veja o painel em https://vyzualize.com.br/interno"].join("\n");
+  const text = [...lines, "", "Receita: veja o painel em https://www.vyzualize.com.br/painel/interno"].join("\n");
   return { subject, html, text };
 }

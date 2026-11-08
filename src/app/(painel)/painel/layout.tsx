@@ -6,6 +6,7 @@ import { WorkspaceProvider } from "@/features/workspace/WorkspaceProvider";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { isMockBilling } from "@/server/env";
+import { isAdminEmail } from "@/server/admin/report";
 
 export const metadata: Metadata = {
   title: { default: "Painel", template: "%s · Painel VYZ" },
@@ -30,7 +31,7 @@ async function PainelSession({ children }: { children: React.ReactNode }) {
   if (session.access.hasAccess && session.workspace.onboardingStep !== "done") redirect("/comecar");
   return (
     <WorkspaceProvider session={session}>
-      <AppShell simulatedBilling={isMockBilling()}>{children}</AppShell>
+      <AppShell simulatedBilling={isMockBilling()} isAdmin={isAdminEmail(session.user.email)}>{children}</AppShell>
     </WorkspaceProvider>
   );
 }
