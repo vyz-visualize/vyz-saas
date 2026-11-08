@@ -4,7 +4,10 @@ import "server-only";
 // automáticas se a última geração já passou de algumas horas.
 
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
+import { cleanRules, parseAction, type AutopilotRules } from "@/features/optimize/actions";
 import { todayIn } from "@/features/todo/logic";
+import { isOpen } from "@/features/todo/types";
+import { listRuns } from "@/server/optimize/service";
 import type { TaskDTO, TaskMember, TaskPriority, TaskSource, TaskStage, TaskStatus, TodoState } from "@/features/todo/types";
 import { hasRole, type WorkspaceSession } from "@/features/workspace/session";
 import { getWorkspaceSession } from "@/server/auth/workspace";
@@ -14,7 +17,7 @@ import { createServerSupabase, type DB } from "@/server/supabase/server";
 import { maybeGenerateAutoTasks } from "./automation";
 
 export const TASK_COLUMNS =
-  "id, title, detail, status, stage, priority, start_date, due_date, assignees, group_id, project_id, dashboard_id, platform, source, auto_note, seen_at, created_at, completed_at, project:projects(name)";
+  "id, title, detail, status, stage, priority, start_date, due_date, assignees, group_id, project_id, dashboard_id, platform, source, auto_note, seen_at, created_at, completed_at, action, project:projects(name)";
 
 type TaskRow = {
   id: string;
@@ -35,6 +38,7 @@ type TaskRow = {
   seen_at: string | null;
   created_at: string;
   completed_at: string | null;
+  action: unknown;
   project: { name: string } | { name: string }[] | null;
 };
 
@@ -60,6 +64,7 @@ export function toTaskDTO(r: TaskRow): TaskDTO {
     isNew: r.source === "insight" && !r.seen_at,
     createdAt: r.created_at,
     completedAt: r.completed_at,
+    action: isOpen(r.status as TaskStatus) ? parseAction(r.action) : null,
   };
 }
 
@@ -81,12 +86,18 @@ export async function getTodoState(): Promise<TodoState> {
   const gen = session.access.hasAccess ? await maybeGenerateAutoTasks(createAdminSupabase(), ws, timeZone) : { created: 0, closed: 0 };
 
   const db = await createServerSupabase();
-  const [tasks, groups, members, projects] = await Promise.all([
+  const ent = session.access.entitlements ?? ENTITLEMENTS[session.access.tier ?? "base"];
+  const [tasks, groups, members, projects, runs, pilots] = await Promise.all([
     listTasks(db, ws),
     db.from("task_groups").select("id, name").eq("workspace_id", ws).order("created_at").then(unwrap),
     db.from("workspace_members").select("user_id").eq("workspace_id", ws).order("created_at").then(unwrap),
     db.from("projects").select("id, name").eq("workspace_id", ws).is("archived_at", null).order("created_at").then(unwrap),
+    listRuns(db, ws, 30),
+    db.from("optimization_autopilot").select("*").eq("workspace_id", ws).then(unwrap),
   ]);
+  const autopilotProjects: Record<string, AutopilotRules> = {};
+  for (const p of pilots ?? [])
+    autopilotProjects[p.project_id] = cleanRules({ enabled: p.enabled, maxBudgetChangePct: p.max_budget_change_pct, allowIncrease: p.allow_increase, allowPause: p.allow_pause, minCampaignAgeDays: p.min_campaign_age_days });
   const ids = (members ?? []).map((m) => m.user_id);
   const people = ids.length ? ((await db.from("profiles").select("id, full_name, email, avatar_url").in("id", ids)).data ?? []) : [];
   const team: TaskMember[] = ids.map((id) => {
@@ -104,5 +115,7 @@ export async function getTodoState(): Promise<TodoState> {
     today: todayIn(timeZone),
     timeZone,
     justCreated: gen.created,
+    runs,
+    autopilot: { allowed: !!ent.autoOptimize, canEdit: hasRole(session.role, "admin"), projects: autopilotProjects },
   };
 }

@@ -25,7 +25,7 @@ const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
 const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
-const ADS = "https://googleads.googleapis.com/v26";
+export const ADS = "https://googleads.googleapis.com/v26";
 const ADWORDS_SCOPE = "https://www.googleapis.com/auth/adwords";
 const SCOPES = ["openid", "email", "profile", ADWORDS_SCOPE];
 const MAX_ROOTS = 50;
@@ -60,7 +60,7 @@ function credentials() {
   return { clientId: env.GOOGLE_OAUTH_CLIENT_ID, clientSecret: env.GOOGLE_OAUTH_CLIENT_SECRET };
 }
 
-function developerToken(): string {
+export function developerToken(): string {
   const token = serverEnv().GOOGLE_ADS_DEVELOPER_TOKEN;
   if (!token) throw new ProviderError("nao_configurado", "Google: falta GOOGLE_ADS_DEVELOPER_TOKEN");
   return token;

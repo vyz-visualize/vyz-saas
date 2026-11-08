@@ -3,7 +3,9 @@
 // A Fazer: as tarefas do workspace por mês (recolhível), com status, etapa e
 // prioridade editáveis na linha, situação derivada do prazo, filtros, modo
 // foco e exportação em CSV. O VYZ cria tarefas a partir das análises (selo
-// "Novo" até alguém abrir). Responsáveis, cronograma, grupos e roteiros são
+// "Novo" até alguém abrir). Tarefa com mudança proposta ganha "Aplicar"
+// (vai direto para a plataforma, com registro e Desfazer); no Avançado há o
+// automático por projeto. Responsáveis, cronograma, grupos e roteiros são
 // do plano completo; nos demais aparecem travados.
 
 import { CalendarRange, ChevronDown, Download, FolderPlus, ListChecks, Plus, Search, Sparkles, Trash2, Wand2 } from "lucide-react";
@@ -17,6 +19,8 @@ import { Switch } from "@/components/ui/controls";
 import { useToast } from "@/components/ui/Toast";
 import { availableIn } from "@/features/pricing/entitlements";
 import { useWorkspaceSession } from "@/features/workspace/WorkspaceProvider";
+import { ApplyChip, ApplyModal, AutopilotButton, AutopilotModal, RunsSection } from "@/features/optimize/OptimizePanel";
+import type { OptimizationAction } from "@/features/optimize/actions";
 import { applyPlaybook, createTask, createTaskGroup, deleteTask, markTasksSeen, updateTask } from "@/server/todo/actions";
 import { EMPTY_FILTERS, filterTasks, groupByMonth, PLAYBOOKS, situationOf, tasksCsv, type TaskFilters } from "./logic";
 import {
@@ -149,6 +153,8 @@ export function TodoPage({ state }: { state: TodoState }) {
   const [playOpen, setPlayOpen] = useState(false);
   const [play, setPlay] = useState({ id: PLAYBOOKS[0].id, start: state.today, projectId: "" });
   const [pending, start] = useTransition();
+  const [applying, setApplying] = useState<{ id: string; title: string; action: OptimizationAction } | null>(null);
+  const [pilotOpen, setPilotOpen] = useState(false);
   const announced = useRef(false);
 
   // dados novos do servidor (depois de uma ação) substituem os locais
@@ -283,6 +289,7 @@ export function TodoPage({ state }: { state: TodoState }) {
         actions={
           state.canEdit && (
             <>
+              <AutopilotButton state={state} onOpen={() => setPilotOpen(true)} />
               {full ? (
                 <>
                   <button type="button" onClick={() => setPlayOpen(true)} className={`${btn.ghost} h-9`}>
@@ -417,7 +424,7 @@ export function TodoPage({ state }: { state: TodoState }) {
                     </div>
                     <ul className="divide-y divide-line">
                       {m.tasks.map((t) => (
-                        <TaskRow key={t.id} task={t} state={state} full={full} onOpen={() => openTask(t)} onPatch={(p, local) => patch(t, p, local)} groupName={groups.find((g) => g.id === t.groupId)?.name ?? null} />
+                        <TaskRow key={t.id} task={t} state={state} full={full} onOpen={() => openTask(t)} onApply={() => t.action && setApplying({ id: t.id, title: t.title, action: t.action })} onPatch={(p, local) => patch(t, p, local)} groupName={groups.find((g) => g.id === t.groupId)?.name ?? null} />
                       ))}
                     </ul>
                   </div>
@@ -444,6 +451,22 @@ export function TodoPage({ state }: { state: TodoState }) {
             </p>
           )}
           {editing?.task?.autoNote && <p className="text-[13px] text-fg-2">{editing.task.autoNote}</p>}
+          {editing?.task?.action && state.canEdit && (
+            <div className="flex flex-col gap-2 rounded-control border border-accent/40 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[13px] text-fg">O VYZ pode fazer isso por você na plataforma.</p>
+              <button
+                type="button"
+                className={`${btn.small} h-8`}
+                onClick={() => {
+                  const t = editing.task!;
+                  setEditing(null);
+                  setApplying({ id: t.id, title: t.title, action: t.action! });
+                }}
+              >
+                Ver e aplicar
+              </button>
+            </div>
+          )}
           <TextField label="Tarefa" value={draft.title} onChange={(v) => setDraft((d) => ({ ...d, title: v }))} disabled={!state.canEdit} />
           <div className="space-y-1">
             <label htmlFor="task-detail" className="block text-[13px] font-medium text-fg">
@@ -564,6 +587,16 @@ export function TodoPage({ state }: { state: TodoState }) {
         </div>
       </Modal>
 
+      <RunsSection state={state} toast={toast.show} />
+      <ApplyModal
+        task={applying}
+        onClose={() => setApplying(null)}
+        onDone={(msg) => {
+          setApplying(null);
+          toast.show(msg);
+        }}
+      />
+      {state.autopilot.allowed && <AutopilotModal open={pilotOpen} onClose={() => setPilotOpen(false)} state={state} toast={toast.show} />}
       {toast.node}
     </div>
   );
@@ -576,6 +609,7 @@ function TaskRow({
   state,
   full,
   onOpen,
+  onApply,
   onPatch,
   groupName,
 }: {
@@ -583,6 +617,7 @@ function TaskRow({
   state: TodoState;
   full: boolean;
   onOpen: () => void;
+  onApply: () => void;
   onPatch: (p: Record<string, unknown>, local: Partial<TaskDTO>) => void;
   groupName: string | null;
 }) {
@@ -620,6 +655,7 @@ function TaskRow({
             )}
             {t.projectName && <span>{t.projectName}</span>}
             {groupName && <span className="rounded-chip border border-line px-1.5">{groupName}</span>}
+            {t.action && !done && state.canEdit && <ApplyChip action={t.action} onClick={onApply} />}
           </div>
         </div>
       </div>

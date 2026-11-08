@@ -1,8 +1,10 @@
 // A Fazer: as tarefas abertas do workspace, por prioridade e prazo. Tocar no
 // círculo conclui; tocar na tarefa abre as opções de status. As tarefas que o
-// VYZ cria a partir dos dados chegam com o selo "Novo".
+// VYZ cria a partir dos dados chegam com o selo "Novo". Tarefa com mudança
+// proposta mostra o "de → para" e o botão Aplicar (vai direto para a
+// plataforma); as mudanças aplicadas ficam no fim, com Desfazer.
 
-import { TASK_PRIORITY_LABEL, TASK_SITUATION_LABEL, TASK_STAGE_LABEL, TASK_STATUS_LABEL, type ApiTask, type ApiTaskStatus, type TaskPatchResponse, type TasksResponse } from "@vyz/shared";
+import { TASK_PRIORITY_LABEL, TASK_SITUATION_LABEL, TASK_STAGE_LABEL, TASK_STATUS_LABEL, type ApiOptimizationRun, type ApiTask, type ApiTaskStatus, type OptimizationRunResponse, type TaskPatchResponse, type TasksResponse } from "@vyz/shared";
 import { router, Stack } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, Modal, Pressable, RefreshControl, Text, View } from "react-native";
@@ -14,6 +16,7 @@ import { Chip, Notice, Skeleton, tap } from "@/ui/kit";
 import { radius, useTheme } from "@/ui/theme";
 
 const STATUSES: ApiTaskStatus[] = ["planejado", "em_andamento", "concluido", "cancelado"];
+const RUN_STATUS: Record<ApiOptimizationRun["status"], string> = { applied: "Aplicada", failed: "Falhou", undone: "Desfeita", undo_failed: "Falha ao desfazer" };
 const shortDate = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : null);
 
 function TaskItem({ task, canEdit, onDone, onOpen }: { task: ApiTask; canEdit: boolean; onDone: () => void; onOpen: () => void }) {
@@ -42,6 +45,7 @@ function TaskItem({ task, canEdit, onDone, onOpen }: { task: ApiTask; canEdit: b
         <Text style={{ color: t.fg, fontSize: 15.5, fontWeight: "700", lineHeight: 21 }}>{task.title}</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
           {task.isNew && <Chip label="Novo" tone="accent" />}
+          {task.actionText && canEdit ? <Chip label="Aplicar" tone="accent" /> : null}
           <Chip label={TASK_PRIORITY_LABEL[task.priority]} />
           <Chip label={TASK_STATUS_LABEL[task.status]} />
           {task.projectName ? <Chip label={task.projectName} /> : null}
@@ -63,6 +67,7 @@ export default function AFazer() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<ApiTask | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!ws) return;
@@ -91,6 +96,34 @@ export default function AFazer() {
     } catch (err) {
       setData(before);
       setError((err as Error).message);
+    }
+  }
+
+  async function apply(task: ApiTask) {
+    if (!ws || busy) return;
+    setBusy(true);
+    try {
+      await api<OptimizationRunResponse>(`/workspaces/${ws}/tasks/${task.id}/apply`, { method: "POST" });
+      setOpen(null);
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+      setOpen(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function undo(run: ApiOptimizationRun) {
+    if (!ws || busy) return;
+    setBusy(true);
+    try {
+      await api<OptimizationRunResponse>(`/workspaces/${ws}/optimizations/${run.id}/undo`, { method: "POST" });
+      await load();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -140,6 +173,35 @@ export default function AFazer() {
             <Text style={{ color: t.fg2, fontSize: 15, lineHeight: 22 }}>Nada a fazer por enquanto. Quando os números de um dashboard mudarem, o VYZ cria a tarefa aqui.</Text>
           )
         }
+        ListFooterComponent={
+          data?.runs?.length ? (
+            <View style={{ gap: 8, marginTop: 18 }}>
+              <Text style={{ color: t.fg, fontSize: 16, fontWeight: "800" }}>Mudanças aplicadas</Text>
+              {data.runs.map((r) => (
+                <View key={r.id} style={{ padding: 14, borderRadius: radius.md, backgroundColor: t.card, borderWidth: 1, borderColor: t.line, gap: 6 }}>
+                  <Text style={{ color: r.status === "undone" ? t.fg2 : t.fg, fontSize: 14, fontWeight: "600", textDecorationLine: r.status === "undone" ? "line-through" : "none" }}>{r.description}</Text>
+                  <Text style={{ color: r.status === "failed" || r.status === "undo_failed" ? t.danger : t.fg2, fontSize: 12.5 }}>
+                    {[new Date(r.appliedAt).toLocaleDateString("pt-BR"), r.mode === "auto" ? "Automático" : "Com aprovação", RUN_STATUS[r.status], r.error].filter(Boolean).join(" · ")}
+                  </Text>
+                  {r.canUndo && data.canEdit ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={busy}
+                      onPress={() => {
+                        tap();
+                        void undo(r);
+                      }}
+                      hitSlop={8}
+                      style={{ alignSelf: "flex-start", paddingVertical: 4 }}
+                    >
+                      <Text style={{ color: t.accent, fontSize: 14, fontWeight: "700" }}>Desfazer</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : undefined
+        }
         renderItem={({ item }) => <TaskItem task={item} canEdit={!!data?.canEdit} onDone={() => void setStatus(item, "concluido")} onOpen={() => setOpen(item)} />}
       />
 
@@ -153,6 +215,23 @@ export default function AFazer() {
                   {[TASK_STAGE_LABEL[open.stage], open.projectName, open.source === "insight" ? "Criada pelo VYZ a partir dos dados" : null].filter(Boolean).join(" · ")}
                 </Text>
                 {open.detail ? <Text style={{ color: t.fg, fontSize: 14, lineHeight: 20 }}>{open.detail}</Text> : null}
+                {open.actionText && data?.canEdit ? (
+                  <View style={{ gap: 10, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: t.accent, backgroundColor: t.accentSoft, marginTop: 4 }}>
+                    <Text style={{ color: t.fg, fontSize: 14.5, fontWeight: "700" }}>{open.actionText}</Text>
+                    <Text style={{ color: t.fg2, fontSize: 12.5 }}>Vai direto para a conta de anúncios. Dá para desfazer em até 30 dias.</Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={busy}
+                      onPress={() => {
+                        tap();
+                        void apply(open);
+                      }}
+                      style={{ padding: 12, borderRadius: radius.md, backgroundColor: t.accent, alignItems: "center", opacity: busy ? 0.6 : 1 }}
+                    >
+                      <Text style={{ color: t.accentFg, fontSize: 15, fontWeight: "800" }}>{busy ? "Aplicando…" : "Aplicar na plataforma"}</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
                 {data?.canEdit ? (
                   <View style={{ gap: 8, marginTop: 6 }}>
                     {STATUSES.map((s) => {

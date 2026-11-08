@@ -9,6 +9,8 @@ import { apiJson, bearerSession, unauthorized } from "@/server/auth/bearer";
 import { bearerWorkspace } from "@/server/auth/bearer-workspace";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import { maybeGenerateAutoTasks } from "@/server/todo/automation";
+import { describeAction } from "@/features/optimize/actions";
+import { listRuns } from "@/server/optimize/service";
 import { listTasks, todoLevel } from "@/server/todo/queries";
 
 const fail = (code: string, message: string, status: number) => apiJson({ error: { code, message } }, status);
@@ -30,7 +32,8 @@ export async function GET(request: Request, ctx: RouteContext<"/api/v1/workspace
       today,
       level: todoLevel(ws),
       canEdit: hasRole(ws.role, "member"),
-      tasks: tasks.map((t) => ({ ...t, situation: situationOf(t, today) })),
+      tasks: tasks.map((t) => ({ ...t, situation: situationOf(t, today), actionText: t.action ? describeAction(t.action) : null })),
+      runs: await listRuns(session.db, workspaceId, 20),
     });
   } catch (err) {
     console.error("[vyz] api v1 tasks", err);

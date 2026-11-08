@@ -8,9 +8,11 @@ import "server-only";
 // quem chamou ter conferido o acesso ao workspace.
 
 import type { Insight } from "@/features/insights/insights";
-import { reconcile, RECOVERED_NOTE, REOPEN_AFTER_DAYS, suggestTasks, type ExistingAutoTask, type InsightContext } from "@/features/todo/auto";
+import { insightKey, reconcile, RECOVERED_NOTE, REOPEN_AFTER_DAYS, suggestTasks, type ExistingAutoTask, type InsightContext } from "@/features/todo/auto";
 import { todayIn } from "@/features/todo/logic";
 import type { TaskStatus } from "@/features/todo/types";
+import { proposeAction, type CampaignFacts, type OptimizationAction } from "@/features/optimize/actions";
+import { runAutopilot } from "@/server/optimize/service";
 import { loadWorkspaceInsights, type DashboardPulse } from "@/server/insights/load";
 import type { DB } from "@/server/supabase/server";
 
@@ -62,6 +64,7 @@ export async function generateAutoTasks(
   }));
 
   const plan = reconcile(suggestions, existing, analyzed, now);
+  const actions = await actionsFor(db, workspaceId, insights);
   let created = 0;
   // uma por vez: a chave única das abertas barra corrida entre duas gerações
   for (const s of plan.create) {
@@ -77,6 +80,7 @@ export async function generateAutoTasks(
       due_date: s.dueDate,
       source: "insight",
       insight_key: s.insightKey,
+      action: actions.get(s.insightKey) ?? null,
     });
     if (!e) created++;
     else if (e.code !== "23505") console.error("[vyz] a fazer: criar tarefa automática", e);
@@ -97,7 +101,43 @@ export async function generateAutoTasks(
   }
 
   await db.from("task_automation_runs").upsert({ workspace_id: workspaceId, generated_at: now.toISOString(), created_count: created, closed_count: closed });
+  // automático (Avançado): aplica o que couber nos limites de cada projeto
+  try {
+    await runAutopilot(db, workspaceId, now);
+  } catch (err) {
+    console.error("[vyz] otimização automática", err);
+  }
   return { created, closed };
+}
+
+/** A mudança que cada análise com campanha propõe (pausar ou mexer no orçamento). */
+async function actionsFor(db: DB, workspaceId: string, insights: Insight[]): Promise<Map<string, OptimizationAction>> {
+  const out = new Map<string, OptimizationAction>();
+  const ids = [...new Set(insights.map((i) => i.campaignId).filter((v): v is string => !!v))];
+  if (!ids.length) return out;
+  const { data } = await db
+    .from("ad_campaigns")
+    .select("id, name, status, daily_budget, started_on, account:ad_accounts(currency, platform_id)")
+    .eq("workspace_id", workspaceId)
+    .in("id", ids);
+  const facts = new Map<string, CampaignFacts>();
+  for (const c of data ?? []) {
+    const acc = (Array.isArray(c.account) ? c.account[0] : c.account) as { currency: string; platform_id: string } | null;
+    facts.set(c.id, {
+      id: c.id,
+      name: c.name,
+      status: c.status as CampaignFacts["status"],
+      dailyBudget: c.daily_budget === null ? null : Number(c.daily_budget),
+      startedOn: c.started_on,
+      currency: acc?.currency ?? "BRL",
+      platform: acc?.platform_id ?? "",
+    });
+  }
+  for (const i of insights) {
+    const a = proposeAction(i.id, i.campaignId ? facts.get(i.campaignId) : null);
+    if (a) out.set(insightKey(i), a);
+  }
+  return out;
 }
 
 /** Gera só se a última geração passou do intervalo. Nunca lança: a página abre mesmo se falhar. */

@@ -3,7 +3,8 @@ import "server-only";
 // Meta Ads: Facebook Login for Business (fluxo manual com config_id) + Graph
 // API. Escrito pela documentação oficial (Graph API v26.0, de 29/07/2026), mas
 // AINDA NÃO EXECUTADO contra o Meta. Falta, para ligar (INTEGRATIONS_MODE=live):
-//   - app do Meta (tipo Empresa) em modo ativo, com ads_read e
+//   - app do Meta (tipo Empresa) em modo ativo, com ads_read, ads_management (para o
+//     botão Aplicar das otimizações) e
 //     business_management aprovados na Análise do App;
 //   - uma configuração do Login for Business (META_LOGIN_CONFIG_ID) com essas
 //     permissões e os ativos "Contas de anúncio". Recomendado: token de usuário
@@ -57,8 +58,8 @@ function credentials() {
 /** appsecret_proof: HMAC-SHA256 do token com o segredo do app. */
 const appSecretProof = (token: string, secret: string) => createHmac("sha256", secret).update(token).digest("hex");
 
-/** GET na Graph API com o token do usuário (e a prova do segredo do app). */
-function graph<T>(path: string, params: Record<string, string>, accessToken: string, label: string, method = "GET"): Promise<T> {
+/** Chamada à Graph API com o token do usuário (e a prova do segredo do app). Também usada pelas otimizações. */
+export function graph<T>(path: string, params: Record<string, string>, accessToken: string, label: string, method = "GET"): Promise<T> {
   const { appSecret } = credentials();
   const url = new URL(`${GRAPH}${path}`);
   url.search = new URLSearchParams({ ...params, access_token: accessToken, appsecret_proof: appSecretProof(accessToken, appSecret) }).toString();

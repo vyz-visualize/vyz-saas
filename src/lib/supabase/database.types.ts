@@ -2080,6 +2080,122 @@ export type Database = {
           },
         ]
       }
+      optimization_autopilot: {
+        Row: {
+          workspace_id: string
+          project_id: string
+          enabled: boolean
+          max_budget_change_pct: number
+          allow_increase: boolean
+          allow_pause: boolean
+          min_campaign_age_days: number
+          updated_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          workspace_id: string
+          project_id: string
+          enabled?: boolean
+          max_budget_change_pct?: number
+          allow_increase?: boolean
+          allow_pause?: boolean
+          min_campaign_age_days?: number
+          updated_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          workspace_id?: string
+          project_id?: string
+          enabled?: boolean
+          max_budget_change_pct?: number
+          allow_increase?: boolean
+          allow_pause?: boolean
+          min_campaign_age_days?: number
+          updated_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "optimization_autopilot_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      optimization_runs: {
+        Row: {
+          id: string
+          workspace_id: string
+          task_id: string | null
+          project_id: string | null
+          campaign_id: string | null
+          platform: string
+          kind: string
+          action: Json
+          mode: string
+          status: string
+          error: string | null
+          is_mock: boolean
+          applied_by: string | null
+          applied_at: string
+          undone_by: string | null
+          undone_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          task_id?: string | null
+          project_id?: string | null
+          campaign_id?: string | null
+          platform: string
+          kind: string
+          action: Json
+          mode: string
+          status: string
+          error?: string | null
+          is_mock?: boolean
+          applied_by?: string | null
+          applied_at?: string
+          undone_by?: string | null
+          undone_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          task_id?: string | null
+          project_id?: string | null
+          campaign_id?: string | null
+          platform?: string
+          kind?: string
+          action?: Json
+          mode?: string
+          status?: string
+          error?: string | null
+          is_mock?: boolean
+          applied_by?: string | null
+          applied_at?: string
+          undone_by?: string | null
+          undone_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "optimization_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "optimization_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_transactions: {
         Row: {
           id: string
@@ -3229,6 +3345,7 @@ export type Database = {
           created_at: string
           updated_at: string
           completed_at: string | null
+          action: Json | null
         }
         Insert: {
           id?: string
@@ -3254,6 +3371,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           completed_at?: string | null
+          action?: Json | null
         }
         Update: {
           id?: string
@@ -3279,6 +3397,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           completed_at?: string | null
+          action?: Json | null
         }
         Relationships: [
           {

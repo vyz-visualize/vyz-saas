@@ -26,6 +26,7 @@ vi.mock("@/server/todo/queries", () => ({
   ],
 }));
 vi.mock("@/server/todo/mutations", () => ({ updateTaskRow: update }));
+vi.mock("@/server/optimize/service", () => ({ listRuns: async () => [] }));
 
 const { GET } = await import("./route");
 const { PATCH } = await import("./[taskId]/route");

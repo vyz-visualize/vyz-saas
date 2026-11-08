@@ -186,10 +186,30 @@ export type ApiTask = {
   isNew: boolean;
   createdAt: string;
   completedAt: string | null;
+  /** Mudança que o VYZ pode aplicar na plataforma (botão Aplicar), ou null. */
+  action: { kind: "pause" | "budget"; platform: "meta" | "google" | "tiktok"; campaignName: string; from: number | "active" | "paused"; to: number | "active" | "paused"; currency: string } | null;
+  /** O "de → para" pronto para mostrar. */
+  actionText: string | null;
+};
+
+/** Mudança aplicada numa plataforma (com Desfazer). */
+export type ApiOptimizationRun = {
+  id: string;
+  taskId: string | null;
+  description: string;
+  mode: "manual" | "auto";
+  status: "applied" | "failed" | "undone" | "undo_failed";
+  error: string | null;
+  appliedAt: string;
+  undoneAt: string | null;
+  canUndo: boolean;
 };
 
 /** GET /workspaces/:id/tasks (?abertas=1 só as abertas). */
-export type TasksResponse = { today: string; level: "basic" | "full"; canEdit: boolean; tasks: ApiTask[] };
+export type TasksResponse = { today: string; level: "basic" | "full"; canEdit: boolean; tasks: ApiTask[]; runs: ApiOptimizationRun[] };
+
+/** POST /workspaces/:id/tasks/:taskId/apply e POST /workspaces/:id/optimizations/:runId/undo. */
+export type OptimizationRunResponse = { run: ApiOptimizationRun };
 
 /** PATCH /workspaces/:id/tasks/:taskId (no app: status, prioridade, etapa, prazo). */
 export type TaskPatchRequest = Partial<{ title: string; status: ApiTaskStatus; stage: ApiTaskStage; priority: ApiTaskPriority; dueDate: string | null }>;

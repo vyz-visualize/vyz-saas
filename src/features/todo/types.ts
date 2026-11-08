@@ -1,5 +1,7 @@
 // A Fazer: tipos e rótulos. Puro: serve ao site, às rotas e aos testes.
 
+import type { AutopilotRules, OptimizationAction, OptimizationLogDTO } from "@/features/optimize/actions";
+
 export const TASK_STATUSES = ["planejado", "em_andamento", "concluido", "cancelado"] as const;
 export const TASK_STAGES = ["midia_paga", "cro", "crm", "criativos", "relatorio", "outro"] as const;
 export const TASK_PRIORITIES = ["alta", "media", "baixa"] as const;
@@ -42,6 +44,8 @@ export type TaskDTO = {
   isNew: boolean;
   createdAt: string;
   completedAt: string | null;
+  /** Mudança que o VYZ pode aplicar na plataforma (botão Aplicar). */
+  action: OptimizationAction | null;
 };
 
 export type TaskMember = { userId: string; name: string; avatarUrl: string | null };
@@ -58,4 +62,8 @@ export type TodoState = {
   timeZone: string;
   /** Tarefas criadas pelo VYZ nesta abertura (para o aviso). */
   justCreated: number;
+  /** Últimas mudanças aplicadas nas plataformas (com Desfazer). */
+  runs: OptimizationLogDTO[];
+  /** Automático por projeto: só no Avançado e Personalizado; editar só admin. */
+  autopilot: { allowed: boolean; canEdit: boolean; projects: Record<string, AutopilotRules> };
 };

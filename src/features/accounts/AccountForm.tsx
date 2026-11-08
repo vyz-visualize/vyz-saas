@@ -15,6 +15,7 @@ import type { Account } from "@/features/workspace/types";
 import { useWorkspace } from "@/features/workspace/workspace";
 import { hasRole } from "@/features/workspace/session";
 import { addManualAccount } from "@/server/integrations/actions";
+import { CONNECTIONS, MODE_LABEL } from "./connection-modes";
 import { buildManualAccount, MANUAL_PLATFORMS } from "./manual";
 import { PLATFORMS, type PlatformId } from "./platforms";
 import { maskId } from "./validate";
@@ -89,6 +90,9 @@ export function AccountForm({ platform: fixed, onSaved, onCancel, next }: Accoun
           }))}
         />
       )}
+      <p className="rounded-control bg-field px-3 py-2 text-[13px] text-fg-2">
+        <span className="font-medium text-fg">{MODE_LABEL[CONNECTIONS[platform].mode]}.</span> {CONNECTIONS[platform].note}
+      </p>
       {locked ? (
         <div className="rounded-card border border-line bg-card p-4 text-[14px]">
           <LockBadge label={availableIn(def.tier)} />

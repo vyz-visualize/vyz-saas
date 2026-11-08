@@ -4,6 +4,7 @@ import type { TaskDTO } from "./types";
 
 const task = (p: Partial<TaskDTO>): TaskDTO => ({
   id: "t",
+  action: null,
   title: "Tarefa",
   detail: null,
   status: "planejado",
