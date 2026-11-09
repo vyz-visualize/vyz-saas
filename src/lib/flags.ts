@@ -19,7 +19,7 @@ export const landingPagesEnabledFor = (product: Product, flag: boolean = SHOW_LA
 export const BILLING_LIVE = false;
 
 /**
- * Site aberto aos buscadores (lançamento). false = noindex, robots.txt bloqueia tudo
- * e o sitemap sai vazio. true = indexa o site público (o painel continua fora).
+ * Site aberto aos buscadores (lançamento). false = a home fica com noindex (os robôs podem
+ * abri-la, mas não indexar) e só as páginas legais são indexáveis. true = indexa o site público (o painel continua fora).
  */
 export const SITE_INDEXABLE = false;

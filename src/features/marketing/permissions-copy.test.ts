@@ -25,6 +25,27 @@ describe("textos sobre permissão de acesso", () => {
     for (const p of PAGES.slice(2)) expect(read(p).replace(/\s+/g, " "), p).toContain("leitura e as alterações autorizadas por");
   });
 
+  it("a privacidade descreve o que o código faz e lista as permissões que ele pede", () => {
+    const privacy = read("src/app/(legal)/privacidade/page.tsx").replace(/\s+/g, " ");
+    expect(privacy).toContain("autoriza leitura e alterações");
+    for (const p of PAGES) expect(read(p), p).not.toMatch(/somente (de )?leitura/i);
+    const meta = read("src/server/integrations/providers/meta.ts");
+    for (const scope of ["ads_read", "ads_management", "business_management"]) {
+      expect(meta).toContain(scope);
+      expect(privacy).toContain(`<code>${scope}</code>`);
+    }
+    expect(read("src/server/integrations/providers/google.ts")).toContain('["openid", "email", "profile", ADWORDS_SCOPE]');
+    for (const scope of ["https://www.googleapis.com/auth/adwords", "openid", "email", "profile"]) expect(privacy).toContain(`<code>${scope}</code>`);
+    // o app não pede permissão de páginas: os textos não falam em páginas conectadas
+    expect(privacy).not.toMatch(/páginas conectadas|pages_/);
+    expect(read("src/app/(legal)/exclusao-de-dados/page.tsx")).not.toMatch(/páginas conectadas/);
+  });
+
+  it("nenhum marcador da empresa aparece, e a exclusão tem o prazo de 30 dias", () => {
+    for (const p of PAGES.slice(2)) expect(read(p), p).not.toMatch(/\{C\.(legalName|cnpj|address)\}/);
+    expect(read("src/app/(legal)/exclusao-de-dados/page.tsx")).toContain("até <strong>30 dias</strong>");
+  });
+
   it("o prazo de desfazer do texto é o do módulo de otimizações", () => {
     expect(read("src/server/optimize/service.ts")).toContain(`UNDO_DAYS = ${UNDO_WINDOW_COPY_DAYS}`);
     expect(read("src/features/marketing/sections/Perguntas.tsx")).toContain(`em até ${UNDO_WINDOW_COPY_DAYS} dias`);

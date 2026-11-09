@@ -11,6 +11,9 @@ export const COMPANY = {
   updatedAt: "9 de novembro de 2026",
 } as const;
 
+/** Nome usado nos textos legais enquanto a razão social não está preenchida. */
+const BRAND_NAME = "Vyzualize";
+
 /** Ainda é um marcador ("[CNPJ]")? */
 const isPlaceholder = (v: string) => !v.trim() || /^\[.*\]$/.test(v.trim());
 
@@ -21,4 +24,13 @@ const isPlaceholder = (v: string) => !v.trim() || /^\[.*\]$/.test(v.trim());
 export function companyIdentity(c: { legalName: string; cnpj: string } = COMPANY): string | null {
   if (isPlaceholder(c.legalName) || isPlaceholder(c.cnpj)) return null;
   return `${c.legalName} · CNPJ ${c.cnpj}`;
+}
+
+/**
+ * Como os textos legais citam a empresa: com razão social, CNPJ e sede quando preenchidos;
+ * com marcador, só o nome. Um marcador nunca aparece na página pública.
+ */
+export function controllerText(c: { legalName: string; cnpj: string; address: string } = COMPANY): string {
+  if (isPlaceholder(c.legalName) || isPlaceholder(c.cnpj)) return `a ${BRAND_NAME}`;
+  return `a ${c.legalName}, inscrita no CNPJ ${c.cnpj}${isPlaceholder(c.address) ? "" : `, com sede em ${c.address}`}`;
 }

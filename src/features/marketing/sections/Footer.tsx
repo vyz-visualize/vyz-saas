@@ -46,6 +46,7 @@ export function Footer() {
             </a>
             <Link href="/termos" className="transition-colors hover:text-accent">Termos de Uso</Link>
             <Link href="/privacidade" className="transition-colors hover:text-accent">Privacidade</Link>
+            <Link href="/exclusao-de-dados" className="transition-colors hover:text-accent">Exclusão de dados</Link>
           </nav>
           <a
             href={waLink(MSG_SPECIALIST)}
