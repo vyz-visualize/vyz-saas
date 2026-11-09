@@ -105,6 +105,7 @@ function dashCard(tier: PlanId, period: Period): Card {
         <SoonBadge />
       </>,
       "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos",
+      "MMM, análise preditiva, correlações e estatística avançada",
       `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,
     ],
   };
