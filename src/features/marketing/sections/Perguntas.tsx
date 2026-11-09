@@ -1,9 +1,15 @@
 // Dobra "Perguntas": as objeções de quem está decidindo e as dúvidas sobre projetos.
 // <details> nativo: abre sem JS; o clique na pergunta vai para o dataLayer (faq_abrir).
+// Embaixo do título, o bloco "Ainda com dúvida?" (WhatsApp): no desktop fica fixo enquanto a
+// lista rola; no celular vem depois da lista.
 
 import { CutReveal } from "@/components/motion/CutReveal";
+import { btn } from "@/components/ui/styles";
+import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
+import { VyzFace } from "@/features/marketing/demo/VyzFace";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import { MAX_PROJECTS_IN_PLAN, PLAN_PROJECTS } from "@/features/pricing/pricing";
+import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 
 type Faq = { q: string; a: string };
 
@@ -52,15 +58,41 @@ const GROUPS: { title: string; items: Faq[] }[] = [
   },
 ];
 
+/** Ainda com dúvida? O mesmo WhatsApp (e o mesmo evento) do botão do topo. */
+function FaqHelp() {
+  return (
+    <aside aria-labelledby="perguntas-ajuda" className="rounded-card border border-line bg-card p-5 sm:p-6">
+      <div className="flex items-center gap-3.5">
+        {/* o VYZ pisca de vez em quando; parado com "reduzir movimento" e fora da tela */}
+        <VyzFace size={48} />
+        <h3 id="perguntas-ajuda" className="text-[19px] leading-snug font-semibold text-fg">
+          Ainda com dúvida?
+        </h3>
+      </div>
+      <p className="mt-3 text-[15px] leading-relaxed text-fg-2">Fale com um especialista no WhatsApp. A gente responde rápido.</p>
+      <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-3">
+        <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={btn.primary} data-track="whatsapp_click" data-track-origem="perguntas">
+          <WhatsAppIcon /> Falar com especialista
+        </a>
+        <a href="#planos" className={btn.ghost}>
+          Ver planos
+        </a>
+      </div>
+    </aside>
+  );
+}
+
 export function Perguntas() {
   return (
     <section id="perguntas" aria-labelledby="perguntas-title" className="relative border-t border-line">
-      <div className="mx-auto grid max-w-[1360px] gap-8 px-4 pt-14 pb-16 sm:px-6 sm:pt-20 sm:pb-24 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-14 lg:px-10">
-        <div>
+      {/* no desktop: título e bloco na coluna da esquerda, lista na da direita (as duas linhas).
+          No celular, a ordem do HTML: título, lista, bloco. */}
+      <div className="mx-auto grid max-w-[1360px] gap-y-8 px-4 pt-14 pb-16 sm:px-6 sm:pt-20 sm:pb-24 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:grid-rows-[auto_1fr] lg:gap-x-14 lg:gap-y-0 lg:px-10">
+        <div className="lg:col-start-1 lg:row-start-1">
           <p className="label-caps text-fg-2">Perguntas</p>
           <CutReveal as="h2" id="perguntas-title" className="display mt-5 text-[clamp(2rem,4.6vw,3.6rem)] text-fg" lines={["O que perguntam", <span key="a" className="text-accent">antes de assinar.</span>]} />
         </div>
-        <div className="space-y-8">
+        <div className="space-y-8 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           {GROUPS.map((g) => (
             <div key={g.title}>
               <h3 className="label-caps text-fg-2">{g.title}</h3>
@@ -79,6 +111,12 @@ export function Perguntas() {
               </div>
             </div>
           ))}
+        </div>
+        {/* a célula ocupa a altura que a lista deixa; o bloco gruda embaixo do menu enquanto ela rola */}
+        <div className="lg:col-start-1 lg:row-start-2 lg:pt-10">
+          <div className="lg:sticky lg:top-24">
+            <FaqHelp />
+          </div>
         </div>
       </div>
     </section>

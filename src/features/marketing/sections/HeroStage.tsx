@@ -1,7 +1,8 @@
 "use client";
 
 // Lado direito do hero: 4 slides com partes do produto (visão geral, criativos, agente e o
-// link do cliente), trocando sozinhos a cada 3 s, em loop. Dentro do painel: em cima, a frase
+// link do cliente), trocando sozinhos a cada 3 s, em loop, sempre: mouse, foco e toque não
+// pausam; só para fora da tela, com a aba oculta e com "reduzir movimento". Dentro do painel: em cima, a frase
 // do slide e o selo de amostra; embaixo, uma pílula com os 4 ícones, em que o ativo se abre
 // com o nome e se preenche durante os 3 s. O código e os dados só carregam depois da primeira
 // pintura (o texto do hero é o LCP), num espaço já reservado, para nada pular; os slides 2 a 4
@@ -11,6 +12,7 @@ import { GalleryHorizontalEnd, LayoutDashboard, Link2, type LucideIcon } from "l
 import { useReducedMotion } from "motion/react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { SlideLoop } from "@/features/marketing/hero/slide-loop";
 import { autoPlays, HERO_SLIDES, nextSlide, prevSlide, SLIDE_MS, swipeDirection } from "@/features/marketing/hero/slides-logic";
 import { TiltFrame } from "@/features/marketing/mock/TiltFrame";
 import { track } from "@/features/marketing/track";
@@ -131,68 +133,81 @@ export function HeroStage() {
   const [active, setActive] = useState(0);
   // cada visita a um slide o reinicia (key): o movimento começa do zero
   const [visits, setVisits] = useState([0, 0, 0, 0]);
-  const [hover, setHover] = useState(false);
-  const [focus, setFocus] = useState(false);
-  const [touching, setTouching] = useState(false);
   const [offscreen, setOffscreen] = useState(false);
   const [hidden, setHidden] = useState(false);
 
-  const elapsed = useRef(0);
   const fills = useRef<(HTMLSpanElement | null)[]>([]);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
   const swipe = useRef<{ x: number; y: number } | null>(null);
+  const progress = useRef(0);
+  const loop = useRef<SlideLoop | null>(null);
 
-  const goTo = useCallback((i: number) => {
-    elapsed.current = 0;
-    setActive(i);
-    setVisits((v) => v.map((n, k) => (k === i ? n + 1 : n)));
+  // o relógio fica fora do React (slide-loop.ts): troca, preenche e segue sozinho depois de
+  // cada troca, sem depender de um novo render para reagendar o próximo quadro
+  useEffect(() => {
+    const clock = new SlideLoop(
+      HERO_SLIDES.length,
+      SLIDE_MS,
+      {
+        onChange: (i) => {
+          setActive(i);
+          // cada visita a um slide o reinicia (key): o movimento começa do zero
+          setVisits((v) => v.map((n, k) => (k === i ? n + 1 : n)));
+        },
+        onProgress: (p) => {
+          progress.current = p;
+          const fill = fills.current[clock.current];
+          if (fill) fill.style.transform = `scaleX(${p})`;
+        },
+      },
+      { now: () => performance.now(), requestFrame: (cb) => requestAnimationFrame(cb), cancelFrame: (id) => cancelAnimationFrame(id) },
+    );
+    loop.current = clock;
+    return () => {
+      clock.dispose();
+      loop.current = null;
+    };
   }, []);
 
-  // fora da tela ou com a aba oculta, a troca pausa
+  // só pausa fora da tela ou com a aba oculta. Ao voltar à aba, a posição é conferida na hora
+  // (o IntersectionObserver não avisa enquanto a aba está oculta)
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const io = new IntersectionObserver((entries) => setOffscreen(!entries.some((e) => e.isIntersecting)));
     io.observe(el);
-    const onVisibility = () => setHidden(document.visibilityState === "hidden");
-    document.addEventListener("visibilitychange", onVisibility);
+    const check = () => {
+      const isHidden = document.visibilityState === "hidden";
+      setHidden(isHidden);
+      if (isHidden) return;
+      const r = el.getBoundingClientRect();
+      setOffscreen(r.bottom <= 0 || r.top >= window.innerHeight || r.width === 0);
+    };
+    check();
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("pageshow", check);
     return () => {
       io.disconnect();
-      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("pageshow", check);
     };
   }, []);
 
-  const playing = autoPlays({ reduced: reduce, ready: go && ready, hover, focus, touching, offscreen, hidden });
+  const playing = autoPlays({ reduced: reduce, ready: go && ready, offscreen, hidden });
+  useEffect(() => {
+    loop.current?.setPlaying(playing);
+  }, [playing]);
 
-  // o preenchimento do ativo: no quadro de agora, sem precisar de um novo render
+  // o preenchimento do novo ativo: no quadro de agora, antes de pintar
   useLayoutEffect(() => {
     const fill = fills.current[active];
-    if (fill) fill.style.transform = `scaleX(${Math.min(1, elapsed.current / SLIDE_MS)})`;
+    if (fill) fill.style.transform = `scaleX(${progress.current})`;
   }, [active]);
 
-  // o tempo do slide anda por requestAnimationFrame, igual em todo navegador
-  useEffect(() => {
-    if (!playing) return;
-    let raf = 0;
-    let last = performance.now();
-    const tick = (now: number) => {
-      elapsed.current += now - last;
-      last = now;
-      const fill = fills.current[active];
-      if (fill) fill.style.transform = `scaleX(${Math.min(1, elapsed.current / SLIDE_MS)})`;
-      if (elapsed.current >= SLIDE_MS) {
-        goTo(nextSlide(active));
-        return;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [active, goTo, playing]);
-
+  // clicar num ícone pula para o slide; o loop continua dali (o tempo dele recomeça)
   const choose = (i: number) => {
     load();
-    goTo(i);
+    loop.current?.goTo(i);
     track("demo_interacao", { local: "hero", acao: "slide", slide: HERO_SLIDES[i].id });
   };
 
@@ -208,10 +223,6 @@ export function HeroStage() {
     <div
       ref={ref}
       className="@container lg:absolute lg:inset-0"
-      onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
-      onPointerLeave={(e) => e.pointerType === "mouse" && setHover(false)}
-      onFocus={(e) => e.target.matches(":focus-visible") && setFocus(true)}
-      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setFocus(false)}
     >
       {/* os cards do painel são h3: este h2 dá a eles um lugar no sumário do leitor de tela */}
       <h2 className="sr-only">Dashboard de amostra</h2>
@@ -224,12 +235,10 @@ export function HeroStage() {
           className="relative grid h-[var(--hero-h)] touch-pan-y [--hero-h:550px] sm:[--hero-h:600px] lg:h-full"
           onPointerDown={(e) => {
             if (e.pointerType !== "touch") return;
-            setTouching(true);
             swipe.current = (e.target as Element).closest("[data-no-swipe]") ? null : { x: e.clientX, y: e.clientY };
           }}
           onPointerUp={(e) => {
             if (e.pointerType !== "touch") return;
-            setTouching(false);
             const from = swipe.current;
             swipe.current = null;
             if (!from) return;
@@ -237,7 +246,6 @@ export function HeroStage() {
             if (dir) choose(dir > 0 ? nextSlide(active) : prevSlide(active));
           }}
           onPointerCancel={() => {
-            setTouching(false);
             swipe.current = null;
           }}
         >

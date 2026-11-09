@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { autoPlays, HERO_SLIDES, nextSlide, prevSlide, SLIDE_MS, swipeDirection } from "./slides-logic";
 
-const free = { reduced: false, ready: true, hover: false, focus: false, touching: false, offscreen: false, hidden: false };
+const free = { reduced: false, ready: true, offscreen: false, hidden: false };
 
 describe("slides do hero", () => {
   it("quatro slides, 3 s cada, e a ordem dá a volta", () => {
@@ -22,9 +22,13 @@ describe("slides do hero", () => {
     expect(swipeDirection(-60, 120)).toBe(0);
   });
 
-  it("a troca automática pausa com mouse, foco, toque, fora da tela e aba oculta", () => {
+  it("a troca automática só pausa fora da tela e com a aba oculta", () => {
     expect(autoPlays(free)).toBe(true);
-    for (const k of ["hover", "focus", "touching", "offscreen", "hidden"] as const) expect(autoPlays({ ...free, [k]: true }), k).toBe(false);
+    for (const k of ["offscreen", "hidden"] as const) expect(autoPlays({ ...free, [k]: true }), k).toBe(false);
+  });
+
+  it("mouse, foco e toque não pausam: nem fazem parte do estado", () => {
+    expect(Object.keys(free).sort()).toEqual(["hidden", "offscreen", "ready", "reduced"]);
   });
 
   it("'reduzir movimento' não troca sozinho, e nada anda antes de carregar", () => {

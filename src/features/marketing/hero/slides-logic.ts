@@ -19,7 +19,10 @@ export function swipeDirection(dx: number, dy: number, min = 48): -1 | 0 | 1 {
   return dx < 0 ? 1 : -1;
 }
 
-export type PauseState = { reduced: boolean; ready: boolean; hover: boolean; focus: boolean; touching: boolean; offscreen: boolean; hidden: boolean };
+export type PauseState = { reduced: boolean; ready: boolean; offscreen: boolean; hidden: boolean };
 
-/** A troca automática só anda com tudo livre. "Reduzir movimento": só pelos botões. */
-export const autoPlays = (s: PauseState) => !s.reduced && s.ready && !s.hover && !s.focus && !s.touching && !s.offscreen && !s.hidden;
+/**
+ * A troca automática roda sempre: mouse, foco e toque não pausam. Só para fora da tela e com a
+ * aba oculta (para não gastar processamento). "Reduzir movimento": só pelos botões.
+ */
+export const autoPlays = (s: PauseState) => !s.reduced && s.ready && !s.offscreen && !s.hidden;
