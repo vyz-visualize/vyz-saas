@@ -120,6 +120,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ad_accounts_project_fk"
+            columns: ["workspace_id","project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["workspace_id","id"]
+          },
+          {
             foreignKeyName: "ad_accounts_workspace_id_connection_id_fkey"
             columns: ["workspace_id","connection_id"]
             isOneToOne: false
@@ -1164,8 +1171,8 @@ export type Database = {
           created_at: string
           updated_at: string
           metric_prefs: Json
-          layout: Json
           project_id: string | null
+          layout: Json
         }
         Insert: {
           id?: string
@@ -1187,8 +1194,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
           metric_prefs?: Json
-          layout?: Json
           project_id?: string | null
+          layout?: Json
         }
         Update: {
           id?: string
@@ -1210,10 +1217,17 @@ export type Database = {
           created_at?: string
           updated_at?: string
           metric_prefs?: Json
-          layout?: Json
           project_id?: string | null
+          layout?: Json
         }
         Relationships: [
+          {
+            foreignKeyName: "dashboards_project_fk"
+            columns: ["workspace_id","project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["workspace_id","id"]
+          },
           {
             foreignKeyName: "dashboards_template_id_fkey"
             columns: ["template_id"]
@@ -2122,6 +2136,13 @@ export type Database = {
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "optimization_autopilot_workspace_id_project_id_fkey"
+            columns: ["workspace_id","project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["workspace_id","id"]
+          },
         ]
       }
       optimization_runs: {
@@ -2181,10 +2202,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "optimization_runs_workspace_id_fkey"
-            columns: ["workspace_id"]
+            foreignKeyName: "optimization_runs_campaign_id_fkey"
+            columns: ["campaign_id"]
             isOneToOne: false
-            referencedRelation: "workspaces"
+            referencedRelation: "ad_campaigns"
             referencedColumns: ["id"]
           },
           {
@@ -2192,6 +2213,13 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "optimization_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -2537,44 +2565,6 @@ export type Database = {
           },
         ]
       }
-      projects: {
-        Row: {
-          id: string
-          workspace_id: string
-          name: string
-          created_by: string | null
-          created_at: string
-          updated_at: string
-          archived_at: string | null
-        }
-        Insert: {
-          id?: string
-          workspace_id: string
-          name: string
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-          archived_at?: string | null
-        }
-        Update: {
-          id?: string
-          workspace_id?: string
-          name?: string
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-          archived_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "projects_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           id: string
@@ -2613,6 +2603,44 @@ export type Database = {
           {
             foreignKeyName: "profiles_default_workspace_fk"
             columns: ["default_workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          id: string
+          workspace_id: string
+          name: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+          archived_at: string | null
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          name: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          archived_at?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          name?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+          archived_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_workspace_id_fkey"
+            columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
@@ -3279,7 +3307,7 @@ export type Database = {
           {
             foreignKeyName: "task_automation_runs_workspace_id_fkey"
             columns: ["workspace_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
@@ -3401,31 +3429,181 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "tasks_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_group_fk"
+            columns: ["workspace_id","group_id"]
+            isOneToOne: false
+            referencedRelation: "task_groups"
+            referencedColumns: ["workspace_id","id"]
+          },
+          {
+            foreignKeyName: "tasks_project_fk"
+            columns: ["workspace_id","project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["workspace_id","id"]
+          },
+          {
             foreignKeyName: "tasks_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          id: string
+          subscription_id: string | null
+          direction: string
+          kind: string
+          template: string | null
+          status: string
+          provider_message_id: string | null
+          ref_key: string | null
+          body: string | null
+          error: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          subscription_id?: string | null
+          direction: string
+          kind: string
+          template?: string | null
+          status: string
+          provider_message_id?: string | null
+          ref_key?: string | null
+          body?: string | null
+          error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          subscription_id?: string | null
+          direction?: string
+          kind?: string
+          template?: string | null
+          status?: string
+          provider_message_id?: string | null
+          ref_key?: string | null
+          body?: string | null
+          error?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "tasks_project_fk"
-            columns: ["workspace_id", "project_id"]
+            foreignKeyName: "whatsapp_messages_subscription_id_fkey"
+            columns: ["subscription_id"]
             isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["workspace_id", "id"]
+            referencedRelation: "whatsapp_subscriptions"
+            referencedColumns: ["id"]
           },
+        ]
+      }
+      whatsapp_subscriptions: {
+        Row: {
+          id: string
+          workspace_id: string
+          user_id: string
+          phone: string
+          verified_at: string | null
+          opted_in_at: string | null
+          opt_in_source: string | null
+          opted_out_at: string | null
+          reports: string[]
+          paused: boolean
+          welcome_sent_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          user_id: string
+          phone: string
+          verified_at?: string | null
+          opted_in_at?: string | null
+          opt_in_source?: string | null
+          opted_out_at?: string | null
+          reports?: string[]
+          paused?: boolean
+          welcome_sent_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          user_id?: string
+          phone?: string
+          verified_at?: string | null
+          opted_in_at?: string | null
+          opt_in_source?: string | null
+          opted_out_at?: string | null
+          reports?: string[]
+          paused?: boolean
+          welcome_sent_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "tasks_group_fk"
-            columns: ["workspace_id", "group_id"]
+            foreignKeyName: "whatsapp_subscriptions_workspace_id_fkey"
+            columns: ["workspace_id"]
             isOneToOne: false
-            referencedRelation: "task_groups"
-            referencedColumns: ["workspace_id", "id"]
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
           },
+        ]
+      }
+      whatsapp_verification_codes: {
+        Row: {
+          id: string
+          subscription_id: string
+          phone: string
+          code_hash: string
+          expires_at: string
+          attempts: number
+          consumed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          subscription_id: string
+          phone: string
+          code_hash: string
+          expires_at: string
+          attempts?: number
+          consumed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          subscription_id?: string
+          phone?: string
+          code_hash?: string
+          expires_at?: string
+          attempts?: number
+          consumed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "tasks_dashboard_id_fkey"
-            columns: ["dashboard_id"]
+            foreignKeyName: "whatsapp_verification_codes_subscription_id_fkey"
+            columns: ["subscription_id"]
             isOneToOne: false
-            referencedRelation: "dashboards"
+            referencedRelation: "whatsapp_subscriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -3606,156 +3784,6 @@ export type Database = {
             columns: ["business_type_id"]
             isOneToOne: false
             referencedRelation: "business_types"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      whatsapp_messages: {
-        Row: {
-          id: string
-          subscription_id: string | null
-          direction: string
-          kind: string
-          template: string | null
-          status: string
-          provider_message_id: string | null
-          ref_key: string | null
-          body: string | null
-          error: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          subscription_id?: string | null
-          direction: string
-          kind: string
-          template?: string | null
-          status: string
-          provider_message_id?: string | null
-          ref_key?: string | null
-          body?: string | null
-          error?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          subscription_id?: string | null
-          direction?: string
-          kind?: string
-          template?: string | null
-          status?: string
-          provider_message_id?: string | null
-          ref_key?: string | null
-          body?: string | null
-          error?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "whatsapp_messages_subscription_id_fkey"
-            columns: ["subscription_id"]
-            isOneToOne: false
-            referencedRelation: "whatsapp_subscriptions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      whatsapp_subscriptions: {
-        Row: {
-          id: string
-          workspace_id: string
-          user_id: string
-          phone: string
-          verified_at: string | null
-          opted_in_at: string | null
-          opt_in_source: string | null
-          opted_out_at: string | null
-          reports: string[]
-          paused: boolean
-          welcome_sent_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          workspace_id: string
-          user_id: string
-          phone: string
-          verified_at?: string | null
-          opted_in_at?: string | null
-          opt_in_source?: string | null
-          opted_out_at?: string | null
-          reports?: string[]
-          paused?: boolean
-          welcome_sent_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          workspace_id?: string
-          user_id?: string
-          phone?: string
-          verified_at?: string | null
-          opted_in_at?: string | null
-          opt_in_source?: string | null
-          opted_out_at?: string | null
-          reports?: string[]
-          paused?: boolean
-          welcome_sent_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "whatsapp_subscriptions_workspace_id_fkey"
-            columns: ["workspace_id"]
-            isOneToOne: false
-            referencedRelation: "workspaces"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      whatsapp_verification_codes: {
-        Row: {
-          id: string
-          subscription_id: string
-          phone: string
-          code_hash: string
-          expires_at: string
-          attempts: number
-          consumed_at: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          subscription_id: string
-          phone: string
-          code_hash: string
-          expires_at: string
-          attempts?: number
-          consumed_at?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          subscription_id?: string
-          phone?: string
-          code_hash?: string
-          expires_at?: string
-          attempts?: number
-          consumed_at?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "whatsapp_verification_codes_subscription_id_fkey"
-            columns: ["subscription_id"]
-            isOneToOne: false
-            referencedRelation: "whatsapp_subscriptions"
             referencedColumns: ["id"]
           },
         ]
