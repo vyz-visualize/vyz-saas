@@ -74,7 +74,8 @@ function Board({ compact }: { compact?: boolean }) {
         </div>
         <FilterBar />
         {/* no celular o hero fica com os números; o gráfico aparece do tablet para cima */}
-        <div className="hidden sm:block">
+        {/* data-no-swipe: arrastar no gráfico filtra os dias, não troca de slide */}
+        <div className="hidden sm:block" data-no-swipe>
           <HeroChart data={data} spendLabel="Investimento" valueLabel="Receita" />
         </div>
         {!compact && (

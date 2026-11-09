@@ -2,7 +2,9 @@
 // uma vez com o comparativo do produto, com os anúncios da própria VYZ. Ficam fixos para o site não levar a lista de
 // métricas, as fórmulas nem a tabela inteira; o teste confere o troféu e as diferenças.
 
-export type TeaserAd = { id: string; name: string; short: string; headline: string; format: string; objective: string; campaign: string; art: "mascote" | "dashboard" };
+import type { CreativeArt } from "./VyzCreatives";
+
+export type TeaserAd = { id: string; name: string; short: string; headline: string; format: string; objective: string; campaign: string; art: CreativeArt };
 export type TeaserCell = { text: string; best: boolean; diff: string | null };
 export type TeaserRow = { id: "spend" | "ctr" | "cpa" | "roas"; label: string; better: "up" | "down" | null; cells: [TeaserCell, TeaserCell] };
 
@@ -16,4 +18,11 @@ export const TEASER_ROWS: TeaserRow[] = [
   { id: "ctr", label: "CTR (todos)", better: "up", cells: [{ text: "2,17%", best: false, diff: "−22% vs melhor" }, { text: "2,78%", best: true, diff: null }] },
   { id: "cpa", label: "Custo por compra", better: "down", cells: [{ text: "R$ 79,91", best: false, diff: "+76% vs melhor" }, { text: "R$ 45,43", best: true, diff: null }] },
   { id: "roas", label: "ROAS", better: "up", cells: [{ text: "3,30", best: false, diff: "−41% vs melhor" }, { text: "5,62", best: true, diff: null }] },
+];
+
+/** A galeria do slide de criativos: os 2 anúncios comparados e mais 2. Nomes fictícios. */
+export const TEASER_GALLERY: { id: string; headline: string; format: string; art: CreativeArt }[] = [
+  ...TEASER_ADS,
+  { id: "galeria-numero", headline: "O número que decide o mês", format: "image", art: "numero" },
+  { id: "galeria-link", headline: "Mande um link, não um print", format: "image", art: "link" },
 ];

@@ -1,10 +1,10 @@
 // Criativos fictícios da própria VYZ para a prévia do comparativo: SVG leve, na identidade
 // visual (verde-exército, sálvia, off-white). As cores são fixas (um criativo não muda com o
-// tema do site). Um vídeo com o mascote e um carrossel com o print do dashboard.
+// tema do site). Um vídeo com o mascote, um carrossel com o print do dashboard e duas imagens.
 
 import { useId } from "react";
 
-export type CreativeArt = "mascote" | "dashboard";
+export type CreativeArt = "mascote" | "dashboard" | "numero" | "link";
 
 const DEEP = "#1f2612";
 const SAGE = "#8a9a5b";
@@ -84,13 +84,64 @@ function DashboardArt() {
   );
 }
 
-export const FORMAT_LABEL: Record<string, string> = { video: "Vídeo", carousel: "Carrossel" };
+/** Imagem: o número no topo, como no dashboard. */
+function NumberArt() {
+  return (
+    <svg viewBox="0 0 84 100" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden>
+      <rect width="84" height="100" fill={ARMY} />
+      <text x="8" y="19" fill={OFFWHITE} opacity="0.8" fontSize="6.2" fontWeight="600" letterSpacing="0.5">
+        ROAS
+      </text>
+      <text x="8" y="46" fill={OFFWHITE} fontSize="25" fontWeight="800" letterSpacing="-1">
+        5,23
+      </text>
+      <text x="8" y="72" fill={OFFWHITE} fontSize="7.4" fontWeight="800" letterSpacing="-0.25">
+        O número que
+      </text>
+      <text x="8" y="81" fill={SAGE} fontSize="7.4" fontWeight="800" letterSpacing="-0.25">
+        decide o mês.
+      </text>
+    </svg>
+  );
+}
+
+/** Imagem: o link que o cliente abre. */
+function LinkArt() {
+  const bars = [14, 20, 12, 22, 17];
+  return (
+    <svg viewBox="0 0 84 100" preserveAspectRatio="xMidYMid slice" className="size-full" aria-hidden>
+      <rect width="84" height="100" fill={OFFBLACK} />
+      <rect x="7" y="10" width="70" height="42" rx="4" fill="#2a2b27" stroke="#3b3c37" strokeWidth="0.8" />
+      <circle cx="12" cy="16" r="1.3" fill={SAGE} />
+      <circle cx="16.5" cy="16" r="1.3" fill="#6f726a" />
+      <circle cx="21" cy="16" r="1.3" fill="#6f726a" />
+      <rect x="26" y="13" width="47" height="6" rx="3" fill={OFFBLACK} />
+      <text x="29" y="17.8" fill={OFFWHITE} fontSize="3.8">
+        vyzualize.com.br/r/…
+      </text>
+      {bars.map((h, i) => (
+        <rect key={i} x={13 + i * 12} y={48 - h} width="8" height={h} rx="1" fill={SAGE} />
+      ))}
+      <text x="8" y="70" fill={OFFWHITE} fontSize="7.4" fontWeight="800" letterSpacing="-0.25">
+        Mande um link,
+      </text>
+      <text x="8" y="79" fill={SAGE} fontSize="7.4" fontWeight="800" letterSpacing="-0.25">
+        não um print.
+      </text>
+    </svg>
+  );
+}
+
+const ARTS: Record<CreativeArt, () => React.JSX.Element> = { mascote: MascotArt, dashboard: DashboardArt, numero: NumberArt, link: LinkArt };
+
+export const FORMAT_LABEL: Record<string, string> = { video: "Vídeo", carousel: "Carrossel", image: "Imagem" };
 
 /** A miniatura do criativo (o formato vai num chip ao lado, para não cobrir a frase). */
 export function VyzCreative({ art, label, className = "" }: { art: CreativeArt; label: string; className?: string }) {
+  const Art = ARTS[art];
   return (
     <span role="img" aria-label={`Criativo: ${label}`} className={`relative block overflow-hidden ${className}`}>
-      {art === "mascote" ? <MascotArt /> : <DashboardArt />}
+      <Art />
     </span>
   );
 }
