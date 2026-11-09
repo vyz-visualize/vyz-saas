@@ -26,7 +26,8 @@ type ComboChartProps = {
   tooltip: (i: number) => [string, string][];
   /** Resumo para leitores de tela. */
   summary: string;
-  height?: number;
+  /** Altura em px; "fill" ocupa a altura do contêiner (que precisa ter altura definida). */
+  height?: number | "fill";
   fontSize?: number;
   /** Trecho filtrado: fica em destaque, e o resto esmaece. */
   selection?: IndexRange | null;
@@ -40,8 +41,9 @@ type ComboChartProps = {
  * Os dias em maturação ficam numa faixa clara no fim.
  */
 export function ComboChart({ height = 260, ...props }: ComboChartProps) {
+  const fill = height === "fill";
   return (
-    <figure className="m-0">
+    <figure className={fill ? "m-0 flex h-full min-h-0 flex-col" : "m-0"}>
       <p className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] leading-none text-fg-2" aria-hidden>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2.5 w-2 rounded-[2px] bg-muted" /> {props.barLabel}
@@ -55,7 +57,9 @@ export function ComboChart({ height = 260, ...props }: ComboChartProps) {
           </span>
         )}
       </p>
-      <FitChart height={height}>{({ width, height: h }) => <ComboSvg {...props} W={width} H={h} />}</FitChart>
+      <FitChart height={fill ? undefined : height} minHeight={fill ? 96 : undefined} className={fill ? "flex-1" : ""}>
+        {({ width, height: h }) => <ComboSvg {...props} W={width} H={h} />}
+      </FitChart>
     </figure>
   );
 }

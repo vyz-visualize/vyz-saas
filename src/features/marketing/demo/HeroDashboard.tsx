@@ -1,16 +1,16 @@
 "use client";
 
 // O dashboard do hero: a visão geral que o cliente recebe, com dados de amostra, sem
-// alternar plataforma. Em cima, as contas conectadas (e as que vêm em breve).
-// Clicar numa campanha filtra o painel inteiro, como no produto.
+// alternar plataforma. Em cima, as contas conectadas (e as que vêm em breve); embaixo, o
+// gráfico ocupa a altura que sobra (o painel acompanha a altura do texto do hero).
+// Arrastar no gráfico filtra o painel inteiro, como no produto.
 
 import { BriefcaseBusiness, ChartColumn, Check, Infinity as InfinityIcon, Music2, Play, Search, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
-import { CHANNEL_LABEL, FUNNEL_STAGE_LABEL } from "@/features/analytics/aggregate";
 import { FilterBar, FilterProvider } from "@/features/analytics/filter-context";
 import { kpiMetric } from "@/features/analytics/metrics";
-import { HeroChart, maturingPoints, TopCampaigns } from "@/features/analytics/shared";
+import { HeroChart, maturingPoints } from "@/features/analytics/shared";
 import { KpiCard } from "@/features/analytics/ui";
 import { track } from "@/features/marketing/track";
 import { sampleData, sampleLabels, SAMPLE_CLIENTS } from "./engine";
@@ -30,7 +30,7 @@ function ConnectedAccounts() {
   return (
     <div>
       <p className="label-caps text-[10.5px] text-fg-2">Contas conectadas</p>
-      <ul className="mt-1.5 grid grid-cols-2 gap-1 @[460px]:grid-cols-3 @[640px]:grid-cols-6">
+      <ul className="mt-1.5 grid grid-cols-3 gap-1 @[560px]:grid-cols-6">
         {HERO_ACCOUNTS.map(({ name, icon: Icon, live }) => (
           <li key={name} className={`flex min-w-0 items-center gap-1.5 rounded-control border px-1.5 py-1.5 ${live ? "border-accent/40 bg-accent-soft/40" : "border-line border-dashed"}`}>
             <span className={`inline-flex size-5 shrink-0 items-center justify-center rounded-[5px] ${live ? "bg-accent text-on-accent" : "bg-line/50 text-fg-2"}`} aria-hidden>
@@ -55,9 +55,7 @@ function ConnectedAccounts() {
   );
 }
 
-const kindLabel = (k: string | null) => (k ? (FUNNEL_STAGE_LABEL[k] ?? CHANNEL_LABEL[k] ?? "Outras") : "Outras");
-
-function Board({ compact }: { compact?: boolean }) {
+function Board() {
   const labels = useMemo(() => sampleLabels("meta"), []);
   const base = useMemo(() => sampleData("meta"), []);
   const filters = useLocalFilters(labels, base.current.days, () => track("demo_interacao", { local: "hero", acao: "filtro" }));
@@ -66,39 +64,36 @@ function Board({ compact }: { compact?: boolean }) {
   const maturing = maturingPoints(data, filters.filters.days);
   return (
     <FilterProvider value={filters}>
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2.5 @[560px]:grid-cols-4">
+      <div className="flex h-full min-h-0 flex-col gap-3">
+        {/* estreito e com gráfico (tablet, desktop pequeno): 2 números, para o gráfico caber */}
+        <div className="grid grid-cols-2 gap-2.5 @[560px]:grid-cols-4 sm:@max-[559px]:[&>*:nth-child(n+3)]:hidden">
           {kpis.map((k) => (
             <KpiCard key={k.id} kpi={k} currency={data.currency} maturing={maturing} featured={k.id === "roas"} metric={kpiMetric("meta", k.id)} />
           ))}
         </div>
         <FilterBar />
-        {/* no celular o hero fica com os números; o gráfico aparece do tablet para cima */}
-        {/* data-no-swipe: arrastar no gráfico filtra os dias, não troca de slide */}
-        <div className="hidden sm:block" data-no-swipe>
-          <HeroChart data={data} spendLabel="Investimento" valueLabel="Receita" />
+        {/* no celular o hero fica com os números; o gráfico aparece do tablet para cima e
+            ocupa o que sobra. data-no-swipe: arrastar no gráfico filtra os dias, não troca de slide */}
+        <div className="hidden min-h-0 flex-1 sm:block" data-no-swipe>
+          <HeroChart data={data} spendLabel="Investimento" valueLabel="Receita" fill />
         </div>
-        {!compact && (
-          <div className="hidden sm:block">
-            <TopCampaigns data={data} limit={2} kindLabel={kindLabel} />
-          </div>
-        )}
       </div>
     </FilterProvider>
   );
 }
 
-export default function HeroDashboard({ compact = false }: { compact?: boolean }) {
+export default function HeroDashboard() {
   return (
     <div className="@container flex h-full flex-col gap-3 p-3 sm:p-4">
       {/* a amostra é a própria VYZ: a marca no topo, como o cliente vê no link */}
-      <header className="flex items-center justify-between gap-2">
+      {/* o canto direito é do palco do hero: a frase do slide e o selo de amostra */}
+      <header className="flex min-h-[22px] items-center gap-2">
         <Wordmark className="w-[58px] shrink-0 text-accent" title={SAMPLE_CLIENTS.meta.client} />
-        <p className="shrink-0 text-[12px] text-fg-2">Visão geral · 30 dias</p>
+        <h3 className="sr-only">Visão geral · 30 dias</h3>
       </header>
       <ConnectedAccounts />
       <div className="min-h-0 flex-1">
-        <Board compact={compact} />
+        <Board />
       </div>
     </div>
   );

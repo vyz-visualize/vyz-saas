@@ -4,11 +4,15 @@ import { autoPlays, HERO_SLIDES, nextSlide, prevSlide, SLIDE_MS, swipeDirection 
 const free = { reduced: false, ready: true, hover: false, focus: false, touching: false, offscreen: false, hidden: false };
 
 describe("slides do hero", () => {
-  it("quatro slides, ~6 s cada, e a ordem dá a volta", () => {
+  it("quatro slides, 3 s cada, e a ordem dá a volta", () => {
     expect(HERO_SLIDES.map((s) => s.label)).toEqual(["Visão geral", "Criativos", "Agente VYZ", "Link do cliente"]);
-    expect(SLIDE_MS).toBe(6000);
+    expect(SLIDE_MS).toBe(3000);
     expect(nextSlide(3)).toBe(0);
     expect(prevSlide(0)).toBe(3);
+  });
+
+  it("o nome curto (celular) está dentro do nome do botão, para quem usa leitor de tela por voz", () => {
+    for (const s of HERO_SLIDES) expect(s.label.toLowerCase()).toContain(s.short.toLowerCase());
   });
 
   it("deslizar: horizontal e longo troca; vertical ou curto, não", () => {

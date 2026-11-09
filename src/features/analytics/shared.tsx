@@ -40,7 +40,8 @@ export function selectionIn(dates: readonly string[], f: DashFilters | undefined
 /** Rótulo curto do eixo em reais (os valores já estão em reais). */
 const axisMoney = (cur: string) => (v: number) => (cur === "BRL" ? (Math.abs(v) >= 10_000 ? brlCompact(v * 100) : brl(v * 100, { decimals: false })) : decimal(v, 0));
 
-export function HeroChart({ data, spendLabel, valueLabel }: PageProps & { spendLabel: string; valueLabel: string }) {
+/** fill: ocupa a altura do contêiner e deixa o subtítulo de fora (o hero do site, de altura fixa). */
+export function HeroChart({ data, spendLabel, valueLabel, fill = false }: PageProps & { spendLabel: string; valueLabel: string; fill?: boolean }) {
   const { view, currency, hideSpend } = data;
   const filters = useDashFilters();
   const dates = view.daily.map((d) => d.date);
@@ -52,7 +53,9 @@ export function HeroChart({ data, spendLabel, valueLabel }: PageProps & { spendL
   return (
     <Panel
       title={hideSpend ? `${valueLabel} por dia` : `${spendLabel} × ${valueLabel.toLowerCase()} por dia`}
-      subtitle={hideSpend ? "Investimento oculto neste link." : "Barras: o que foi investido. Linha: o que voltou. Mesmo eixo, em reais."}
+      subtitle={fill ? undefined : hideSpend ? "Investimento oculto neste link." : "Barras: o que foi investido. Linha: o que voltou. Mesmo eixo, em reais."}
+      className={fill ? "flex h-full flex-col" : ""}
+      bodyClassName={fill ? "flex min-h-0 flex-1 flex-col" : ""}
       aside={
         hideSpend ? undefined : (
           <span className="tnum">
@@ -62,6 +65,7 @@ export function HeroChart({ data, spendLabel, valueLabel }: PageProps & { spendL
       }
     >
       <ComboChart
+        height={fill ? "fill" : undefined}
         points={points}
         barLabel={spendLabel}
         lineLabel={valueLabel}

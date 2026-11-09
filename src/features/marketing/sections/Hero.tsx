@@ -48,7 +48,9 @@ export function Hero() {
           </Reveal>
         </div>
 
-        <Reveal trigger="intro" delay={300} className="min-w-0 lg:-mr-6 lg:pt-2 xl:-mr-10">
+        {/* no desktop, o painel tem a altura do bloco de texto (do selo ao preço): sai do fluxo
+            e ocupa a linha da grade, que o texto define. Como o texto vem do servidor, nada pula. */}
+        <Reveal trigger="intro" delay={300} className="relative min-w-0 lg:-mr-6 xl:-mr-10">
           <HeroStage />
         </Reveal>
       </div>

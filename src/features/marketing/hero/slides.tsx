@@ -14,11 +14,12 @@ import { VyzFace } from "@/features/marketing/demo/VyzFace";
 
 const COLORS = ["var(--accent)", "#C2703D"] as const;
 
+/** Só a marca: o canto direito é do palco (a frase do slide e o selo de amostra). O título fica para o leitor de tela. */
 function SlideHeader({ title }: { title: string }) {
   return (
-    <header className="flex items-center justify-between gap-2">
+    <header className="flex min-h-[22px] items-center gap-2">
       <Wordmark className="w-[58px] shrink-0 text-accent" decorative />
-      <p className="shrink-0 text-[12px] text-fg-2">{title}</p>
+      <h3 className="sr-only">{title}</h3>
     </header>
   );
 }
@@ -60,7 +61,7 @@ export function SlideCreatives() {
   return (
     <div className="@container flex h-full flex-col gap-3 p-3 sm:p-4">
       <SlideHeader title="Criativos · 30 dias" />
-      <ul className="grid grid-cols-4 gap-2" aria-label="Galeria de criativos da VYZ">
+      <ul className="grid grid-cols-[repeat(4,minmax(0,96px))] justify-between gap-2" aria-label="Galeria de criativos da VYZ">
         {TEASER_GALLERY.map((c) => {
           const chosen = ads.findIndex((a) => a.id === c.id);
           return (
@@ -73,16 +74,7 @@ export function SlideCreatives() {
           );
         })}
       </ul>
-      {/* os 2 anúncios comparados: no desktop, o nome e a campanha de cada um */}
-      <ul className="hidden gap-2 @[560px]:grid @[560px]:grid-cols-2" aria-label="Anúncios comparados">
-        {ads.map((ad, i) => (
-          <li key={ad.id} className="min-w-0 rounded-[10px] border border-line bg-card px-3 py-2" style={{ borderLeft: `3px solid ${COLORS[i]}` }}>
-            <p className="truncate text-[13px] font-semibold text-fg">{ad.name}</p>
-            <p className="truncate text-[11.5px] text-fg-2">{ad.campaign}</p>
-          </li>
-        ))}
-      </ul>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-card">
+      <div className="flex flex-col overflow-hidden rounded-card border border-line bg-card">
         <table className="w-full table-fixed border-collapse text-[12.5px] tnum @[560px]:text-[13.5px]">
           <caption className="sr-only">Comparativo de 2 anúncios: 4 métricas</caption>
           <colgroup>
@@ -106,11 +98,11 @@ export function SlideCreatives() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-b border-line/60">
-                <th scope="row" className="px-2 py-1.5 text-left font-normal text-fg-2 @[560px]:px-3 @[560px]:py-2.5">
+                <th scope="row" className="px-2 py-1.5 text-left font-normal text-fg-2 @[560px]:px-3">
                   {r.label}
                 </th>
                 {r.cells.map((c, i) => (
-                  <td key={ads[i].id} className="px-2 py-1.5 text-right @[560px]:px-3 @[560px]:py-2.5">
+                  <td key={ads[i].id} className="px-2 py-1.5 text-right @[560px]:px-3">
                     <span className={c.best ? "font-semibold text-accent" : "text-fg"}>
                       {c.best && <Trophy size={12} aria-label="Melhor valor" className="mr-1 inline align-[-2px]" />}
                       {c.text}
@@ -123,10 +115,10 @@ export function SlideCreatives() {
           </tbody>
         </table>
         {/* o resto do comparativo: linhas genéricas desfocadas, sem números de verdade.
-            Ocupam o espaço que sobra na caixa, em qualquer largura. */}
-        <div className="relative min-h-[64px] flex-1 overflow-hidden">
-          <div aria-hidden className="absolute inset-x-0 top-0 space-y-3 px-3 py-3 blur-[3px] select-none">
-            {[62, 48, 70, 54, 66, 44, 58, 72, 50, 64].map((w, i) => (
+            Três bastam: o cadeado diz o resto. */}
+        <div className="relative overflow-hidden">
+          <div aria-hidden className="space-y-3 px-3 py-2.5 blur-[3px] select-none">
+            {[62, 48, 70].map((w, i) => (
               <div key={i} className="grid grid-cols-[30%_1fr_1fr] items-center gap-3">
                 <span className="h-2.5 rounded-full bg-fg/15" style={{ width: `${w}%` }} />
                 <span className="ml-auto h-2.5 w-14 rounded-full bg-fg/20" />
@@ -154,29 +146,34 @@ const AGENT_BARS = [
   { name: "Gestores de tráfego", roas: "2,92", width: 56 },
   { name: "Lookalike assinantes", roas: "2,52", width: 48 },
 ];
-const AGENT_TIMES = [1750, 2550] as const;
+// cabe em 3 s: a pergunta é digitada em ~0,9 s, pensa, e a resposta fica ~1,5 s à vista
+const AGENT_TIMES = [1000, 1450] as const;
 
 export function SlideAgent({ active }: { active: boolean }) {
-  const typed = useTyped(QUESTION, active, 42);
+  const typed = useTyped(QUESTION, active, 26);
   const step = useSteps(active, AGENT_TIMES);
   const thinking = step === 1;
   const answered = step >= 2;
   return (
     <div className="@container flex h-full flex-col gap-3 p-3 sm:p-4">
       <SlideHeader title="Agente VYZ" />
-      <div className="flex items-center gap-3 rounded-card bg-deep p-3 text-offwhite sm:gap-4 sm:p-4">
-        <VyzFace mood={thinking ? "thinking" : answered ? "speaking" : "idle"} size={64} />
+      <div className="flex items-center gap-3 rounded-card bg-deep px-3 py-2.5 text-offwhite">
+        <VyzFace mood={thinking ? "thinking" : answered ? "speaking" : "idle"} size={48} />
         <div>
           <p className="label-caps text-[10.5px] text-sage">Seu assistente</p>
-          <p className="display text-[1.9rem] leading-none">VYZ</p>
+          <p className="display text-[1.6rem] leading-none">VYZ</p>
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col justify-center gap-3 rounded-card border border-line bg-card p-3 sm:p-5">
+      <div className="flex min-h-0 flex-1 flex-col justify-center gap-2.5 rounded-card border border-line bg-card p-3 sm:px-4">
         <p className="ml-auto max-w-[90%] rounded-[14px] rounded-br-[4px] bg-accent px-3.5 py-2 text-[14px] text-on-accent">
           <span className="sr-only">{QUESTION}</span>
-          <span aria-hidden className="inline-block min-h-[1.4em]">
-            {typed}
-            {typed.length < QUESTION.length && <span className="caret" />}
+          {/* a bolha já nasce do tamanho da pergunta inteira: a digitação não empurra nada */}
+          <span aria-hidden className="grid min-h-[1.4em]">
+            <span className="invisible [grid-area:1/1]">{QUESTION}</span>
+            <span className="[grid-area:1/1]">
+              {typed}
+              {typed.length < QUESTION.length && <span className="caret" />}
+            </span>
           </span>
         </p>
         <p aria-hidden className={`flex h-4 items-center gap-1.5 transition-opacity duration-200 ${thinking ? "opacity-100" : "opacity-0"}`}>
@@ -187,13 +184,13 @@ export function SlideAgent({ active }: { active: boolean }) {
         {/* a resposta já ocupa o lugar: nada pula quando ela aparece */}
         <div className={`space-y-3 transition-[opacity,transform] duration-500 ease-brand ${answered ? "opacity-100" : "translate-y-2 opacity-0"}`}>
           <p className="text-[14px] leading-relaxed text-fg-2">
-            <strong className="font-semibold text-fg">Remarketing · Viu a demonstração</strong>: ROAS de <strong className="font-semibold text-fg tnum">5,23</strong>, acima do equilíbrio de 2,5. Cada R$ 1 investido voltou R$ 5,23 em vendas.
+            <strong className="font-semibold text-fg">Remarketing · Viu a demonstração</strong>: ROAS de <strong className="font-semibold text-fg tnum">5,23</strong>, acima do equilíbrio de 2,5.<span className="hidden @[380px]:inline"> Cada R$&nbsp;1 investido voltou R$&nbsp;5,23 em vendas.</span>
           </p>
           <div className="rounded-[12px] border border-line bg-bg p-3">
             <p className="label-caps text-[10.5px] text-fg-2">ROAS · últimos 30 dias</p>
             <p className="mt-1 text-[1.75rem] leading-none font-bold text-fg tnum">5,23</p>
             <p className="mt-1 text-[12px] text-fg-2">equilíbrio 2,5</p>
-            <ul className="mt-2.5 space-y-1.5 border-t border-line pt-2.5" aria-label="ROAS das campanhas">
+            <ul className="mt-2 space-y-1.5 border-t border-line pt-2" aria-label="ROAS das campanhas">
               {AGENT_BARS.map((b, i) => (
                 <li key={b.name} className="grid grid-cols-[minmax(0,1fr)_32%_auto] items-center gap-2 text-[11.5px]">
                   <span className="text-fg-2">{b.name}</span>
@@ -227,11 +224,12 @@ const LINK_ROWS = [
 ];
 const TARGET_ROW = 1;
 const LINK_BARS = [62, 80, 54, 74, 58, 86, 66, 92, 70, 60, 84, 76];
-// passos: a página abre, o cursor aparece, o cursor chega na campanha, o clique filtra
-const LINK_TIMES = [1250, 1900, 2750, 3250] as const;
+// passos: a página abre, o cursor aparece, o cursor chega na campanha, o clique filtra.
+// Cabe em 3 s: o cursor anda em 550 ms e o painel fica ~1,3 s filtrado.
+const LINK_TIMES = [600, 850, 1050, 1650] as const;
 
 export function SlideLink({ active }: { active: boolean }) {
-  const typed = useTyped(URL_TEXT, active, 44);
+  const typed = useTyped(URL_TEXT, active, 22);
   const step = useSteps(active, LINK_TIMES);
   const open = step >= 1;
   const showCursor = step >= 2 && step < LINK_TIMES.length + 1;
@@ -270,7 +268,7 @@ export function SlideLink({ active }: { active: boolean }) {
             <Wordmark className="w-[44px] shrink-0 text-accent" decorative />
             <span className={`truncate rounded-chip bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-fg transition-opacity duration-300 ${filtered ? "opacity-100" : "opacity-0"}`}>Campanha: Remarketing</span>
           </div>
-          <dl className="grid grid-cols-2 gap-2 @[560px]:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-2 @[480px]:grid-cols-4">
             {LINK_KPIS.map((k) => (
               <div key={k.label} className="rounded-[10px] border border-line bg-bg px-2.5 py-2">
                 <dt className="text-[10px] tracking-[0.08em] text-fg-2 uppercase">{k.label}</dt>
@@ -278,9 +276,14 @@ export function SlideLink({ active }: { active: boolean }) {
               </div>
             ))}
           </dl>
-          <div className="flex min-h-[56px] flex-1 items-end gap-1 rounded-[10px] border border-line bg-bg p-2.5 pt-7 @[560px]:gap-2" aria-hidden>
+          {/* o gráfico ocupa a sobra, do tamanho das barras: ao filtrar, a barra inteira esmaece e
+              a parte da campanha escolhida aparece por cima (sem deixar vazio em cima) */}
+          <div className="flex min-h-[84px] flex-1 items-end gap-1 rounded-[10px] border border-line bg-bg p-2.5 @[560px]:gap-2" aria-hidden>
             {LINK_BARS.map((h, i) => (
-              <span key={i} className="flex-1 rounded-t-[3px] bg-accent transition-[height,opacity] duration-500 ease-brand" style={{ height: `${filtered ? h * 0.42 : h}%`, opacity: 0.45 + (i % 3) * 0.2 }} />
+              <span key={i} className="relative flex-1 self-stretch">
+                <span className={`absolute inset-x-0 bottom-0 rounded-t-[3px] transition-colors duration-500 ease-brand ${filtered ? "bg-fg/12" : "bg-accent"}`} style={{ height: `${h}%`, opacity: filtered ? 1 : 0.45 + (i % 3) * 0.2 }} />
+                <span className={`absolute inset-x-0 bottom-0 rounded-t-[3px] bg-accent transition-[height,opacity] duration-500 ease-brand ${filtered ? "opacity-100" : "opacity-0"}`} style={{ height: `${filtered ? h * 0.42 : h}%` }} />
+              </span>
             ))}
           </div>
           <ul className="space-y-1" aria-label="Campanhas">
@@ -302,7 +305,7 @@ export function SlideLink({ active }: { active: boolean }) {
         {showCursor && target && (
           <span
             aria-hidden
-            className="pointer-events-none absolute top-0 left-0 text-fg transition-transform duration-700 ease-brand"
+            className="pointer-events-none absolute top-0 left-0 text-fg transition-transform duration-[550ms] ease-brand"
             style={{ transform: arrived ? `translate(${target.x}px, ${target.y}px) scale(${filtered ? 0.85 : 1})` : `translate(${target.x + 70}px, ${target.y + 80}px)` }}
           >
             <MousePointer2 size={20} fill="currentColor" stroke="var(--bg)" />

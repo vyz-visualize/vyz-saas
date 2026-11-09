@@ -263,6 +263,28 @@ html.lenis body {
   }
 }
 
+/* ---- Pílula e selo do hero ------------------------------------------- */
+/* vidro (translúcido com desfoque) onde dá; no Safari, sólido: o painel inclina em 3D e o
+   desfoque dentro de um pai transformado pisca no WebKit. "font: -apple-system-body" só
+   existe no WebKit. */
+.hero-glass {
+  background-color: var(--bg);
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .hero-glass {
+    background-color: color-mix(in srgb, var(--bg) 72%, transparent);
+    -webkit-backdrop-filter: saturate(1.4) blur(12px);
+    backdrop-filter: saturate(1.4) blur(12px);
+  }
+}
+@supports (font: -apple-system-body) and (-webkit-appearance: none) {
+  .hero-glass {
+    background-color: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 /* ---- Revelação pelo corte (CutReveal) ------------------------------- */
 /* cada linha sobe de dentro da própria máscara; a folga em cima e embaixo guarda
    acentos e descendentes sem mudar a altura da linha */

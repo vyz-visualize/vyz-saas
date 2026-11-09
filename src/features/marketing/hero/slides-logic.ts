@@ -1,12 +1,13 @@
 // Regras dos slides do hero, sem tela: a ordem, o tempo, o deslizar e quando a troca pausa.
 
-export const SLIDE_MS = 6000;
+/** Cada slide fica 3 s; depois do último, volta ao primeiro. */
+export const SLIDE_MS = 3000;
 
 export const HERO_SLIDES = [
-  { id: "visao-geral", label: "Visão geral", hint: "Clique numa campanha ou arraste no gráfico: o painel inteiro filtra." },
-  { id: "criativos", label: "Criativos", hint: "Anúncios lado a lado, com o melhor de cada métrica. Comparativo no plano Avançado." },
-  { id: "agente", label: "Agente VYZ", hint: "Pergunte sobre os números e ele responde na hora." },
-  { id: "link", label: "Link do cliente", hint: "O cliente abre o link e filtra sozinho, sem login." },
+  { id: "visao-geral", label: "Visão geral", short: "Geral", hint: "Arraste no gráfico e o painel inteiro filtra." },
+  { id: "criativos", label: "Criativos", short: "Criativos", hint: "Anúncios lado a lado, com o melhor de cada métrica." },
+  { id: "agente", label: "Agente VYZ", short: "Agente", hint: "Pergunte sobre os números e ele responde na hora." },
+  { id: "link", label: "Link do cliente", short: "Link", hint: "O cliente abre o link e filtra sozinho, sem login." },
 ] as const;
 
 export const nextSlide = (i: number, n: number = HERO_SLIDES.length) => (i + 1) % n;

@@ -17,7 +17,7 @@ export function TiltFrame({ children, className = "" }: { children: ReactNode; c
   const ry = useSpring(useTransform(px, [-0.5, 0.5], [-MAX, MAX]), { stiffness: 160, damping: 18 });
 
   return (
-    <div className="[perspective:1400px]">
+    <div className="h-full [perspective:1400px]">
       <m.div
         className={className}
         style={enabled ? { rotateX: rx, rotateY: ry } : undefined}

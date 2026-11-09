@@ -1,10 +1,13 @@
 "use client";
 
 // Lado direito do hero: 4 slides com partes do produto (visão geral, criativos, agente e o
-// link do cliente), trocando sozinhos a cada ~6 s, com barra estilo stories. O código e os
-// dados só carregam depois da primeira pintura (o texto do hero é o LCP), num espaço já
-// reservado, para nada pular; os slides 2 a 4 só depois de a página abrir.
+// link do cliente), trocando sozinhos a cada 3 s, em loop. Dentro do painel: em cima, a frase
+// do slide e o selo de amostra; embaixo, uma pílula com os 4 ícones, em que o ativo se abre
+// com o nome e se preenche durante os 3 s. O código e os dados só carregam depois da primeira
+// pintura (o texto do hero é o LCP), num espaço já reservado, para nada pular; os slides 2 a 4
+// só depois de a página abrir.
 
+import { GalleryHorizontalEnd, LayoutDashboard, Link2, type LucideIcon } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
@@ -28,6 +31,25 @@ function Skeleton() {
     </div>
   );
 }
+
+/** O VYZ em miniatura: a esfera com o rosto, parada (o mascote animado fica no slide). */
+function MascotIcon({ size }: { size: number }) {
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden className="shrink-0">
+      <circle cx="50" cy="50" r="48" fill="var(--color-sage)" />
+      <polygon points="33,37.5 44,37.5 45.4,46.5 34.4,46.5" fill="var(--color-deep)" />
+      <polygon points="67,37.5 56,37.5 54.6,46.5 65.6,46.5" fill="var(--color-deep)" />
+      <path d="M37.5,56 Q50,60.5 62.5,56 L60.6,60 Q50,64.2 39.4,60 Z" fill="var(--color-deep)" />
+    </svg>
+  );
+}
+
+const ICONS: Record<(typeof HERO_SLIDES)[number]["id"], LucideIcon | "mascot"> = {
+  "visao-geral": LayoutDashboard,
+  criativos: GalleryHorizontalEnd,
+  agente: "mascot",
+  link: Link2,
+};
 
 const HeroDashboard = dynamic(() => import("@/features/marketing/demo/HeroDashboard"), { ssr: false, loading: Skeleton });
 
@@ -116,7 +138,7 @@ export function HeroStage() {
   const [hidden, setHidden] = useState(false);
 
   const elapsed = useRef(0);
-  const bars = useRef<(HTMLSpanElement | null)[]>([]);
+  const fills = useRef<(HTMLSpanElement | null)[]>([]);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
   const swipe = useRef<{ x: number; y: number } | null>(null);
 
@@ -142,11 +164,11 @@ export function HeroStage() {
 
   const playing = autoPlays({ reduced: reduce, ready: go && ready, hover, focus, touching, offscreen, hidden });
 
-  // a barra do slide ativo: no quadro de agora, sem precisar de um novo render
+  // o preenchimento do ativo: no quadro de agora, sem precisar de um novo render
   useLayoutEffect(() => {
-    const bar = bars.current[active];
-    if (bar) bar.style.transform = `scaleX(${reduce ? 1 : Math.min(1, elapsed.current / SLIDE_MS)})`;
-  }, [active, reduce]);
+    const fill = fills.current[active];
+    if (fill) fill.style.transform = `scaleX(${Math.min(1, elapsed.current / SLIDE_MS)})`;
+  }, [active]);
 
   // o tempo do slide anda por requestAnimationFrame, igual em todo navegador
   useEffect(() => {
@@ -156,8 +178,8 @@ export function HeroStage() {
     const tick = (now: number) => {
       elapsed.current += now - last;
       last = now;
-      const bar = bars.current[active];
-      if (bar) bar.style.transform = `scaleX(${Math.min(1, elapsed.current / SLIDE_MS)})`;
+      const fill = fills.current[active];
+      if (fill) fill.style.transform = `scaleX(${Math.min(1, elapsed.current / SLIDE_MS)})`;
       if (elapsed.current >= SLIDE_MS) {
         goTo(nextSlide(active));
         return;
@@ -182,11 +204,10 @@ export function HeroStage() {
     tabs.current[to]?.focus();
   };
 
-  const current = HERO_SLIDES[active];
   return (
     <div
       ref={ref}
-      className="@container"
+      className="@container lg:absolute lg:inset-0"
       onPointerEnter={(e) => e.pointerType === "mouse" && setHover(true)}
       onPointerLeave={(e) => e.pointerType === "mouse" && setHover(false)}
       onFocus={(e) => e.target.matches(":focus-visible") && setFocus(true)}
@@ -194,15 +215,13 @@ export function HeroStage() {
     >
       {/* os cards do painel são h3: este h2 dá a eles um lugar no sumário do leitor de tela */}
       <h2 className="sr-only">Dashboard de amostra</h2>
-      <TiltFrame className="overflow-hidden rounded-card border border-line bg-bg">
-        {/* o esqueleto já ocupa a altura do painel (medida): nada pula quando ele chega.
-            A altura muda nos mesmos degraus do painel, pela largura dele (não da tela),
-            medidos: celular só com os números; do tablet para cima, 2×2 KPIs abaixo de
-            594 px, contas em duas linhas abaixo de 676 px. Filtrar pode crescer o quadro, mas isso
-            vem de um clique e não conta como CLS. Os slides ficam empilhados na mesma caixa. */}
+      <TiltFrame className="h-full overflow-hidden rounded-card border border-line bg-bg">
+        {/* a altura é reservada (CLS 0): no celular e no tablet, fixa; no desktop, a do bloco de
+            texto ao lado (o palco ocupa a linha da grade). Todos os slides cabem nela, sem rolagem;
+            a pílula fica por cima, numa faixa que os slides deixam livre embaixo. */}
         <div
           data-hero-frame
-          className="grid min-h-[var(--hero-h)] touch-pan-y [--hero-h:560px] sm:[--hero-h:912px] sm:@max-[675px]:[--hero-h:981px] sm:@max-[593px]:[--hero-h:1112px]"
+          className="relative grid h-[var(--hero-h)] touch-pan-y [--hero-h:550px] sm:[--hero-h:600px] lg:h-full"
           onPointerDown={(e) => {
             if (e.pointerType !== "touch") return;
             setTouching(true);
@@ -232,7 +251,7 @@ export function HeroStage() {
                 aria-labelledby={`hero-aba-${s.id}`}
                 inert={!on}
                 data-hero-slide={s.id}
-                className={`flex min-w-0 flex-col transition-[opacity,visibility] duration-500 ease-brand [grid-area:1/1] motion-reduce:transition-none [&>*]:flex-1 ${on ? "visible opacity-100" : "invisible opacity-0"}`}
+                className={`flex min-h-0 min-w-0 flex-col overflow-hidden pb-10 transition-[opacity,visibility] duration-500 ease-brand [grid-area:1/1] motion-reduce:transition-none [&>*]:min-h-0 [&>*]:flex-1 ${on ? "visible opacity-100" : "invisible opacity-0"}`}
               >
                 {i === 0 && (go ? <HeroDashboard /> : <Skeleton />)}
                 {i === 1 && (ready ? <SlideCreatives /> : on && <Skeleton />)}
@@ -241,47 +260,70 @@ export function HeroStage() {
               </div>
             );
           })}
+
+          {/* em cima: a frase do slide (do tablet para cima) e o selo, no canto do cabeçalho */}
+          <div className="pointer-events-none absolute top-3 right-3 flex h-[22px] max-w-[calc(100%-96px)] items-center gap-2.5 sm:top-4 sm:right-4">
+            <p className="hidden min-w-0 @[600px]:grid">
+              {HERO_SLIDES.map((s, i) => (
+                <span
+                  key={s.id}
+                  aria-hidden={i !== active}
+                  className={`truncate text-right text-[11.5px] text-fg-2 transition-opacity duration-300 [grid-area:1/1] motion-reduce:transition-none ${i === active ? "opacity-100" : "opacity-0"}`}
+                >
+                  {s.hint}
+                </span>
+              ))}
+            </p>
+            <span className="hero-glass shrink-0 rounded-chip border border-line px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-fg-2">Amostra · dados fictícios</span>
+          </div>
+
+          {/* embaixo: a pílula. O ativo abre com o nome e se preenche durante os 3 s */}
+          <div role="tablist" aria-label="Partes do produto" className="hero-glass absolute bottom-2 left-1/2 z-10 flex w-max -translate-x-1/2 items-center gap-0.5 rounded-full border border-line p-1 sm:bottom-2.5">
+            {HERO_SLIDES.map((s, i) => {
+              const on = i === active;
+              const Icon = ICONS[s.id];
+              return (
+                <button
+                  key={s.id}
+                  ref={(el) => {
+                    tabs.current[i] = el;
+                  }}
+                  id={`hero-aba-${s.id}`}
+                  type="button"
+                  role="tab"
+                  aria-label={s.label}
+                  aria-selected={on}
+                  aria-controls={`hero-slide-${s.id}`}
+                  tabIndex={on ? 0 : -1}
+                  onClick={() => choose(i)}
+                  onKeyDown={(e) => onTabKey(e, i)}
+                  className={`relative flex h-8 min-w-8 items-center justify-center overflow-hidden rounded-full px-2 text-[12px] font-medium outline-none transition-colors duration-300 focus-visible:ring-2 focus-visible:ring-accent motion-reduce:transition-none ${on ? "bg-fg/[0.07] text-fg" : "text-fg-2 hover:text-fg"}`}
+                >
+                  {/* o preenchimento corre da esquerda; com "reduzir movimento", não aparece */}
+                  <span
+                    ref={(el) => {
+                      fills.current[i] = el;
+                    }}
+                    aria-hidden
+                    className={`absolute inset-0 origin-left bg-accent/25 motion-reduce:hidden ${on ? "" : "invisible"}`}
+                    style={on ? undefined : { transform: "scaleX(0)" }}
+                  />
+                  <span className="relative flex items-center">
+                    {Icon === "mascot" ? <MascotIcon size={16} /> : <Icon size={16} strokeWidth={2} aria-hidden className="shrink-0" />}
+                    {/* o nome abre e fecha pela largura (grid 0fr ↔ 1fr): a pílula anima de um item para o outro */}
+                    <span aria-hidden className={`grid transition-[grid-template-columns] duration-300 ease-brand motion-reduce:transition-none ${on ? "grid-cols-[1fr]" : "grid-cols-[0fr]"}`}>
+                      <span className="overflow-hidden whitespace-nowrap">
+                        <span className="block pr-0.5 pl-1.5 @[520px]:hidden">{s.short}</span>
+                        <span className="hidden pr-0.5 pl-1.5 @[520px]:block">{s.label}</span>
+                      </span>
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </TiltFrame>
-
-      {/* os nomes dos slides, com a barra de progresso (estilo stories) */}
-      <div role="tablist" aria-label="Partes do produto" className="mt-2 grid grid-cols-4 gap-1.5">
-        {HERO_SLIDES.map((s, i) => (
-          <button
-            key={s.id}
-            ref={(el) => {
-              tabs.current[i] = el;
-            }}
-            id={`hero-aba-${s.id}`}
-            type="button"
-            role="tab"
-            aria-selected={i === active}
-            aria-controls={`hero-slide-${s.id}`}
-            tabIndex={i === active ? 0 : -1}
-            onClick={() => choose(i)}
-            onKeyDown={(e) => onTabKey(e, i)}
-            className="group flex min-h-11 min-w-0 flex-col items-stretch justify-center gap-1.5 rounded-[6px] px-0.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            <span className="block h-[3px] overflow-hidden rounded-full bg-line" aria-hidden>
-              <span
-                ref={(el) => {
-                  bars.current[i] = el;
-                }}
-                className="block h-full origin-left rounded-full bg-accent"
-                // o ativo é controlado pelo relógio; os outros, cheio (já passou) ou vazio
-                style={i === active ? undefined : { transform: `scaleX(${i < active ? 1 : 0})` }}
-              />
-            </span>
-            <span className={`text-[11.5px] leading-tight font-medium transition-colors sm:text-[12.5px] ${i === active ? "text-fg" : "text-fg-2 group-hover:text-fg"}`}>{s.label}</span>
-          </button>
-        ))}
-      </div>
-
-      <p className="mt-1.5 flex min-h-6 flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12.5px] text-fg-2">
-        {/* a dica fala do slide de agora; no celular fica só o selo */}
-        <span className="hidden sm:inline">{current.hint}</span>
-        <span className="rounded-chip border border-line px-2.5 py-0.5 text-[11px] font-medium">Amostra · dados fictícios</span>
-      </p>
     </div>
   );
 }
