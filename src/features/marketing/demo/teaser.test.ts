@@ -1,16 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { metricById } from "@/features/analytics/creatives/compare";
 import { TEASER_ADS, TEASER_ROWS } from "./compare-teaser-data";
-import { DEMO_TABS } from "./DemoTabs";
 
 // "R$ 9.828" / "2,17%" / "3,30" → número
 const num = (t: string) => Number(t.replace(/[^\d,]/g, "").replace(",", "."));
 
-describe("demonstração do site: só uma prévia", () => {
-  it("três abas, sem Personalizar", () => {
-    expect(DEMO_TABS.map((t) => t.id)).toEqual(["filtro", "vyz", "comparativo"]);
-  });
-
+describe("slide de criativos: só uma prévia", () => {
   it("o comparativo mostra 2 anúncios e só 4 métricas, com os nomes do produto", () => {
     expect(TEASER_ADS).toHaveLength(2);
     expect(TEASER_ROWS.map((r) => r.id)).toEqual(["spend", "ctr", "cpa", "roas"]);

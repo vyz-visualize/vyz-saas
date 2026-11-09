@@ -3,12 +3,10 @@ import { aggregateDashboard } from "@/features/analytics/aggregate";
 import { sampleRows } from "@/features/analytics/preview";
 import { TEASER_ADS } from "./compare-teaser-data";
 import { SAMPLE_CLIENTS, SITE_CAMPAIGN_NAMES, sampleRowsFor } from "./engine";
-import { DEMO_CLIENTS } from "./vyz-context";
 
 describe("amostra do site com a marca VYZ", () => {
   it("o cliente da amostra é a VYZ", () => {
     expect(SAMPLE_CLIENTS.meta.client).toBe("VYZ");
-    expect(DEMO_CLIENTS.meta).toBe("VYZ");
     expect(JSON.stringify(SAMPLE_CLIENTS)).not.toContain("Loja Verde");
   });
 

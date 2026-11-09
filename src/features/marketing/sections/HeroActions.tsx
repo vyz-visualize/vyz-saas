@@ -3,6 +3,7 @@
 import { ArrowDown, ArrowRight } from "lucide-react";
 import { Magnetic } from "@/components/motion/Magnetic";
 import { btn } from "@/components/ui/styles";
+import { hasDemoVideo, VIDEO_SECTION_ID } from "@/features/marketing/video";
 
 export function HeroActions() {
   return (
@@ -13,10 +14,12 @@ export function HeroActions() {
           <ArrowRight size={18} aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5" />
         </a>
       </Magnetic>
-      <a href="#demonstracao" className={`${btn.ghost} group`} data-track="hero_cta" data-track-cta="ver_demonstracao">
-        Ver um dashboard funcionando
-        <ArrowDown size={17} aria-hidden className="transition-transform duration-200 group-hover:translate-y-0.5" />
-      </a>
+      {hasDemoVideo && (
+        <a href={`#${VIDEO_SECTION_ID}`} className={`${btn.ghost} group`} data-track="hero_cta" data-track-cta="ver_por_dentro">
+          Ver por dentro
+          <ArrowDown size={17} aria-hidden className="transition-transform duration-200 group-hover:translate-y-0.5" />
+        </a>
+      )}
     </div>
   );
 }

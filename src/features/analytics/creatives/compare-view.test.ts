@@ -1,21 +1,21 @@
 // @vitest-environment happy-dom
 
-// No site, nada escreve na URL. No painel, o comparativo continua escrevendo (o link leva a escolha).
+// O comparativo do painel leva a escolha para a URL; com a escrita desligada, o endereço não muda.
 
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { aggregateDashboard } from "@/features/analytics/aggregate";
-import { cutCreatives } from "@/features/analytics/creatives/access";
-import { CompareView } from "@/features/analytics/creatives/CompareView";
-import { UrlWritesProvider } from "@/features/analytics/creatives/url-state";
-import type { MetaView } from "@/features/analytics/types";
-import { sampleRowsFor } from "./engine";
+import { aggregateDashboard } from "../aggregate";
+import { cutCreatives } from "./access";
+import { CompareView } from "./CompareView";
+import { UrlWritesProvider } from "./url-state";
+import type { MetaView } from "../types";
+import { sampleRows } from "../preview";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const data = () => {
-  const view = aggregateDashboard(sampleRowsFor("meta"), { breakEvenRoas: 2.5 }) as MetaView;
+  const view = aggregateDashboard(sampleRows("meta", { period: "30d" }), { breakEvenRoas: 2.5 }) as MetaView;
   return cutCreatives(view, { tier: "avancado", tab: "comparativo", ads: [] }, { hideSpend: false, currency: "BRL" }).creatives!;
 };
 
@@ -44,7 +44,7 @@ async function mount(writes: boolean | null) {
 }
 
 describe("comparativo e a URL", () => {
-  it("no site (escrita desligada), o endereço não muda", async () => {
+  it("com a escrita desligada, o endereço não muda", async () => {
     const root = await mount(false);
     expect(window.location.search).toBe("");
     await act(async () => root.unmount());

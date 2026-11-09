@@ -12,7 +12,8 @@
     "db:push": "sh -c 'set -a; . ./.env.local; set +a; supabase db push --db-url \"$SUPABASE_DB_URL\"'",
     "db:new": "supabase migration new",
     "db:types": "tsx scripts/db/gen-types.ts",
-    "db:catalog": "tsx scripts/db/sync-catalog.ts"
+    "db:catalog": "tsx scripts/db/sync-catalog.ts",
+    "video:prepare": "sh scripts/video/prepare.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

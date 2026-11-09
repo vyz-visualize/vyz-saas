@@ -1,7 +1,7 @@
 // Medição do site: uma camada só, no dataLayer. Sem GTM instalado, os eventos ficam
 // na fila e nada sai do navegador; com o GTM, ele lê a mesma fila.
 
-export type SiteEvent = "hero_cta" | "demo_interacao" | "plano_assinar" | "whatsapp_click" | "faq_abrir" | "cta_final";
+export type SiteEvent = "hero_cta" | "demo_interacao" | "plano_assinar" | "whatsapp_click" | "faq_abrir" | "cta_final" | "video_inicio" | "video_som" | "video_fim";
 
 type Params = Record<string, string | number | boolean | undefined>;
 

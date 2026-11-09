@@ -3,6 +3,7 @@
 import { ArrowDown, ArrowRight, Check, X } from "lucide-react";
 import { CutReveal } from "@/components/motion/CutReveal";
 import { Reveal } from "@/components/motion/Reveal";
+import { hasDemoVideo, VIDEO_SECTION_ID } from "@/features/marketing/video";
 
 // dorCurta/solCurta: o que aparece no celular, uma linha cada
 const PAIRS = [
@@ -91,10 +92,12 @@ export function DorSolucao() {
             </li>
           ))}
         </ul>
-        <a href="#demonstracao" className="mt-5 inline-flex min-h-11 items-center gap-2 text-[15px] md:mt-8 font-semibold text-accent hover:underline" data-track="hero_cta" data-track-cta="ver_demonstracao_dor">
-          Ver funcionando
-          <ArrowDown size={16} aria-hidden />
-        </a>
+        {hasDemoVideo && (
+          <a href={`#${VIDEO_SECTION_ID}`} className="mt-5 inline-flex min-h-11 items-center gap-2 text-[15px] md:mt-8 font-semibold text-accent hover:underline" data-track="hero_cta" data-track-cta="ver_por_dentro_dor">
+            Ver funcionando
+            <ArrowDown size={16} aria-hidden />
+          </a>
+        )}
       </div>
     </section>
   );

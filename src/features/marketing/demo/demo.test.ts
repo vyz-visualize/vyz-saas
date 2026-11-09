@@ -1,25 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { respond } from "@/features/agent/engine/local";
 import { NO_FILTERS } from "@/features/analytics/filters";
-import { sampleData, sampleRowsFor } from "./engine";
-import { DEMO_QUESTIONS, demoContext } from "./vyz-context";
+import { sampleData } from "./engine";
 
-describe("demonstração do site", () => {
-  it("o VYZ entende todas as perguntas de atalho, e sem 'Mostrar no painel'", () => {
-    const ctx = demoContext(new Date("2026-11-15T12:00:00-03:00"));
-    for (const q of DEMO_QUESTIONS) {
-      const a = respond(q, ctx);
-      expect(a.understood, q).toBe(true);
-      expect(a.text).not.toMatch(/não sei|Não tenho esse dado/i);
-      expect(a.target).toBeUndefined();
-    }
-  });
-
-  it("o mês do VYZ é o mesmo período que ele diz ('em novembro até hoje')", () => {
-    const rows = sampleRowsFor("meta", "mes");
-    expect(rows.current.from.slice(8, 10)).toBe("01");
-  });
-
+describe("amostra do site", () => {
   it("filtrar uma campanha na amostra fecha com a linha dela e não passa do total", () => {
     const all = sampleData("meta");
     const top = all.view.campaigns[0];

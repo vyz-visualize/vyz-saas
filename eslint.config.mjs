@@ -23,8 +23,7 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  // A LP e as páginas públicas não carregam nada do painel nem do assistente VYZ. Exceção: o
-  // motor do VYZ (puro, sem tela nem servidor), que responde na demonstração do site.
+  // A LP e as páginas públicas não carregam nada do painel nem do assistente VYZ.
   {
     files: ["src/app/(marketing)/**/*.{ts,tsx}", "src/features/marketing/**/*.{ts,tsx}", "src/app/(publico)/**/*.{ts,tsx}", "src/app/(auth)/**/*.{ts,tsx}"],
     rules: {
@@ -33,7 +32,7 @@ const eslintConfig = defineConfig([
         {
           patterns: [
             {
-              group: ["@/features/agent/*", "!@/features/agent/engine", "@/features/workspace/AppShell"],
+              group: ["@/features/agent", "@/features/agent/*", "@/features/workspace/AppShell"],
               message: "O assistente VYZ e o app shell são só do painel.",
             },
           ],

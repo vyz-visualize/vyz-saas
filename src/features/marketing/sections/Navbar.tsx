@@ -8,11 +8,13 @@ import { Wordmark } from "@/components/brand/Wordmark";
 import { scrollToId, stopScroll } from "@/components/motion/SmoothScroll";
 import { btn } from "@/components/ui/styles";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { hasDemoVideo, VIDEO_SECTION_ID } from "@/features/marketing/video";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 
+// "Por dentro" só com o vídeo configurado
 const LINKS = [
-  { id: "demonstracao", label: "Demonstração" },
+  ...(hasDemoVideo ? [{ id: VIDEO_SECTION_ID, label: "Por dentro" }] : []),
   { id: "como-funciona", label: "Como funciona" },
   { id: "planos", label: "Planos" },
 ];

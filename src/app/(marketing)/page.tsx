@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { ComoFunciona } from "@/features/marketing/sections/ComoFunciona";
 import { CtaFinal } from "@/features/marketing/sections/CtaFinal";
-import { Demonstracao } from "@/features/marketing/sections/Demonstracao";
 import { Diferenciais } from "@/features/marketing/sections/Diferenciais";
 import { DorSolucao } from "@/features/marketing/sections/DorSolucao";
 import { PorQueFecha } from "@/features/marketing/sections/PorQueFecha";
@@ -12,6 +11,7 @@ import { Hero } from "@/features/marketing/sections/Hero";
 import { Intro } from "@/features/marketing/sections/Intro";
 import { Navbar } from "@/features/marketing/sections/Navbar";
 import { Perguntas } from "@/features/marketing/sections/Perguntas";
+import { PorDentro } from "@/features/marketing/sections/PorDentro";
 import { Planos } from "@/features/marketing/sections/Planos";
 import { PlanProvider } from "@/features/marketing/state/PlanProvider";
 import { UrlSync } from "@/features/marketing/state/UrlSync";
@@ -37,7 +37,7 @@ export default function Home() {
         {/* cada dobra numa fronteira própria: a hidratação sai fatiada, sem tarefa longa */}
         <DorSolucao />
         <Suspense>
-          <Demonstracao />
+          <PorDentro />
         </Suspense>
         <Diferenciais />
         <Suspense>

@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
@@ -43,7 +45,17 @@ const landingTags = {
 // Site: GTM e Pixel da própria VYZ, só quando houver um ID configurado.
 const siteTags = process.env.NEXT_PUBLIC_GTM_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID ? landingTags : {};
 
+// Vídeo do site: o WebM de cada versão é opcional e só entra se o arquivo existir em public/ no build.
+const hasWebm = (url: string | undefined) => {
+  const path = url?.trim() ?? "";
+  return path.startsWith("/") && existsSync(join(process.cwd(), "public", path.replace(/\.mp4$/i, ".webm"))) ? "1" : "";
+};
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_DEMO_VIDEO_WEBM: hasWebm(process.env.NEXT_PUBLIC_DEMO_VIDEO_URL),
+    NEXT_PUBLIC_DEMO_VIDEO_MOBILE_WEBM: hasWebm(process.env.NEXT_PUBLIC_DEMO_VIDEO_MOBILE_URL),
+  },
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,

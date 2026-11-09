@@ -20,6 +20,33 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Vídeo "Veja por dentro" do site
+
+A dobra de vídeo só aparece com `NEXT_PUBLIC_DEMO_VIDEO_URL` definida. Sem ela, também somem o link "Ver por dentro" do hero, o item do menu e o "Ver funcionando". São duas versões, alternadas por CSS: 16:9 a partir de 640 px e 4:5 no celular. Só a visível carrega. A 4:5 é opcional: sem ela, o celular usa a 16:9.
+
+Para gerar os arquivos a partir dos vídeos brutos (precisa do `ffmpeg`, no Mac: `brew install ffmpeg`):
+
+```bash
+npm run video:prepare -- bruto-16x9.mov bruto-4x5.mov
+```
+
+Isso cria em `public/video/` (ou na pasta de `VIDEO_OUT`):
+
+| Arquivo | O que é |
+|---|---|
+| `vyz-por-dentro.mp4` e `vyz-por-dentro-celular.mp4` | H.264, alvo de até ~15 MB por minuto (16:9 até 1920x1080; 4:5 em 1080x1350, cortando pelo centro o que não couber) |
+| `vyz-por-dentro.webm` e `vyz-por-dentro-celular.webm` | VP9, opcionais: o site usa se o arquivo existir no build |
+| `vyz-por-dentro.jpg` e `vyz-por-dentro-celular.jpg` | as capas (frame dos 2 s) |
+
+Depois, defina no `.env.local` e na Vercel, e faça um novo build (os valores são lidos no build):
+
+```bash
+NEXT_PUBLIC_DEMO_VIDEO_URL=/video/vyz-por-dentro.mp4
+NEXT_PUBLIC_DEMO_VIDEO_MOBILE_URL=/video/vyz-por-dentro-celular.mp4
+```
+
+Os eventos no `dataLayer` são `video_inicio`, `video_som` e `video_fim`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
