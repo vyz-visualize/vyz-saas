@@ -82,7 +82,7 @@ function PlatformPanel({ provider, state, now, timeZone, onSelection }: PanelPro
           <p className="mt-1 text-[13.5px] text-fg-2">
             {login
               ? `Login: ${login.userName ?? login.userEmail ?? "conectado"}${enabled ? ` · ${enabled} ${enabled === 1 ? "conta ativa" : "contas ativas"}` : ""}`
-              : `Entre com o ${info.loginName}. O VYZ só lê os relatórios; não mexe nas campanhas.`}
+              : `Entre com o ${info.loginName}. O VYZ lê os relatórios e só altera campanhas quando você clica em Aplicar ou liga o automático.`}
           </p>
         </div>
         <ConnectButton provider={provider} next={RETURN_PATH} connected={p.connected} canManage={state.canManage} variant={p.connected ? "secondary" : "primary"} className="shrink-0 self-start" />

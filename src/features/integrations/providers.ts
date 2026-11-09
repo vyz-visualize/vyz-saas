@@ -43,7 +43,7 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     loginName: "Conta do Google",
     groupLabel: "Conta de administrador (MCC)",
     permissions: [
-      { scope: "https://www.googleapis.com/auth/adwords", label: "Acessar as suas contas do Google Ads", detail: "O VYZ só lê: campanhas, termos de pesquisa, produtos e métricas." },
+      { scope: "https://www.googleapis.com/auth/adwords", label: "Acessar as suas contas do Google Ads", detail: "O VYZ lê campanhas, termos de pesquisa, produtos e métricas, e só altera campanhas quando você clica em Aplicar ou liga o automático." },
       { scope: "openid email profile", label: "Ver seu nome e e-mail", detail: "Para mostrar qual login está conectado." },
     ],
   },

@@ -12,7 +12,7 @@ import { SnapCarousel } from "./SnapCarousel";
 import { ConnectArt, SendArt, TemplatesArt } from "./StepsArt";
 
 const STEPS = [
-  { title: "Conecte as contas.", text: "Meta Ads e Google Ads por login, só com permissão de leitura. GA4 em breve.", art: <ConnectArt /> },
+  { title: "Conecte as contas.", text: "Meta Ads e Google Ads pelo login oficial. O VYZ só muda algo nas campanhas quando você clica em Aplicar; o automático é opcional.", art: <ConnectArt /> },
   {
     title: "Escolha o modelo.",
     text: `De ${ENTITLEMENTS.base.dashboardTemplates} a ${ENTITLEMENTS.avancado.dashboardTemplates} modelos por nicho e objetivo, conforme o plano: e-commerce, leads, imobiliário, agência e outros.`,

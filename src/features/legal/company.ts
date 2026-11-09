@@ -8,7 +8,7 @@ export const COMPANY = {
   privacyEmail: "suporte@vyzualize.com.br",
   supportEmail: "suporte@vyzualize.com.br",
   site: "https://www.vyzualize.com.br",
-  updatedAt: "30 de outubro de 2026",
+  updatedAt: "9 de novembro de 2026",
 } as const;
 
 /** Ainda é um marcador ("[CNPJ]")? */

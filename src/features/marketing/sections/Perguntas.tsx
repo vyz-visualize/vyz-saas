@@ -13,7 +13,7 @@ const GROUPS: { title: string; items: Faq[] }[] = [
     items: [
       {
         q: "Preciso passar a senha das contas de anúncio?",
-        a: "Não. Você entra pela própria Meta e pelo Google e autoriza a leitura dos relatórios. O VYZ só lê: não cria, não pausa e não altera campanhas.",
+        a: "A conexão é pelo login oficial da Meta e do Google, sem passar senha, e autoriza leitura e alterações. Nada muda sem você clicar em Aplicar (pausar campanha ou ajustar orçamento diário). O automático é opcional, do plano Avançado, e vem desligado. Cada mudança fica registrada e pode ser desfeita em até 30 dias, se o valor não tiver mudado na plataforma. Você desconecta quando quiser.",
       },
       {
         q: "O meu cliente precisa criar conta?",

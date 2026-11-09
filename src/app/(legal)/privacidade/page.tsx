@@ -23,7 +23,7 @@ export default function Privacidade() {
       <ul>
         <li><strong>Cadastro:</strong> nome, e-mail, senha (guardada apenas como hash) e, se você entrar com Google ou Apple, o identificador e o e-mail fornecidos por esses serviços.</li>
         <li><strong>Empresa e cobrança:</strong> razão social ou nome, CPF ou CNPJ, endereço de cobrança, plano contratado e histórico de faturas. Os dados de pagamento são processados pelo parceiro de pagamentos ou pela loja de aplicativos; não armazenamos os dados completos do meio de pagamento.</li>
-        <li><strong>Contas de anúncio conectadas:</strong> quando você autoriza, recebemos das plataformas de anúncio (como Meta e Google) tokens de acesso e métricas das campanhas (investimento, impressões, cliques, conversões e receita). Os tokens ficam cifrados.</li>
+        <li><strong>Contas de anúncio conectadas:</strong> quando você autoriza, recebemos das plataformas de anúncio (como Meta e Google) tokens de acesso e métricas das campanhas (investimento, impressões, cliques, conversões e receita). Com esses tokens fazemos a leitura e as alterações autorizadas por você (pausar campanha ou ajustar orçamento diário), e cada alteração fica registrada. Os tokens ficam cifrados.</li>
         <li><strong>Conteúdo:</strong> dashboards, landing pages, logotipos e configurações que você cria.</li>
         <li><strong>Uso e segurança:</strong> endereço IP, tipo de navegador ou aparelho, data e hora de acesso, ações realizadas no Serviço e registros de login, mantidos para segurança e auditoria.</li>
         <li><strong>Aplicativo:</strong> token de notificação do aparelho (se você permitir notificações) e o registro das compras feitas pela loja de aplicativos.</li>
@@ -47,7 +47,7 @@ export default function Privacidade() {
         <li>hospedagem e banco de dados (infraestrutura em nuvem);</li>
         <li>processamento de pagamentos e gestão de assinaturas da loja de aplicativos;</li>
         <li>envio de e-mails e de notificações;</li>
-        <li>as plataformas de anúncio que você mesmo conectou, apenas para ler as métricas autorizadas.</li>
+        <li>as plataformas de anúncio que você mesmo conectou, para a leitura e as alterações autorizadas por você.</li>
       </ul>
       <p>Também podemos compartilhar dados quando exigido por lei ou por ordem de autoridade competente.</p>
 

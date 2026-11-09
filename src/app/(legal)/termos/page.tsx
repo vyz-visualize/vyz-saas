@@ -58,8 +58,9 @@ export default function Termos() {
 
       <h2>5. Integrações</h2>
       <p>
-        Ao conectar uma conta de anúncio, você declara ter autorização para acessá-la e nos permite ler as métricas necessárias. Você pode
-        desconectá-la a qualquer momento. Não respondemos por indisponibilidade, mudanças ou limites impostos por essas plataformas.
+        Ao conectar uma conta de anúncio, você declara ter autorização para acessá-la e nos permite a leitura e as alterações autorizadas por
+        você: ler as métricas necessárias e, quando você aplicar uma otimização ou ligar o automático, pausar campanhas e ajustar o orçamento
+        diário. Você pode desconectá-la a qualquer momento. Não respondemos por indisponibilidade, mudanças ou limites impostos por essas plataformas.
       </p>
 
       <h2>6. Uso aceitável</h2>
