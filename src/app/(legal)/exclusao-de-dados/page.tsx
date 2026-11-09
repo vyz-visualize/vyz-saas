@@ -48,6 +48,10 @@ export default function ExclusaoDeDados() {
       <h2>5. O que pode ficar</h2>
       <ul>
         <li><strong>Obrigações legais:</strong> faturas e dados fiscais, pelo prazo da legislação tributária (em geral, 5 anos), e registros de acesso, por no mínimo 6 meses, como exige o Marco Civil da Internet.</li>
+        <li>
+          <strong>Segurança:</strong> guardamos por até 5 anos o histórico de auditoria (o registro do que foi alterado e por quem), o histórico de atividade e o
+          registro de que você aceitou os termos.
+        </li>
         <li><strong>Workspaces com outros membros:</strong> seu acesso é removido e a propriedade passa a outro membro. Os dados do workspace continuam, porque também são da equipe; o novo dono pode pedir a exclusão deles.</li>
       </ul>
       <p>

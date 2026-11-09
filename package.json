@@ -13,7 +13,8 @@
     "db:new": "supabase migration new",
     "db:types": "tsx scripts/db/gen-types.ts",
     "db:catalog": "tsx scripts/db/sync-catalog.ts",
-    "video:prepare": "sh scripts/video/prepare.sh"
+    "video:prepare": "sh scripts/video/prepare.sh",
+    "admin:delete-account": "tsx scripts/admin/delete-account-data.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -30,6 +31,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24.19.2",
     "@types/react": "^19",

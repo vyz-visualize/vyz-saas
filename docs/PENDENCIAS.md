@@ -66,3 +66,11 @@ O que hoje funciona só no navegador e depende de backend, de integração ou de
 - **Visitas ao perfil**: `insights_ad_daily.profile_visits` existe, mas o campo real na API da Meta ainda vai ser confirmado. Hoje só o gerador simulado preenche.
 - **Fonte real**: as colunas novas de `insights_ad_daily`, `insights_campaign_daily` e `ads.post_url` só têm dados simulados até a importação real existir (`liveSource`, em `server/sync/source.ts`). Ao ligar: usar `readMetaActions` e confirmar se os percentuais de topo do Google vêm como fração (a coluna só aceita de 0 a 1).
 - **Data de início do anúncio**: o banco não guarda. "Dias veiculados" e "Dia 1" valem dentro do período selecionado.
+
+## Privacidade e exclusão de dados
+
+| Item | Como está hoje | O que falta |
+|---|---|---|
+| Retenção dos eventos de pagamento | `billing_events` (Stripe) e `store_events` (App Store e Play Store) guardam o `payload` inteiro de cada webhook, que pode ter nome, e-mail e endereço de quem pagou. Não há prazo: nada apaga essas linhas, nem a exclusão de conta | Definir o prazo (o fiscal, 5 anos, ou menos se o payload não for prova fiscal) e incluir na rotina de manutenção, ou guardar só os campos necessários |
+| "Excluir conta" no app | `prepare_account_deletion` passa a propriedade (ou encerra a assinatura) e tira a pessoa dos workspaces. Não apaga os workspaces de que ela era o único membro, nem revoga o acesso na Meta e no Google, nem remove os arquivos do Storage | Fazer o app seguir o mesmo caminho do script interno (`scripts/admin/delete-account-data.ts`): lógica em `server/admin/account-deletion.ts` e revogação em `server/admin/revoke-access.ts` |
+| Prazo do aceite dos termos | A página `/exclusao-de-dados` diz que o aceite fica por até 5 anos, mas `legal_acceptances` não é particionada e nenhuma rotina apaga as linhas antigas (auditoria: 5 anos; atividade: 13 meses; acessos: 2 anos) | Apagar os aceites com mais de 5 anos na rotina de manutenção, ou ajustar o texto |
