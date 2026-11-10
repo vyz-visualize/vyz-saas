@@ -84,10 +84,7 @@ function dashCard(tier: PlanId, period: Period): Card {
         "Tudo do Básico",
         `Até ${PLAN_PROJECTS.pro} projetos (clientes)`,
         `Até ${e.maxAccountsPerPlatform} contas por plataforma em cada projeto`,
-        <>
-          + TikTok Ads, LinkedIn Ads e CRMs (RD Station e HubSpot)
-          <SoonBadge />
-        </>,
+        "+ TikTok Ads, LinkedIn Ads e CRMs (RD Station e HubSpot)",
         "Criativos em galeria, com previews",
         `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,
       ],
@@ -100,10 +97,7 @@ function dashCard(tier: PlanId, period: Period): Card {
     features: [
       "Tudo do Padrão",
       `Até ${PLAN_PROJECTS.avancado} projetos (clientes)`,
-      <>
-        Todas as plataformas: + X, Spotify, Globo, ChatGPT, YouTube, Mercado e Shopee Ads
-        <SoonBadge />
-      </>,
+      "Todas as plataformas: + X, Spotify, Globo, ChatGPT, YouTube, Mercado e Shopee Ads",
       "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos",
       "MMM, análise preditiva, correlações e estatística avançada",
       `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,

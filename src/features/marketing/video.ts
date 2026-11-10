@@ -1,17 +1,24 @@
-// O vídeo "Veja por dentro": arquivos no próprio site (public/video), em duas versões: 16:9
-// (NEXT_PUBLIC_DEMO_VIDEO_URL) e, opcional, 4:5 para o celular (NEXT_PUBLIC_DEMO_VIDEO_MOBILE_URL).
-// Sem a primeira, a dobra, o link do hero, o item do menu e o "Ver funcionando" não aparecem.
-// O WebM de cada versão só entra se existir no build (next.config.ts).
+// O vídeo "Veja por dentro": os arquivos finais vêm prontos do projeto do vídeo e ficam em
+// public/video, com nomes fixos. Duas versões: 16:9 (vyz-por-dentro) e 4:5 para o celular
+// (vyz-por-dentro-celular), cada uma com MP4, WebM e capa em WebP e JPG.
+// O next.config.ts lista no build quais desses arquivos existem (NEXT_PUBLIC_DEMO_VIDEO_FILES).
+// Sem o MP4 e a capa JPG da 16:9, a dobra, o link do hero e o item do menu não aparecem.
 
-export type VideoSet = { mp4: string; webm: string | null; poster: string };
+export const VIDEO_DIR = "/video";
+export const VIDEO_NAMES = { wide: "vyz-por-dentro", tall: "vyz-por-dentro-celular" } as const;
+
+export type VideoSet = { mp4: string; webm: string | null; poster: { webp: string | null; jpg: string } };
 export type VideoSources = { wide: VideoSet; tall: VideoSet | null };
 
-/** As fontes a partir do MP4. Só caminho do próprio site: o CSP só libera vídeo daqui. */
-export function videoSet(url: string | undefined, hasWebm: boolean): VideoSet | null {
-  const path = url?.trim();
-  if (!path || !/^\/[^/].*\.mp4$/i.test(path)) return null;
-  const base = path.replace(/\.mp4$/i, "");
-  return { mp4: path, webm: hasWebm ? `${base}.webm` : null, poster: `${base}.jpg` };
+/** Uma versão, se o MP4 e a capa JPG existirem. O WebM e a capa WebP entram se existirem. */
+export function videoSet(name: string, has: (file: string) => boolean): VideoSet | null {
+  if (!has(`${name}.mp4`) || !has(`${name}.jpg`)) return null;
+  const url = (ext: string) => `${VIDEO_DIR}/${name}.${ext}`;
+  return {
+    mp4: url("mp4"),
+    webm: has(`${name}.webm`) ? url("webm") : null,
+    poster: { webp: has(`${name}.webp`) ? url("webp") : null, jpg: url("jpg") },
+  };
 }
 
 /** A versão 16:9 é a obrigatória; sem a 4:5, o celular usa a mesma. */
@@ -19,10 +26,14 @@ export function videoSources(wide: VideoSet | null, tall: VideoSet | null): Vide
   return wide ? { wide, tall } : null;
 }
 
-export const DEMO_VIDEO = videoSources(
-  videoSet(process.env.NEXT_PUBLIC_DEMO_VIDEO_URL, process.env.NEXT_PUBLIC_DEMO_VIDEO_WEBM === "1"),
-  videoSet(process.env.NEXT_PUBLIC_DEMO_VIDEO_MOBILE_URL, process.env.NEXT_PUBLIC_DEMO_VIDEO_MOBILE_WEBM === "1"),
-);
+/** As versões a partir da lista de arquivos presentes em public/video. */
+export function demoVideo(files: string | undefined): VideoSources | null {
+  const present = new Set((files ?? "").split(",").map((f) => f.trim()).filter(Boolean));
+  const has = (f: string) => present.has(f);
+  return videoSources(videoSet(VIDEO_NAMES.wide, has), videoSet(VIDEO_NAMES.tall, has));
+}
+
+export const DEMO_VIDEO = demoVideo(process.env.NEXT_PUBLIC_DEMO_VIDEO_FILES);
 export const hasDemoVideo = DEMO_VIDEO !== null;
 
 /** Âncora da dobra, usada pelo menu e pelos links. */

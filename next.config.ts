@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { NextConfig } from "next";
 
@@ -45,16 +45,14 @@ const landingTags = {
 // Site: GTM e Pixel da própria VYZ, só quando houver um ID configurado.
 const siteTags = process.env.NEXT_PUBLIC_GTM_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID ? landingTags : {};
 
-// Vídeo do site: o WebM de cada versão é opcional e só entra se o arquivo existir em public/ no build.
-const hasWebm = (url: string | undefined) => {
-  const path = url?.trim() ?? "";
-  return path.startsWith("/") && existsSync(join(process.cwd(), "public", path.replace(/\.mp4$/i, ".webm"))) ? "1" : "";
-};
+// Vídeo do site: os arquivos de public/video que existem no build (src/features/marketing/video.ts
+// decide a partir deles se a dobra, o link do hero e o item do menu aparecem).
+const videoDir = join(process.cwd(), "public", "video");
+const videoFiles = existsSync(videoDir) ? readdirSync(videoDir).filter((f) => /^vyz-por-dentro(-celular)?\.(mp4|webm|webp|jpg)$/.test(f)) : [];
 
 const nextConfig: NextConfig = {
   env: {
-    NEXT_PUBLIC_DEMO_VIDEO_WEBM: hasWebm(process.env.NEXT_PUBLIC_DEMO_VIDEO_URL),
-    NEXT_PUBLIC_DEMO_VIDEO_MOBILE_WEBM: hasWebm(process.env.NEXT_PUBLIC_DEMO_VIDEO_MOBILE_URL),
+    NEXT_PUBLIC_DEMO_VIDEO_FILES: videoFiles.join(","),
   },
   cacheComponents: true,
   partialPrefetching: true,

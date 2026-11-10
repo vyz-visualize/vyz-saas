@@ -2,21 +2,34 @@
 
 // O player da dobra "Veja por dentro". Duas versões, alternadas por CSS: 16:9 a partir de
 // 640 px e 4:5 no celular. Só a visível carrega; a outra fica com preload="none" e sem capa.
-// Antes de a dobra chegar perto, só a capa. Na dobra, toca sozinho e sem som (muted +
-// playsInline, exigido pelo Safari, iPhone e Chrome); fora dela, pausa e continua de onde
-// parou. "Ativar som" liga o som e os controles. Sem som fica em loop; com som, ao terminar
-// mostra "Ver planos". "Reduzir movimento", economia de dados ou autoplay bloqueado pelo
-// navegador: capa com botão de play.
+// Antes de a dobra chegar perto (e de a página terminar de carregar), só a capa. Na dobra,
+// toca sozinho e sem som (muted + playsInline, exigido pelo Safari, iPhone e Chrome); fora
+// dela, pausa e continua de onde parou. "Ativar som" liga o som e os controles. Sem som fica
+// em loop; com som, ao terminar mostra "Ver planos". "Reduzir movimento", economia de dados
+// ou autoplay bloqueado pelo navegador: capa com botão de play.
 
 import { ArrowRight, Play, RotateCcw, Volume2 } from "lucide-react";
 import { useInView, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { btn } from "@/components/ui/styles";
 import { track } from "@/features/marketing/track";
 import { shouldAutoplay, type VideoSet, type VideoSources } from "@/features/marketing/video";
 import { useHydrated, useSmUp } from "@/lib/hooks";
 
 const saveDataOn = () => !!(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+
+// A página terminou de carregar (evento load). Logo abaixo do hero, a dobra já nasce "perto":
+// o vídeo espera o load para não disputar a rede com o hero (LCP).
+const subscribeLoad = (cb: () => void) => {
+  window.addEventListener("load", cb);
+  return () => window.removeEventListener("load", cb);
+};
+const usePageLoaded = () =>
+  useSyncExternalStore(
+    subscribeLoad,
+    () => document.readyState === "complete",
+    () => false,
+  );
 
 type LayerProps = {
   set: VideoSet;
@@ -38,7 +51,7 @@ function VideoLayer({ set, videoRef, visible, className, playing, sound, allowed
       ref={videoRef}
       className={`absolute inset-0 size-full object-cover ${className}`}
       style={{ opacity: playing ? 1 : 0 }}
-      poster={visible ? set.poster : undefined}
+      poster={visible ? (set.poster.webp ?? set.poster.jpg) : undefined}
       muted={!sound}
       playsInline
       controls={sound && visible}
@@ -64,6 +77,7 @@ export function VideoPlayer({ sources }: { sources: VideoSources }) {
   const inView = useInView(box, { amount: 0.35 });
   const reduce = !!useReducedMotion();
   const hydrated = useHydrated();
+  const loaded = usePageLoaded();
   const smUp = useSmUp();
   const allowed = hydrated && shouldAutoplay({ reduced: reduce, saveData: saveDataOn() });
 
@@ -184,12 +198,15 @@ export function VideoPlayer({ sources }: { sources: VideoSources }) {
   return (
     // a altura vem da proporção de cada versão, pelo CSS: nada pula (CLS 0)
     <div ref={box} data-video-box className={`relative overflow-hidden rounded-card border border-line bg-deep ${tall ? "aspect-[4/5] sm:aspect-video" : "aspect-video"}`}>
-      {/* a capa: a única coisa que baixa antes de a dobra chegar perto. O <picture> só baixa a da versão visível. */}
+      {/* a capa: a única coisa que baixa antes de a dobra chegar perto. O <picture> só baixa a da
+          versão visível, em WebP (JPG para quem não lê WebP). */}
       <picture>
-        {tall && <source media="(max-width: 639.98px)" srcSet={tall.poster} />}
-        <img src={wide.poster} alt="" loading="lazy" decoding="async" className={`absolute inset-0 size-full object-cover transition-opacity duration-500 ${playing ? "opacity-0" : "opacity-100"}`} />
+        {tall?.poster.webp && <source media="(max-width: 639.98px)" type="image/webp" srcSet={tall.poster.webp} />}
+        {tall && <source media="(max-width: 639.98px)" srcSet={tall.poster.jpg} />}
+        {wide.poster.webp && <source type="image/webp" srcSet={wide.poster.webp} />}
+        <img src={wide.poster.jpg} alt="" loading="lazy" decoding="async" className={`absolute inset-0 size-full object-cover transition-opacity duration-500 ${playing ? "opacity-0" : "opacity-100"}`} />
       </picture>
-      {near && hydrated && (
+      {near && hydrated && loaded && (
         <>
           <VideoLayer set={wide} videoRef={wideRef} visible={!usingTall} className={tall ? "hidden sm:block" : ""} {...layer} />
           {tall && <VideoLayer set={tall} videoRef={tallRef} visible={usingTall} className="sm:hidden" {...layer} />}

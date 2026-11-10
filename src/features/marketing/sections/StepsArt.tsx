@@ -12,9 +12,9 @@ import { dashboardTemplate } from "@/features/templates/dashboards";
 // ---- passo 1: os dados correndo das contas até o painel ----------------------------------
 
 const LINES = [
-  { label: "Meta Ads", y: 52, live: true },
-  { label: "Google Ads", y: 120, live: true },
-  { label: "GA4 em breve", y: 188, live: false },
+  { label: "Meta Ads", y: 52 },
+  { label: "Google Ads", y: 120 },
+  { label: "GA4", y: 188 },
 ];
 const HUB = { x: 252, y: 40, w: 136, h: 160 };
 
@@ -26,21 +26,20 @@ const pct = (v: number, of: number) => `${(v / of) * 100}%`;
  */
 export function ConnectArt() {
   return (
-    <div className="flex h-full items-center justify-center" role="img" aria-label="Meta Ads e Google Ads conectados ao seu painel; GA4 e outras plataformas em breve">
+    <div className="flex h-full items-center justify-center" role="img" aria-label="Meta Ads, Google Ads, GA4 e outras plataformas de mídia digital conectadas ao seu painel">
       <div className="@container relative aspect-[400/240] max-h-full w-full max-w-full overflow-hidden" aria-hidden>
         <svg viewBox="0 0 400 240" className="absolute inset-0 h-full w-full">
           {LINES.map((l, i) => {
             const d = `M118,${l.y} C185,${l.y} 185,120 ${HUB.x},120`;
             return (
               <g key={l.label}>
-                <path d={d} fill="none" stroke={l.live ? "var(--accent)" : "var(--line)"} strokeWidth="1.6" strokeDasharray={l.live ? undefined : "4 5"} />
-                {l.live &&
-                  [0, 0.9].map((begin) => (
-                    <circle key={begin} r="3.4" fill="var(--accent)">
-                      <animateMotion dur="1.8s" begin={`${begin + i * 0.3}s`} repeatCount="indefinite" path={d} keyPoints="0;1" keyTimes="0;1" calcMode="linear" />
-                      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="1.8s" begin={`${begin + i * 0.3}s`} repeatCount="indefinite" />
-                    </circle>
-                  ))}
+                <path d={d} fill="none" stroke="var(--accent)" strokeWidth="1.6" />
+                {[0, 0.9].map((begin) => (
+                  <circle key={begin} r="3.4" fill="var(--accent)">
+                    <animateMotion dur="1.8s" begin={`${begin + i * 0.3}s`} repeatCount="indefinite" path={d} keyPoints="0;1" keyTimes="0;1" calcMode="linear" />
+                    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.85;1" dur="1.8s" begin={`${begin + i * 0.3}s`} repeatCount="indefinite" />
+                  </circle>
+                ))}
               </g>
             );
           })}
@@ -48,7 +47,7 @@ export function ConnectArt() {
         {LINES.map((l) => (
           <span
             key={l.label}
-            className={`absolute flex items-center justify-center rounded-full text-[3cqw] leading-none font-medium whitespace-nowrap ${l.live ? "bg-accent text-on-accent" : "soon-shimmer border border-line bg-card text-fg-2"}`}
+            className="absolute flex items-center justify-center rounded-full bg-accent text-[3cqw] leading-none font-medium whitespace-nowrap text-on-accent"
             style={{ left: 0, top: pct(l.y - 15, 240), width: pct(122, 400), height: pct(30, 240) }}
           >
             {l.label}
@@ -63,7 +62,7 @@ export function ConnectArt() {
               </span>
             ))}
           </div>
-          <span className="soon-shimmer relative mt-auto flex h-[5.4cqw] max-w-full items-center justify-center rounded-full border border-line text-[2.6cqw] whitespace-nowrap text-fg-2">Mais em breve</span>
+          <span className="relative mt-auto flex h-[5.4cqw] max-w-full items-center justify-center rounded-full border border-accent/40 bg-accent-soft/40 text-[2.6cqw] whitespace-nowrap text-fg">Mais plataformas</span>
         </div>
       </div>
     </div>

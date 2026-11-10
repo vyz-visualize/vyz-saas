@@ -33,8 +33,9 @@ export function Hero() {
 
           <Reveal trigger="intro" delay={520}>
             <p className="mt-7 max-w-[34rem] text-[17px] leading-relaxed text-fg-2">
-              Conecte Meta Ads e Google Ads por login e mande ao cliente um dashboard que ele entende: o número que decide o mês no topo e, com
-              um clique numa campanha, o painel inteiro filtra.
+              <strong className="font-semibold text-fg">Meta Ads</strong>, <strong className="font-semibold text-fg">Google Ads</strong>,{" "}
+              <strong className="font-semibold text-fg">TikTok Ads</strong> e outras plataformas de mídia digital, num painel só. Mande ao cliente
+              um dashboard que ele entende: com um clique numa campanha, o painel inteiro filtra.
               {SHOW_LANDING_PAGES && " Quando a campanha precisar de página, a landing page sai com o GTM configurado."}
             </p>
           </Reveal>

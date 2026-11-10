@@ -7,7 +7,7 @@ import { SHOW_LANDING_PAGES, SITE_INDEXABLE } from "@/lib/flags";
 
 const title = SHOW_LANDING_PAGES ? "VYZ · Vyzualize · Dashboards e landing pages para gestores de tráfego" : "VYZ · Vyzualize · Dashboards para gestores de tráfego";
 const description =
-  `Conecte Meta e Google por login e tenha o dashboard do seu cliente pronto, com CPA, ROAS e funil no topo.${SHOW_LANDING_PAGES ? " Landing pages com GTM configurado." : ""}`;
+  `Meta Ads, Google Ads, TikTok Ads e outras plataformas de mídia digital num painel só: o dashboard do seu cliente pronto, com CPA, ROAS e funil no topo.${SHOW_LANDING_PAGES ? " Landing pages com GTM configurado." : ""}`;
 
 const SHARE_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: title };
 

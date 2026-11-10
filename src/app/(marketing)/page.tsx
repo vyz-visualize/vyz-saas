@@ -3,7 +3,6 @@ import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { ComoFunciona } from "@/features/marketing/sections/ComoFunciona";
 import { CtaFinal } from "@/features/marketing/sections/CtaFinal";
 import { Diferenciais } from "@/features/marketing/sections/Diferenciais";
-import { DorSolucao } from "@/features/marketing/sections/DorSolucao";
 import { PorQueFecha } from "@/features/marketing/sections/PorQueFecha";
 import { Footer } from "@/features/marketing/sections/Footer";
 import { Hero } from "@/features/marketing/sections/Hero";
@@ -35,7 +34,6 @@ export default function Home() {
       <main id="conteudo">
         <Hero />
         {/* cada dobra numa fronteira própria: a hidratação sai fatiada, sem tarefa longa */}
-        <DorSolucao />
         <Suspense>
           <PorDentro />
         </Suspense>

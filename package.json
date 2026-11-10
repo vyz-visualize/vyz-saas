@@ -13,7 +13,6 @@
     "db:new": "supabase migration new",
     "db:types": "tsx scripts/db/gen-types.ts",
     "db:catalog": "tsx scripts/db/sync-catalog.ts",
-    "video:prepare": "sh scripts/video/prepare.sh",
     "admin:delete-account": "tsx scripts/admin/delete-account-data.ts"
   },
   "dependencies": {

@@ -22,28 +22,18 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## Vídeo "Veja por dentro" do site
 
-A dobra de vídeo só aparece com `NEXT_PUBLIC_DEMO_VIDEO_URL` definida. Sem ela, também somem o link "Ver por dentro" do hero, o item do menu e o "Ver funcionando". São duas versões, alternadas por CSS: 16:9 a partir de 640 px e 4:5 no celular. Só a visível carrega. A 4:5 é opcional: sem ela, o celular usa a 16:9.
+Os arquivos finais vêm prontos do projeto do vídeo (`vyz-video`, pasta `renders/final/`) e são só copiados, com os mesmos nomes, para `public/video/`. Aqui não se gera nem se converte nada.
 
-Para gerar os arquivos a partir dos vídeos brutos (precisa do `ffmpeg`, no Mac: `brew install ffmpeg`):
+| Arquivo | De onde vem | O que é |
+|---|---|---|
+| `vyz-por-dentro.mp4` e `.webm` | `renders/final/com-som/` | 16:9, 1920x1080, a partir de 640 px |
+| `vyz-por-dentro-celular.mp4` e `.webm` | `renders/final/com-som/` | 4:5, 1080x1350, no celular |
+| `vyz-por-dentro.webp` e `.jpg` | `renders/final/` | capa da 16:9 |
+| `vyz-por-dentro-celular.webp` e `.jpg` | `renders/final/` | capa da 4:5 |
 
-```bash
-npm run video:prepare -- bruto-16x9.mov bruto-4x5.mov
-```
+O build confere quais desses arquivos existem (`next.config.ts`) e não depende de variável de ambiente. Com o MP4 e a capa JPG da 16:9, aparecem a dobra, o link "Ver por dentro" do hero e o item do menu. A 4:5 é opcional: sem ela, o celular usa a 16:9. O WebM entra antes do MP4, e a capa WebP antes da JPG, quando existem. As duas versões são alternadas por CSS, e só a visível carrega.
 
-Isso cria em `public/video/` (ou na pasta de `VIDEO_OUT`):
-
-| Arquivo | O que é |
-|---|---|
-| `vyz-por-dentro.mp4` e `vyz-por-dentro-celular.mp4` | H.264, alvo de até ~15 MB por minuto (16:9 até 1920x1080; 4:5 em 1080x1350, cortando pelo centro o que não couber) |
-| `vyz-por-dentro.webm` e `vyz-por-dentro-celular.webm` | VP9, opcionais: o site usa se o arquivo existir no build |
-| `vyz-por-dentro.jpg` e `vyz-por-dentro-celular.jpg` | as capas (frame dos 2 s) |
-
-Depois, defina no `.env.local` e na Vercel, e faça um novo build (os valores são lidos no build):
-
-```bash
-NEXT_PUBLIC_DEMO_VIDEO_URL=/video/vyz-por-dentro.mp4
-NEXT_PUBLIC_DEMO_VIDEO_MOBILE_URL=/video/vyz-por-dentro-celular.mp4
-```
+Para trocar o vídeo, copie os novos arquivos por cima, com os mesmos nomes, e faça um novo build.
 
 Os eventos no `dataLayer` são `video_inicio`, `video_som` e `video_fim`.
 

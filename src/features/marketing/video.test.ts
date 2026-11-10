@@ -1,31 +1,50 @@
 import { describe, expect, it } from "vitest";
-import { shouldAutoplay, videoSet, videoSources } from "./video";
+import { demoVideo, shouldAutoplay } from "./video";
+
+const ALL = [
+  "vyz-por-dentro.mp4",
+  "vyz-por-dentro.webm",
+  "vyz-por-dentro.webp",
+  "vyz-por-dentro.jpg",
+  "vyz-por-dentro-celular.mp4",
+  "vyz-por-dentro-celular.webm",
+  "vyz-por-dentro-celular.webp",
+  "vyz-por-dentro-celular.jpg",
+];
+const without = (...out: string[]) => ALL.filter((f) => !out.includes(f)).join(",");
 
 describe("vídeo Veja por dentro", () => {
-  it("sem a variável (ou vazia), não há vídeo: a dobra e os links somem", () => {
-    expect(videoSet(undefined, false)).toBeNull();
-    expect(videoSet("", false)).toBeNull();
-    expect(videoSet("   ", false)).toBeNull();
-    expect(videoSources(null, null)).toBeNull();
+  it("sem arquivos em public/video, não há vídeo: a dobra e os links somem", () => {
+    expect(demoVideo(undefined)).toBeNull();
+    expect(demoVideo("")).toBeNull();
+    expect(demoVideo("outro.mp4,outro.jpg")).toBeNull();
   });
 
-  it("deriva a capa do caminho do MP4; o WebM só entra se existir", () => {
-    expect(videoSet("/video/vyz-por-dentro.mp4", false)).toEqual({ mp4: "/video/vyz-por-dentro.mp4", webm: null, poster: "/video/vyz-por-dentro.jpg" });
-    expect(videoSet("/video/vyz-por-dentro.mp4", true)?.webm).toBe("/video/vyz-por-dentro.webm");
+  it("com os arquivos finais, as duas versões com WebM e capa em WebP e JPG", () => {
+    expect(demoVideo(ALL.join(","))).toEqual({
+      wide: {
+        mp4: "/video/vyz-por-dentro.mp4",
+        webm: "/video/vyz-por-dentro.webm",
+        poster: { webp: "/video/vyz-por-dentro.webp", jpg: "/video/vyz-por-dentro.jpg" },
+      },
+      tall: {
+        mp4: "/video/vyz-por-dentro-celular.mp4",
+        webm: "/video/vyz-por-dentro-celular.webm",
+        poster: { webp: "/video/vyz-por-dentro-celular.webp", jpg: "/video/vyz-por-dentro-celular.jpg" },
+      },
+    });
   });
 
-  it("só aceita MP4 do próprio site (o CSP não libera outro endereço)", () => {
-    expect(videoSet("https://cdn.exemplo.com/a.mp4", false)).toBeNull();
-    expect(videoSet("//cdn.exemplo.com/a.mp4", false)).toBeNull();
-    expect(videoSet("/video/a.mov", false)).toBeNull();
+  it("WebM e capa WebP são opcionais", () => {
+    const v = demoVideo(without("vyz-por-dentro.webm", "vyz-por-dentro.webp"));
+    expect(v?.wide.webm).toBeNull();
+    expect(v?.wide.poster).toEqual({ webp: null, jpg: "/video/vyz-por-dentro.jpg" });
   });
 
-  it("a versão 16:9 é obrigatória; a 4:5 é opcional e sozinha não liga a dobra", () => {
-    const wide = videoSet("/video/a.mp4", true);
-    const tall = videoSet("/video/a-celular.mp4", true);
-    expect(videoSources(wide, null)).toEqual({ wide, tall: null });
-    expect(videoSources(wide, tall)).toEqual({ wide, tall });
-    expect(videoSources(null, tall)).toBeNull();
+  it("a 16:9 (MP4 e capa JPG) é obrigatória; a 4:5 é opcional e sozinha não liga a dobra", () => {
+    expect(demoVideo(without("vyz-por-dentro.mp4"))).toBeNull();
+    expect(demoVideo(without("vyz-por-dentro.jpg"))).toBeNull();
+    expect(demoVideo(without("vyz-por-dentro-celular.mp4"))?.tall).toBeNull();
   });
 
   it("'reduzir movimento' ou economia de dados: não toca sozinho", () => {

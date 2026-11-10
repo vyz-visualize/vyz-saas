@@ -23,8 +23,9 @@ export function Footer() {
   return (
     <footer className="relative overflow-hidden border-t border-line pt-16 pb-10">
       <div className="mx-auto max-w-[1360px] px-4 sm:px-6 lg:px-10">
-        {/* wordmark gigante: as metades do V e do Z se juntam e o corte reabre */}
-        <div ref={ref} className="wm-assemble" data-state={inView ? "play" : "idle"}>
+        {/* wordmark: as metades do V e do Z se juntam e o corte reabre. No celular, a largura toda;
+            no desktop, metade, centralizado */}
+        <div ref={ref} className="wm-assemble mx-auto lg:w-1/2" data-state={inView ? "play" : "idle"}>
           <Wordmark className="w-full text-accent" title="VYZ" />
         </div>
         <p className="mt-6 text-center text-[clamp(1rem,2.6vw,1.75rem)] font-medium tracking-[0.34em] text-fg" aria-hidden>

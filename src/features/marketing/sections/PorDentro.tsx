@@ -1,5 +1,5 @@
-// Dobra "Veja por dentro": o vídeo do produto, no lugar da demonstração. Sem o vídeo
-// configurado (NEXT_PUBLIC_DEMO_VIDEO_URL), a dobra não aparece.
+// Dobra "Veja por dentro": o vídeo do produto, no lugar da demonstração. Sem os arquivos
+// em public/video (ver video.ts), a dobra não aparece.
 
 import { CutReveal } from "@/components/motion/CutReveal";
 import { DEMO_VIDEO, VIDEO_SECTION_ID } from "@/features/marketing/video";
