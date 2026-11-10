@@ -26,7 +26,7 @@ Em todas as plataformas, use:
 | HubSpot | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
 | Pipedrive | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
 | Kommo | Login (OAuth) | Não | Login pronto no código; falta a integração e as credenciais |
-| Mercado Ads | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
+| Mercado Ads | Login (OAuth) | Não | Em breve (decisão de 10/11/2026): login pronto no código, app ainda não criado |
 | X Ads | Login (OAuth 1.0a) | Não | Depende de o X liberar a Ads API |
 | Shopee Ads | Planilha | Não | API só para parceiros aprovados |
 | Spotify Ads | Planilha | Não | Sem API aberta |
