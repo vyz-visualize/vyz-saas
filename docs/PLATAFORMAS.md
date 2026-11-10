@@ -16,22 +16,24 @@ Em todas as plataformas, use:
 
 | Plataforma | Como entra | Otimiza pela API | Situação no VYZ |
 |---|---|---|---|
-| Meta Ads | Login (OAuth) | Sim: pausar e orçamento | Código pronto, falta a aprovação do Meta |
-| Google Ads | Login (OAuth) | Sim: pausar e orçamento | Código pronto, falta a aprovação do Google |
+| Meta Ads | Login (OAuth) | Sim: pausar e orçamento | App "Vyzualize" (portfólio Vyzualize) criado em 10/11/2026, em modo desenvolvimento; falta a Análise do App (Acesso Avançado) |
+| Google Ads | Login (OAuth) | Sim: pausar e orçamento | No ar desde 10/11/2026 (nível Exploração da API); falta a verificação do app no Google |
 | YouTube | Pelo login do Google Ads | Sim (é Google Ads) | Igual ao Google Ads |
-| GA4 | Login do Google, só leitura | Não | A construir, com o mesmo cliente do Google |
-| TikTok Ads | Login (OAuth) | Sim: pausar e orçamento | A aplicação das mudanças já está no código; o login é construído depois da aprovação |
-| LinkedIn Ads | Login (OAuth) | Leitura primeiro | A construir depois da aprovação |
-| RD Station CRM | Login (OAuth) | Não | A construir |
-| HubSpot | Login (OAuth) | Não | A construir |
-| Mercado Ads | Login (OAuth) | Não | A construir |
+| GA4 | Login do Google, só leitura | Não | Login pronto no código, mesmo cliente do Google; Admin API e Data API ativadas |
+| TikTok Ads | Login (OAuth) | Sim: pausar e orçamento | Login pronto no código; falta o app aprovado e as credenciais |
+| LinkedIn Ads | Login (OAuth) | Leitura primeiro | Login pronto no código; falta o app aprovado e as credenciais |
+| RD Station CRM | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
+| HubSpot | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
+| Pipedrive | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
+| Kommo | Login (OAuth) | Não | Login pronto no código; falta a integração e as credenciais |
+| Mercado Ads | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
 | X Ads | Login (OAuth 1.0a) | Não | Depende de o X liberar a Ads API |
 | Shopee Ads | Planilha | Não | API só para parceiros aprovados |
 | Spotify Ads | Planilha | Não | Sem API aberta |
 | Globo Ads | Planilha ou relatório | Não | Sem API pública |
 | ChatGPT Ads | Planilha | Não | Sem API para anunciantes |
 
-Enquanto uma plataforma não tem o login construído, o cliente cadastra a conta pelo ID na tela Contas e o VYZ mostra como ela vai conectar.
+Com `INTEGRATIONS_MODE=live`, cada login só aparece na tela de Contas quando o par de credenciais dele está na Vercel. Enquanto isso, o cliente cadastra a conta pelo ID na tela Contas e o VYZ mostra como ela vai conectar.
 
 ## Meta Ads (inclui Instagram)
 
