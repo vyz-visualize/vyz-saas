@@ -13,7 +13,12 @@ export function PorDentro() {
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div>
             <p className="label-caps text-fg-2">Por dentro</p>
-            <CutReveal as="h2" id="por-dentro-title" className="display mt-4 text-[clamp(2.2rem,5vw,4rem)] text-fg" lines={["Veja por dentro."]} />
+            <CutReveal
+              as="h2"
+              id="por-dentro-title"
+              className="display mt-4 text-[clamp(2.2rem,5vw,4rem)] text-fg"
+              lines={["Veja por que estão", <span key="vyz" className="text-accent">aderindo ao VYZ.</span>]}
+            />
           </div>
           <span className="rounded-chip border border-line px-2.5 py-0.5 text-[12px] font-medium text-fg-2">Amostra · dados fictícios</span>
         </div>

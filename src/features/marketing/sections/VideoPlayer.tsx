@@ -38,6 +38,8 @@ type LayerProps = {
   className: string;
   playing: boolean;
   sound: boolean;
+  /** Tela final à mostra: sem os controles nativos, que cobririam os botões. */
+  ended: boolean;
   allowed: boolean;
   onPlaying: (v: HTMLVideoElement) => void;
   onPause: (v: HTMLVideoElement) => void;
@@ -45,7 +47,7 @@ type LayerProps = {
 };
 
 /** Uma versão do vídeo. A escondida não baixa nada: nem o vídeo, nem a capa. */
-function VideoLayer({ set, videoRef, visible, className, playing, sound, allowed, onPlaying, onPause, onEnded }: LayerProps) {
+function VideoLayer({ set, videoRef, visible, className, playing, sound, ended, allowed, onPlaying, onPause, onEnded }: LayerProps) {
   return (
     <video
       ref={videoRef}
@@ -54,7 +56,7 @@ function VideoLayer({ set, videoRef, visible, className, playing, sound, allowed
       poster={visible ? (set.poster.webp ?? set.poster.jpg) : undefined}
       muted={!sound}
       playsInline
-      controls={sound && visible}
+      controls={sound && visible && !ended}
       preload={visible && allowed ? "auto" : "none"}
       aria-label="Vídeo: o VYZ por dentro"
       aria-hidden={visible ? undefined : true}
@@ -194,7 +196,7 @@ export function VideoPlayer({ sources }: { sources: VideoSources }) {
     playSafe(v);
   };
 
-  const layer = { playing, sound, allowed, onPlaying, onPause, onEnded };
+  const layer = { playing, sound, ended, allowed, onPlaying, onPause, onEnded };
   return (
     // a altura vem da proporção de cada versão, pelo CSS: nada pula (CLS 0)
     <div ref={box} data-video-box className={`relative overflow-hidden rounded-card border border-line bg-deep ${tall ? "aspect-[4/5] sm:aspect-video" : "aspect-video"}`}>
@@ -233,15 +235,19 @@ export function VideoPlayer({ sources }: { sources: VideoSources }) {
         </button>
       )}
 
+      {/* tela final: um véu escurece o último quadro e os botões ficam no espaço abaixo do logo e
+          do "vyzualize.com.br" (no quadro, eles terminam em 72% da altura no 16:9 e em 69% no 4:5) */}
       {ended && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/65 p-4">
-          <a href="#planos" className={`${btn.primary} group`} data-track="cta_final" data-track-cta="video_ver_planos">
-            Ver planos
-            <ArrowRight size={18} aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5" />
-          </a>
-          <button type="button" onClick={again} className="inline-flex h-10 items-center gap-2 rounded-control px-3 text-[14px] font-medium text-white outline-none hover:underline focus-visible:ring-2 focus-visible:ring-offwhite">
-            <RotateCcw size={15} aria-hidden /> Assistir de novo
-          </button>
+        <div className="absolute inset-0 bg-black/60">
+          <div className={`absolute inset-x-0 bottom-0 flex flex-wrap content-center items-center justify-center gap-x-3 gap-y-1.5 px-3 pb-1 ${tall ? "top-[72%] sm:top-[76%]" : "top-[76%]"}`}>
+            <a href="#planos" className={`${btn.primary} group`} data-track="cta_final" data-track-cta="video_ver_planos">
+              Ver planos
+              <ArrowRight size={18} aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5" />
+            </a>
+            <button type="button" onClick={again} className="inline-flex h-10 items-center gap-2 rounded-control px-3 text-[14px] font-medium text-white outline-none hover:underline focus-visible:ring-2 focus-visible:ring-offwhite">
+              <RotateCcw size={15} aria-hidden /> Assistir de novo
+            </button>
+          </div>
         </div>
       )}
     </div>
