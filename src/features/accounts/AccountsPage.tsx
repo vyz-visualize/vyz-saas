@@ -193,7 +193,7 @@ export function AccountsPage({ state, manual, result, now, timeZone }: AccountsP
         {state.mock && <PendingChip label="Modo de teste" detail="Login e dados simulados: nenhuma conta real do Meta ou do Google é acessada. A conexão real depende das credenciais e da aprovação dos apps nas duas plataformas." />}
       </div>
 
-      {PROVIDER_IDS.map((p) => (
+      {state.providers.map((p) => (
         <ProviderSection
           key={p}
           provider={p}

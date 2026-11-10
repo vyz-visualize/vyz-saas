@@ -46,6 +46,21 @@ const Schema = z
     GOOGLE_OAUTH_CLIENT_ID: optional,
     GOOGLE_OAUTH_CLIENT_SECRET: optional,
     GOOGLE_ADS_DEVELOPER_TOKEN: optional,
+    /** Logins das demais plataformas (OAuth). Sem o par, o botão Conectar não aparece. */
+    TIKTOK_APP_ID: optional,
+    TIKTOK_APP_SECRET: optional,
+    LINKEDIN_CLIENT_ID: optional,
+    LINKEDIN_CLIENT_SECRET: optional,
+    MERCADO_CLIENT_ID: optional,
+    MERCADO_CLIENT_SECRET: optional,
+    RDSTATION_CLIENT_ID: optional,
+    RDSTATION_CLIENT_SECRET: optional,
+    HUBSPOT_CLIENT_ID: optional,
+    HUBSPOT_CLIENT_SECRET: optional,
+    PIPEDRIVE_CLIENT_ID: optional,
+    PIPEDRIVE_CLIENT_SECRET: optional,
+    KOMMO_CLIENT_ID: optional,
+    KOMMO_CLIENT_SECRET: optional,
     /** Push no iPhone (APNs): chave .p8 do Apple Developer (Keys), o Key ID e o Team ID. */
     APNS_KEY_ID: optional,
     APNS_TEAM_ID: optional,
@@ -73,9 +88,8 @@ const Schema = z
     if (env.BILLING_PROVIDER === "stripe" && (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET)) {
       ctx.addIssue({ code: "custom", message: "BILLING_PROVIDER=stripe exige STRIPE_SECRET_KEY e STRIPE_WEBHOOK_SECRET." });
     }
-    if (env.INTEGRATIONS_MODE === "live" && (!env.META_APP_ID || !env.META_APP_SECRET || !env.GOOGLE_OAUTH_CLIENT_ID || !env.GOOGLE_OAUTH_CLIENT_SECRET)) {
-      ctx.addIssue({ code: "custom", message: "INTEGRATIONS_MODE=live exige as credenciais do Meta e do Google." });
-    }
+    // Em live, cada login sem credencial só fica fora da tela (isProviderConfigured);
+    // os do Meta e do Google podem ser ligados um de cada vez.
   });
 
 export type ServerEnv = z.infer<typeof Schema>;

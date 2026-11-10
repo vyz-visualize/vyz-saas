@@ -9,7 +9,7 @@ import { useState, useTransition } from "react";
 import { LockBadge, PendingChip, SelectField, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { ConnectButton } from "@/features/integrations/ConnectButton";
-import { isProviderId, PROVIDERS } from "@/features/integrations/providers";
+import { CORE_PROVIDER_IDS, isProviderId, PROVIDERS } from "@/features/integrations/providers";
 import { availableIn, canUse, TIER_LABEL } from "@/features/pricing/entitlements";
 import type { Account } from "@/features/workspace/types";
 import { useWorkspace } from "@/features/workspace/workspace";
@@ -43,7 +43,7 @@ export function AccountForm({ platform: fixed, onSaved, onCancel, next }: Accoun
   const locked = !canUse(ws.tier, def.tier);
   const canManage = session ? hasRole(session.role, "admin") : false;
 
-  if (isProviderId(platform)) {
+  if (isProviderId(platform) && (CORE_PROVIDER_IDS as readonly string[]).includes(platform)) {
     return (
       <div className="space-y-3 rounded-card border border-line bg-card p-4 text-[14px]">
         <p>

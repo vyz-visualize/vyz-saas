@@ -172,7 +172,8 @@ export async function finishConnection(provider: ProviderId, params: URLSearchPa
     return fail(denied === "access_denied" ? "cancelado" : "provedor_recusou");
   }
 
-  const code = params.get("code");
+  // O TikTok devolve o código em auth_code; os demais, em code.
+  const code = params.get("code") ?? params.get("auth_code");
   if (!code || code.length > 2048) {
     await log("integration.connect_failed", { code: "troca_falhou" });
     return fail("troca_falhou");
@@ -180,7 +181,7 @@ export async function finishConnection(provider: ProviderId, params: URLSearchPa
 
   const oauth = getProvider(provider);
   try {
-    const tokens = await oauth.exchangeCode({ code, codeVerifier: row.code_verifier ?? undefined, redirectUri: callbackUri(origin, provider) });
+    const tokens = await oauth.exchangeCode({ code, codeVerifier: row.code_verifier ?? undefined, redirectUri: callbackUri(origin, provider), params });
     const [profile, accounts] = await Promise.all([oauth.fetchProfile(tokens.accessToken), oauth.listAccounts(tokens.accessToken)]);
     // Tokens vão direto para o Vault (integration_connect); nada fica em coluna comum.
     const connectionId = unwrap(

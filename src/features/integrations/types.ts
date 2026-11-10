@@ -76,6 +76,8 @@ export type PlatformConnectState = {
 
 export type ConnectState = {
   platforms: Record<ProviderId, PlatformConnectState>;
+  /** Logins mostrados na tela de contas (com credencial no servidor ou já conectados), na ordem. */
+  providers: ProviderId[];
   limit: {
     /** Projetos contratados. */
     accountsQuantity: number;

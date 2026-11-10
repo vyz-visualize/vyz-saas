@@ -11,7 +11,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { buildManualAccount, isManualPlatform } from "@/features/accounts/manual";
 import { PLATFORM_ORDER, PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
-import { isProviderId, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
+import { CORE_PROVIDER_IDS, isProviderId, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import type { SyncOutcome } from "@/features/integrations/types";
 import { canUse } from "@/features/pricing/entitlements";
 import { authorize } from "@/server/auth/workspace";
@@ -199,7 +199,8 @@ export async function addManualAccount(input: ManualAccountInput): Promise<Actio
     const parsed = ManualInput.safeParse(input);
     if (!parsed.success) throw appError("validation");
     const { platformId, name, values } = parsed.data;
-    if (isProviderId(platformId)) throw appError("integration:use_oauth", `${PROVIDERS[platformId].name} entra pelo botão Conectar, com o login da plataforma.`);
+    // Meta e Google só pelo login; as demais aceitam o cadastro pelo ID até a conexão.
+    if (isProviderId(platformId) && (CORE_PROVIDER_IDS as readonly string[]).includes(platformId)) throw appError("integration:use_oauth", `${PROVIDERS[platformId].name} entra pelo botão Conectar, com o login da plataforma.`);
     if (!isManualPlatform(platformId)) throw appError("validation");
 
     const session = await authorize("admin");

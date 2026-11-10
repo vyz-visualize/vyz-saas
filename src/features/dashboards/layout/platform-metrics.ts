@@ -93,13 +93,23 @@ export const PLATFORM_API: Record<PlatformId, PlatformApi> = {
   },
   rdstation: {
     status: "soon",
-    api: "RD Station CRM API (token)",
+    api: "RD Station CRM API (login OAuth)",
     metrics: [m("leads", "contacts"), m("qualified", "deals · qualificados"), m("conversions", "deals · win"), m("revenue", "deals · amount_total")],
   },
   hubspot: {
     status: "soon",
-    api: "HubSpot CRM API (token de app privado)",
+    api: "HubSpot CRM API (login OAuth)",
     metrics: [m("leads", "contacts"), m("qualified", "deals · dealstage"), m("conversions", "deals · closedwon"), m("revenue", "deals · amount")],
+  },
+  pipedrive: {
+    status: "soon",
+    api: "Pipedrive API (login OAuth)",
+    metrics: [m("leads", "persons"), m("qualified", "deals · open"), m("conversions", "deals · won"), m("revenue", "deals · value")],
+  },
+  kommo: {
+    status: "soon",
+    api: "Kommo API v4 (login OAuth)",
+    metrics: [m("leads", "contacts"), m("qualified", "leads · pipeline"), m("conversions", "leads · status 142"), m("revenue", "leads · price")],
   },
   x: { status: "soon", api: "X Ads API (stats)", metrics: [m("spend", "billed_charge_local_micro"), m("impressions", "impressions"), m("clicks", "clicks"), m("ctr", "clicks ÷ impressions")] },
   spotify: { status: "soon", api: "Spotify Ads API", metrics: [m("spend", "spend"), m("impressions", "impressions"), m("clicks", "clicks")] },

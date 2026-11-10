@@ -4,7 +4,7 @@
 // as mesmas funções.
 
 import { templateBusinessTypes } from "@/features/catalog/business-types";
-import { PROVIDER_IDS, type ProviderId } from "@/features/integrations/providers";
+import { CORE_PROVIDER_IDS, type ProviderId } from "@/features/integrations/providers";
 import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
@@ -40,7 +40,7 @@ export function canGoBackTo(current: OnboardingStep, target: OnboardingStep): bo
 }
 
 /** Plataformas que conectam por login agora (as outras aparecem como "em breve"). */
-export const CONNECTABLE: readonly ProviderId[] = PROVIDER_IDS;
+export const CONNECTABLE: readonly ProviderId[] = CORE_PROVIDER_IDS;
 export const isConnectable = (id: string): id is ProviderId => (CONNECTABLE as readonly string[]).includes(id);
 
 /** Plataformas que o layout usa e que conectam por login agora (Meta, Google). */

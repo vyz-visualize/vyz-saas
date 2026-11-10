@@ -8,7 +8,7 @@
 //                Sheets) ou relatório agendado; mudanças são manuais.
 //
 // status = em que pé está no VYZ:
-//   live        login pronto no código (falta só a aprovação da plataforma);
+//   live        login pronto no código (falta a credencial e/ou a aprovação da plataforma);
 //   planned     login a construir assim que a plataforma aprovar o app;
 //   restricted  API existe, mas o acesso depende de aprovação difícil;
 //   no_api      sem API para anunciantes hoje.
@@ -48,45 +48,57 @@ export const CONNECTIONS: Record<PlatformId, PlatformConnection> = {
   },
   ga4: {
     mode: "oauth_read",
-    status: "planned",
+    status: "live",
     writes: [],
-    note: "Login do Google, só leitura. Por enquanto, cadastre o ID da propriedade.",
+    note: "Login do Google, só leitura (propriedades do GA4).",
   },
   tiktok: {
     mode: "oauth_write",
-    status: "planned",
+    status: "live",
     writes: ["pausar e reativar campanha", "orçamento diário"],
-    note: "Login do TikTok em breve. Por enquanto, cadastre o Advertiser ID.",
+    note: "Login do TikTok: dados das contas de anúncio.",
   },
   linkedin: {
     mode: "oauth_read",
-    status: "planned",
+    status: "live",
     writes: [],
-    note: "Login do LinkedIn em breve (leitura). Por enquanto, cadastre o ID da conta.",
+    note: "Login do LinkedIn: dados das contas de anúncio (leitura).",
   },
   rdstation: {
     mode: "oauth_read",
-    status: "planned",
+    status: "live",
     writes: [],
-    note: "Login do RD Station em breve (leitura do CRM). Por enquanto, use o token.",
+    note: "Login do RD Station: leitura do CRM.",
   },
   hubspot: {
     mode: "oauth_read",
-    status: "planned",
+    status: "live",
     writes: [],
-    note: "Login do HubSpot em breve (leitura do CRM). Por enquanto, cadastre o Hub ID.",
+    note: "Login do HubSpot: leitura do CRM.",
+  },
+  pipedrive: {
+    mode: "oauth_read",
+    status: "live",
+    writes: [],
+    note: "Login do Pipedrive: leitura do CRM.",
+  },
+  kommo: {
+    mode: "oauth_read",
+    status: "live",
+    writes: [],
+    note: "Login do Kommo: leitura do CRM.",
   },
   crm: {
     mode: "import",
     status: "no_api",
     writes: [],
-    note: "Outros CRMs: os dados entram por planilha.",
+    note: "Outros CRMs: os dados entram por planilha (CSV ou Google Sheets).",
   },
   mercado: {
     mode: "oauth_read",
-    status: "planned",
+    status: "live",
     writes: [],
-    note: "Login do Mercado Livre em breve (relatórios do Product Ads).",
+    note: "Login do Mercado Livre: relatórios do Product Ads.",
   },
   x: {
     mode: "oauth_read",
