@@ -2,14 +2,15 @@ import "server-only";
 
 // De onde vêm os dados de uma conta. Conexão simulada → gerador determinístico
 // (src/features/sync/mock-generator.ts). Conexão real → APIs do Meta (Insights)
-// e do Google Ads (GAQL); ainda não implementadas: a fonte real avisa que não
-// está configurada e a sincronização falha com essa mensagem.
+// e do Google Ads (GAQL), em server/sync/live.
 
 import { PLATFORMS } from "@/features/accounts/platforms";
 import type { AccountDataset, SyncPlatform } from "@/features/sync/dataset";
 import { addDays, localDate, type SyncRange } from "@/features/sync/dates";
 import { generateAccountData } from "@/features/sync/mock-generator";
 import { appError } from "@/server/supabase/errors";
+import { fetchGoogleDataset } from "./live/google";
+import { fetchMetaDataset } from "./live/meta";
 
 export type SyncAccount = {
   id: string;
@@ -53,18 +54,16 @@ export const mockSource: SyncSource = {
   },
 };
 
-// Pendente: Meta → GET /act_<id>/insights (level=ad, time_increment=1, breakdowns
-// por público/posicionamento/dispositivo/região; eventos por readMetaActions, em
-// features/sync/meta-actions.ts: um campo por evento, sem contar em dobro) e
-// level=account só para o alcance da conta (accountDaily.reach: pessoas únicas,
-// não a soma das campanhas; a sincronização grava esse número depois do rollup); Google →
-// searchStream com GAQL (campaign, ad_group_ad, search_term_view,
-// shopping_performance_view, segments.device/hour). Os tokens saem de
-// readConnectionTokens (área integrations) e o resultado vira um AccountDataset.
+// Fonte real: Meta (Insights por campanha, anúncio e conta) e Google Ads (GAQL
+// por campanha e anúncio), em server/sync/live. Ainda sem: quebras por
+// público/posicionamento/dispositivo, termos de pesquisa e produtos (Shopping).
+// Os tokens saem de getValidAccessToken, que renova quando precisa.
 export const liveSource: SyncSource = {
   kind: "live",
-  async fetch(account) {
-    throw appError("sync:not_configured", `A importação de dados reais do ${PLATFORMS[account.platform].name} ainda não está configurada.`);
+  async fetch(account, range) {
+    if (account.platform === "meta") return fetchMetaDataset(account, range);
+    if (account.platform === "google") return fetchGoogleDataset(account, range);
+    throw appError("sync:not_configured", `A importação de dados reais do ${PLATFORMS[account.platform as keyof typeof PLATFORMS]?.name ?? account.platform} ainda não está configurada.`);
   },
 };
 
