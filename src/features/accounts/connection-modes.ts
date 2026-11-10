@@ -94,12 +94,6 @@ export const CONNECTIONS: Record<PlatformId, PlatformConnection> = {
     writes: [],
     note: "Outros CRMs: os dados entram por planilha (CSV ou Google Sheets).",
   },
-  mercado: {
-    mode: "oauth_read",
-    status: "live",
-    writes: [],
-    note: "Login do Mercado Livre: relatórios do Product Ads.",
-  },
   x: {
     mode: "oauth_read",
     status: "restricted",

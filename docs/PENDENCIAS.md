@@ -29,7 +29,7 @@ O que hoje funciona só no navegador e depende de backend, de integração ou de
 
 | Item | Como está hoje | Aviso no produto |
 |---|---|---|
-| Conexão das contas (OAuth Meta, Google Ads, GA4, TikTok, LinkedIn, Mercado Ads, Shopee, CRMs) | Cadastro por ID com validação de formato; status "Aguardando conexão" | "Conexão automática (OAuth) em breve" |
+| Conexão das contas (OAuth Meta, Google Ads, GA4, TikTok, LinkedIn, Shopee, CRMs) | Cadastro por ID com validação de formato; status "Aguardando conexão" | "Conexão automática (OAuth) em breve" |
 | Dados reais nos widgets | `MockSource` determinística (seed por dashboard). Criar `DbSource` com a interface `DataSource` (`src/features/metrics/source.ts`) | "Dados reais precisam de conexão" + "Amostra · dados fictícios" |
 | Venda deduplicada, CTR ponderado e maturação | Regras prontas em `features/metrics/compute.ts`, aplicadas aos dados de amostra | — |
 | Análise por áudio | Página "em breve" | "em breve" |

@@ -110,14 +110,13 @@ const PARAMS: Record<Profile, Params> = {
   video: { spendDay: [30000, 120000], cpa: [3, 12] },
 };
 
-const WEIGHT: Partial<Record<PlatformId, number>> = { meta: 0.55, google: 0.35, tiktok: 0.22, linkedin: 0.15, youtube: 0.4, mercado: 0.5, shopee: 0.4 };
+const WEIGHT: Partial<Record<PlatformId, number>> = { meta: 0.55, google: 0.35, tiktok: 0.22, linkedin: 0.15, youtube: 0.4, shopee: 0.4 };
 const CTR: Partial<Record<PlatformId, [number, number]>> = {
   meta: [0.011, 0.018],
   google: [0.035, 0.065],
   tiktok: [0.008, 0.012],
   linkedin: [0.005, 0.008],
   youtube: [0.004, 0.007],
-  mercado: [0.018, 0.026],
   shopee: [0.02, 0.03],
 };
 const CPM: Partial<Record<PlatformId, [number, number]>> = {
@@ -126,7 +125,6 @@ const CPM: Partial<Record<PlatformId, [number, number]>> = {
   tiktok: [800, 1600],
   linkedin: [6000, 11000],
   youtube: [900, 1800],
-  mercado: [1200, 2400],
   shopee: [1000, 2000],
 };
 

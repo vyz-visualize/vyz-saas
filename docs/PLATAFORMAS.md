@@ -26,7 +26,6 @@ Em todas as plataformas, use:
 | HubSpot | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
 | Pipedrive | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
 | Kommo | Login (OAuth) | Não | Login pronto no código; falta a integração e as credenciais |
-| Mercado Ads | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
 | X Ads | Login (OAuth 1.0a) | Não | Depende de o X liberar a Ads API |
 | Shopee Ads | Planilha | Não | API só para parceiros aprovados |
 | Spotify Ads | Planilha | Não | Sem API aberta |
@@ -104,14 +103,6 @@ Com `INTEGRATIONS_MODE=live`, cada login só aparece na tela de Contas quando o 
 1. No portal de desenvolvedor, crie um **app público**.
 2. Escopos: `crm.objects.deals.read`, `crm.objects.contacts.read` e `crm.schemas.deals.read`.
 3. Redirecionamento: `.../api/integrations/hubspot/callback`.
-
-## Mercado Ads (Mercado Livre)
-
-1. Em developers.mercadolivre.com.br (DevCenter), crie o app.
-2. Redirecionamento: `.../api/integrations/mercado/callback`.
-3. Escopos de leitura e acesso offline.
-
-Os relatórios do Product Ads saem por esse login. A API não oferece escrita confiável de orçamento, então o VYZ não aplica mudanças no Mercado Ads.
 
 ## X Ads
 

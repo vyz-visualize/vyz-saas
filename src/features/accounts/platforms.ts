@@ -12,7 +12,6 @@ export type PlatformId =
   | "kommo"
   | "crm"
   | "youtube"
-  | "mercado"
   | "shopee"
   | "x"
   | "spotify"
@@ -106,14 +105,6 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     kind: "ads",
     tier: "avancado",
     fields: [{ key: "account", label: "Customer ID do Google Ads", kind: "googleCustomer", placeholder: "123-456-7890" }],
-  },
-  mercado: {
-    id: "mercado",
-    name: "Mercado Ads",
-    short: "Mercado",
-    kind: "ads",
-    tier: "avancado",
-    fields: [{ key: "account", label: "ID do vendedor", kind: "digits", placeholder: "123456789" }],
   },
   shopee: {
     id: "shopee",
@@ -212,7 +203,6 @@ export const PLATFORM_ORDER: PlatformId[] = [
   "kommo",
   "crm",
   "youtube",
-  "mercado",
   "shopee",
   "x",
   "spotify",

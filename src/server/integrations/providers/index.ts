@@ -11,7 +11,6 @@ import { googleProvider } from "./google";
 import { hubspotProvider } from "./hubspot";
 import { kommoProvider } from "./kommo";
 import { linkedinProvider } from "./linkedin";
-import { mercadoProvider } from "./mercado";
 import { metaProvider } from "./meta";
 import { mockProvider } from "./mock";
 import { pipedriveProvider } from "./pipedrive";
@@ -25,7 +24,6 @@ const REAL: Record<ProviderId, () => OAuthProvider> = {
   ga4: ga4Provider,
   tiktok: tiktokProvider,
   linkedin: linkedinProvider,
-  mercado: mercadoProvider,
   rdstation: rdstationProvider,
   hubspot: hubspotProvider,
   pipedrive: pipedriveProvider,
@@ -39,7 +37,6 @@ const CREDENTIALS: Record<ProviderId, [keyof ServerEnv, keyof ServerEnv]> = {
   ga4: ["GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET"],
   tiktok: ["TIKTOK_APP_ID", "TIKTOK_APP_SECRET"],
   linkedin: ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET"],
-  mercado: ["MERCADO_CLIENT_ID", "MERCADO_CLIENT_SECRET"],
   rdstation: ["RDSTATION_CLIENT_ID", "RDSTATION_CLIENT_SECRET"],
   hubspot: ["HUBSPOT_CLIENT_ID", "HUBSPOT_CLIENT_SECRET"],
   pipedrive: ["PIPEDRIVE_CLIENT_ID", "PIPEDRIVE_CLIENT_SECRET"],

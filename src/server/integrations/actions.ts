@@ -130,14 +130,14 @@ export async function disconnect(connectionId: string): Promise<ActionResult> {
     const ws = session.workspace.id;
     const supabase = await createServerSupabase();
     const conn = unwrap(await supabase.from("connections").select("id, provider, is_mock").eq("id", connectionId).eq("workspace_id", ws).maybeSingle());
-    if (!conn) throw appError("integration:not_found");
+    if (!conn || !isProviderId(conn.provider)) throw appError("integration:not_found");
     const { count } = await supabase.from("ad_accounts").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("connection_id", conn.id).eq("is_enabled", true);
 
     // Chave de serviço: conexões e tokens não têm escrita para usuários (o Vault só abre
     // para o servidor). O papel admin neste workspace foi conferido acima.
     const ctx = await requestContext();
     const admin = createAdminSupabase({ actorId: session.user.id, forwardHeaders: ctx.forwardHeaders });
-    await revokeAtProvider(admin, conn);
+    await revokeAtProvider(admin, { ...conn, provider: conn.provider });
     unwrap(await admin.from("connections").delete().eq("id", conn.id).eq("workspace_id", ws));
 
     await logActivity({

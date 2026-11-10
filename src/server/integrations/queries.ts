@@ -7,7 +7,7 @@ import "server-only";
 import { cache } from "react";
 import type { PlatformId } from "@/features/accounts/platforms";
 import { countUnits } from "@/features/integrations/limits";
-import { PROVIDER_IDS, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
+import { isProviderId, PROVIDER_IDS, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import type { AdAccountDTO, AdAccountStatus, ConnectionDTO, ConnectionStatus, ConnectState, PlatformConnectState, SyncTrigger } from "@/features/integrations/types";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import { hasRole } from "@/features/workspace/session";
@@ -108,7 +108,8 @@ const loadConnections = cache(async (): Promise<ConnectionDTO[]> => {
   const people = ids.length ? (unwrap(await supabase.from("profiles").select("id, full_name, email").in("id", ids)) ?? []) : [];
   const nameOf = new Map(people.map((p) => [p.id, p.full_name || p.email]));
 
-  return rows.map((r) => ({
+  // O enum do banco guarda valores de provedores retirados (ex.: mercado): ficam fora da tela.
+  return rows.flatMap((r) => (isProviderId(r.provider) ? [{ ...r, provider: r.provider }] : [])).map((r) => ({
     id: r.id,
     provider: r.provider,
     status: r.status as ConnectionStatus,

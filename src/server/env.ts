@@ -51,8 +51,6 @@ const Schema = z
     TIKTOK_APP_SECRET: optional,
     LINKEDIN_CLIENT_ID: optional,
     LINKEDIN_CLIENT_SECRET: optional,
-    MERCADO_CLIENT_ID: optional,
-    MERCADO_CLIENT_SECRET: optional,
     RDSTATION_CLIENT_ID: optional,
     RDSTATION_CLIENT_SECRET: optional,
     HUBSPOT_CLIENT_ID: optional,

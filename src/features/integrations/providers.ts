@@ -4,7 +4,7 @@
 
 import type { PlatformId } from "@/features/accounts/platforms";
 
-export const PROVIDER_IDS = ["meta", "google", "ga4", "tiktok", "linkedin", "mercado", "rdstation", "hubspot", "pipedrive", "kommo"] as const;
+export const PROVIDER_IDS = ["meta", "google", "ga4", "tiktok", "linkedin", "rdstation", "hubspot", "pipedrive", "kommo"] as const;
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
 /** Os dois logins principais: aparecem sempre (onboarding, início, tela de contas). */
@@ -79,14 +79,6 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
       { scope: "r_ads r_ads_reporting", label: "Ler as contas e os relatórios de anúncios", detail: "Campanhas e métricas das contas de anúncios em que você tem acesso. Só leitura." },
       { scope: "openid profile email", label: "Ver seu nome e e-mail", detail: "Para mostrar qual login está conectado." },
     ],
-  },
-  mercado: {
-    id: "mercado",
-    platformId: "mercado",
-    name: "Mercado Ads",
-    loginName: "Mercado Livre",
-    groupLabel: "Anunciantes",
-    permissions: [{ scope: "read offline_access", label: "Ler os relatórios do Product Ads", detail: "Campanhas, anúncios e métricas do Mercado Ads. Só leitura." }],
   },
   rdstation: {
     id: "rdstation",

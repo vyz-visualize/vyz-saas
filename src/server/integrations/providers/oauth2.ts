@@ -3,7 +3,7 @@ import "server-only";
 // Peças comuns aos logins OAuth 2.0 "padrão" (código de autorização + troca no
 // servidor): credenciais por variável de ambiente, resposta de token e o
 // formato das contas vistas pelo login. Usado pelos provedores além de Meta e
-// Google (GA4, TikTok, LinkedIn, Mercado Livre e os CRMs).
+// Google (GA4, TikTok, LinkedIn e os CRMs).
 
 import type { ProviderId } from "@/features/integrations/providers";
 import { serverEnv, type ServerEnv } from "@/server/env";

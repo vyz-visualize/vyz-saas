@@ -76,11 +76,6 @@ export const PLATFORM_API: Record<PlatformId, PlatformApi> = {
     api: "LinkedIn Marketing API (adAnalytics)",
     metrics: [m("spend", "costInLocalCurrency"), m("impressions", "impressions"), m("clicks", "clicks"), m("ctr", "clicks ÷ impressions"), m("cpc", "cost ÷ clicks"), m("cpm", "cost ÷ impressions × 1000"), m("leads", "oneClickLeads"), m("cpl", "cost ÷ oneClickLeads"), m("conversions", "externalWebsiteConversions")],
   },
-  mercado: {
-    status: "soon",
-    api: "Mercado Ads API",
-    metrics: [m("spend", "cost"), m("impressions", "prints"), m("clicks", "clicks"), m("ctr", "ctr"), m("cpc", "cpc"), m("conversions", "units_quantity"), m("revenue", "total_amount"), m("roas", "roas")],
-  },
   shopee: {
     status: "soon",
     api: "Shopee Ads (Open Platform)",
