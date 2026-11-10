@@ -13,7 +13,7 @@ import "server-only";
 //   Ainda sem login do TikTok no VYZ: a conexão não existe, a ação não aparece.
 
 import type { OptimizationAction } from "@/features/optimize/actions";
-import { ADS, developerToken } from "@/server/integrations/providers/google";
+import { ADS, adsHeaders } from "@/server/integrations/providers/google";
 import { fetchJson } from "@/server/integrations/providers/http";
 import { graph } from "@/server/integrations/providers/meta";
 import { getValidAccessToken } from "@/server/integrations/tokens";
@@ -103,12 +103,10 @@ async function applyGoogle(action: OptimizationAction, t: ExecTarget) {
   const token = await getValidAccessToken(t.connectionId);
   const customer = t.accountExternalId.replace(/-/g, "");
   if (!/^\d{10}$/.test(customer) || !/^\d+$/.test(t.campaignExternalId)) throw new ExecError("Conta ou campanha do Google Ads inválida.");
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    "developer-token": developerToken(),
+  const headers = adsHeaders(token, {
     "login-customer-id": t.loginCustomerId ?? customer,
     "Content-Type": "application/json",
-  };
+  });
   const query = `SELECT campaign.resource_name, campaign.status, campaign.campaign_budget, campaign_budget.amount_micros, campaign_budget.explicitly_shared FROM campaign WHERE campaign.id = ${t.campaignExternalId}`;
   const res = await fetchJson<{ results?: GoogleRow[] }>(`${ADS}/customers/${customer}/googleAds:search`, {
     method: "POST",
