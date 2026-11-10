@@ -4009,7 +4009,7 @@ export type Database = {
       billing_provider: "mock" | "stripe" | "app_store" | "play_store"
       checkout_status: "open" | "completed" | "expired" | "canceled"
       connection_status: "active" | "expired" | "revoked" | "error"
-      integration_provider: "meta" | "google"
+      integration_provider: "meta" | "google" | "ga4" | "tiktok" | "linkedin" | "mercado" | "rdstation" | "hubspot" | "pipedrive" | "kommo"
       invoice_status: "draft" | "open" | "paid" | "void" | "uncollectible"
       landing_status: "draft" | "published" | "archived"
       member_role: "viewer" | "member" | "admin" | "owner"
@@ -4043,7 +4043,7 @@ export const Constants = {
       billing_provider: ["mock", "stripe", "app_store", "play_store"],
       checkout_status: ["open", "completed", "expired", "canceled"],
       connection_status: ["active", "expired", "revoked", "error"],
-      integration_provider: ["meta", "google"],
+      integration_provider: ["meta", "google", "ga4", "tiktok", "linkedin", "mercado", "rdstation", "hubspot", "pipedrive", "kommo"],
       invoice_status: ["draft", "open", "paid", "void", "uncollectible"],
       landing_status: ["draft", "published", "archived"],
       member_role: ["viewer", "member", "admin", "owner"],

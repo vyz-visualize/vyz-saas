@@ -9,8 +9,9 @@ import "server-only";
 //     redirecionamento autorizado, e a Google Ads API ativada no projeto;
 //   - tela de consentimento publicada e verificada para o escopo restrito
 //     .../auth/adwords (sem isso só usuários de teste conseguem entrar);
-//   - developer token do Google Ads (GOOGLE_ADS_DEVELOPER_TOKEN) com acesso
-//     básico ou padrão (o de teste só enxerga contas de teste).
+//   - nível de acesso da Google Ads API no projeto do Cloud (Exploração ou
+//     acima; o de teste só enxerga contas de teste). O developer token é
+//     opcional (GOOGLE_ADS_DEVELOPER_TOKEN), só para quem ainda usa.
 // Docs: developers.google.com/identity/protocols/oauth2/web-server,
 // .../identity/protocols/oauth2/native-app (PKCE),
 // .../google-ads/api/docs/account-management/listing-accounts,
@@ -60,10 +61,15 @@ function credentials() {
   return { clientId: env.GOOGLE_OAUTH_CLIENT_ID, clientSecret: env.GOOGLE_OAUTH_CLIENT_SECRET };
 }
 
-export function developerToken(): string {
+/**
+ * Cabeçalhos da Google Ads API. O acesso agora é do projeto do Google Cloud
+ * (níveis gerenciados no Cloud, sem developer token): o developer-token só vai
+ * se GOOGLE_ADS_DEVELOPER_TOKEN estiver definido (contas antigas).
+ * Docs: developers.google.com/google-ads/api/docs/concepts/no-developer-token
+ */
+export function adsHeaders(accessToken: string, extra: Record<string, string> = {}): Record<string, string> {
   const token = serverEnv().GOOGLE_ADS_DEVELOPER_TOKEN;
-  if (!token) throw new ProviderError("nao_configurado", "Google: falta GOOGLE_ADS_DEVELOPER_TOKEN");
-  return token;
+  return { Authorization: `Bearer ${accessToken}`, ...(token ? { "developer-token": token } : {}), ...extra };
 }
 
 /** 1234567890 → 123-456-7890 (formato do cadastro manual). */
@@ -147,7 +153,7 @@ export function googleProvider(): OAuthProvider {
     },
 
     async listAccounts(accessToken) {
-      const headers = { Authorization: `Bearer ${accessToken}`, "developer-token": developerToken() };
+      const headers = adsHeaders(accessToken);
       // Só as contas que o login acessa direto (ignora login-customer-id).
       const list = await fetchJson<{ resourceNames?: string[] }>(`${ADS}/customers:listAccessibleCustomers`, { headers, label: "Google: contas acessíveis" });
       const roots = (list.resourceNames ?? [])

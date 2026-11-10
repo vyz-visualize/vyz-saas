@@ -8,6 +8,8 @@ export type PlatformId =
   | "linkedin"
   | "rdstation"
   | "hubspot"
+  | "pipedrive"
+  | "kommo"
   | "crm"
   | "youtube"
   | "mercado"
@@ -138,7 +140,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     short: "RD",
     kind: "crm",
     tier: "pro",
-    fields: [{ key: "account", label: "Token da API", kind: "text", placeholder: "Token do RD Station CRM", hint: "Em Perfil > Token da instância, no RD Station CRM." }],
+    fields: [{ key: "account", label: "ID da conta", kind: "text", placeholder: "Ex.: 5f1a2b3c4d", hint: "Melhor conectar pelo login do RD Station. Nunca cole o token aqui." }],
   },
   hubspot: {
     id: "hubspot",
@@ -147,6 +149,22 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     kind: "crm",
     tier: "pro",
     fields: [{ key: "account", label: "ID do portal (Hub ID)", kind: "digits", placeholder: "4512345" }],
+  },
+  pipedrive: {
+    id: "pipedrive",
+    name: "Pipedrive",
+    short: "Pipedrive",
+    kind: "crm",
+    tier: "pro",
+    fields: [{ key: "account", label: "ID da empresa no Pipedrive", kind: "digits", placeholder: "1234567" }],
+  },
+  kommo: {
+    id: "kommo",
+    name: "Kommo",
+    short: "Kommo",
+    kind: "crm",
+    tier: "pro",
+    fields: [{ key: "account", label: "Subdomínio da conta", kind: "text", placeholder: "minhaempresa (de minhaempresa.kommo.com)" }],
   },
   x: {
     id: "x",
@@ -190,6 +208,8 @@ export const PLATFORM_ORDER: PlatformId[] = [
   "linkedin",
   "rdstation",
   "hubspot",
+  "pipedrive",
+  "kommo",
   "crm",
   "youtube",
   "mercado",

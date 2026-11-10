@@ -14,6 +14,7 @@ import { hasRole } from "@/features/workspace/session";
 import { listProjects } from "@/server/projects/queries";
 import { getWorkspaceSession } from "@/server/auth/workspace";
 import { isMockIntegrations } from "@/server/env";
+import { isProviderConfigured } from "./providers";
 import { appError, unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 
@@ -156,6 +157,8 @@ export async function getConnectState(): Promise<ConnectState> {
 
   return {
     platforms: Object.fromEntries(PROVIDER_IDS.map((p) => [p, platform(p)])) as Record<ProviderId, PlatformConnectState>,
+    // Logins que aparecem na tela: com credencial no servidor, ou com conexão já feita.
+    providers: PROVIDER_IDS.filter((p) => isProviderConfigured(p) || connections.some((c) => c.provider === p)),
     limit: {
       accountsQuantity: session.access.accountsQuantity,
       billableAccounts: countUnits(accounts.filter((a) => a.isEnabled)),

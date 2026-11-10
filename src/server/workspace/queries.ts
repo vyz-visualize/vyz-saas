@@ -5,7 +5,7 @@ import "server-only";
 // atividade do workspace). DTOs no formato da tela, sem IP de terceiros nem
 // linhas cruas da auditoria.
 
-import { PROVIDER_IDS, PROVIDERS } from "@/features/integrations/providers";
+import { CORE_PROVIDER_IDS, PROVIDERS } from "@/features/integrations/providers";
 import { anyDashboardTemplate } from "@/features/templates/live";
 import { landingTemplate } from "@/features/templates/landing-pages";
 import type { AccessEvent, ActivityItem, HomeConnection, HomeData, SettingsData, TeamMember } from "@/features/workspace/dto";
@@ -60,7 +60,7 @@ export async function getHomeData(): Promise<HomeData> {
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 5);
 
-  const connections: HomeConnection[] = PROVIDER_IDS.map((p) => {
+  const connections: HomeConnection[] = CORE_PROVIDER_IDS.map((p) => {
     const state = connect.platforms[p];
     const enabled = state.accounts.filter((a) => a.isEnabled);
     const synced = enabled.map((a) => a.lastSyncedAt).filter((v): v is string => !!v);

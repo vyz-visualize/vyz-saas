@@ -14,7 +14,7 @@ import { AccountPicker } from "@/features/integrations/AccountPicker";
 import { ConnectButton } from "@/features/integrations/ConnectButton";
 import { ConnectionCard } from "@/features/integrations/ConnectionCard";
 import { MOCK_NOTICE } from "@/features/integrations/mock-data";
-import { PROVIDER_IDS, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
+import { PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import type { ConnectResult } from "@/features/integrations/results";
 import type { AdAccountDTO, ConnectState } from "@/features/integrations/types";
 import { btnSmallDanger } from "@/features/integrations/ui";
@@ -193,7 +193,7 @@ export function AccountsPage({ state, manual, result, now, timeZone }: AccountsP
         {state.mock && <PendingChip label="Modo de teste" detail="Login e dados simulados: nenhuma conta real do Meta ou do Google é acessada. A conexão real depende das credenciais e da aprovação dos apps nas duas plataformas." />}
       </div>
 
-      {PROVIDER_IDS.map((p) => (
+      {state.providers.map((p) => (
         <ProviderSection
           key={p}
           provider={p}

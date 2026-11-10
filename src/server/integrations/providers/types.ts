@@ -1,7 +1,8 @@
 import "server-only";
 
-// Contrato de um provedor de login (OAuth) de plataforma de anúncios. Três
-// implementações: mock (simulada, sem credenciais), meta e google (reais).
+// Contrato de um provedor de login (OAuth) de plataforma (anúncios, GA4 e
+// CRMs). Implementações: mock (simulada, sem credenciais) e uma real por
+// provedor em providers/<id>.ts.
 
 import type { ProviderId } from "@/features/integrations/providers";
 import type { ConnectErrorCode } from "@/features/integrations/results";
@@ -44,7 +45,7 @@ export interface OAuthProvider {
   readonly usesPkce: boolean;
   /** Para onde mandar o usuário dar o consentimento. */
   authorizeUrl(input: { state: string; codeChallenge?: string; redirectUri: string }): string;
-  exchangeCode(input: { code: string; codeVerifier?: string; redirectUri: string }): Promise<OAuthTokens>;
+  exchangeCode(input: { code: string; codeVerifier?: string; redirectUri: string; /** Parâmetros do retorno (ex.: referer do Kommo). */ params?: URLSearchParams }): Promise<OAuthTokens>;
   fetchProfile(accessToken: string): Promise<ProviderProfile>;
   listAccounts(accessToken: string): Promise<DiscoveredAccount[]>;
   /** Novo access token a partir do refresh token (Google). */

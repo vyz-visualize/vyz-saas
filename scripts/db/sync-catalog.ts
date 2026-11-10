@@ -9,6 +9,7 @@
 
 import postgres from "postgres";
 import { PLATFORMS, PLATFORM_ORDER, type PlatformId } from "@/features/accounts/platforms";
+import { PROVIDER_IDS, type ProviderId } from "@/features/integrations/providers";
 import { BUSINESS_TYPES, templateBusinessTypes } from "@/features/catalog/business-types";
 import { BILLING_ITEMS, INTERVAL, planPriceId } from "@/features/pricing/catalog";
 import { ENTITLEMENTS, TIER_LABEL, TIERS } from "@/features/pricing/entitlements";
@@ -23,8 +24,9 @@ if (!url) throw new Error("SUPABASE_DB_URL não definido (.env.local)");
 
 const PRICED: PlanId[] = ["base", "pro", "avancado"];
 const PERIODS: Period[] = ["mensal", "anual"];
-const OAUTH: Partial<Record<PlatformId, "meta" | "google">> = { meta: "meta", google: "google", ga4: "google", youtube: "google" };
-const CONNECT_READY: PlatformId[] = ["meta", "google"];
+// Login que conecta cada plataforma (o YouTube entra pelo login do Google Ads).
+const OAUTH: Partial<Record<PlatformId, ProviderId>> = { ...Object.fromEntries(PROVIDER_IDS.map((p) => [p, p])), youtube: "google" };
+const CONNECT_READY: PlatformId[] = [...PROVIDER_IDS];
 
 async function main() {
   const sql = postgres(url!, { ssl: "require", max: 1, prepare: false, onnotice: () => {} });
