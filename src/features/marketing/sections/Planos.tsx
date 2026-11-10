@@ -97,7 +97,7 @@ function dashCard(tier: PlanId, period: Period): Card {
     features: [
       "Tudo do Padrão",
       `Até ${PLAN_PROJECTS.avancado} projetos (clientes)`,
-      "Todas as plataformas: + X, Spotify, Globo, ChatGPT, YouTube, Mercado e Shopee Ads",
+      "Todas as plataformas: + X, Spotify, Globo, ChatGPT, YouTube, Shopee Ads e Mercado Ads (em breve)",
       "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos",
       "MMM, análise preditiva, correlações e estatística avançada",
       `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,

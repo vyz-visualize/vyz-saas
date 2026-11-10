@@ -101,7 +101,7 @@ export const LIMIT_ROWS: { label: string; value: (t: Tier) => string }[] = [
       ({
         base: "Meta Ads, Google Ads e GA4",
         pro: "+ TikTok, LinkedIn, RD Station e HubSpot",
-        avancado: "todas: + X, Spotify, Globo, ChatGPT, YouTube, Mercado e Shopee",
+        avancado: "todas: + X, Spotify, Globo, ChatGPT, YouTube, Shopee e Mercado (em breve)",
         personalizado: "todas",
       })[t],
   },

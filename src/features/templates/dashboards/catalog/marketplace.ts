@@ -2,7 +2,7 @@ import type { DashboardTemplate } from "../../types";
 
 export default {
   id: "marketplace",
-  name: "Marketplace · Mercado Ads e Shopee",
+  name: "Marketplace · Shopee e Mercado Ads (em breve)",
   category: "E-commerce",
   tier: "avancado",
   profile: "marketplace",

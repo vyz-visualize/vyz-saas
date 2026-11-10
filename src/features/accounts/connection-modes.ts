@@ -96,9 +96,9 @@ export const CONNECTIONS: Record<PlatformId, PlatformConnection> = {
   },
   mercado: {
     mode: "oauth_read",
-    status: "live",
+    status: "planned",
     writes: [],
-    note: "Login do Mercado Livre: relatórios do Product Ads.",
+    note: "Mercado Ads em breve. Por enquanto, cadastre o ID do vendedor.",
   },
   x: {
     mode: "oauth_read",
