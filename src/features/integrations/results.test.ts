@@ -43,10 +43,10 @@ describe("resultado na URL", () => {
   it("lê sucesso e erro conhecidos; ignora o resto", () => {
     expect(connectResult({ conectado: "meta" })).toMatchObject({ kind: "connected", provider: "meta" });
     expect(connectResult({ erro: "cancelado", provedor: "google" })).toMatchObject({ kind: "error", code: "cancelado", provider: "google" });
-    expect(connectResult({ erro: "cancelado", provedor: "tiktok" })).toMatchObject({ kind: "error", provider: null });
+    expect(connectResult({ erro: "cancelado", provedor: "shopee" })).toMatchObject({ kind: "error", provider: null });
     expect(connectResult({ erro: "<script>" })).toBeNull();
     expect(connectResult({ erro: "toString" })).toBeNull();
-    expect(connectResult({ conectado: "tiktok" })).toBeNull();
+    expect(connectResult({ conectado: "shopee" })).toBeNull();
     expect(connectResult({})).toBeNull();
   });
 });

@@ -14,7 +14,7 @@ import { AccountPicker } from "@/features/integrations/AccountPicker";
 import { ConnectButton } from "@/features/integrations/ConnectButton";
 import { ConnectionCard } from "@/features/integrations/ConnectionCard";
 import { MOCK_NOTICE } from "@/features/integrations/mock-data";
-import { PROVIDER_IDS, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
+import { PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import type { ConnectResult } from "@/features/integrations/results";
 import type { AdAccountDTO, ConnectState } from "@/features/integrations/types";
 import { btnSmallDanger } from "@/features/integrations/ui";
