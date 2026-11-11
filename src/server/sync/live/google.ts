@@ -23,6 +23,16 @@ async function loginCustomerId(accountId: string, fallback: string): Promise<str
   return typeof meta.login_customer_id === "string" && /^\d{10}$/.test(meta.login_customer_id) ? meta.login_customer_id : fallback;
 }
 
+/** Parte opcional da importação: falha vira lista vazia, com aviso no log (não derruba a conta inteira). */
+async function optional(p: Promise<GoogleRow[]>, label: string): Promise<GoogleRow[]> {
+  try {
+    return await p;
+  } catch (err) {
+    console.warn(`[vyz] Google: ${label} ficou de fora`, err instanceof Error ? err.message.slice(0, 300) : err);
+    return [];
+  }
+}
+
 export async function fetchGoogleDataset(account: SyncAccount, range: SyncRange): Promise<AccountDataset> {
   const token = await getValidAccessToken(account.connectionId);
   const customer = account.externalId.replace(/-/g, "");
@@ -49,21 +59,22 @@ export async function fetchGoogleDataset(account: SyncAccount, range: SyncRange)
 
   const [campaignRows, campaignDayRows, adRows, adDayRows] = await Promise.all([
     search(
-      "SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.start_date, campaign_budget.amount_micros, campaign_budget.explicitly_shared FROM campaign WHERE campaign.status != 'REMOVED'",
+      "SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.start_date_time, campaign_budget.amount_micros, campaign_budget.explicitly_shared FROM campaign WHERE campaign.status != 'REMOVED'",
       "Google: campanhas",
     ),
     search(
-      `SELECT campaign.id, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value, metrics.all_conversions, metrics.interactions, metrics.video_views, metrics.search_impression_share, metrics.search_budget_lost_impression_share, metrics.search_rank_lost_impression_share, metrics.top_impression_percentage, metrics.absolute_top_impression_percentage FROM campaign WHERE ${during}`,
+      `SELECT campaign.id, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value, metrics.all_conversions, metrics.interactions, metrics.video_trueview_views, metrics.search_impression_share, metrics.search_budget_lost_impression_share, metrics.search_rank_lost_impression_share, metrics.top_impression_percentage, metrics.absolute_top_impression_percentage FROM campaign WHERE ${during}`,
       "Google: métricas das campanhas",
     ),
-    search(
+    // anúncios são complemento: se o Google recusar (campo novo, permissão), conta e campanhas entram mesmo assim
+    optional(search(
       "SELECT campaign.id, ad_group_ad.status, ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.ad.type, ad_group_ad.ad.final_urls, ad_group_ad.ad.responsive_search_ad.headlines, ad_group_ad.ad.responsive_search_ad.descriptions FROM ad_group_ad WHERE ad_group_ad.status != 'REMOVED'",
       "Google: anúncios",
-    ),
-    search(
-      `SELECT campaign.id, ad_group_ad.ad.id, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value, metrics.video_views FROM ad_group_ad WHERE ${during}`,
+    ), "anúncios"),
+    optional(search(
+      `SELECT campaign.id, ad_group_ad.ad.id, segments.date, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value, metrics.video_trueview_views FROM ad_group_ad WHERE ${during}`,
       "Google: métricas dos anúncios",
-    ),
+    ), "métricas dos anúncios"),
   ]);
 
   const campaignDaily = campaignDayRows.map(mapGoogleCampaignDay).filter((d) => d !== null);

@@ -158,12 +158,15 @@ async function finishRun(db: DB, run: Run, patch: { status: "succeeded" | "faile
 }
 
 /** Erro conhecido vira a mensagem dele; o resto vira a genérica (o detalhe fica só no log do servidor). */
-function toFailure(err: unknown): { code: SyncErrorCode; message: string; detail: string | null } {
-  if (err instanceof AppError && err.code.startsWith("sync:")) return { code: err.code as SyncErrorCode, message: err.message, detail: null };
+function toFailure(err: unknown): { code: SyncErrorCode; message: string; detail: string | null; technical: string | null } {
+  if (err instanceof AppError && err.code.startsWith("sync:")) return { code: err.code as SyncErrorCode, message: err.message, detail: null, technical: null };
   const e = (err ?? {}) as { code?: unknown; message?: unknown };
   const detail = typeof e.code === "string" && e.code ? e.code : null;
-  console.error("[vyz] sincronização falhou", detail ?? "", typeof e.message === "string" ? e.message.slice(0, 300) : err);
-  return { code: "sync:failed", message: MESSAGES["sync:failed"], detail };
+  // o motivo técnico (já sem token: ProviderError só leva status e diagnóstico) fica no histórico,
+  // porque o log do servidor some em poucas horas
+  const technical = typeof e.message === "string" ? e.message.slice(0, 300) : null;
+  console.error("[vyz] sincronização falhou", detail ?? "", technical ?? err);
+  return { code: "sync:failed", message: MESSAGES["sync:failed"], detail, technical };
 }
 
 /**
@@ -267,6 +270,7 @@ export async function syncAdAccount(adAccountId: string, trigger: SyncTrigger, o
           code: failure.code,
           error: failure.message,
           error_code: failure.detail,
+          error_detail: failure.technical,
           range_start: range?.from ?? null,
           range_end: range?.to ?? null,
         },

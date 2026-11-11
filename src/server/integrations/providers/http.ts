@@ -23,10 +23,28 @@ function diagnostic(body: unknown): string {
   if (typeof err === "string") return err.slice(0, 80);
   if (err && typeof err === "object") {
     const e = err as Record<string, unknown>;
-    return ["type", "code", "error_subcode", "status", "fbtrace_id"]
+    const fields = ["type", "code", "error_subcode", "status", "fbtrace_id"]
       .map((k) => (e[k] === undefined ? null : `${k}=${String(e[k]).slice(0, 40)}`))
       .filter(Boolean)
       .join(" ");
+    return [fields, googleAdsFailure(e.details)].filter(Boolean).join(" · ");
+  }
+  return "";
+}
+
+/**
+ * Motivo do Google Ads (GoogleAdsFailure): o código e a mensagem do primeiro erro, que dizem
+ * qual campo ou recurso foi recusado ("Unrecognized field in the query: 'metrics.video_views'").
+ * Não carrega token nem dado da conta.
+ */
+function googleAdsFailure(details: unknown): string {
+  if (!Array.isArray(details)) return "";
+  for (const d of details) {
+    const first = (d as { errors?: { errorCode?: Record<string, unknown>; message?: unknown }[] })?.errors?.[0];
+    if (!first) continue;
+    const code = first.errorCode ? Object.entries(first.errorCode).map(([k, v]) => `${k}=${String(v)}`).join(",") : "";
+    const message = typeof first.message === "string" ? first.message.replace(/[\r\n]+/g, " ").slice(0, 160) : "";
+    return [code, message].filter(Boolean).join(" ");
   }
   return "";
 }

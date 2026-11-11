@@ -173,7 +173,7 @@ export function mapMetaAdDay(row: MetaInsight): AdDay | null {
 // ---- Google ----------------------------------------------------------------------
 
 export type GoogleRow = {
-  campaign?: { id?: string; name?: string; status?: string; advertisingChannelType?: string; startDate?: string };
+  campaign?: { id?: string; name?: string; status?: string; advertisingChannelType?: string; startDate?: string; /** v26: "2025-09-11 09:25:31" (start_date não existe mais). */ startDateTime?: string };
   campaignBudget?: { amountMicros?: string; explicitlyShared?: boolean };
   adGroupAd?: {
     status?: string;
@@ -188,6 +188,8 @@ export type GoogleRow = {
     conversionsValue?: number | string;
     allConversions?: number | string;
     interactions?: string;
+    /** Na v26 da API o campo chama video_trueview_views (video_views não existe mais). */
+    videoTrueviewViews?: string;
     videoViews?: string;
     searchImpressionShare?: number | string;
     searchBudgetLostImpressionShare?: number | string;
@@ -233,7 +235,7 @@ export function mapGoogleCampaign(r: GoogleRow): CampaignEntity | null {
     channel: CHANNELS[(c.advertisingChannelType ?? "").toUpperCase()] ?? null,
     funnelStage: null,
     dailyBudget: shared || !r.campaignBudget?.amountMicros ? null : micros(r.campaignBudget.amountMicros),
-    startedOn: c.startDate ?? null,
+    startedOn: (c.startDateTime ?? c.startDate)?.slice(0, 10) ?? null,
   };
 }
 
@@ -249,7 +251,7 @@ function googleMetrics(m: GoogleRow["metrics"] = {}): DailyMetrics {
     initiateCheckout: null,
     conversions: Math.round(num(m.conversions) * 100) / 100,
     conversionValue: money(num(m.conversionsValue)),
-    videoViews: numOrNull(m.videoViews),
+    videoViews: numOrNull(m.videoTrueviewViews ?? m.videoViews),
     videoThruplays: null,
     searchImpressionShare: share(m.searchImpressionShare),
     searchLostIsBudget: share(m.searchBudgetLostImpressionShare),
