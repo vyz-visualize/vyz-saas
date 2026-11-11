@@ -134,6 +134,8 @@ export type TemplateWarehouse = {
   sets: WarehouseRows[];
   /** GA4 (analytics_daily) das propriedades ligadas, nos dois períodos. */
   analytics: AnalyticsRow[];
+  /** Orgânico das contas ligadas: por plataforma e todos juntos (Conteúdo). */
+  organic: { instagram?: OrganicView; facebook?: OrganicView; all?: OrganicView };
   current: DateRange;
   previous: DateRange;
   accounts: { id: string; name: string; platform: string; lastSyncedAt: string | null }[];
@@ -154,7 +156,7 @@ export async function loadTemplateWarehouse(dashboardId: string, opts: { platfor
   if (error) throw fromPostgrest(error);
   const linked = (sources ?? [])
     .map((s) => s.account)
-    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (a.platform_id === "meta" || a.platform_id === "google" || a.platform_id === "ga4") && opts.platforms.includes(a.platform_id))
+    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && ["meta", "google", "ga4", "instagram", "facebook"].includes(a.platform_id) && opts.platforms.includes(a.platform_id))
     .sort((a, b) => a.id.localeCompare(b.id));
   if (!linked.length) return null;
   const timeZone = linked[0].timezone || DEFAULT_TIME_ZONE;
@@ -162,13 +164,21 @@ export async function loadTemplateWarehouse(dashboardId: string, opts: { platfor
   const period: PeriodId = isPeriodId(opts.period) ? opts.period : "30d";
   const { current, previous } = dashboardRanges(period, opts.customDays ?? 14, today);
   const byPlatform = new Map<LivePlatform, string[]>();
-  for (const a of linked) if (a.platform_id !== "ga4") byPlatform.set(a.platform_id as LivePlatform, [...(byPlatform.get(a.platform_id as LivePlatform) ?? []), a.id]);
+  for (const a of linked) if (a.platform_id === "meta" || a.platform_id === "google") byPlatform.set(a.platform_id as LivePlatform, [...(byPlatform.get(a.platform_id as LivePlatform) ?? []), a.id]);
   const ga4 = linked.filter((a) => a.platform_id === "ga4").map((a) => a.id);
-  const [sets, analytics] = await Promise.all([
+  const profilesOf = (platform?: string) =>
+    linked
+      .filter((a) => (platform ? a.platform_id === platform : isOrganicPlatform(a.platform_id)))
+      .map((a) => ({ id: a.id, name: a.name, platform: a.platform_id as OrganicProfile["platform"] }));
+  const organicFor = (profiles: OrganicProfile[]) => (profiles.length ? readOrganic({ dashboardId, profiles, current, previous }) : Promise.resolve(undefined));
+  const [sets, analytics, instagram, facebook, all] = await Promise.all([
     Promise.all([...byPlatform].map(([platform, accountIds]) => readRows({ dashboardId, platform, accountIds, current, previous, breakEvenRoas: null }))),
     ga4.length ? readAnalytics({ dashboardId, accountIds: ga4, from: previous.from < current.from ? previous.from : current.from, to: current.to }) : Promise.resolve([] as AnalyticsRow[]),
+    organicFor(profilesOf("instagram")),
+    organicFor(profilesOf("facebook")),
+    organicFor(profilesOf()),
   ]);
-  return { sets, analytics, current, previous, accounts: linked.map((a) => ({ id: a.id, name: a.name, platform: a.platform_id, lastSyncedAt: a.last_synced_at })), today };
+  return { sets, analytics, organic: { instagram, facebook, all }, current, previous, accounts: linked.map((a) => ({ id: a.id, name: a.name, platform: a.platform_id, lastSyncedAt: a.last_synced_at })), today };
 }
 
 /** GA4 do intervalo, em cache como o armazém (a sincronização invalida pela propriedade). */

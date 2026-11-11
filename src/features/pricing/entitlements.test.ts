@@ -1,7 +1,7 @@
+import { VISUALS } from "@/features/templates/dashboards/composed";
 import { describe, expect, it } from "vitest";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { DASHBOARD_TEMPLATES } from "@/features/templates/dashboards";
-import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { PAGES } from "@/features/templates/pages";
 import { canUse, ENTITLEMENTS, templateCountsLabel, TIERS } from "./entitlements";
@@ -11,15 +11,15 @@ const count = (tier: (typeof TIERS)[number], list: { tier: string }[]) => list.f
 describe("limites por plano", () => {
   it("contagem de templates bate com o cadastro", () => {
     for (const tier of TIERS) {
-      expect(count(tier, ALL_DASHBOARD_TEMPLATES)).toBe(ENTITLEMENTS[tier].dashboardTemplates);
+      expect(VISUALS.filter((v) => canUse(tier, v.tier)).length).toBe(ENTITLEMENTS[tier].dashboardTemplates);
       expect(count(tier, LANDING_TEMPLATES)).toBe(ENTITLEMENTS[tier].landingTemplates);
     }
   });
 
   it("rótulo dos cartões da LP", () => {
-    expect(templateCountsLabel("base")).toBe("7 templates de dashboard · 4 de landing page");
-    expect(templateCountsLabel("pro")).toBe("10 templates de dashboard · 8 de landing page");
-    expect(templateCountsLabel("avancado")).toBe("36 templates de dashboard · 13 de landing page");
+    expect(templateCountsLabel("base")).toBe("2 visuais de dashboard · 4 de landing page");
+    expect(templateCountsLabel("pro")).toBe("3 visuais de dashboard · 8 de landing page");
+    expect(templateCountsLabel("avancado")).toBe("5 visuais de dashboard · 13 de landing page");
   });
 
   it("Base só usa Meta (com Instagram e Página, que vêm pelo mesmo login), Google Ads e GA4", () => {

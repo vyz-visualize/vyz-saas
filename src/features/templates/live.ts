@@ -4,6 +4,7 @@
 
 import { IMPORT_PLATFORMS } from "@/features/accounts/connection-modes";
 import { DASHBOARD_TEMPLATES } from "./dashboards";
+import { COMPOSED_TEMPLATES } from "./dashboards/composed";
 import type { DashboardTemplate } from "./types";
 
 export const LIVE_TEMPLATES: DashboardTemplate[] = [
@@ -67,7 +68,7 @@ export const LIVE_TEMPLATES: DashboardTemplate[] = [
 ];
 
 /** Todos os templates (exemplo + dados reais). */
-export const ALL_DASHBOARD_TEMPLATES: DashboardTemplate[] = [...LIVE_TEMPLATES, ...DASHBOARD_TEMPLATES];
+export const ALL_DASHBOARD_TEMPLATES: DashboardTemplate[] = [...COMPOSED_TEMPLATES, ...LIVE_TEMPLATES, ...DASHBOARD_TEMPLATES];
 
 export function anyDashboardTemplate(id: string): DashboardTemplate | undefined {
   return ALL_DASHBOARD_TEMPLATES.find((t) => t.id === id);
@@ -76,7 +77,7 @@ export function anyDashboardTemplate(id: string): DashboardTemplate | undefined 
 export const isLiveTemplate = (id: string) => LIVE_TEMPLATES.some((t) => t.id === id);
 
 /** Plataformas que um modelo comum já lê das contas reais (as outras ficam na amostra). */
-export const REAL_DATA_PLATFORMS = ["meta", "google", "ga4"] as const;
+export const REAL_DATA_PLATFORMS = ["meta", "google", "ga4", "instagram", "facebook"] as const;
 
 /** O modelo deixa escolher contas: os "ao vivo" sempre; os outros, se usam Meta ou Google. */
 export const usesAccounts = (t: Pick<DashboardTemplate, "id" | "sources">) => isLiveTemplate(t.id) || t.sources.some((s) => (REAL_DATA_PLATFORMS as readonly string[]).includes(s));

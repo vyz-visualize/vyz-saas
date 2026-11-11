@@ -1,0 +1,38 @@
+import { describe, expect, it } from "vitest";
+import { COMPOSED_PAGES, COMPOSED_TEMPLATES, composePages, objectiveForBusiness, VISUALS } from "./composed";
+import { BUSINESS_TYPES } from "@/features/catalog/business-types";
+
+describe("páginas pelas contas escolhidas", () => {
+  it("só Meta: a visão geral é dela, com criativos, público e funil", () => {
+    expect(composePages(["meta"])).toEqual(["visao-geral", "criativos", "publico", "funil"]);
+  });
+  it("Meta e Google: visão geral unindo, uma página de cada e o funil", () => {
+    expect(composePages(["meta", "google"])).toEqual(["visao-geral", "meta-ads", "criativos", "publico", "google-ads", "termos", "funil"]);
+  });
+  it("com GA4 e anúncios: site e força dos canais", () => {
+    expect(composePages(["google", "ga4"])).toEqual(["visao-geral", "google-ads", "termos", "site", "canais-site", "funil"]);
+  });
+  it("só GA4: começa pelo site, sem a visão geral de anúncios", () => {
+    expect(composePages(["ga4"])).toEqual(["site", "funil"]);
+  });
+  it("Instagram e Página: uma página cada e o conteúdo", () => {
+    expect(composePages(["meta", "instagram", "facebook"])).toEqual(["visao-geral", "meta-ads", "criativos", "publico", "instagram", "pagina-facebook", "conteudo", "funil"]);
+    expect(composePages(["instagram"])).toEqual(["instagram", "conteudo"]);
+  });
+  it("sem conta: o básico de exemplo", () => {
+    expect(composePages([])).toEqual(["visao-geral", "campanhas", "funil"]);
+  });
+  it("toda página montada está no modelo (o banco confere)", () => {
+    for (const combo of [["meta"], ["meta", "google", "ga4", "instagram", "facebook"], [], ["ga4"]]) for (const p of composePages(combo)) expect(COMPOSED_PAGES).toContain(p);
+  });
+});
+
+describe("catálogo dos modelos novos", () => {
+  it("5 visuais × cada objetivo, com o plano do visual", () => {
+    expect(VISUALS.map((v) => `${v.id}:${v.tier}`)).toEqual(["vyz:base", "lavanda:base", "pulso:pro", "noturno:avancado", "areia:avancado"]);
+    expect(COMPOSED_TEMPLATES.length % VISUALS.length).toBe(0);
+  });
+  it("todo nicho do onboarding tem objetivo", () => {
+    for (const b of BUSINESS_TYPES) expect(COMPOSED_TEMPLATES.some((t) => t.composed?.objective === objectiveForBusiness(b.id))).toBe(true);
+  });
+});

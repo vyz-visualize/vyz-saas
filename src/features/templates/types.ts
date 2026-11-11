@@ -45,7 +45,14 @@ export type PageId =
   | "executivo"
   | "termos"
   | "organico"
-  | "conteudo";
+  | "conteudo"
+  // páginas montadas pelas plataformas escolhidas (modelos novos: visual + objetivo + contas)
+  | "meta-ads"
+  | "google-ads"
+  | "site"
+  | "canais-site"
+  | "instagram"
+  | "pagina-facebook";
 
 export type BuildContext = { profile: Profile; sources: PlatformId[] };
 
@@ -79,4 +86,8 @@ export type DashboardTemplate = {
   dataMode?: "sample" | "live";
   /** Com visual próprio, a primeira aba é desenhada no estilo dele. */
   skin?: SkinId;
+  /** Modelo antigo: continua abrindo os dashboards que já existem, mas não é mais oferecido. */
+  legacy?: boolean;
+  /** Modelo novo (visual + objetivo): as páginas saem das contas escolhidas (compose.ts). */
+  composed?: { visual: string; objective: string };
 };

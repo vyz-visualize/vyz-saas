@@ -33,6 +33,13 @@ import type { Brand } from "@/features/workspace/workspace";
 import { ddmmyyyy } from "@/lib/format";
 import { brandVars } from "./brand";
 import { datasetFor, pageLayout, sampleDefaultKpis } from "./data";
+import { ChannelsPage, OrganicSourcePage, SitePage, type SourceExtras } from "./SourcePages";
+import { PAGE_PLATFORM } from "@/features/templates/dashboards/composed";
+import { dashboardRanges } from "@/features/analytics/ranges";
+import { sampleOrganic } from "@/features/analytics/preview";
+import { generateAnalyticsData } from "@/features/sync/mock/analytics";
+import { diffDays } from "@/features/sync/dates";
+
 import { isSampleMetric, pageCatalog, pageKpiIds, sampleCatalog, type MetricPrefs } from "./metric-prefs";
 import { useMetricPrefsState, type SaveMetricPrefs } from "./metric-prefs-context";
 import { MetricNoticeBar } from "./MetricActions";
@@ -89,6 +96,8 @@ type BodyProps = {
   onPeriodChange?: (period: PeriodId, customDays: number) => void;
   /** Dados reais das contas ligadas (já no período da URL). Sem isso, a amostra do modelo. */
   dataset?: Dataset;
+  /** GA4 e orgânico reais (modelos novos). Sem isso, a amostra. */
+  sourceExtras?: SourceExtras;
   /** Filtros que vieram na URL. */
   initialFilters?: DashFilters;
   /** Galeria e métricas novas vêm do servidor: filtrar precisa navegar. Sem isso, só troca o endereço. */
@@ -105,7 +114,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ dataset, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref }: BodyProps) {
+export function DashboardBody({ dataset, sourceExtras: realExtras, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
@@ -203,11 +212,38 @@ export function DashboardBody({ dataset, spec, hideSpend, assemble, actions, pri
   const filterState = useFilterState({ initial: initialFilters, labels: filterLabels, periodDays: days, navigate: onFilterNavigate, suspended: editing });
   const today = useMemo(() => localDate(new Date(), DEFAULT_TIME_ZONE), []);
   const filtered = useMemo(() => filterDataset(ds, filterState.filters, { today, adSelection: creatives?.selection }), [creatives?.selection, ds, filterState.filters, today]);
+  // modelos novos: GA4 e orgânico (reais quando há conta ligada; senão, a amostra)
+  const sourceExtras = useMemo<SourceExtras | null>(() => {
+    if (!t?.composed) return null;
+    if (realExtras) return realExtras;
+    const { current, previous } = dashboardRanges(period, customDays, today);
+    const days = diffDays(previous.from, current.to) + 1;
+    const analytics = generateAnalyticsData({ accountExternalId: `${spec.name}|${spec.client}`, endDate: current.to, days }).daily;
+    const organic = sampleOrganic(current, previous);
+    return { current, previous, currency: "BRL", analytics, organic: { instagram: organic, facebook: organic, all: organic } };
+  }, [t, realExtras, period, customDays, today, spec.name, spec.client]);
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
   const ctxOptions = { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns, today };
   const baseCtx = makeContext(ds, ctxOptions);
   const ctx = filtered.active ? makeContext(filtered.ds, { ...ctxOptions, base: baseCtx, chart: filtered.chart, platformsDs: filtered.platforms }) : baseCtx;
   const chips = chipsOf(filterState.filters, filterState.labels, compare ? filterState.compared : null);
+  // páginas de uma plataforma (Meta, Google): os números só dela, quando o dashboard tem mais de uma
+  const ctxFor = (p: PageId) => {
+    const only = PAGE_PLATFORM[p];
+    if (!t.composed || !only || ds.adPlatforms.length < 2 || !ds.adPlatforms.includes(only)) return ctx;
+    const scoped = filterDataset(ds, { ...filterState.filters, platforms: [only] }, { today, adSelection: creatives?.selection });
+    return makeContext(scoped.ds, { ...ctxOptions, base: baseCtx, chart: scoped.chart, platformsDs: scoped.platforms });
+  };
+  // páginas que não são de anúncio: Site, Força dos canais, Instagram, Página e Conteúdo
+  const sourcePage = (p: PageId): ReactNode | null => {
+    if (!sourceExtras) return null;
+    if (p === "site") return <SitePage extras={sourceExtras} profile={t.profile} />;
+    if (p === "canais-site") return <ChannelsPage extras={sourceExtras} profile={t.profile} ds={ds} />;
+    if (p === "instagram") return <OrganicSourcePage extras={sourceExtras} which="instagram" />;
+    if (p === "pagina-facebook") return <OrganicSourcePage extras={sourceExtras} which="facebook" />;
+    if (p === "conteudo") return <OrganicSourcePage extras={sourceExtras} which="conteudo" />;
+    return null;
+  };
   // métrica nova sem valor do servidor não vira card: o contador e a tela continuam batendo
   const idsOf = (p: PageId) => pageKpiIds(catalog, pageLayout(t, p).kpis.map((k) => k.metric), metrics.prefs?.kpis, { hideSpend }).filter((id) => isSampleMetric(id) || extraById.has(id));
   const layoutOf = (p: PageId) => sampleLayout(pageLayout(t, p), idsOf(p).filter(isSampleMetric));
@@ -354,7 +390,7 @@ export function DashboardBody({ dataset, spec, hideSpend, assemble, actions, pri
   ) : undefined;
   // o miolo das abas que o visual não desenha: os blocos padrão (dentro da moldura, ganham a paleta dele)
   const pageContent =
-    active === "criativos" && creatives ? (
+    sourcePage(active) ?? (active === "criativos" && creatives ? (
       <div className="space-y-2">
         <PageView layout={{ ...layoutOf(active), widgets: [] }} ctx={creativesCtx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
         <div data-dim-self>
@@ -362,8 +398,8 @@ export function DashboardBody({ dataset, spec, hideSpend, assemble, actions, pri
         </div>
       </div>
     ) : (
-      <GridPage page={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} grid={grid} editing={editing && canArrange && arrangePlan} fit={fit} />
-    );
+      <GridPage page={active} layout={layoutOf(active)} ctx={ctxFor(active)} kpiEdit={metrics.edit} extraCards={extrasOf(active)} grid={grid} editing={editing && canArrange && arrangePlan} fit={fit} />
+    ));
 
   return (
     <MetricEditProvider value={edit.editor}>
@@ -516,7 +552,9 @@ export function DashboardBody({ dataset, spec, hideSpend, assemble, actions, pri
                 </span>
               </p>
               {chips.length > 0 && <p className="mb-3 text-[12px] text-fg-2">Filtros ativos: {filterSummary(filterState.filters, filterState.labels)}</p>}
-              {p === "criativos" && creatives ? (
+              {sourcePage(p) ? (
+                sourcePage(p)
+              ) : p === "criativos" && creatives ? (
                 <div className="space-y-2">
                   <PageView layout={{ ...layoutOf(p), widgets: [] }} ctx={creativesCtx} extraCards={extrasOf(p)} />
                   <CreativeList rows={creatives.list} currency={creatives.currency} hideSpend={creatives.hideSpend} />
@@ -524,9 +562,9 @@ export function DashboardBody({ dataset, spec, hideSpend, assemble, actions, pri
               ) : skinned(p) ? (
                 skinView(p, false)
               ) : framed ? (
-                skinView(p, false, <PageView layout={layoutOf(p)} ctx={ctx} extraCards={extrasOf(p)} />)
+                skinView(p, false, <PageView layout={layoutOf(p)} ctx={ctxFor(p)} extraCards={extrasOf(p)} />)
               ) : (
-                <PageView layout={layoutOf(p)} ctx={ctx} extraCards={extrasOf(p)} />
+                <PageView layout={layoutOf(p)} ctx={ctxFor(p)} extraCards={extrasOf(p)} />
               )}
             </section>
           ))}

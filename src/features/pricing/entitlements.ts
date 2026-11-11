@@ -2,7 +2,7 @@
 // mesmas funções daqui.
 
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
-import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
+import { VISUALS } from "@/features/templates/dashboards/composed";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
 
 export type Tier = "base" | "pro" | "avancado" | "personalizado";
@@ -49,10 +49,10 @@ export type Entitlements = {
   maxAccountsPerPlatform: number;
 };
 
-// Quantos templates cada plano libera: contados no catálogo (src/features/templates),
-// então template novo já aparece nos números dos planos.
+// Quantos visuais de dashboard cada plano libera (os modelos oferecidos: visual + objetivo
+// + contas, em templates/dashboards/composed). Os modelos antigos não são mais oferecidos.
 const RANK_OF = (t: Tier) => ({ base: 0, pro: 1, avancado: 2, personalizado: 3 })[t];
-const dashCount = (t: Tier) => ALL_DASHBOARD_TEMPLATES.filter((x) => RANK_OF(x.tier) <= RANK_OF(t)).length;
+const dashCount = (t: Tier) => VISUALS.filter((x) => RANK_OF(x.tier) <= RANK_OF(t)).length;
 const lpCount = (t: Tier) => LANDING_TEMPLATES.filter((x) => RANK_OF(x.tier) <= RANK_OF(t)).length;
 
 export const ENTITLEMENTS: Record<Tier, Entitlements> = {
@@ -78,7 +78,7 @@ export function availableIn(required: Tier): string {
 /** "5 templates de dashboard · 3 de landing page" (cartões da LP). */
 export function templateCountsLabel(tier: Tier): string {
   const e = ENTITLEMENTS[tier];
-  return `${e.dashboardTemplates} templates de dashboard · ${e.landingTemplates} de landing page`;
+  return `${e.dashboardTemplates} visuais de dashboard · ${e.landingTemplates} de landing page`;
 }
 
 /** Próximo plano acima (para o botão de upgrade). */

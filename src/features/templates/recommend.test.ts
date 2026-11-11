@@ -82,7 +82,8 @@ describe("dicionário", () => {
     expect(Object.keys(TEMPLATE_WORDS).filter((id) => !known.has(id))).toEqual([]);
   });
   it("todo modelo tem palavras próprias e toda categoria também", () => {
-    expect(ALL_DASHBOARD_TEMPLATES.filter((t) => !TEMPLATE_WORDS[t.id]?.length).map((t) => t.id)).toEqual([]);
+    // os modelos novos (visual + objetivo) não passam pela busca da galeria antiga
+    expect(ALL_DASHBOARD_TEMPLATES.filter((t) => !t.composed && !TEMPLATE_WORDS[t.id]?.length).map((t) => t.id)).toEqual([]);
     for (const t of ALL_DASHBOARD_TEMPLATES) expect(CATEGORY_WORDS[t.category].length).toBeGreaterThan(0);
   });
 });

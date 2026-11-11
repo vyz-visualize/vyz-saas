@@ -67,7 +67,7 @@ function dashCard(tier: PlanId, period: Period): Card {
   const base = {
     price: startingPrice(tier, period),
     caption: `${period === "anual" ? `no anual · ${brl(PLAN[tier].anual * 12)} por ano` : "no mensal"} · até ${PLAN_PROJECTS[tier]} projetos`,
-    templates: `${e.dashboardTemplates} templates de dashboard`,
+    templates: `${e.dashboardTemplates} visuais de dashboard`,
   };
   if (tier === "base") {
     return {

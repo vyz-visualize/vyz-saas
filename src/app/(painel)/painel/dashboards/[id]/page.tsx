@@ -121,6 +121,11 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
     <>
       <SampleDashboard
         realData={realData}
+        sourceExtras={
+          warehouse && template?.composed && (warehouse.analytics.length || warehouse.organic.all)
+            ? { current: warehouse.current, previous: warehouse.previous, currency: "BRL", analytics: warehouse.analytics, organic: warehouse.organic }
+            : undefined
+        }
         dashboard={{
           id: d.id,
           templateId: d.templateId,

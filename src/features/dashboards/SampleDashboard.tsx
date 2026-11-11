@@ -13,6 +13,7 @@ import type { Brand } from "@/features/workspace/workspace";
 import { saveDashboardLayout, saveDashboardMetricPrefs } from "@/server/dashboards/actions";
 import { DashboardActions } from "./DashboardActions";
 import type { Dataset } from "@/features/metrics/source";
+import type { SourceExtras } from "./SourcePages";
 import { DashboardBody, type DashboardSpec } from "./DashboardBody";
 import { periodQuery } from "./model";
 
@@ -37,9 +38,11 @@ type Props = {
   backHref?: string;
   /** Dados reais das contas ligadas: trocar o período navega e o servidor lê de novo. */
   realData?: Dataset;
+  /** GA4 e orgânico reais (modelos novos). */
+  sourceExtras?: SourceExtras;
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -61,6 +64,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
     <DashboardBody
       spec={{ ...dashboard, brand }}
       dataset={realData}
+      sourceExtras={sourceExtras}
       hideSpend={hideSpend}
       assemble={assemble}
       printing={printing}

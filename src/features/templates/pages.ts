@@ -179,6 +179,61 @@ export const PAGES: Record<PageId, PageDef> = {
     description: "Ranking de posts, reels e stories por interações, e o que cada formato entrega.",
     build: () => ({ kpis: [], widgets: [] }),
   },
+  // ---- páginas por plataforma (montadas pelas contas escolhidas) ----
+  "meta-ads": {
+    id: "meta-ads",
+    name: "Meta Ads",
+    tier: "base",
+    templateOnly: true,
+    description: "Só os números da Meta: investimento, resultado e as campanhas dela.",
+    build: (ctx) => {
+      const base = OVERVIEW[ctx.profile]({ ...ctx, sources: ["meta"] });
+      return { kpis: base.kpis, widgets: [...base.widgets.filter((w) => w.type !== "platforms" && w.type !== "split"), { type: "table", source: "campaigns", span: 4, title: "Campanhas da Meta" }] };
+    },
+  },
+  "google-ads": {
+    id: "google-ads",
+    name: "Google Ads",
+    tier: "base",
+    templateOnly: true,
+    description: "Só os números do Google Ads: investimento, resultado e as campanhas dele.",
+    build: (ctx) => {
+      const base = OVERVIEW[ctx.profile]({ ...ctx, sources: ["google"] });
+      return { kpis: base.kpis, widgets: [...base.widgets.filter((w) => w.type !== "platforms" && w.type !== "split"), { type: "table", source: "campaigns", span: 4, title: "Campanhas do Google Ads" }] };
+    },
+  },
+  site: {
+    id: "site",
+    name: "Site (GA4)",
+    tier: "base",
+    templateOnly: true,
+    description: "Sessões, usuários, conversões e receita do site, por dia e por canal.",
+    build: () => ({ kpis: [], widgets: [] }),
+  },
+  "canais-site": {
+    id: "canais-site",
+    name: "Força dos canais",
+    tier: "base",
+    templateOnly: true,
+    description: "Cada canal do GA4 com o investimento das plataformas: quem traz conversão e a que custo.",
+    build: () => ({ kpis: [], widgets: [] }),
+  },
+  instagram: {
+    id: "instagram",
+    name: "Instagram",
+    tier: "base",
+    templateOnly: true,
+    description: "Seguidores, visualizações, alcance, interações e os posts do perfil.",
+    build: () => ({ kpis: [], widgets: [] }),
+  },
+  "pagina-facebook": {
+    id: "pagina-facebook",
+    name: "Página do Facebook",
+    tier: "base",
+    templateOnly: true,
+    description: "Seguidores, visualizações, alcance, interações e os posts da Página.",
+    build: () => ({ kpis: [], widgets: [] }),
+  },
   metas: {
     id: "metas",
     name: "Metas e progresso",

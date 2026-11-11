@@ -37,7 +37,9 @@ describe("layouts", () => {
   it("liberados antes dos travados, e os do nicho na frente", () => {
     const opts = layoutOptions("ecommerce", "base");
     expect(opts[0].fits).toBe(true);
-    expect(opts.filter((o) => o.allowed).map((o) => o.template.id).sort()).toEqual(["google-ecommerce", "meta-ecommerce", "meta-organico", "meta-organico-pago", "painel-lavanda", "painel-monocromo", "painel-pulso"]);
+    // os 5 visuais no objetivo do nicho; o Básico usa o padrão VYZ e o Lavanda
+    expect(opts.map((o) => o.template.id)).toEqual(["vyz-ecommerce", "lavanda-ecommerce", "pulso-ecommerce", "noturno-ecommerce", "areia-ecommerce"]);
+    expect(opts.filter((o) => o.allowed).map((o) => o.template.id)).toEqual(["vyz-ecommerce", "lavanda-ecommerce"]);
     const firstLocked = opts.findIndex((o) => o.fits && !o.allowed);
     expect(opts.slice(0, firstLocked).every((o) => o.allowed)).toBe(true);
   });
@@ -46,7 +48,7 @@ describe("layouts", () => {
     for (const niche of ["leads", "imobiliario", "local", "infoproduto", "saude", "educacao", "agencia"]) {
       expect(layoutOptions(niche, "avancado").some((o) => o.fits)).toBe(true);
     }
-    expect(layoutOptions("leads", "base").find((o) => o.template.id === "leads-visao-geral")?.lockLabel).toBe("Disponível no Padrão");
+    expect(layoutOptions("leads", "base").find((o) => o.template.id === "pulso-leads")?.lockLabel).toBe("Disponível no Padrão");
   });
 
   it("conectar mostra só Meta e Google que o layout usa", () => {

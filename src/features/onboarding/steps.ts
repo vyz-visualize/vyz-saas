@@ -3,7 +3,7 @@
 // layout usa e as páginas liberadas. Puro: o servidor (actions) e a tela usam
 // as mesmas funções.
 
-import { templateBusinessTypes } from "@/features/catalog/business-types";
+import { composedId, objectiveForBusiness, VISUALS } from "@/features/templates/dashboards/composed";
 import { CORE_PROVIDER_IDS, type ProviderId } from "@/features/integrations/providers";
 import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
@@ -71,17 +71,14 @@ export type LayoutOption = {
  * mais simples ao mais completo.
  */
 export function layoutOptions(businessTypeId: string | null, tier: Tier | null): LayoutOption[] {
-  const rank = (t: Tier) => ({ base: 0, pro: 1, avancado: 2, personalizado: 3 })[t];
-  return ALL_DASHBOARD_TEMPLATES.map((template) => {
+  // os 5 visuais no objetivo do nicho: o primeiro acesso escolhe só a cara do dashboard
+  const objective = objectiveForBusiness(businessTypeId);
+  return VISUALS.flatMap((v) => {
+    const template = ALL_DASHBOARD_TEMPLATES.find((t) => t.id === composedId(v.id, objective));
+    if (!template) return [];
     const allowed = !!tier && canUse(tier, template.tier);
-    return {
-      template,
-      fits: !!businessTypeId && (templateBusinessTypes(template.profile) as string[]).includes(businessTypeId),
-      allowed,
-      lockLabel: allowed ? null : availableIn(template.tier),
-      live: template.dataMode === "live",
-    };
-  }).sort((a, b) => Number(b.allowed) - Number(a.allowed) || Number(b.fits) - Number(a.fits) || rank(a.template.tier) - rank(b.template.tier));
+    return [{ template, fits: true, allowed, lockLabel: allowed ? null : availableIn(template.tier), live: false }];
+  });
 }
 
 export type TemplatePage = { id: PageId; name: string; allowed: boolean; lockLabel: string | null };

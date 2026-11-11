@@ -204,12 +204,12 @@ export function LayoutStep({ businessTypeId, tier }: { businessTypeId: string | 
   return (
     <section aria-labelledby="passo-titulo">
       <StepHeader
-        eyebrow="Passo 2 · Layout"
-        title="Escolha o layout do seu dashboard"
+        eyebrow="Passo 2 · Visual"
+        title="Escolha o visual do seu dashboard"
         text={
           <>
-            Passe o mouse para ver o dashboard funcionando. {name ? `Os de ${name} vêm primeiro; ` : ""}troque de nicho nas abas. Depois você cria outros em
-            Dashboards.
+            {name ? `Já montamos para ${name}: ` : ""}os números e o funil seguem o seu objetivo. No próximo passo você conecta as contas e o dashboard ganha uma página para
+            cada plataforma.
           </>
         }
       />

@@ -5,6 +5,7 @@
 // para /comecar, que lê o passo do banco: recarregar continua de onde parou.
 
 import { redirect, unstable_rethrow } from "next/navigation";
+import { composePages } from "@/features/templates/dashboards/composed";
 import { z } from "zod";
 import { businessType } from "@/features/catalog/business-types";
 import { allowedPages, canGoBackTo, layoutProviders, stepIndex, type ActiveStep } from "@/features/onboarding/steps";
@@ -64,7 +65,9 @@ export async function chooseLayout(templateId: string): Promise<ActionResult> {
     if (!template) throw appError("dashboard:template_unavailable");
     const session = await onboardingSession("platforms");
     if (!canUse(session.access.tier ?? "base", template.tier)) throw appError("plan:template", `Este layout é do ${TIER_LABEL[template.tier]}. Faça upgrade para usar.`);
-    const pages = allowedPages(template, session.access.entitlements?.pages ?? null);
+    // modelo novo: começa com as páginas de exemplo; as das contas entram no fim do onboarding
+    const open = allowedPages(template, session.access.entitlements?.pages ?? null);
+    const pages = template.composed ? composePages([]).filter((p) => open.includes(p)) : open;
     if (pages.length === 0) throw appError("dashboard:no_pages");
 
     const supabase = await createServerSupabase();
@@ -154,6 +157,14 @@ export async function finishOnboarding(): Promise<ActionResult> {
       const add = sources.filter((a) => !existing.some((e) => e.ad_account_id === a.id));
       for (const a of add) unwrap(await supabase.from("dashboard_sources").insert({ workspace_id: workspaceId, dashboard_id: dashboard.id, ad_account_id: a.id }));
       linked = add.length + existing.length;
+      // modelo novo: as páginas saem das plataformas das contas ligadas (Meta, Google, GA4, Instagram...)
+      if (template?.composed && linked) {
+        const ids = [...existing.map((e) => e.ad_account_id), ...add.map((a) => a.id)];
+        const used = [...new Set(accounts.filter((a) => ids.includes(a.id)).map((a) => a.platform_id))];
+        const open = allowedPages(template, session.access.entitlements?.pages ?? null);
+        const pages = composePages(used).filter((p) => open.includes(p));
+        if (pages.length) unwrap(await supabase.rpc("set_dashboard_pages", { p_dashboard_id: dashboard.id, p_page_type_ids: pages }));
+      }
       target = `/painel/dashboards/${dashboard.id}?novo=1`;
     }
     await saveStep(workspaceId, "done");

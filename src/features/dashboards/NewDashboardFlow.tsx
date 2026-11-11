@@ -11,18 +11,18 @@ import { ColorField } from "@/components/ui/ColorField";
 import { FileInput, readImage } from "@/components/ui/FileInput";
 import { Checkbox, LockBadge, PendingChip, SelectField, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
-import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
+import { PLATFORMS } from "@/features/accounts/platforms";
 import { availableIn, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
 import { anyDashboardTemplate, isLiveTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
+import { composePages } from "@/features/templates/dashboards/composed";
 import { PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { ATTRIBUTIONS, PERIODS, type PeriodId } from "@/features/workspace/types";
 import { brl } from "@/lib/format";
 import { createDashboard, updateDashboard } from "@/server/dashboards/actions";
-import { defaultPages, pageOptions, type DashboardDetail, type SourceOption } from "./model";
+import { allowedPages, defaultPages, pageOptions, type DashboardDetail, type SourceOption } from "./model";
 import type { DashboardFields } from "./schema";
-import { NewDashboardAssistant } from "./NewDashboardAssistant";
-import { TemplateGallery } from "./TemplateGallery";
+import { ModelPicker } from "./ModelPicker";
 
 const STEPS = ["Template", "Contas", "Páginas", "Metas e ajustes", "Revisar"];
 const DEFAULT_MARGIN = 0.4;
@@ -126,7 +126,7 @@ export type DashboardFlowProps = {
   voice?: boolean;
 };
 
-export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLabel, used, limit, initialTemplate, voice = false }: DashboardFlowProps) {
+export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLabel, used, limit, initialTemplate }: DashboardFlowProps) {
   const editing = !!dashboard;
   const [draft, setDraft] = useState<Draft>(() => {
     if (dashboard) return draftFrom(dashboard);
@@ -138,9 +138,6 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
     return tt && usesAccounts(tt) ? 2 : 3;
   };
   const [step, setStep] = useState(() => (dashboard ? accountStep(dashboard.templateId) : draft.templateId ? accountStep(draft.templateId) : 1));
-  // ao criar sem modelo escolhido, o assistente pergunta o que a pessoa quer; "procurar você mesmo" fecha e mostra a galeria
-  const [assistant, setAssistant] = useState(() => !dashboard && !draft.templateId);
-  const [preview, setPreview] = useState<{ id: string; n: number } | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
   const [error, setError] = useState<{ message: string; fields?: Record<string, string> } | null>(null);
   const [pending, start] = useTransition();
@@ -161,7 +158,6 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
   // na edição o template não muda: o primeiro passo é o das contas (ou das páginas)
   const firstStep = editing ? (pickAccounts ? 2 : 3) : 1;
 
-  const enabledAccounts = sources.reduce<Partial<Record<PlatformId, number>>>((acc, s) => (s.isEnabled ? { ...acc, [s.platformId]: (acc[s.platformId] ?? 0) + 1 } : acc), {});
   function pickTemplate(id: string) {
     const tt = anyDashboardTemplate(id);
     if (!tt) return;
@@ -207,34 +203,7 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
     <div className="space-y-6">
       <Stepper step={step} max={t ? 5 : 1} onGo={go} skip={editing ? [1, ...skip] : skip} />
 
-      {step === 1 && !editing && (
-        <>
-          <TemplateGallery
-            key={preview ? `${preview.id}:${preview.n}` : "galeria"}
-            tier={tier}
-            canCreate
-            enabledAccounts={enabledAccounts}
-            onUse={pickTemplate}
-            onAskAssistant={() => setAssistant(true)}
-            initialOpenId={preview?.id}
-          />
-          <NewDashboardAssistant
-            open={assistant}
-            onBrowse={() => setAssistant(false)}
-            tier={tier}
-            enabledAccounts={enabledAccounts}
-            voice={voice}
-            onUse={(id) => {
-              setAssistant(false);
-              pickTemplate(id);
-            }}
-            onPreview={(id) => {
-              setAssistant(false);
-              setPreview((p) => ({ id, n: (p?.n ?? 0) + 1 }));
-            }}
-          />
-        </>
-      )}
+      {step === 1 && !editing && <ModelPicker tier={tier} onUse={pickTemplate} />}
 
       {t && step === 2 && pickAccounts && (
         <Section title={`Contas · ${t.name}`}>
@@ -261,7 +230,10 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
                       hint={[a.businessName, a.isEnabled ? (a.lastSyncedAt ? "Ativa" : "Ativa · importando os dados") : linked ? "Desativada · os dados já importados continuam" : "Desativada · ative em Contas"].filter(Boolean).join(" · ")}
                       checked={draft.accountIds.includes(a.id)}
                       disabled={off}
-                      onChange={(on) => save({ accountIds: on ? [...draft.accountIds, a.id] : draft.accountIds.filter((x) => x !== a.id) })}
+                      onChange={(on) => {
+                        const accountIds = on ? [...draft.accountIds, a.id] : draft.accountIds.filter((x) => x !== a.id);
+                        save({ accountIds, ...(t.composed ? { pages: composedPagesFor(t, accountIds, sources, pagesTier) } : {}) });
+                      }}
                     />
                   </li>
                 );
@@ -515,8 +487,16 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
   );
 }
 
+/** Modelo novo: as páginas que as contas marcadas pedem, dentro do que o plano libera. */
+function composedPagesFor(t: DashboardTemplate, accountIds: readonly string[], sources: SourceOption[], pagesTier: Tier): PageId[] {
+  const platforms = [...new Set(sources.filter((s) => accountIds.includes(s.id)).map((s) => s.platformId))];
+  return allowedPages(t, pagesTier, composePages(platforms));
+}
+
 /** Template escolhido: páginas que o plano libera e, nos de dados reais, as contas ativas da plataforma. */
 function withTemplate(d: Draft, t: DashboardTemplate, pagesTier: Tier, sources: SourceOption[]): Draft {
+  // modelo novo: começa sem conta marcada (a pessoa escolhe) e com as páginas de exemplo
+  if (t.composed) return { ...d, templateId: t.id, pages: composedPagesFor(t, [], sources, pagesTier), accountIds: [] };
   return {
     ...d,
     templateId: t.id,
