@@ -14,7 +14,7 @@ import { Modal, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import type { Tier } from "@/features/pricing/entitlements";
-import { composePages } from "@/features/templates/dashboards/composed";
+import { composePages, type ObjectiveId } from "@/features/templates/dashboards/composed";
 import { anyDashboardTemplate } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
@@ -52,10 +52,11 @@ export function PlatformBadge({ id, size = 28 }: { id: PlatformId; size?: number
   );
 }
 
-const STEPS = ["Objetivo e visual", "Plataformas e contas", "Páginas", "Nome"];
+const STEPS = ["Objetivo", "Visual", "Plataformas e contas", "Páginas", "Nome"];
 
 export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: { open: boolean; onClose: () => void; sources: SourceOption[]; tier: Tier; pagesTier: Tier }) {
   const [step, setStep] = useState(0);
+  const [objective, setObjective] = useState<ObjectiveId | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [platforms, setPlatforms] = useState<PlatformId[]>([]);
   const [accountIds, setAccountIds] = useState<string[]>([]);
@@ -79,6 +80,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
 
   function reset() {
     setStep(0);
+    setObjective(null);
     setTemplateId(null);
     setPlatforms([]);
     setAccountIds([]);
@@ -124,12 +126,12 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
     });
   }
 
-  const canNext = step === 0 ? !!t : step === 1 ? true : step === 2 ? pages.length > 0 : true;
+  const canNext = step === 3 ? pages.length > 0 : true;
 
   return (
     <Modal open={open} onClose={close} title="Novo dashboard" wide>
       <div className="space-y-5">
-        <ol className="grid grid-cols-4 gap-2" aria-label="Passos">
+        <ol className="grid grid-cols-5 gap-2" aria-label="Passos">
           {STEPS.map((s, i) => (
             <li key={s} className="space-y-1.5">
               <span className={`block h-1 rounded-full ${i <= step ? "bg-accent" : "bg-line"}`} />
@@ -144,15 +146,30 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
         {step === 0 && (
           <ModelPicker
             tier={tier}
+            section="objective"
+            objective={objective ?? undefined}
+            onObjective={(o) => {
+              setObjective(o);
+              setStep(1);
+            }}
+            onUse={() => {}}
+          />
+        )}
+
+        {step === 1 && objective && (
+          <ModelPicker
+            tier={tier}
+            section="visual"
+            objective={objective}
             onUse={(id) => {
               setTemplateId(id);
               setOff([]);
-              setStep(1);
+              setStep(2);
             }}
           />
         )}
 
-        {step === 1 && (
+        {step === 2 && (
           <div className="space-y-4">
             <div>
               <h3 className="title text-[16px] text-fg">De onde vêm os dados?</h3>
@@ -232,7 +249,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
           </div>
         )}
 
-        {step === 2 && t && (
+        {step === 3 && t && (
           <div className="space-y-3">
             <div>
               <h3 className="title text-[16px] text-fg">Páginas do dashboard</h3>
@@ -260,7 +277,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
           </div>
         )}
 
-        {step === 3 && t && (
+        {step === 4 && t && (
           <div className="space-y-4">
             <h3 className="title text-[16px] text-fg">Quase pronto</h3>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -283,12 +300,12 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
           ) : (
             <span />
           )}
-          {step > 0 && step < 3 && (
+          {step > 1 && step < 4 && (
             <button type="button" className={btn.small} onClick={() => setStep(step + 1)} disabled={!canNext}>
               Continuar <ArrowRight size={16} aria-hidden />
             </button>
           )}
-          {step === 3 && (
+          {step === 4 && (
             <button type="button" className={btn.small} onClick={create} disabled={pending || !pages.length}>
               {pending && <LoaderCircle size={15} aria-hidden className="animate-spin motion-reduce:animate-none" />}
               {pending ? "Criando…" : "Criar dashboard"}

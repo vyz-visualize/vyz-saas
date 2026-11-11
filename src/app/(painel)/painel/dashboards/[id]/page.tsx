@@ -17,6 +17,7 @@ import { BrandMark } from "@/features/dashboards/DashboardBody";
 import { PeriodNav } from "@/features/dashboards/PeriodNav";
 import { SampleDashboard } from "@/features/dashboards/SampleDashboard";
 import { anyDashboardTemplate } from "@/features/templates/live";
+import type { PlatformId } from "@/features/accounts/platforms";
 import { FocusBarActions } from "@/features/workspace/FocusBarActions";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
@@ -121,6 +122,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
     <>
       <SampleDashboard
         realData={realData}
+        linkedPlatforms={warehouse ? ([...new Set(warehouse.accounts.map((a) => a.platform))] as PlatformId[]) : undefined}
         sourceExtras={
           warehouse && template?.composed && (warehouse.analytics.length || warehouse.organic.all)
             ? { current: warehouse.current, previous: warehouse.previous, currency: "BRL", analytics: warehouse.analytics, organic: warehouse.organic }

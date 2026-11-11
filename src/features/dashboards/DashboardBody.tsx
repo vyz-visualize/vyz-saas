@@ -10,7 +10,7 @@ import { OverflowTabs } from "@/components/ui/OverflowTabs";
 import { PeriodPicker, rangeDays, type Range } from "@/components/ui/PeriodPicker";
 import { Notices, notify } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { PLATFORMS } from "@/features/accounts/platforms";
+import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { CreativeList } from "@/features/analytics/creatives/CreativeList";
 import { CreativesPage } from "@/features/analytics/creatives/CreativesPage";
 import { setQueryParam } from "@/features/analytics/creatives/query";
@@ -98,6 +98,8 @@ type BodyProps = {
   dataset?: Dataset;
   /** GA4 e orgânico reais (modelos novos). Sem isso, a amostra. */
   sourceExtras?: SourceExtras;
+  /** Plataformas com conta ligada (modelos novos): os selos do topo mostram só elas. */
+  linkedPlatforms?: PlatformId[];
   /** Filtros que vieram na URL. */
   initialFilters?: DashFilters;
   /** Galeria e métricas novas vêm do servidor: filtrar precisa navegar. Sem isso, só troca o endereço. */
@@ -114,7 +116,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ dataset, sourceExtras: realExtras, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref }: BodyProps) {
+export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
@@ -227,6 +229,10 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, spec, hideSpe
   const baseCtx = makeContext(ds, ctxOptions);
   const ctx = filtered.active ? makeContext(filtered.ds, { ...ctxOptions, base: baseCtx, chart: filtered.chart, platformsDs: filtered.platforms }) : baseCtx;
   const chips = chipsOf(filterState.filters, filterState.labels, compare ? filterState.compared : null);
+  // dados reais (contas ligadas) ou a amostra: o selo e as plataformas do topo dizem a verdade
+  const isReal = !!dataset || !!realExtras;
+  const realLabel = isReal ? "Dados reais" : "Amostra · dados fictícios";
+  const headerSources = t.composed ? (linkedPlatforms ?? []) : t.sources;
   // páginas de uma plataforma (Meta, Google): os números só dela, quando o dashboard tem mais de uma
   const ctxFor = (p: PageId) => {
     const only = PAGE_PLATFORM[p];
@@ -355,7 +361,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, spec, hideSpe
       </div>
       {customizeId && !editing && <CustomizeButton onClick={() => metrics.openPanel()} />}
       {screen && periodHint}
-      <span className="mb-2 shrink-0 rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap text-fg">Amostra · dados fictícios</span>
+      <span className="mb-2 shrink-0 rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap text-fg">{realLabel}</span>
       {/* fora do painel (link público) não há barra: as ações, se houver, ficam aqui. Elas medem a largura desta linha. */}
       {!screen && actions && (
         <>
@@ -423,7 +429,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, spec, hideSpe
               <h1 className={`title truncate ${fit ? "text-[1.6rem] @[900px]:text-[1.3rem]" : "text-[1.6rem]"}`}>{spec.name}</h1>
               <p className="text-[14px] text-fg-2">{spec.client}</p>
               <div className={`flex flex-wrap items-center gap-1.5 ${fit ? "mt-2 @[900px]:mt-0" : "mt-2"}`}>
-                {t.sources.map((s) =>
+                {headerSources.map((s) =>
                   // com mais de uma plataforma de anúncios, a fonte também filtra
                   ds.adPlatforms.length > 1 && ds.adPlatforms.includes(s) && !editing ? (
                     <button
@@ -443,8 +449,8 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, spec, hideSpe
                     </span>
                   ),
                 )}
-                <span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium text-fg">Amostra · dados fictícios</span>
-                {actions && <PendingChip label="Modelo com dados de exemplo" detail="Os números são fictícios. Para os números das suas contas, crie um dashboard Meta Ads ou Google Ads · E-commerce." />}
+                <span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium text-fg">{realLabel}</span>
+                {actions && !isReal && <PendingChip label="Modelo com dados de exemplo" detail="Os números são fictícios. Para os números das suas contas, crie um dashboard Meta Ads ou Google Ads · E-commerce." />}
               </div>
             </div>
           </div>
@@ -533,7 +539,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, spec, hideSpe
               </div>
               <div>
                 <dt className="text-fg-2">Dados</dt>
-                <dd className="font-semibold">Amostra · dados fictícios</dd>
+                <dd className="font-semibold">{realLabel}</dd>
               </div>
             </dl>
             {chips.length > 0 && (

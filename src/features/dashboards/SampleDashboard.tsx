@@ -14,6 +14,7 @@ import { saveDashboardLayout, saveDashboardMetricPrefs } from "@/server/dashboar
 import { DashboardActions } from "./DashboardActions";
 import type { Dataset } from "@/features/metrics/source";
 import type { SourceExtras } from "./SourcePages";
+import type { PlatformId } from "@/features/accounts/platforms";
 import { DashboardBody, type DashboardSpec } from "./DashboardBody";
 import { periodQuery } from "./model";
 
@@ -40,9 +41,10 @@ type Props = {
   realData?: Dataset;
   /** GA4 e orgânico reais (modelos novos). */
   sourceExtras?: SourceExtras;
+  linkedPlatforms?: PlatformId[];
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -65,6 +67,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       spec={{ ...dashboard, brand }}
       dataset={realData}
       sourceExtras={sourceExtras}
+      linkedPlatforms={linkedPlatforms}
       hideSpend={hideSpend}
       assemble={assemble}
       printing={printing}
