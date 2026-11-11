@@ -12,6 +12,7 @@ import "server-only";
 import { chunk, runLimited, withRetry } from "@/features/sync/batch";
 import type { AccountDataset } from "@/features/sync/dataset";
 import { organicDayRow, organicPostRow, type OrganicDataset } from "@/features/sync/organic";
+import { closeDataset } from "@/features/sync/close-dataset";
 import { accountReachRows, adRows, campaignRows, FACT_KEYS, FACT_TABLES, factRows, idLookup, productRows, type FactTable } from "@/features/sync/rows";
 import { AppError } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
@@ -113,7 +114,9 @@ export type WriteStats = {
  * no relógio do banco (sync_runs.created_at): vai em todas as linhas e separa o
  * que é desta importação do que sobrou de outra.
  */
-export async function writeDataset(db: DB, account: SyncAccount, dataset: AccountDataset, syncedAt: string): Promise<WriteStats> {
+export async function writeDataset(db: DB, account: SyncAccount, raw: AccountDataset, syncedAt: string): Promise<WriteStats> {
+  // campanhas, anúncios e produtos apagados depois ainda aparecem nas métricas do período
+  const dataset = closeDataset(raw);
   const scope = { workspaceId: account.workspaceId, adAccountId: account.id };
 
   // os anúncios e os termos de pesquisa precisam dos uuids das campanhas

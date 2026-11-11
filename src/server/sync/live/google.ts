@@ -100,13 +100,33 @@ export async function fetchGoogleDataset(account: SyncAccount, range: SyncRange)
     const a = mapGoogleAd(row);
     if (a && !ads.has(a.externalId)) ads.set(a.externalId, a);
   }
+  // Removidos: as listas pedem só os que não foram removidos, mas as métricas do período
+  // trazem o gasto de campanhas e anúncios apagados depois. Eles entram como "removidos",
+  // senão a gravação não acha a campanha/anúncio de uma linha e a importação inteira falha.
+  for (const row of adDayRows) {
+    const id = row.adGroupAd?.ad?.id;
+    if (id && row.campaign?.id && !ads.has(id)) {
+      const a = mapGoogleAd({ campaign: { id: row.campaign.id }, adGroupAd: { status: "REMOVED", ad: { id } } });
+      if (a) ads.set(id, a);
+    }
+  }
+  const campaigns = new Map<string, NonNullable<ReturnType<typeof mapGoogleCampaign>>>();
+  for (const row of campaignRows) {
+    const c = mapGoogleCampaign(row);
+    if (c) campaigns.set(c.externalId, c);
+  }
+  for (const id of [...campaignDaily.map((d) => d.campaignExternalId), ...[...ads.values()].map((a) => a.campaignExternalId)]) {
+    if (campaigns.has(id)) continue;
+    const c = mapGoogleCampaign({ campaign: { id, status: "REMOVED" } });
+    if (c) campaigns.set(id, c);
+  }
 
   return {
     platform: "google",
     accountExternalId: account.externalId,
     currency: account.currency,
     range: { from: range.from, to: range.to },
-    campaigns: campaignRows.map(mapGoogleCampaign).filter((c) => c !== null),
+    campaigns: [...campaigns.values()],
     ads: [...ads.values()],
     products: [],
     accountDaily: sumAccountDays(campaignDaily),
