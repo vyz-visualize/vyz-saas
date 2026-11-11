@@ -425,6 +425,9 @@ export default function DashboardScreen() {
   const id = params.id;
   const [period, setPeriod] = useState<Period>("30d");
   const [campaign, setCampaign] = useState<string | null>(params.campanha ?? null);
+  // dashboards com Meta e Google: "Tudo · Meta · Google" (as opções ficam as da primeira leitura completa)
+  const [platform, setPlatform] = useState<"all" | "meta" | "google">("all");
+  const [available, setAvailable] = useState<("meta" | "google")[]>([]);
   const [data, setData] = useState<Data | null>(null);
   const [insights, setInsights] = useState<ApiInsight[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -438,12 +441,13 @@ export default function DashboardScreen() {
     if (params.metrica) setMetric(params.metrica);
   }, [params.campanha, params.metrica]);
 
-  const search = campaign ? `campanha=${encodeURIComponent(campaign)}` : "";
+  const search = [campaign ? `campanha=${encodeURIComponent(campaign)}` : "", platform !== "all" ? `plataforma=${platform}` : ""].filter(Boolean).join("&");
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await api<DashboardDataResponse>(`/dashboards/${id}?periodo=${period}${search ? `&${search}` : ""}`);
       setData(r.dashboard);
+      if (r.dashboard.platforms && r.dashboard.platforms.length > 1) setAvailable(r.dashboard.platforms);
       setInsights(r.insights ?? []);
       setError(null);
     } catch (err) {
@@ -497,7 +501,7 @@ export default function DashboardScreen() {
               {data?.dashboard.name ?? " "}
             </Text>
             <Text style={{ color: t.fg2, fontSize: 13 }} numberOfLines={1}>
-              {data ? [data.dashboard.clientName, PLATFORM[data.platform]].filter(Boolean).join(" · ") : " "}
+              {data ? [data.dashboard.clientName, available.length > 1 && platform === "all" ? "Meta Ads + Google Ads" : PLATFORM[data.platform]].filter(Boolean).join(" · ") : " "}
             </Text>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Compartilhar" onPress={share} hitSlop={10} style={round}>
@@ -506,6 +510,16 @@ export default function DashboardScreen() {
         </View>
 
         <Segmented options={PERIODS} value={period} onChange={setPeriod} />
+        {available.length > 1 && (
+          <Segmented
+            options={[{ value: "all" as const, label: "Tudo" }, ...available.map((p) => ({ value: p, label: p === "meta" ? "Meta Ads" : "Google Ads" }))]}
+            value={platform}
+            onChange={(v) => {
+              setCampaign(null);
+              setPlatform(v);
+            }}
+          />
+        )}
         {campaign && (
           <Pressable
             accessibilityRole="button"

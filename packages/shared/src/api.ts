@@ -153,6 +153,8 @@ export type DashboardDataResponse = {
     previous?: { from: string; to: string; days: number };
     maturingFrom?: string | null;
     view: ApiDashboardView;
+    /** Dashboards com Meta e Google: as duas plataformas (filtro com ?plataforma=). */
+    platforms?: ("meta" | "google")[];
   };
   insights?: ApiInsight[];
 };

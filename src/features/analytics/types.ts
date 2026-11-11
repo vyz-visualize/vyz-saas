@@ -363,4 +363,6 @@ export type LiveDashboardData = {
   view: DashboardView;
   /** Orgânico (Instagram e Página do Facebook) dos perfis ligados ao dashboard. */
   organic?: OrganicView;
+  /** Modelos novos com Meta e Google: as duas (o app mostra "Tudo · Meta · Google"). */
+  platforms?: ("meta" | "google")[];
 };

@@ -90,7 +90,7 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     .map((a) => ({ id: a.id, name: a.name, platform: a.platform_id as OrganicProfile["platform"] }))
     .sort((a, b) => a.id.localeCompare(b.id));
   if (!platform) platform = (sources ?? []).some((s) => s.account?.is_enabled && s.account.platform_id === "meta") ? "meta" : "google";
-  const livePlatform = platform;
+  const livePlatform: LivePlatform = platform;
   const accounts: (LiveAccount & { platformId: string })[] = (sources ?? [])
     .map((s) => s.account)
     // planilha: qualquer plataforma que entra por importação; modelo novo: Meta e Google juntos; os outros, só a do template
@@ -105,9 +105,19 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
   const margin = dashboard.margin == null ? null : Number(dashboard.margin);
   const breakEvenRoas = margin && margin > 0 ? Math.round((1 / margin) * 100) / 100 : null;
 
-  const otherAds = composed ? accounts.filter((a) => a.platformId !== livePlatform) : [];
+  // app: "Tudo · Meta · Google". Com ?plataforma=meta (ou google), só as contas dela
+  const adPlatforms = composed ? (["meta", "google"] as const).filter((p) => accounts.some((a) => a.platformId === p)) : [];
+  const only = composed ? (opts.filters?.platforms ?? []).find((p): p is "meta" | "google" => (adPlatforms as readonly string[]).includes(p)) : undefined;
+  if (only) {
+    platform = only;
+    accounts.splice(0, accounts.length, ...accounts.filter((a) => a.platformId === only));
+  }
+  const shown: LivePlatform = platform!;
+  // a plataforma já foi aplicada nas contas: o filtro dela não vale para as linhas somadas
+  const filters = composed ? { ...(opts.filters ?? NO_FILTERS), platforms: [] } : (opts.filters ?? NO_FILTERS);
+  const otherAds = composed && !only ? accounts.filter((a) => a.platformId !== shown) : [];
   let view = !accounts.length
-    ? aggregateDashboard(emptyRows(livePlatform, current, previous), { breakEvenRoas })
+    ? aggregateDashboard(emptyRows(shown, current, previous), { breakEvenRoas })
     : otherAds.length
       ? // Meta e Google no mesmo dashboard: as linhas das duas somadas (a principal dá o vocabulário)
         aggregateFiltered(
@@ -117,12 +127,12 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
                 .map((p) => accounts.filter((a) => a.platformId === p).map((a) => a.id))
                 .map((ids, i) => (ids.length ? readRows({ dashboardId, platform: i === 0 ? "meta" : "google", accountIds: ids, current, previous, breakEvenRoas }) : null)),
             ).then((sets) => sets.filter((x): x is WarehouseRows => !!x)),
-            livePlatform,
+            shown,
           ),
-          opts.filters ?? NO_FILTERS,
+          filters,
           { breakEvenRoas },
         )
-      : await readWarehouse({ dashboardId, platform: livePlatform, accountIds: accounts.map((a) => a.id), current, previous, breakEvenRoas }, opts.filters ?? NO_FILTERS);
+      : await readWarehouse({ dashboardId, platform: shown, accountIds: accounts.map((a) => a.id), current, previous, breakEvenRoas }, filters);
   if (opts.hideSpend) view = redactSpend(view);
   const organic = organicProfiles.length ? await readOrganic({ dashboardId, profiles: organicProfiles, current, previous }) : undefined;
   const currency = accounts[0]?.currency ?? "BRL";
@@ -130,7 +140,8 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
 
   return {
     dashboard: { id: dashboard.id, name: dashboard.name, clientName: dashboard.client_name, templateId: dashboard.template_id },
-    platform: livePlatform,
+    platform: shown,
+    ...(adPlatforms.length > 1 ? { platforms: [...adPlatforms] } : {}),
     status: !accounts.length && !organicProfiles.length ? "no_accounts" : view.hasData || organic?.hasData ? "ok" : "no_data",
     accounts: accounts.map(({ platformId: _p, ...a }) => a),
     // contas de moedas diferentes não se somam com conversão: vale a primeira
