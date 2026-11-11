@@ -20,6 +20,7 @@ import { cutCreatives, type CreativesAccess } from "@/features/analytics/creativ
 import { aggregateFiltered } from "@/features/analytics/filtered";
 import { NO_FILTERS, type DashFilters } from "@/features/analytics/filters";
 import { TEMPLATE_PLATFORM } from "@/features/analytics/preview";
+import { anyDashboardTemplate } from "@/features/templates/live";
 import { dashboardRanges, isPeriodId, maturingStart } from "@/features/analytics/ranges";
 import type {
   AccountDayRow,
@@ -72,8 +73,10 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
   const { data: dashboard, error } = await db.from("dashboards").select("id, name, client_name, template_id, margin").eq("id", dashboardId).maybeSingle();
   if (error) throw fromPostgrest(error);
   if (!dashboard) throw appError("dashboard:not_found");
-  const platform = TEMPLATE_PLATFORM[dashboard.template_id];
-  if (!platform) throw appError("dashboard:not_live", "Este dashboard não lê dados das contas conectadas.");
+  // modelos novos e os de exemplo (app): a plataforma principal é a das contas ligadas (Meta, senão Google)
+  if (!anyDashboardTemplate(dashboard.template_id)) throw appError("dashboard:not_live", "Este dashboard não lê dados das contas conectadas.");
+  let platform = TEMPLATE_PLATFORM[dashboard.template_id];
+  const composed = !platform;
 
   const { data: sources, error: sErr } = await db
     .from("dashboard_sources")
@@ -86,11 +89,13 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && isOrganicPlatform(a.platform_id))
     .map((a) => ({ id: a.id, name: a.name, platform: a.platform_id as OrganicProfile["platform"] }))
     .sort((a, b) => a.id.localeCompare(b.id));
-  const accounts: LiveAccount[] = (sources ?? [])
+  if (!platform) platform = (sources ?? []).some((s) => s.account?.is_enabled && s.account.platform_id === "meta") ? "meta" : "google";
+  const livePlatform = platform;
+  const accounts: (LiveAccount & { platformId: string })[] = (sources ?? [])
     .map((s) => s.account)
-    // planilha: qualquer plataforma que entra por importação; as outras, só a do template
-    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (platform === "import" ? isImportPlatform(a.platform_id) : a.platform_id === platform))
-    .map((a) => ({ id: a.id, name: a.name, currency: a.currency, timeZone: a.timezone || DEFAULT_TIME_ZONE, lastSyncedAt: a.last_synced_at }))
+    // planilha: qualquer plataforma que entra por importação; modelo novo: Meta e Google juntos; os outros, só a do template
+    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (livePlatform === "import" ? isImportPlatform(a.platform_id) : composed ? a.platform_id === "meta" || a.platform_id === "google" : a.platform_id === livePlatform))
+    .map((a) => ({ id: a.id, name: a.name, currency: a.currency, timeZone: a.timezone || DEFAULT_TIME_ZONE, lastSyncedAt: a.last_synced_at, platformId: a.platform_id }))
     .sort((a, b) => a.id.localeCompare(b.id));
 
   const organicTz = (sources ?? []).map((s) => s.account).find((a) => a && organicProfiles.some((p) => p.id === a.id))?.timezone;
@@ -100,9 +105,24 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
   const margin = dashboard.margin == null ? null : Number(dashboard.margin);
   const breakEvenRoas = margin && margin > 0 ? Math.round((1 / margin) * 100) / 100 : null;
 
-  let view = accounts.length
-    ? await readWarehouse({ dashboardId, platform, accountIds: accounts.map((a) => a.id), current, previous, breakEvenRoas }, opts.filters ?? NO_FILTERS)
-    : aggregateDashboard(emptyRows(platform, current, previous), { breakEvenRoas });
+  const otherAds = composed ? accounts.filter((a) => a.platformId !== livePlatform) : [];
+  let view = !accounts.length
+    ? aggregateDashboard(emptyRows(livePlatform, current, previous), { breakEvenRoas })
+    : otherAds.length
+      ? // Meta e Google no mesmo dashboard: as linhas das duas somadas (a principal dá o vocabulário)
+        aggregateFiltered(
+          mergeRows(
+            await Promise.all(
+              (["meta", "google"] as const)
+                .map((p) => accounts.filter((a) => a.platformId === p).map((a) => a.id))
+                .map((ids, i) => (ids.length ? readRows({ dashboardId, platform: i === 0 ? "meta" : "google", accountIds: ids, current, previous, breakEvenRoas }) : null)),
+            ).then((sets) => sets.filter((x): x is WarehouseRows => !!x)),
+            livePlatform,
+          ),
+          opts.filters ?? NO_FILTERS,
+          { breakEvenRoas },
+        )
+      : await readWarehouse({ dashboardId, platform: livePlatform, accountIds: accounts.map((a) => a.id), current, previous, breakEvenRoas }, opts.filters ?? NO_FILTERS);
   if (opts.hideSpend) view = redactSpend(view);
   const organic = organicProfiles.length ? await readOrganic({ dashboardId, profiles: organicProfiles, current, previous }) : undefined;
   const currency = accounts[0]?.currency ?? "BRL";
@@ -110,9 +130,9 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
 
   return {
     dashboard: { id: dashboard.id, name: dashboard.name, clientName: dashboard.client_name, templateId: dashboard.template_id },
-    platform,
+    platform: livePlatform,
     status: !accounts.length && !organicProfiles.length ? "no_accounts" : view.hasData || organic?.hasData ? "ok" : "no_data",
-    accounts,
+    accounts: accounts.map(({ platformId: _p, ...a }) => a),
     // contas de moedas diferentes não se somam com conversão: vale a primeira
     currency,
     timeZone,
@@ -202,6 +222,27 @@ async function readAnalytics(q: { dashboardId: string; accountIds: string[]; fro
       .range(a, b),
   );
   return rows.map((r) => ({ date: r.date, channel: r.channel, sessions: num(r.sessions), users: num(r.users), engagedSessions: num(r.engaged_sessions), keyEvents: num(r.key_events), transactions: num(r.transactions), revenue: num(r.revenue) }));
+}
+
+
+/** Linhas de mais de uma plataforma num conjunto só (a principal dá o vocabulário dos números). */
+function mergeRows(sets: WarehouseRows[], platform: LivePlatform): WarehouseRows {
+  const [first] = sets;
+  const cat = <K extends keyof WarehouseRows>(k: K) => sets.flatMap((s) => s[k] as unknown[]) as WarehouseRows[K];
+  return {
+    platform,
+    current: first.current,
+    previous: first.previous,
+    accountDaily: cat("accountDaily"),
+    campaigns: cat("campaigns"),
+    campaignDaily: cat("campaignDaily"),
+    ads: cat("ads"),
+    adDaily: cat("adDaily"),
+    breakdownDaily: cat("breakdownDaily"),
+    searchTermDaily: cat("searchTermDaily"),
+    products: cat("products"),
+    productDaily: cat("productDaily"),
+  };
 }
 
 // ---- orgânico ---------------------------------------------------------------------------
