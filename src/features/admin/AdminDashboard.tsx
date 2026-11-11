@@ -1,7 +1,9 @@
 // Painel interno: usuários (Supabase e GA4) e receita por fonte. Componente
 // de servidor: os números chegam prontos, nenhuma chave vai para o navegador.
 
+import Link from "next/link";
 import type { ReactNode } from "react";
+import { btn } from "@/components/ui/styles";
 import { PageHeader } from "@/components/ui/kit";
 import { delta, int, moneyText, pct, type AdminReport, type RevenueBlock, type Source } from "./types";
 
@@ -62,6 +64,11 @@ export function AdminDashboard({ report }: { report: AdminReport }) {
         eyebrow="Só admin"
         title="Interno"
         text={`Usuários e receita da Vyzualize. Atualizado em ${new Date(report.generatedAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (cache de 15 minutos).`}
+        actions={
+          <Link href="/painel/interno/usuarios" className={btn.small}>
+            Gerenciar usuários
+          </Link>
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-2">

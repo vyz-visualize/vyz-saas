@@ -32,6 +32,9 @@ const EXEMPT: Record<string, string> = {
   "landing-pages/actions.ts:submitLandingForm": "visitante sem login: landing_page_submissions",
   "onboarding/actions.ts:chooseLayout": "registra dashboard.created",
   "billing/test-reset.ts:resetTestAccount": "só ambiente de teste",
+  // painel Interno: a simulação só lê; a exclusão total apaga o histórico da pessoa junto (e o servidor loga)
+  "admin/user-actions.ts:previewDeletionAction": "só consulta",
+  "admin/user-actions.ts:applyDeletionAction": "exclusão total: o histórico da pessoa sai junto",
 };
 
 function actionFiles(dir: string): string[] {

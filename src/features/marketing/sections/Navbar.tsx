@@ -18,7 +18,22 @@ const LINKS = [
   { id: "planos", label: "Planos" },
 ];
 
+/** Primeiro nome de quem já está logado (null = visitante). A LP é estática: pergunta no navegador. */
+function useSignedName(): string | null {
+  const [name, setName] = useState<string | null>(null);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch("/api/sessao", { signal: ctrl.signal, cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { name?: string | null } | null) => setName(j?.name || null))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, []);
+  return name;
+}
+
 export function Navbar() {
+  const signedName = useSignedName();
   const { scrollY } = useScroll();
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<string | null>(null);
@@ -102,9 +117,15 @@ export function Navbar() {
 
           <div className="flex items-center gap-2">
             <span className="hidden lg:contents">
-              <a href="/entrar" className="inline-flex h-9 items-center rounded-control px-3 text-sm font-medium text-fg-2 transition-colors duration-200 hover:text-fg">
-                Entrar
-              </a>
+              {signedName ? (
+                <a href="/painel" className="inline-flex h-9 items-center gap-1 rounded-control px-3 text-sm font-medium text-fg-2 transition-colors duration-200 hover:text-fg">
+                  Olá, <span className="text-fg">{signedName}</span> · Ir para o painel
+                </a>
+              ) : (
+                <a href="/entrar" className="inline-flex h-9 items-center rounded-control px-3 text-sm font-medium text-fg-2 transition-colors duration-200 hover:text-fg">
+                  Entrar
+                </a>
+              )}
               <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={btn.small} data-track="whatsapp_click" data-track-origem="menu">
                 <WhatsAppIcon size={16} />
                 Falar com especialista
@@ -183,8 +204,8 @@ export function Navbar() {
                 </m.li>
               ))}
             </ul>
-            <a href="/entrar" onClick={() => setOpen(false)} className={`${btn.secondary} mt-auto mb-3 w-full`}>
-              Entrar
+            <a href={signedName ? "/painel" : "/entrar"} onClick={() => setOpen(false)} className={`${btn.secondary} mt-auto mb-3 w-full`}>
+              {signedName ? `Olá, ${signedName} · Ir para o painel` : "Entrar"}
             </a>
             <div className="flex items-center gap-3">
               <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" className={`${btn.primary} flex-1`} data-track="whatsapp_click" data-track-origem="menu_celular">
