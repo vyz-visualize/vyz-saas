@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PageLayout } from "@/features/templates/types";
-import { compact, COLS, defaultGrid, firstFree, KPIS_ID, metricCardId, normalizeGrid, overlaps, parseMetricCardId, place, sameGrid } from "./model";
+import { compact, COLS, constrain, defaultGrid, firstFree, KPIS_ID, limitsOf, metricCardId, normalizeGrid, overlaps, parseMetricCardId, place, sameGrid } from "./model";
 
 const page: PageLayout = {
   kpis: [{ metric: "spend" }, { metric: "revenue" }, { metric: "roas" }, { metric: "cpa" }, { metric: "ctr" }],
@@ -52,5 +52,40 @@ describe("disposição", () => {
     expect(parseMetricCardId(metricCardId("meta", "ctr"))).toEqual({ platform: "meta", metric: "ctr" });
     expect(parseMetricCardId("m:meta:../x")).toBeNull();
     expect(sameGrid(defaultGrid(page), defaultGrid(page))).toBe(true);
+  });
+});
+
+describe("constrain: o que a grade barra", () => {
+  const widget = { id: "w0", x: 6, y: 0, w: 6, h: 8 };
+  const lim = limitsOf("w0");
+
+  it("mover dentro da grade passa sem aviso", () => {
+    expect(constrain("move", { ...widget, x: 3 }, lim)).toEqual({ item: { ...widget, x: 3 }, blocked: null });
+  });
+
+  it("mover além da borda para na borda e avisa", () => {
+    expect(constrain("move", { ...widget, x: 9 }, lim)).toEqual({ item: { ...widget, x: 6 }, blocked: "edge" });
+    expect(constrain("move", { ...widget, x: -2 }, lim)).toEqual({ item: { ...widget, x: 0 }, blocked: "edge" });
+    expect(constrain("move", { ...widget, y: -1 }, lim).blocked).toBe("edge");
+  });
+
+  it("alargar além da borda não desloca o bloco: a largura para na borda", () => {
+    const r = constrain("resize", { ...widget, w: 9 }, lim);
+    expect(r.item.x).toBe(6);
+    expect(r.item.w).toBe(COLS - 6);
+    expect(r.blocked).toBe("edge");
+  });
+
+  it("menor que o mínimo e maior que o máximo avisam", () => {
+    expect(constrain("resize", { ...widget, w: 2 }, lim)).toEqual({ item: { ...widget, w: lim.minW }, blocked: "min" });
+    expect(constrain("resize", { ...widget, h: 3 }, lim).blocked).toBe("min");
+    expect(constrain("resize", { ...widget, x: 0, h: 99 }, lim)).toEqual({ item: { ...widget, x: 0, h: lim.maxH }, blocked: "max" });
+    const card = { id: metricCardId("meta", "spend"), x: 0, y: 0, w: 3, h: 4 };
+    expect(constrain("resize", { ...card, w: 6 }, limitsOf(card.id)).item.w).toBe(4);
+    expect(constrain("resize", { ...card, w: 6 }, limitsOf(card.id)).blocked).toBe("max");
+  });
+
+  it("dentro dos limites redimensiona sem aviso", () => {
+    expect(constrain("resize", { ...widget, x: 0, w: 8, h: 10 }, lim)).toEqual({ item: { ...widget, x: 0, w: 8, h: 10 }, blocked: null });
   });
 });

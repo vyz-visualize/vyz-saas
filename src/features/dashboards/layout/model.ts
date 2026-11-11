@@ -79,6 +79,32 @@ export function fitLimits(item: LayoutItem, limits: Limits): LayoutItem {
   return { ...item, w, h, x: clamp(Math.round(item.x), 0, COLS - w), y: Math.max(0, Math.round(item.y)) };
 }
 
+/** Por que um movimento ou redimensionamento não foi adiante (o painel avisa em uma frase). */
+export type Blocked = "min" | "max" | "edge";
+
+export const BLOCKED_TEXT: Record<Blocked, string> = {
+  min: "Este bloco não fica menor que isso.",
+  max: "Este é o tamanho máximo deste bloco.",
+  edge: "O bloco não passa da borda da grade.",
+};
+
+/**
+ * Ajusta o pedido (mover ou redimensionar) ao que a grade permite e diz se algo
+ * foi barrado. Redimensionar nunca desloca o bloco: a largura para na borda.
+ */
+export function constrain(mode: "move" | "resize", wanted: LayoutItem, limits: Limits): { item: LayoutItem; blocked: Blocked | null } {
+  if (mode === "move") {
+    const item = fitLimits(wanted, limits);
+    const blocked = wanted.x < 0 || wanted.x + item.w > COLS || wanted.y < 0 ? "edge" : null;
+    return { item, blocked };
+  }
+  const room = COLS - wanted.x;
+  const item = fitLimits({ ...wanted, w: Math.min(wanted.w, room) }, limits);
+  const blocked: Blocked | null =
+    wanted.w < limits.minW || wanted.h < limits.minH ? "min" : wanted.w > limits.maxW || wanted.h > limits.maxH ? "max" : wanted.w > room ? "edge" : null;
+  return { item, blocked };
+}
+
 // ---- disposição padrão ------------------------------------------------------------------
 
 /** Os blocos que o template dá a esta aba, com o tamanho padrão de cada um. */

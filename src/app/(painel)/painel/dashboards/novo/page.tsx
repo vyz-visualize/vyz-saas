@@ -34,6 +34,7 @@ async function Novo({ searchParams }: { searchParams: PageProps<"/painel/dashboa
       used={dashboards.length}
       limit={session.access.entitlements?.maxDashboards ?? 0}
       initialTemplate={template}
+      voice={!!session.access.entitlements?.agentVoice}
     />
   );
 }

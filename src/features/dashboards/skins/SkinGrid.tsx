@@ -18,6 +18,7 @@ export type SkinGridControl = {
   onChange?: (g: PageGrid) => void;
   onHide?: (id: string) => void;
   onDropNew?: (id: string, x: number, y: number) => void;
+  canDrop?: (id: string) => boolean;
 };
 
 export function SkinGrid({
@@ -60,6 +61,7 @@ export function SkinGrid({
       onChange={grid?.onChange}
       onHide={grid?.onHide}
       onDropNew={grid?.onDropNew}
+      canDrop={grid?.canDrop}
       sizeOf={(id) =>
         SKIN_BLOCKS[skin].find((s) => s.id === id) ?? { w: 3, h: 4 }
       }

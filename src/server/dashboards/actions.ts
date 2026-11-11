@@ -305,3 +305,27 @@ export async function recordExport(input: { dashboardId: string; period: string;
     return toActionError(err);
   }
 }
+
+const TemplateSearchInput = z.object({
+  query: z.string().trim().min(1).max(300),
+  via: z.enum(["text", "voice", "example"]),
+  suggested: z.array(z.string().max(60)).max(5),
+});
+
+/** Registra o pedido feito ao assistente ao criar um dashboard (o que a pessoa procurou e o que foi sugerido). */
+export async function recordTemplateSearch(input: { query: string; via: "text" | "voice" | "example"; suggested: string[] }): Promise<ActionResult> {
+  try {
+    const data = parse(TemplateSearchInput, input);
+    const session = await authorize("member", { access: false });
+    await logActivity({
+      workspaceId: session.workspace.id,
+      actorId: session.user.id,
+      event: "dashboard.template_search",
+      metadata: { query: data.query, via: data.via, suggested: data.suggested.filter((id) => !!anyDashboardTemplate(id)) },
+    });
+    return { ok: true, data: undefined };
+  } catch (err) {
+    unstable_rethrow(err);
+    return toActionError(err);
+  }
+}

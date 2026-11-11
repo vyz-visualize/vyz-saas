@@ -7,6 +7,8 @@
 
 import { EyeOff, GripVertical } from "lucide-react";
 import {
+  useEffect,
+  useRef,
   useState,
   type CSSProperties,
   type DragEvent,
@@ -15,10 +17,12 @@ import {
   type ReactNode,
 } from "react";
 import { useElementSize } from "@/components/charts/useSize";
+import { notify } from "@/components/ui/Toast";
 import {
+  BLOCKED_TEXT,
   COLS,
   compact,
-  fitLimits,
+  constrain,
   GAP,
   GRID_MIN_WIDTH,
   gridRows,
@@ -26,6 +30,7 @@ import {
   place,
   readingOrder,
   ROW,
+  type Blocked,
   type LayoutItem,
   type PageGrid,
 } from "./model";
@@ -58,6 +63,8 @@ type Props = {
   onDropNew?: (id: string, x: number, y: number) => void;
   /** Tamanho que um bloco do painel ocupa (para a sombra de onde ele vai cair). */
   sizeOf?: (id: string) => { w: number; h: number };
+  /** A aba aceita este bloco? Sem isso, aceita o que vier da bandeja. */
+  canDrop?: (id: string) => boolean;
 };
 
 export function GridCanvas({
@@ -69,7 +76,9 @@ export function GridCanvas({
   onHide,
   onDropNew,
   sizeOf,
+  canDrop,
 }: Props) {
+  const blockedRef = useRef<Blocked | null>(null);
   const [ref, size] = useElementSize<HTMLDivElement>();
   const [drag, setDrag] = useState<Drag | null>(null);
   const [incoming, setIncoming] = useState<LayoutItem | null>(null);
@@ -95,7 +104,6 @@ export function GridCanvas({
     const orig = items.find((i) => i.id === id);
     if (!orig) return;
     e.preventDefault();
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDrag({
       id,
       mode,
@@ -107,31 +115,18 @@ export function GridCanvas({
       dy: 0,
     });
   };
-  const move = (e: PointerEvent) => {
+  const move = (e: { clientX: number; clientY: number }) => {
     if (!drag) return;
     const dx = e.clientX - drag.px;
     const dy = e.clientY - drag.py;
     const { orig } = drag;
-    const next =
+    const wanted =
       drag.mode === "move"
-        ? fitLimits(
-            {
-              ...orig,
-              x: orig.x + Math.round(dx / unit),
-              y: orig.y + Math.round(dy / ROW),
-            },
-            limitsOf(orig.id, kpiCount),
-          )
-        : fitLimits(
-            {
-              ...orig,
-              w: orig.w + Math.round(dx / unit),
-              h: orig.h + Math.round(dy / ROW),
-            },
-            limitsOf(orig.id, kpiCount),
-          );
-    if (drag.mode === "resize" && next.x + next.w > COLS)
-      next.w = COLS - next.x;
+        ? { ...orig, x: orig.x + Math.round(dx / unit), y: orig.y + Math.round(dy / ROW) }
+        : { ...orig, w: orig.w + Math.round(dx / unit), h: orig.h + Math.round(dy / ROW) };
+    const { item: next, blocked } = constrain(drag.mode, wanted, limitsOf(orig.id, kpiCount));
+    // o aviso sai ao soltar, se a pessoa soltou forçando além do limite
+    blockedRef.current = blocked;
     setDrag({ ...drag, dx, dy });
     const cur = items.find((i) => i.id === orig.id);
     if (
@@ -146,10 +141,27 @@ export function GridCanvas({
   };
   const end = () => {
     if (!drag) return;
+    if (blockedRef.current) notify(BLOCKED_TEXT[blockedRef.current]);
+    blockedRef.current = null;
     onChange?.(compact(items));
     setFocus(drag.id);
     setDrag(null);
   };
+
+  // O arrasto escuta a janela: enquanto um bloco anda, os outros trocam de lugar no DOM
+  // e a captura do ponteiro se perde; ouvindo a janela, soltar fora da grade também encerra.
+  useEffect(() => {
+    if (!drag) return;
+    const onMove = (e: globalThis.PointerEvent) => move(e);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+  });
 
   // ---- teclado ------------------------------------------------------------------------
   const key = (e: KeyboardEvent, it: LayoutItem) => {
@@ -167,12 +179,13 @@ export function GridCanvas({
       return;
     }
     e.preventDefault();
-    const next = e.shiftKey
+    const wanted = e.shiftKey
       ? { ...it, w: it.w + d[0], h: it.h + d[1] }
       : { ...it, x: it.x + d[0], y: it.y + d[1] * 2 };
-    onChange?.(
-      compact(place(items, fitLimits(next, limitsOf(it.id, kpiCount)))),
-    );
+    const { item: next, blocked } = constrain(e.shiftKey ? "resize" : "move", wanted, limitsOf(it.id, kpiCount));
+    // não saiu do lugar: diz o porquê em vez de parecer travado
+    if (blocked && next.x === it.x && next.y === it.y && next.w === it.w && next.h === it.h) return notify(BLOCKED_TEXT[blocked]);
+    onChange?.(compact(place(items, next)));
   };
 
   // ---- soltar do painel -----------------------------------------------------------------
@@ -199,6 +212,8 @@ export function GridCanvas({
     setIncoming(null);
     if (!editing || !id) return;
     e.preventDefault();
+    if (items.some((i) => i.id === id)) return notify("Este bloco já está na grade.");
+    if (canDrop && !canDrop(id)) return notify("Este componente não entra nesta aba.");
     const s = sizeOf?.(id) ?? { w: 3, h: 4 };
     const { x, y } = cellAt(e, s.w);
     onDropNew?.(id, x, y);
@@ -220,9 +235,6 @@ export function GridCanvas({
         <div
           className="relative"
           style={{ height: rows * ROW }}
-          onPointerMove={move}
-          onPointerUp={end}
-          onPointerCancel={end}
           onDragOver={dragOver}
           onDragLeave={(e) => {
             if (

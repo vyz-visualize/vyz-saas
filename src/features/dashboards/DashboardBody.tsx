@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/controls";
 import { PendingChip } from "@/components/ui/kit";
 import { OverflowTabs } from "@/components/ui/OverflowTabs";
 import { PeriodPicker, rangeDays, type Range } from "@/components/ui/PeriodPicker";
+import { Notices } from "@/components/ui/Toast";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { CreativeList } from "@/features/analytics/creatives/CreativeList";
 import { CreativesPage } from "@/features/analytics/creatives/CreativesPage";
@@ -215,6 +216,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
           onChange: (g) => grid.change(p, g),
           onHide: (id) => grid.hide(p, id),
           onDropNew: (id, x, y) => grid.add(p, id, { x, y }),
+          canDrop: (id) => grid.accepts(p, id),
         }}
         onPage={
           nav
@@ -233,6 +235,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
     <FilterProvider value={filterState}>
     <div style={brandStyle(spec.brand)} data-metric-editing={editing ? edit.section : undefined} className={`space-y-4 ${editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
       {customizeId && <MetricEditBar state={edit} />}
+      {/* avisos curtos do Personalizar (bloco que não cabe, limite da grade) */}
+      {customizeId && <Notices placement="top" />}
       <div className="@container space-y-4 print:hidden">
         <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
           <div className="flex min-w-0 flex-1 items-start gap-4">

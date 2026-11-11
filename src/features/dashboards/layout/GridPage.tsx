@@ -108,6 +108,7 @@ export function GridPage({
       onChange={(g) => grid.change(page, g)}
       onHide={(id) => grid.hide(page, id)}
       onDropNew={(id, x, y) => grid.add(page, id, { x, y }, kpiCount)}
+      canDrop={(id) => grid.accepts(page, id)}
       sizeOf={(id) =>
         id.startsWith("m:") || id === "_incoming"
           ? { w: 3, h: 4 }

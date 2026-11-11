@@ -21,6 +21,7 @@ import { brl } from "@/lib/format";
 import { createDashboard, updateDashboard } from "@/server/dashboards/actions";
 import { defaultPages, pageOptions, type DashboardDetail, type SourceOption } from "./model";
 import type { DashboardFields } from "./schema";
+import { NewDashboardAssistant } from "./NewDashboardAssistant";
 import { TemplateGallery } from "./TemplateGallery";
 
 const STEPS = ["Template", "Contas", "Páginas", "Metas e ajustes", "Revisar"];
@@ -121,9 +122,11 @@ export type DashboardFlowProps = {
   limit: number;
   /** ?template= abre direto nas contas. */
   initialTemplate?: string | null;
+  /** O plano inclui voz no assistente (Avançado e Personalizado). */
+  voice?: boolean;
 };
 
-export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLabel, used, limit, initialTemplate }: DashboardFlowProps) {
+export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLabel, used, limit, initialTemplate, voice = false }: DashboardFlowProps) {
   const editing = !!dashboard;
   const [draft, setDraft] = useState<Draft>(() => {
     if (dashboard) return draftFrom(dashboard);
@@ -131,6 +134,9 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
     return t ? withTemplate(EMPTY, t, pagesTier, sources) : EMPTY;
   });
   const [step, setStep] = useState(() => (dashboard ? (isLiveTemplate(dashboard.templateId) ? 2 : 3) : draft.templateId ? (isLiveTemplate(draft.templateId) ? 2 : 3) : 1));
+  // ao criar sem modelo escolhido, o assistente pergunta o que a pessoa quer; "procurar você mesmo" fecha e mostra a galeria
+  const [assistant, setAssistant] = useState(() => !dashboard && !draft.templateId);
+  const [preview, setPreview] = useState<{ id: string; n: number } | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
   const [error, setError] = useState<{ message: string; fields?: Record<string, string> } | null>(null);
   const [pending, start] = useTransition();
@@ -148,6 +154,14 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
   const accountsMissing = live && draft.accountIds.length === 0;
   // na edição o template não muda: o primeiro passo é o das contas (ou das páginas)
   const firstStep = editing ? (live ? 2 : 3) : 1;
+
+  const enabledAccounts = sources.reduce<Partial<Record<PlatformId, number>>>((acc, s) => (s.isEnabled ? { ...acc, [s.platformId]: (acc[s.platformId] ?? 0) + 1 } : acc), {});
+  function pickTemplate(id: string) {
+    const tt = anyDashboardTemplate(id);
+    if (!tt) return;
+    setDraft((d) => withTemplate(d, tt, pagesTier, sources));
+    setStep(isLiveTemplate(tt.id) ? 2 : 3);
+  }
 
   function submit() {
     if (!t) return;
@@ -188,17 +202,32 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
       <Stepper step={step} max={t ? 5 : 1} onGo={go} skip={editing ? [1, ...skip] : skip} />
 
       {step === 1 && !editing && (
-        <TemplateGallery
-          tier={tier}
-          canCreate
-          enabledAccounts={sources.reduce<Partial<Record<PlatformId, number>>>((acc, s) => (s.isEnabled ? { ...acc, [s.platformId]: (acc[s.platformId] ?? 0) + 1 } : acc), {})}
-          onUse={(id) => {
-            const tt = anyDashboardTemplate(id);
-            if (!tt) return;
-            setDraft((d) => withTemplate(d, tt, pagesTier, sources));
-            setStep(isLiveTemplate(tt.id) ? 2 : 3);
-          }}
-        />
+        <>
+          <TemplateGallery
+            key={preview ? `${preview.id}:${preview.n}` : "galeria"}
+            tier={tier}
+            canCreate
+            enabledAccounts={enabledAccounts}
+            onUse={pickTemplate}
+            onAskAssistant={() => setAssistant(true)}
+            initialOpenId={preview?.id}
+          />
+          <NewDashboardAssistant
+            open={assistant}
+            onBrowse={() => setAssistant(false)}
+            tier={tier}
+            enabledAccounts={enabledAccounts}
+            voice={voice}
+            onUse={(id) => {
+              setAssistant(false);
+              pickTemplate(id);
+            }}
+            onPreview={(id) => {
+              setAssistant(false);
+              setPreview((p) => ({ id, n: (p?.n ?? 0) + 1 }));
+            }}
+          />
+        </>
       )}
 
       {t && step === 2 && live && (

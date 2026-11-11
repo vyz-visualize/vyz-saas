@@ -4,7 +4,8 @@
 // campo da API e se a VYZ já sincroniza) e a disposição em forma de dados.
 
 import { Check, EyeOff, Plus } from "lucide-react";
-import { useState, type DragEvent } from "react";
+import { useState, type DragEvent, type PointerEvent } from "react";
+import { notify } from "@/components/ui/Toast";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { delta } from "@/features/metrics/compute";
 import {
@@ -56,6 +57,12 @@ type PanelProps = {
 const dragStart = (id: string) => (e: DragEvent) => {
   e.dataTransfer.setData(DRAG_MIME, id);
   e.dataTransfer.effectAllowed = "copy";
+};
+
+/** Card que não dá para arrastar: ao tentar, um aviso curto diz o porquê (os botões do card seguem valendo). */
+const whyNot = (text: string) => (e: PointerEvent) => {
+  if ((e.target as HTMLElement).closest("button")) return;
+  notify(text);
 };
 
 /**
@@ -129,6 +136,7 @@ export function PlatformTray({
             key={b.id}
             draggable={arrange}
             onDragStart={dragStart(b.id)}
+            onPointerDown={arrange ? undefined : whyNot("Arrastar é do plano Avançado. Use o + para trazer o bloco de volta.")}
             className="flex w-44 shrink-0 cursor-grab flex-col rounded-[10px] border border-dashed border-accent/60 bg-accent-soft/25 p-2.5 active:cursor-grabbing"
           >
             <p className="flex items-center gap-1 text-[10.5px] font-semibold tracking-wide text-fg-2 uppercase">
@@ -163,6 +171,19 @@ export function PlatformTray({
                 key={pm.metric}
                 draggable={addable && arrange}
                 onDragStart={dragStart(id)}
+                onPointerDown={
+                  addable && arrange
+                    ? undefined
+                    : whyNot(
+                        added
+                          ? "Este card já está na grade."
+                          : !allowed
+                            ? "Com o investimento oculto, esta métrica não entra."
+                            : full
+                              ? `Limite de ${METRIC_CARDS_MAX} cards de plataforma. Tire um para pôr outro.`
+                              : "Arrastar é do plano Avançado. Use o + para adicionar o card.",
+                      )
+                }
                 className={`flex w-44 shrink-0 flex-col rounded-[10px] border border-line bg-bg p-2.5 ${addable ? "cursor-grab active:cursor-grabbing" : "opacity-55"}`}
               >
                 <p className="line-clamp-2 text-[11.5px] leading-tight font-medium">

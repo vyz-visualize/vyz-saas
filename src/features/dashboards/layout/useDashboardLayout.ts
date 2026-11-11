@@ -43,6 +43,8 @@ export function useDashboardLayout({ initial, pages, templateOf, accept, baseOf,
     items,
     base,
     isDefault: (p: PageId) => sameGrid(items(p), base(p)),
+    /** A aba aceita este bloco (do modelo, do visual ou métrica de uma plataforma dela)? */
+    accepts: (p: PageId, id: string) => accept(p)(id),
     change: (p: PageId, g: PageGrid) => update(p, () => g),
     hide: (p: PageId, id: string) => update(p, (g) => (arrange ? compact(g.filter((i) => i.id !== id)) : g.filter((i) => i.id !== id))),
     add: (p: PageId, id: string, at?: { x: number; y: number }, kpiCount = 4) =>
