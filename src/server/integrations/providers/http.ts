@@ -14,6 +14,8 @@ type Init = RequestInit & {
   label: string;
   /** Código quando o provedor recusa (4xx). Padrão: troca_falhou. */
   rejectCode?: ConnectErrorCode;
+  /** Tempo limite desta chamada (padrão 15 s). Relatórios grandes pedem mais. */
+  timeoutMs?: number;
 };
 
 /** Campos de diagnóstico seguros (tipo, código, fbtrace_id, status do Google). */
@@ -50,11 +52,11 @@ function googleAdsFailure(details: unknown): string {
 }
 
 /** Faz a chamada e devolve o corpo (JSON ou null), ou lança ProviderError. */
-async function call(url: string | URL, { label, rejectCode = "troca_falhou", ...init }: Init): Promise<{ status: number; body: unknown }> {
+async function call(url: string | URL, { label, rejectCode = "troca_falhou", timeoutMs = TIMEOUT_MS, ...init }: Init): Promise<{ status: number; body: unknown }> {
   let res: Response;
   try {
     // redirect "error": um token nunca segue um redirecionamento para outro host.
-    res = await fetch(url, { ...init, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(TIMEOUT_MS) });
+    res = await fetch(url, { ...init, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(timeoutMs) });
   } catch {
     throw new ProviderError("provedor_indisponivel", `${label}: sem resposta`);
   }
