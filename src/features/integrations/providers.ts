@@ -14,13 +14,32 @@ export const isProviderId = (v: unknown): v is ProviderId => typeof v === "strin
 
 export type ProviderPermission = { scope: string; label: string; detail: string };
 
+/** Grupos da tela de contas, na ordem em que aparecem. */
+export const PROVIDER_CATEGORIES = [
+  { id: "midia", label: "Mídia paga", text: "Campanhas, investimento e resultados das plataformas de anúncio." },
+  { id: "analytics", label: "Analytics", text: "Sessões, conversões e receita do site." },
+  { id: "crm", label: "CRM", text: "Leads, negócios e vendas para cruzar com a mídia." },
+] as const;
+export type ProviderCategory = (typeof PROVIDER_CATEGORIES)[number]["id"];
+
+/** Gênero gramatical, para montar "pelo/pela", "do/da", "nenhum/nenhuma". */
+type Gender = "m" | "f";
+
 export type ProviderInfo = {
   id: ProviderId;
   /** Plataforma de anúncios que a conexão alimenta (mesmo id). */
   platformId: PlatformId & ProviderId;
   name: string;
-  /** Onde o usuário entra. */
+  /** Grupo na tela de contas. */
+  category: ProviderCategory;
+  /** Onde o usuário entra, em minúsculas e sem artigo ("conta do Google"). */
   loginName: string;
+  loginGender: Gender;
+  /** O que cada item conectado é ("conta de anúncio", "portal"), no singular. */
+  accountNoun: string;
+  accountGender: Gender;
+  /** Como o item ocupa o plano (frase completa). */
+  planRule: string;
   /** Como as contas se agrupam no provedor. */
   groupLabel: string;
   /** Escopos pedidos, em português (a tela simulada e a página de contas mostram). */
@@ -32,7 +51,12 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "meta",
     platformId: "meta",
     name: "Meta Ads",
+    category: "midia",
     loginName: "login do Facebook (Meta Business)",
+    loginGender: "m",
+    accountNoun: "conta de anúncio",
+    accountGender: "f",
+    planRule: "Cada Business Manager conta como 1 conta do plano.",
     groupLabel: "Business Manager",
     permissions: [
       { scope: "ads_read", label: "Ler os relatórios de anúncios", detail: "Campanhas, conjuntos, anúncios e métricas das contas que você escolher." },
@@ -43,7 +67,12 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "google",
     platformId: "google",
     name: "Google Ads",
-    loginName: "Conta do Google",
+    category: "midia",
+    loginName: "conta do Google",
+    loginGender: "f",
+    accountNoun: "conta de anúncio",
+    accountGender: "f",
+    planRule: "Cada conta de anúncio conta como 1 conta do plano.",
     groupLabel: "Conta de administrador (MCC)",
     permissions: [
       { scope: "https://www.googleapis.com/auth/adwords", label: "Acessar as suas contas do Google Ads", detail: "O VYZ lê campanhas, termos de pesquisa, produtos e métricas, e só altera campanhas quando você clica em Aplicar ou liga o automático." },
@@ -54,7 +83,12 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "ga4",
     platformId: "ga4",
     name: "GA4",
-    loginName: "Conta do Google",
+    category: "analytics",
+    loginName: "conta do Google",
+    loginGender: "f",
+    accountNoun: "propriedade do GA4",
+    accountGender: "f",
+    planRule: "Cada propriedade do GA4 conta como 1 conta do plano.",
     groupLabel: "Conta do Analytics",
     permissions: [
       { scope: "https://www.googleapis.com/auth/analytics.readonly", label: "Ver os relatórios do Google Analytics", detail: "O VYZ lista as propriedades do GA4 e lê sessões, conversões e receita. Só leitura." },
@@ -65,7 +99,12 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "tiktok",
     platformId: "tiktok",
     name: "TikTok Ads",
+    category: "midia",
     loginName: "TikTok for Business",
+    loginGender: "m",
+    accountNoun: "conta de anúncio",
+    accountGender: "f",
+    planRule: "Cada conta de anúncio conta como 1 conta do plano.",
     groupLabel: "Business Center",
     permissions: [{ scope: "ads_read", label: "Ler as contas e os relatórios de anúncios", detail: "Campanhas, grupos, anúncios e métricas das contas autorizadas." }],
   },
@@ -73,7 +112,12 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "linkedin",
     platformId: "linkedin",
     name: "LinkedIn Ads",
-    loginName: "LinkedIn",
+    category: "midia",
+    loginName: "login do LinkedIn",
+    loginGender: "m",
+    accountNoun: "conta de anúncio",
+    accountGender: "f",
+    planRule: "Cada conta de anúncio conta como 1 conta do plano.",
     groupLabel: "Contas de anúncios",
     permissions: [
       { scope: "r_ads r_ads_reporting", label: "Ler as contas e os relatórios de anúncios", detail: "Campanhas e métricas das contas de anúncios em que você tem acesso. Só leitura." },
@@ -84,7 +128,12 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "mercado",
     platformId: "mercado",
     name: "Mercado Ads",
-    loginName: "Mercado Livre",
+    category: "midia",
+    loginName: "login do Mercado Livre",
+    loginGender: "m",
+    accountNoun: "conta de anunciante",
+    accountGender: "f",
+    planRule: "Cada conta de anunciante conta como 1 conta do plano.",
     groupLabel: "Anunciantes",
     permissions: [{ scope: "read offline_access", label: "Ler os relatórios do Product Ads", detail: "Campanhas, anúncios e métricas do Mercado Ads. Só leitura." }],
   },
@@ -92,7 +141,12 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "rdstation",
     platformId: "rdstation",
     name: "RD Station CRM",
-    loginName: "RD Station",
+    category: "crm",
+    loginName: "login do RD Station",
+    loginGender: "m",
+    accountNoun: "conta do CRM",
+    accountGender: "f",
+    planRule: "Cada conta do CRM conta como 1 conta do plano.",
     groupLabel: "Conta do CRM",
     permissions: [{ scope: "crm", label: "Ler contatos e negociações do CRM", detail: "Leads, negociações e valores ganhos para cruzar com a mídia. Só leitura." }],
   },
@@ -100,7 +154,12 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "hubspot",
     platformId: "hubspot",
     name: "HubSpot",
-    loginName: "HubSpot",
+    category: "crm",
+    loginName: "login do HubSpot",
+    loginGender: "m",
+    accountNoun: "portal do HubSpot",
+    accountGender: "m",
+    planRule: "Cada portal do HubSpot conta como 1 conta do plano.",
     groupLabel: "Portal",
     permissions: [{ scope: "crm.objects.contacts.read crm.objects.deals.read crm.schemas.deals.read", label: "Ler contatos e negócios do CRM", detail: "Leads, negócios e valores ganhos para cruzar com a mídia. Só leitura." }],
   },
@@ -108,7 +167,12 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "pipedrive",
     platformId: "pipedrive",
     name: "Pipedrive",
-    loginName: "Pipedrive",
+    category: "crm",
+    loginName: "login do Pipedrive",
+    loginGender: "m",
+    accountNoun: "empresa do Pipedrive",
+    accountGender: "f",
+    planRule: "Cada empresa do Pipedrive conta como 1 conta do plano.",
     groupLabel: "Empresa",
     permissions: [{ scope: "deals:read contacts:read", label: "Ler negócios e contatos", detail: "Leads, negócios e valores ganhos para cruzar com a mídia. Só leitura." }],
   },
@@ -116,11 +180,31 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     id: "kommo",
     platformId: "kommo",
     name: "Kommo",
-    loginName: "Kommo",
+    category: "crm",
+    loginName: "login do Kommo",
+    loginGender: "m",
+    accountNoun: "conta do Kommo",
+    accountGender: "f",
+    planRule: "Cada conta do Kommo conta como 1 conta do plano.",
     groupLabel: "Conta",
     permissions: [{ scope: "crm", label: "Ler leads e contatos", detail: "Leads, etapas do funil e valores ganhos para cruzar com a mídia. Só leitura." }],
   },
 };
+
+const pelo = (g: Gender) => (g === "m" ? "pelo" : "pela");
+const art = (g: Gender) => (g === "m" ? "o" : "a");
+const de = (g: Gender) => (g === "m" ? "do" : "da");
+
+/** "pelo login do Facebook (Meta Business)", "pela conta do Google". */
+export const loginVia = (id: ProviderId) => `${pelo(PROVIDERS[id].loginGender)} ${PROVIDERS[id].loginName}`;
+/** "o login do HubSpot", "a conta do Google". */
+export const loginThe = (id: ProviderId) => `${art(PROVIDERS[id].loginGender)} ${PROVIDERS[id].loginName}`;
+/** "do login do HubSpot", "da conta do Google". */
+export const loginOf = (id: ProviderId) => `${de(PROVIDERS[id].loginGender)} ${PROVIDERS[id].loginName}`;
+/** "nenhuma conta de anúncio", "nenhum portal do HubSpot". */
+export const noAccount = (id: ProviderId) => `${PROVIDERS[id].accountGender === "m" ? "nenhum" : "nenhuma"} ${PROVIDERS[id].accountNoun}`;
+/** Primeira letra maiúscula (para início de frase). */
+export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** Escopos pedidos ao provedor (separados, como o provedor devolve). */
 export const providerScopes = (id: ProviderId): string[] => PROVIDERS[id].permissions.flatMap((p) => p.scope.split(" "));

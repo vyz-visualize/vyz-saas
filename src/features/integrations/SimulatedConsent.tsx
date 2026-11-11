@@ -12,7 +12,7 @@ import { btn } from "@/components/ui/styles";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ConsentActions } from "./ConsentActions";
 import { MOCK_NOTICE, MOCK_PROFILES, mockAccountGroups } from "./mock-data";
-import { PROVIDERS, type ProviderId } from "./providers";
+import { loginOf, PROVIDERS, type ProviderId } from "./providers";
 
 export function ConsentFrame({ children }: { children: ReactNode }) {
   return (
@@ -81,7 +81,7 @@ export function SimulatedConsent({ provider, state, code, workspaceName, expires
         Conexão simulada com {info.name}
       </h1>
       <p className="mt-2 text-[14px] text-fg-2">
-        Esta tela faz o papel do {info.loginName}. Nada sai do VYZ: o login, as permissões e as contas abaixo são fictícios.
+        Esta tela faz o papel {loginOf(info.id)}. Nada sai do VYZ: o login, as permissões e as contas abaixo são fictícios.
       </p>
 
       <div className="mt-6 flex items-center gap-3 rounded-control border border-line bg-bg p-3">

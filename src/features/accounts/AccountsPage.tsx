@@ -1,7 +1,8 @@
 "use client";
 
-// Página Contas: logins conectados (Meta Ads, Google Ads) com a escolha das
-// contas que entram no VYZ, e o cadastro pelo ID das outras plataformas. Os
+// Página Contas: logins conectados, agrupados em Mídia paga, Analytics e CRM,
+// com a escolha das contas que entram no VYZ, e o cadastro pelo ID das
+// plataformas que ainda não conectam direto. Os
 // dados vêm do servidor (getConnectState); as mudanças passam por Server
 // Actions, que re-renderizam a página.
 
@@ -14,7 +15,7 @@ import { AccountPicker } from "@/features/integrations/AccountPicker";
 import { ConnectButton } from "@/features/integrations/ConnectButton";
 import { ConnectionCard } from "@/features/integrations/ConnectionCard";
 import { MOCK_NOTICE } from "@/features/integrations/mock-data";
-import { PROVIDERS, type ProviderId } from "@/features/integrations/providers";
+import { capitalize, loginVia, noAccount, PROVIDER_CATEGORIES, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import type { ConnectResult } from "@/features/integrations/results";
 import type { AdAccountDTO, ConnectState } from "@/features/integrations/types";
 import { btnSmallDanger } from "@/features/integrations/ui";
@@ -93,11 +94,11 @@ function ProviderSection({
     <section aria-labelledby={`pl-${provider}`} className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 id={`pl-${provider}`} className="title text-lg">
+          <h3 id={`pl-${provider}`} className="title text-lg">
             {info.name}
-          </h2>
+          </h3>
           <p className="text-[13.5px] text-fg-2">
-            Pelo {info.loginName}.{provider === "meta" ? " Cada Business Manager conta como 1 conta do plano." : " Cada conta de anúncio conta como 1 conta do plano."}
+            {capitalize(loginVia(provider))}. {info.planRule}
           </p>
         </div>
         {platform.connections.length > 0 && <ConnectButton provider={provider} next={RETURN_PATH} variant="secondary" label="Conectar outro login" canManage={state.canManage} />}
@@ -107,7 +108,11 @@ function ProviderSection({
         <div className="rounded-card border border-dashed border-line bg-card p-5">
           <p className="font-semibold">Nenhum login conectado</p>
           <p className="mt-1 max-w-xl text-[14px] text-fg-2">
-            Conecte para o VYZ encontrar as contas e importar campanhas e métricas. Você escolhe depois quais contas entram.
+            {info.category === "crm"
+              ? "Conecte para o VYZ trazer leads, negócios e vendas. Você escolhe depois quais contas entram."
+              : info.category === "analytics"
+                ? "Conecte para o VYZ encontrar as propriedades e importar sessões, conversões e receita. Você escolhe depois quais entram."
+                : "Conecte para o VYZ encontrar as contas e importar campanhas e métricas. Você escolhe depois quais contas entram."}
           </p>
           <ul className="mt-3 space-y-1.5 text-[13.5px]">
             {info.permissions.map((p) => (
@@ -142,7 +147,7 @@ function ProviderSection({
           onRemove={onRemove}
         />
       ) : (
-        platform.connected && <p className="text-[14px] text-fg-2">Este login não enxerga nenhuma conta de anúncio. Confira o acesso no {info.name} e reconecte.</p>
+        platform.connected && <p className="text-[14px] text-fg-2">Este login não enxerga {noAccount(provider)}. Confira o acesso no {info.name} e reconecte.</p>
       )}
     </section>
   );
@@ -177,7 +182,7 @@ export function AccountsPage({ state, manual, result, now, timeZone }: AccountsP
       <PageHeader
         eyebrow="Contas"
         title="Contas e conexões"
-        text="Conecte o Meta Ads e o Google Ads e escolha quais contas entram no VYZ. As outras plataformas entram pelo ID."
+        text="Conecte as plataformas de mídia, o Analytics e o CRM e escolha quais contas entram no VYZ. As plataformas que ainda não conectam direto entram pelo ID."
       />
 
       {banner && <ResultBanner result={banner} onClose={() => setBanner(null)} />}
@@ -193,27 +198,41 @@ export function AccountsPage({ state, manual, result, now, timeZone }: AccountsP
         {state.mock && <PendingChip label="Modo de teste" detail="Login e dados simulados: nenhuma conta real do Meta ou do Google é acessada. A conexão real depende das credenciais e da aprovação dos apps nas duas plataformas." />}
       </div>
 
-      {state.providers.map((p) => (
-        <ProviderSection
-          key={p}
-          provider={p}
-          state={state}
-          now={now}
-          timeZone={timeZone}
-          onRemove={(a) => {
-            setRemoveError(null);
-            setRemoving(a);
-          }}
-        />
-      ))}
+      {PROVIDER_CATEGORIES.map((cat) => {
+        const providers = state.providers.filter((p) => PROVIDERS[p].category === cat.id);
+        if (providers.length === 0) return null;
+        return (
+          <section key={cat.id} aria-labelledby={`cat-${cat.id}`} className="space-y-6">
+            <div className="border-b border-line pb-2">
+              <h2 id={`cat-${cat.id}`} className="title text-xl">
+                {cat.label}
+              </h2>
+              <p className="text-[13.5px] text-fg-2">{cat.text}</p>
+            </div>
+            {providers.map((p) => (
+              <ProviderSection
+                key={p}
+                provider={p}
+                state={state}
+                now={now}
+                timeZone={timeZone}
+                onRemove={(a) => {
+                  setRemoveError(null);
+                  setRemoving(a);
+                }}
+              />
+            ))}
+          </section>
+        );
+      })}
 
       <section aria-labelledby="pl-manual" className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 id="pl-manual" className="title text-lg">
-              Outras plataformas
+            <h2 id="pl-manual" className="title text-xl">
+              Cadastro pelo ID
             </h2>
-            <p className="text-[13.5px] text-fg-2">GA4, TikTok, LinkedIn e as demais entram pelo ID e ficam aguardando a conexão automática.</p>
+            <p className="text-[13.5px] text-fg-2">Para as plataformas que ainda não conectam direto. A conta fica aguardando a conexão automática.</p>
           </div>
           {state.canManage && (
             <button type="button" onClick={() => setAdding(true)} className={btn.small}>
@@ -225,7 +244,7 @@ export function AccountsPage({ state, manual, result, now, timeZone }: AccountsP
         {manual.length === 0 ? (
           <EmptyState
             title="Nenhuma conta cadastrada pelo ID"
-            text="Cadastre a propriedade do GA4, a conta do TikTok Ads ou o CRM do cliente. Elas aparecem nos dashboards com dados de amostra até a conexão chegar."
+            text="Cadastre pelo ID a conta de uma plataforma que ainda não conecta direto. Ela aparece nos dashboards com dados de amostra até a conexão chegar."
             action={
               state.canManage ? (
                 <button type="button" onClick={() => setAdding(true)} className={btn.small}>

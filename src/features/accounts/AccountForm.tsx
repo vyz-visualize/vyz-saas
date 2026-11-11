@@ -9,7 +9,7 @@ import { useState, useTransition } from "react";
 import { LockBadge, PendingChip, SelectField, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { ConnectButton } from "@/features/integrations/ConnectButton";
-import { CORE_PROVIDER_IDS, isProviderId, PROVIDERS } from "@/features/integrations/providers";
+import { CORE_PROVIDER_IDS, isProviderId, loginVia, PROVIDERS } from "@/features/integrations/providers";
 import { availableIn, canUse, TIER_LABEL } from "@/features/pricing/entitlements";
 import type { Account } from "@/features/workspace/types";
 import { useWorkspace } from "@/features/workspace/workspace";
@@ -47,7 +47,7 @@ export function AccountForm({ platform: fixed, onSaved, onCancel, next }: Accoun
     return (
       <div className="space-y-3 rounded-card border border-line bg-card p-4 text-[14px]">
         <p>
-          {PROVIDERS[platform].name} entra pelo {PROVIDERS[platform].loginName}: o VYZ encontra as contas e importa os dados sozinho.
+          {PROVIDERS[platform].name} entra {loginVia(platform)}: o VYZ encontra as contas e importa os dados sozinho.
         </p>
         <ConnectButton provider={platform} next={next} canManage={canManage} />
       </div>
