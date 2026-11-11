@@ -45,6 +45,8 @@ type AccountPickerProps = {
   autoSave?: boolean;
 };
 
+const norm = (v: string) => v.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
 export type PickerSelection = {
   /** Há mudança ainda não salva. */
   dirty: boolean;
@@ -96,6 +98,10 @@ export function SyncBadge({ summary }: { summary: SyncSummary }) {
 export function AccountPicker({ provider, platformId, accounts, projects, maxPerProject, canManage, canSync = canManage, now, timeZone, onSaved, saveLabel = "Salvar escolha", onRemove, onSelectionChange, autoSave = false }: AccountPickerProps) {
   // conta tocada por último: o aviso de salvando/salvo aparece na linha dela, não no fim da lista
   const [touched, setTouched] = useState<string | null>(null);
+  // muitas contas: busca por nome, ID ou Business, e o filtro "só as ligadas"
+  const [query, setQuery] = useState("");
+  const [onlyOn, setOnlyOn] = useState(false);
+  const searchable = accounts.length > 6;
   // Só o que mudou em relação ao banco; depois de salvar, volta a valer o banco.
   const [draft, setDraft] = useState<Record<string, boolean>>({});
   const [saving, startSave] = useTransition();
@@ -193,11 +199,30 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
 
   return (
     <div className="space-y-4">
-      {groups.map((g) => (
+      {searchable && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Buscar entre ${accounts.length} contas (nome, ID ou Business)`}
+            aria-label="Buscar contas"
+            className="h-10 min-w-0 flex-1 rounded-control border border-line bg-field px-3 text-[14px] outline-none focus:border-accent"
+          />
+          <button type="button" aria-pressed={onlyOn} onClick={() => setOnlyOn((v) => !v)} className={`h-10 rounded-control border px-3 text-[13px] ${onlyOn ? "border-accent bg-accent-soft text-fg" : "border-line text-fg-2 hover:text-fg"}`}>
+            Só as ligadas · {selected.length}
+          </button>
+        </div>
+      )}
+      {groups.map((g) => {
+        const q = norm(query.trim());
+        const shown = g.accounts.filter((a) => (!onlyOn || isOn(a)) && (!q || norm(`${a.name} ${a.externalId} ${a.businessName ?? ""}`).includes(q)));
+        if (!shown.length) return null;
+        return (
         <div key={g.key}>
           <h3 className="mb-2 text-[13px] font-medium text-fg-2">{g.title}</h3>
           <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-card">
-            {g.accounts.map((a) => {
+            {shown.map((a) => {
               const on = isOn(a);
               const connected = !!a.connectionId;
               const enableable = connected && a.status === "active";
@@ -268,7 +293,8 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
             })}
           </ul>
         </div>
-      ))}
+        );
+      })}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-[13px]">

@@ -32,7 +32,8 @@ const IG_POST_METRICS: Record<string, string[]> = {
   default: ["views", "reach", "likes", "comments", "shares", "saved", "total_interactions"],
 };
 const PAGE_METRICS = ["page_media_view", "page_total_media_view_unique", "page_post_engagements", "page_follows", "page_daily_follows_unique", "page_daily_unfollows_unique", "page_total_actions"];
-const PAGE_POST_METRICS = ["post_media_view", "post_total_media_view_unique"];
+// reações pelas métricas do post: os campos reactions/comments/shares do post pedem pages_read_user_content
+const PAGE_POST_METRICS = ["post_media_view", "post_total_media_view_unique", "post_reactions_by_type_total"];
 
 /** Data local (fuso da conta) de um instante. */
 const localDay = (iso: string, timeZone: string) => new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
@@ -117,12 +118,13 @@ async function fetchPage(account: SyncAccount, range: SyncRange, userToken: stri
   }
 
   const since = addDays(range.to, -POST_WINDOW_DAYS + 1) < range.from ? addDays(range.to, -POST_WINDOW_DAYS + 1) : range.from;
-  const list = await pages<PagePost>(
-    `/${pageId}/posts`,
-    { fields: "id,message,created_time,permalink_url,full_picture,status_type,shares,reactions.summary(true).limit(0),comments.summary(true).limit(0)", since: unixStart(since), until: unixStart(addDays(range.to, 1)) },
-    token,
-    "Página: posts",
-  );
+  const window = { since: unixStart(since), until: unixStart(addDays(range.to, 1)) };
+  const BASIC = "id,message,created_time,permalink_url,full_picture,status_type";
+  // com engajamento direto no post quando o app tem pages_read_user_content; sem ela (code=10), só o básico
+  const list = await pages<PagePost>(`/${pageId}/posts`, { fields: `${BASIC},shares,reactions.summary(true).limit(0),comments.summary(true).limit(0)`, ...window }, token, "Página: posts").catch((err) => {
+    if (!/code=10\b/.test(err instanceof Error ? err.message : "")) throw err;
+    return pages<PagePost>(`/${pageId}/posts`, { fields: BASIC, ...window }, token, "Página: posts");
+  });
   const posts = [];
   for (const p of list) {
     const res = await soft(() => graph<{ data?: InsightValue[] }>(`/${p.id}/insights`, { metric: PAGE_POST_METRICS.join(",") }, token, "Página: números do post"), { data: [] });

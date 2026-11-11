@@ -120,7 +120,10 @@ export type PagePost = {
 
 export function pagePost(p: PagePost, metrics: InsightValue[]): OrganicPost {
   const get = (name: string) => n(metrics.find((x) => x.name === name)?.values?.[0]?.value);
-  const likes = n(p.reactions?.summary?.total_count);
+  // sem os campos do post (permissão), as reações vêm da métrica do post: { like: 3, love: 1, ... }
+  const byType = metrics.find((x) => x.name === "post_reactions_by_type_total")?.values?.[0]?.value as unknown;
+  const reactions = byType && typeof byType === "object" ? Object.values(byType as Record<string, unknown>).reduce<number>((a, v) => a + (Number(v) || 0), 0) : null;
+  const likes = n(p.reactions?.summary?.total_count) ?? reactions;
   const comments = n(p.comments?.summary?.total_count);
   const shares = n(p.shares?.count) ?? 0;
   const kind: OrganicPostKind = p.status_type === "added_video" ? "video" : p.full_picture ? "post" : "text";
