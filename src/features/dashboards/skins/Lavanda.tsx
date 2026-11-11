@@ -127,7 +127,7 @@ export function LavandaSkin({
       style={{ background: screen ? "#f8f9fd" : C.bg, color: C.fg }}
     >
       <div
-        className={screen ? "min-h-dvh px-4 pt-3 pb-28 @[700px]:px-6" : "rounded-[24px] p-4 @[700px]:p-6"}
+        className={screen ? "min-h-dvh px-4 pt-3 pb-[var(--screen-pb,7rem)] @[700px]:px-6" : "rounded-[24px] p-4 @[700px]:p-6"}
         style={{ background: "#f8f9fd" }}
       >
         <SkinBar palette={PAGE} bar={bar} className="mb-3" />
@@ -203,7 +203,7 @@ export function LavandaSkin({
         </div>
 
         {/* título (com o voltar de verdade no topo, a seta de enfeite sai para não repetir) */}
-        <div className="mt-6 flex flex-wrap items-center gap-4">
+        <div className={`flex flex-wrap items-center ${screen ? "mt-3 gap-3" : "mt-6 gap-4"}`}>
           {!bar && (
             <span
               className="grid size-10 place-items-center rounded-full border"
@@ -212,33 +212,34 @@ export function LavandaSkin({
               <ArrowLeft size={16} />
             </span>
           )}
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[30px] leading-none font-bold tracking-[-0.03em]">
+          {/* na tela do dashboard, título e frase dividem a linha: sobra altura para os blocos */}
+          <div className={screen ? "min-w-0 flex-1 @[1000px]:flex @[1000px]:items-baseline @[1000px]:gap-3" : "min-w-0 flex-1"}>
+            <h2 className={`leading-none font-bold tracking-[-0.03em] ${screen ? "text-[24px]" : "text-[30px]"}`}>
               {name}
             </h2>
-            <p className="mt-1 text-[13px]" style={{ color: C.fg2 }}>
+            <p className={`text-[13px] ${screen ? "mt-1 min-w-0 truncate @[1000px]:mt-0" : "mt-1"}`} style={{ color: C.fg2 }}>
               Acompanhe receita, investimento e campanhas num lugar só ·{" "}
               {periodLabel}
             </p>
           </div>
           <span
-            className="grid size-11 place-items-center rounded-[14px] border"
+            className={`grid place-items-center rounded-[14px] border ${screen ? "size-9" : "size-11"}`}
             style={{ borderColor: C.line, background: C.card }}
           >
             <SlidersHorizontal size={16} />
           </span>
           <span
-            className="flex h-11 items-center gap-2 rounded-[14px] px-5 text-[13px] font-semibold text-white"
+            className={`flex items-center gap-2 rounded-[14px] text-[13px] font-semibold text-white ${screen ? "h-9 px-4" : "h-11 px-5"}`}
             style={{ background: C.accent }}
           >
             <Plus size={16} /> {label(ctx, "revenue")}: {value(ctx, "revenue")}
           </span>
         </div>
 
-        <SkinChrome palette={PAGE} controls={controls} note={note} className="mt-4" />
+        <SkinChrome palette={PAGE} controls={controls} note={note} screen={screen} className="mt-4" />
 
         {/* respiro entre o título e os cards; nas outras abas, os blocos padrão na paleta do visual */}
-        <div className="mt-5">
+        <div className={screen ? "mt-3" : "mt-5"}>
         {children ? <SkinPage palette={PAGE}>{children}</SkinPage> : (
         <SkinGrid
           skin="lavanda"
@@ -247,14 +248,14 @@ export function LavandaSkin({
           nodes={{
             "s-cpa": (
               <section
-                className="flex min-h-[230px] flex-col overflow-hidden rounded-[20px] border p-4"
+                className="fit-fill flex min-h-[230px] flex-col overflow-hidden rounded-[20px] border p-4"
                 style={{ borderColor: C.line, background: C.card }}
               >
-                <header className="flex items-center justify-between text-[13px] font-semibold">
+                <header className="flex shrink-0 items-center justify-between text-[13px] font-semibold">
                   {label(ctx, "cpa")}
                   <AlertCircle size={16} className="text-red-500" />
                 </header>
-                <p className="mt-3 text-[28px] font-bold tracking-tight tnum">
+                <p className="mt-3 shrink-0 text-[28px] leading-tight font-bold tracking-tight tnum">
                   {value(ctx, "cpa")}
                 </p>
                 <Trend c={cpa} />
@@ -263,10 +264,10 @@ export function LavandaSkin({
             ),
             "s-receita": (
               <section
-                className="flex min-h-[230px] flex-col rounded-[20px] border p-4"
+                className="fit-fill flex min-h-[230px] flex-col overflow-hidden rounded-[20px] border p-4"
                 style={{ borderColor: C.line, background: C.card }}
               >
-                <header className="flex items-center justify-between text-[13px] font-semibold">
+                <header className="flex shrink-0 items-center justify-between text-[13px] font-semibold">
                   {label(ctx, "revenue")}
                   <span
                     className="grid size-7 place-items-center rounded-full"
@@ -275,11 +276,11 @@ export function LavandaSkin({
                     <CalendarDays size={14} />
                   </span>
                 </header>
-                <p className="mt-3 text-[28px] font-bold tracking-tight tnum">
+                <p className="mt-3 shrink-0 text-[28px] leading-tight font-bold tracking-tight tnum">
                   {money(ctx, ctx.cur.revenue)}
                 </p>
                 <Trend c={rev} />
-                <ChartTheme palette={CHART} className="mt-2 flex min-h-[92px] flex-1 flex-col">
+                <ChartTheme palette={CHART} className="mt-2 flex min-h-[min(92px,var(--fit-cap,92px))] flex-1 flex-col">
                   <WeekBars
                     className="flex-1"
                     values={revenueBars}
@@ -295,18 +296,18 @@ export function LavandaSkin({
             ),
             "s-roas": (
               <section
-                className="flex min-h-[230px] flex-col rounded-[20px] border p-4"
+                className="fit-fill flex min-h-[230px] flex-col overflow-hidden rounded-[20px] border p-4"
                 style={{ borderColor: C.line, background: C.card }}
               >
-                <header className="flex items-center justify-between text-[13px] font-semibold">
+                <header className="flex shrink-0 items-center justify-between text-[13px] font-semibold">
                   {label(ctx, "roas")} médio
                   <Clock size={16} style={{ color: "#3b9bdc" }} />
                 </header>
-                <p className="mt-3 text-[28px] font-bold tracking-tight tnum">
+                <p className="mt-3 shrink-0 text-[28px] leading-tight font-bold tracking-tight tnum">
                   {value(ctx, "roas")}
                 </p>
                 <Trend c={roas} />
-                <ChartTheme palette={CHART} className="mt-2 flex min-h-[92px] flex-1 flex-col">
+                <ChartTheme palette={CHART} className="mt-2 flex min-h-[min(92px,var(--fit-cap,92px))] flex-1 flex-col">
                   <FlowLines
                     className="-mx-4 -mb-4 flex-1 overflow-hidden rounded-b-[20px]"
                     points={roasLine.map((v) => ({ roas: v }))}
@@ -320,10 +321,10 @@ export function LavandaSkin({
             ),
             "s-plataformas": (
               <section
-                className="flex min-h-[230px] flex-col rounded-[20px] border p-4"
+                className="fit-fill flex min-h-[230px] flex-col overflow-hidden rounded-[20px] border p-4"
                 style={{ borderColor: C.line, background: C.card }}
               >
-                <header className="flex items-center justify-between text-[13px] font-semibold">
+                <header className="flex shrink-0 items-center justify-between text-[13px] font-semibold">
                   Investimento por plataforma
                   <span
                     className="grid size-7 place-items-center rounded-full border"
@@ -332,8 +333,8 @@ export function LavandaSkin({
                     <ArrowUpRight size={14} />
                   </span>
                 </header>
-                <div className="mt-3 flex items-center gap-2">
-                  <p className="text-[26px] font-bold tracking-tight whitespace-nowrap tnum">
+                <div className="mt-3 flex shrink-0 items-center gap-2">
+                  <p className="text-[26px] leading-tight font-bold tracking-tight whitespace-nowrap tnum">
                     {money(ctx, ctx.cur.spend, true)}
                   </p>
                   <span
@@ -344,7 +345,7 @@ export function LavandaSkin({
                     {label(ctx, "conversions").toLowerCase()}
                   </span>
                 </div>
-                <div className="mt-auto flex items-end gap-1.5 pt-3">
+                <div className="mt-auto flex min-h-[56px] flex-[0_1_116px] items-end gap-1.5 pt-3">
                   {byPlat.slice(0, 3).map((p) => {
                     const hi = p.id === topPlat;
                     return (
@@ -352,7 +353,7 @@ export function LavandaSkin({
                         key={p.id}
                         className="flex flex-1 flex-col justify-between rounded-[12px] p-2 text-[10px]"
                         style={{
-                          height: hi ? 104 : 82,
+                          height: hi ? "100%" : "79%",
                           background: hi ? C.accent : "#f2f3f8",
                           color: hi ? "#fff" : C.fg2,
                         }}
@@ -414,10 +415,10 @@ export function LavandaSkin({
             ),
             "s-campanhas": (
               <div
-                className="relative rounded-[24px] p-4 @[700px]:p-5"
+                className="fit-fill relative flex flex-col rounded-[24px] p-4 @[700px]:p-5"
                 style={{ background: C.dark, color: "#fff" }}
               >
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
                   <h3 className="text-[14px] font-semibold">
                     Campanhas no período
                   </h3>
@@ -457,8 +458,9 @@ export function LavandaSkin({
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-4 @[900px]:grid-cols-[minmax(0,0.85fr)_minmax(0,1.5fr)]">
-                  <ul className="space-y-1.5">
+                <div className="mt-4 grid min-h-0 flex-1 gap-4 @[900px]:grid-cols-[minmax(0,0.85fr)_minmax(0,1.5fr)] @[900px]:grid-rows-[minmax(0,1fr)]">
+                  {/* a lista rola dentro do painel quando não cabe inteira */}
+                  <ul className="min-h-0 space-y-1.5 overflow-y-auto [scrollbar-width:thin]">
                     {list.slice(0, 6).map((c, i) => {
                       const on = c.id === sel?.id;
                       return (
@@ -511,10 +513,10 @@ export function LavandaSkin({
 
                   {sel && (
                     <div
-                      className="rounded-[20px] p-4 @[700px]:p-5"
+                      className="flex min-h-0 flex-col overflow-hidden rounded-[20px] p-4 @[700px]:p-5"
                       style={{ background: C.panel }}
                     >
-                      <div className="grid gap-3 text-[11px] @[700px]:grid-cols-3">
+                      <div className="grid shrink-0 gap-3 text-[11px] @[700px]:grid-cols-3">
                         <div>
                           <p className="opacity-70">Campanha</p>
                           <p className="mt-1 flex flex-wrap items-center gap-2">
@@ -553,7 +555,7 @@ export function LavandaSkin({
                         </div>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-2.5 @[700px]:grid-cols-4">
+                      <div className="mt-4 grid min-h-[60px] flex-[1_1_96px] grid-cols-2 gap-2.5 @[700px]:grid-cols-4">
                         {[
                           { v: money(ctx, sel.spend), l: "Investimento" },
                           {
@@ -567,7 +569,7 @@ export function LavandaSkin({
                         ].map((tile) => (
                           <div
                             key={tile.l}
-                            className="flex min-h-[96px] flex-col justify-between rounded-[14px] bg-white/12 p-3"
+                            className="flex min-h-0 flex-col justify-between rounded-[14px] bg-white/12 p-3"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <span className="text-[16px] font-bold tnum">
@@ -589,7 +591,7 @@ export function LavandaSkin({
                                 : (pages[1] ?? active),
                             )
                           }
-                          className="flex min-h-[96px] flex-col items-center justify-center gap-1.5 rounded-[14px] border border-dashed border-white/50 text-[11px]"
+                          className="flex min-h-0 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[14px] border border-dashed border-white/50 text-[11px]"
                         >
                           <span className="grid size-7 place-items-center rounded-full bg-white/15">
                             <Plus size={14} />
@@ -598,7 +600,7 @@ export function LavandaSkin({
                         </button>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-3 border-t border-white/20 pt-4">
+                      <div className="mt-4 flex shrink-0 flex-wrap items-end gap-x-8 gap-y-3 border-t border-white/20 pt-4">
                         {[
                           {
                             l: label(ctx, "cpa"),
@@ -698,7 +700,7 @@ function DeskArt() {
   return (
     <svg
       viewBox="0 0 240 100"
-      className="mt-auto -mx-4 -mb-4 h-[104px] w-[calc(100%+2rem)]"
+      className="mt-auto -mx-4 -mb-4 min-h-[40px] w-[calc(100%+2rem)] flex-[0_1_104px]"
       aria-hidden
     >
       <rect x="0" y="0" width="240" height="100" fill="#f1f1f4" />

@@ -188,6 +188,7 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
           ),
           "s-decomposicao": (
             <Panel
+              fill
               title={`Decomposição de ${label(ctx, kpi).toLowerCase()} por dia`}
               aside={
                 <Legend
@@ -202,7 +203,7 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
                 channels={model.channels}
                 focus={focus}
               />
-              <p className="mt-2 text-[11px] text-fg-2">
+              <p className="mt-2 shrink-0 text-[11px] text-fg-2">
                 Base: o que viria sem mídia (marca, orgânico, recorrência). Cada
                 faixa: o resultado incremental do canal, com o efeito que fica
                 dos dias anteriores.
@@ -210,13 +211,13 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
             </Panel>
           ),
           "s-curvas": (
-            <Panel title="Curvas de resposta">
+            <Panel fill title="Curvas de resposta">
               <Curves
                 channels={model.channels}
                 respond={respond}
                 focus={focus}
               />
-              <p className="mt-2 text-[11px] text-fg-2">
+              <p className="mt-2 shrink-0 text-[11px] text-fg-2">
                 Resultado por dia conforme o investimento diário. O ponto é onde
                 cada canal está hoje: perto do platô, cada real a mais rende
                 pouco.
@@ -377,7 +378,7 @@ function Stacked({
     <svg
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="none"
-      className="h-[200px] w-full"
+      className="min-h-[96px] w-full flex-[1_1_200px]"
       aria-label="Resultado por dia separado em base e canais"
     >
       {paths.map((d, k) => (
@@ -412,7 +413,7 @@ function Curves({
   return (
     <svg
       viewBox={`0 0 ${w} ${h + 22}`}
-      className="h-auto w-full"
+      className="h-auto min-h-[96px] w-full flex-[1_1_auto]"
       aria-label="Curvas de resposta por canal"
     >
       <line x1="0" x2={w} y1={h} y2={h} stroke="var(--line)" />

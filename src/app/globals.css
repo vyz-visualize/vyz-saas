@@ -780,7 +780,25 @@ details.lines summary::-webkit-details-marker {
 /* a barra do Personalizar gruda no topo (sem a barra padrão em cima) e ganha o respiro que a página perdeu */
 .shell-content:has([data-skin-screen]) [data-metric-edit-bar] {
   top: 8px;
-  margin: 12px 12px 0;
+  margin: 12px;
+}
+/* Aba encaixada na altura da tela ([data-fit-on], GridCanvas): a página não rola, então o respiro
+   de baixo (que abre espaço para o botão do assistente) encolhe para o da grade (FIT_BOTTOM). */
+.shell-content:has([data-fit-on]) {
+  --screen-pb: 16px;
+}
+.shell-content:has([data-fit-on]):not(:has([data-skin-screen])) > .focus-main {
+  padding-bottom: 16px;
+}
+/* No encaixe, o bloco que marca .fit-fill fica com a altura exata da casa dele na grade: o
+   miolo flexível (gráfico, lista) encolhe junto em vez de estourar e criar rolagem no bloco. */
+[data-fit-on] .fit-fill {
+  height: 100%;
+  min-height: 0;
+}
+/* e os gráficos que medem o próprio espaço (FitChart) aceitam ficar mais baixos que o mínimo de leitura */
+[data-fit-on] {
+  --fit-cap: 72px;
 }
 /* o que vem depois do dashboard (vitrine das abas do plano) recupera o respiro */
 .shell-content:has([data-skin-screen]) .focus-extra:not(:empty) {

@@ -7,10 +7,10 @@
 import type { ReactNode } from "react";
 import { GridCanvas, type Block } from "../layout/GridCanvas";
 import { PlatformMetricCard } from "../layout/LayoutEditor";
-import { parseMetricCardId, type PageGrid } from "../layout/model";
+import { kindOf, parseMetricCardId, type PageGrid } from "../layout/model";
 import type { WidgetContext } from "../widgets/Widgets";
 import type { SkinId } from "@/features/templates/types";
-import { SKIN_BLOCKS, skinGrid } from "./blocks";
+import { isSkinCard, SKIN_BLOCKS, skinGrid } from "./blocks";
 
 export type SkinGridControl = {
   items: PageGrid;
@@ -19,6 +19,8 @@ export type SkinGridControl = {
   onHide?: (id: string) => void;
   onDropNew?: (id: string, x: number, y: number) => void;
   canDrop?: (id: string) => boolean;
+  /** Encaixa os blocos na altura da tela (sem rolar a página). */
+  fit?: boolean;
 };
 
 export function SkinGrid({
@@ -62,6 +64,8 @@ export function SkinGrid({
       onHide={grid?.onHide}
       onDropNew={grid?.onDropNew}
       canDrop={grid?.canDrop}
+      fit={grid?.fit}
+      compactBlock={(id) => isSkinCard(skin, id) || kindOf(id) === "metric"}
       sizeOf={(id) =>
         SKIN_BLOCKS[skin].find((s) => s.id === id) ?? { w: 3, h: 4 }
       }

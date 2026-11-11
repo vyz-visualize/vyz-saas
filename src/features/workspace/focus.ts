@@ -5,3 +5,6 @@ export const isFocusPath = (path: string | null) => {
   const m = path?.match(/^\/painel\/dashboards\/([^/]+)(\/editar)?\/?$/);
   return !!m && m[1] !== "novo";
 };
+
+/** Onde as ações do dashboard (editar, compartilhar, exportar) entram na barra do topo da tela cheia. */
+export const FOCUS_ACTIONS_ID = "focus-actions";

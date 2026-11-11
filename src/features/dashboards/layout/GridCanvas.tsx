@@ -23,17 +23,21 @@ import {
   COLS,
   compact,
   constrain,
+  fitRows,
   GAP,
   GRID_MIN_WIDTH,
   gridRows,
+  kindOf,
   limitsOf,
   place,
   readingOrder,
   ROW,
+  rowTops,
   type Blocked,
   type LayoutItem,
   type PageGrid,
 } from "./model";
+import { useFitHeight } from "./useFitHeight";
 
 export type Block = { label: string; node: ReactNode };
 
@@ -65,7 +69,20 @@ type Props = {
   sizeOf?: (id: string) => { w: number; h: number };
   /** A aba aceita este bloco? Sem isso, aceita o que vier da bandeja. */
   canDrop?: (id: string) => boolean;
+  /**
+   * Encaixa a grade na altura livre da tela (16:9, sem rolar a página): as fileiras ganham a
+   * altura que sobra. Na edição, em tela estreita ou quando não cabe, vale a altura padrão.
+   */
+  fit?: boolean;
+  /** Blocos que são só um número (cards): a fileira deles tem altura fixa no encaixe. Padrão: cards de KPI e de métrica. */
+  compactBlock?: (id: string) => boolean;
+  /** Cada bloco vira contêiner: o conteúdo se arruma pela largura do próprio bloco (@[...]), não pela da página. */
+  contain?: boolean;
 };
+
+/** Respiro entre o pé da grade e o pé da tela, no encaixe. */
+export const FIT_BOTTOM = 16;
+const isCard = (id: string) => kindOf(id) === "kpis" || kindOf(id) === "metric";
 
 export function GridCanvas({
   items,
@@ -77,6 +94,9 @@ export function GridCanvas({
   onDropNew,
   sizeOf,
   canDrop,
+  fit = false,
+  compactBlock = isCard,
+  contain = false,
 }: Props) {
   const blockedRef = useRef<Blocked | null>(null);
   const [ref, size] = useElementSize<HTMLDivElement>();
@@ -91,11 +111,18 @@ export function GridCanvas({
     Math.max(gridRows(items), incoming ? incoming.y + incoming.h : 0) +
     (editing ? 6 : 0);
 
+  // encaixe na tela: cada fileira com a altura que faz a grade terminar no pé da área visível
+  const fitting = fit && wide && !editing;
+  const free = useFitHeight(ref, fitting, FIT_BOTTOM);
+  const fitted = fitting && free != null ? fitRows(items, free, compactBlock) : null;
+  const tops = fitted ? rowTops(fitted) : null;
+  const rowTop = (r: number) => (tops ? (tops[Math.min(r, tops.length - 1)] ?? 0) : r * ROW);
+
   const box = (it: Pick<LayoutItem, "x" | "y" | "w" | "h">): CSSProperties => ({
     left: it.x * unit,
-    top: it.y * ROW,
+    top: rowTop(it.y),
     width: it.w * unit - GAP,
-    height: it.h * ROW - GAP,
+    height: rowTop(it.y + it.h) - rowTop(it.y) - GAP,
   });
 
   // ---- arrastar e redimensionar ---------------------------------------------------------
@@ -222,11 +249,11 @@ export function GridCanvas({
   // tela estreita (ou ainda medindo): uma coluna, na ordem da disposição
   // o mesmo contêiner medido nos dois modos (a medida não pode perder o elemento)
   return (
-    <div ref={ref}>
+    <div ref={ref} data-fit-on={fitted ? "" : undefined}>
       {!wide ? (
         <div className="space-y-2">
           {readingOrder(items).map((it) => (
-            <div key={it.id} className="min-w-0">
+            <div key={it.id} className={contain ? "@container min-w-0" : "min-w-0"}>
               {blocks[it.id]?.node}
             </div>
           ))}
@@ -234,7 +261,7 @@ export function GridCanvas({
       ) : (
         <div
           className="relative"
-          style={{ height: rows * ROW }}
+          style={{ height: tops ? tops[tops.length - 1] - GAP : rows * ROW }}
           onDragOver={dragOver}
           onDragLeave={(e) => {
             if (
@@ -301,7 +328,7 @@ export function GridCanvas({
                       clicáveis (o ✕ e os encaixes do Personalizar), o resto fica só de vitrine */}
                   <div
                     inert={(editing && it.id !== "kpis") || undefined}
-                    className={`overflow-x-hidden overflow-y-auto [scrollbar-width:thin] [&>*]:min-h-full ${editing ? `absolute inset-x-0 top-9 bottom-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${it.id === "kpis" ? "px-1 pb-1" : "pointer-events-none select-none"}` : "h-full"}`}
+                    className={`overflow-x-hidden overflow-y-auto [scrollbar-width:thin] [&>*]:min-h-full ${contain ? "@container" : ""} ${editing ? `absolute inset-x-0 top-9 bottom-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${it.id === "kpis" ? "px-1 pb-1" : "pointer-events-none select-none"}` : "h-full"}`}
                   >
                     {block.node}
                   </div>

@@ -190,6 +190,7 @@ export function PrevisaoSkin({ ctx, grid }: SkinProps) {
           ),
           "s-projecao": (
             <Panel
+              fill
               title="Projeção até o fim do mês"
               aside={
                 <div className="flex gap-1 rounded-full border border-line p-0.5 text-[11.5px]">
@@ -209,7 +210,7 @@ export function PrevisaoSkin({ ctx, grid }: SkinProps) {
               }
             >
               <ForecastChart f={f} />
-              <div className="mt-2 flex flex-wrap justify-between gap-2 text-[11px] text-fg-2">
+              <div className="mt-2 flex shrink-0 flex-wrap justify-between gap-2 text-[11px] text-fg-2">
                 <span>{dayLabel(days.length - 1, ctx.today)}</span>
                 <span className="flex flex-wrap gap-3">
                   <span>━ realizado</span>
@@ -219,7 +220,7 @@ export function PrevisaoSkin({ ctx, grid }: SkinProps) {
                 </span>
                 <span>fim do mês</span>
               </div>
-              <p className="mt-3 text-[12.5px]">
+              <p className="mt-3 shrink-0 text-[12.5px]">
                 Fechamento previsto de {label(ctx, metricId).toLowerCase()}:{" "}
                 <b className="tnum">
                   {fmt(
@@ -378,7 +379,7 @@ function ForecastChart({ f }: { f: Forecast }) {
     <svg
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="none"
-      className="h-[220px] w-full"
+      className="min-h-[96px] w-full flex-[1_1_220px]"
       aria-label="Realizado e previsão com faixa de confiança"
     >
       {[0.25, 0.5, 0.75].map((g) => (

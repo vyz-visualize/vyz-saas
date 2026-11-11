@@ -169,10 +169,20 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
     ),
   };
 
+  // título: na primeira aba conta o resultado do período; nas outras, o nome da aba
+  const headline = children ? (
+    PAGES[active].name
+  ) : (
+    <>
+      <span style={{ color: P.accent }}>{int(leads)} leads</span>
+      {sales ? ` e ${int(sales.count)} vendas fechadas` : " no período"}
+    </>
+  );
+
   return (
     // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
     <div data-chart-theme className={screen ? "@container" : "@container rounded-[32px] p-2.5 @[700px]:p-4"} style={{ ...themeVars(P), background: screen ? P.bg : "#e4d9c7" }}>
-      <div className={screen ? "min-h-dvh px-4 pt-3 pb-28 @[700px]:px-6" : "rounded-[26px] p-4 @[700px]:p-6"} style={{ background: P.bg }}>
+      <div className={screen ? "min-h-dvh px-4 pt-3 pb-[var(--screen-pb,7rem)] @[700px]:px-6" : "rounded-[26px] p-4 @[700px]:p-6"} style={{ background: P.bg }}>
         <SkinBar palette={P} bar={bar} className="mb-3" />
         {/* topo: cliente, abas sublinhadas e período */}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line pb-3">
@@ -201,26 +211,20 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
               <CalendarDays size={14} /> {periodLabel}
             </span>
           )}
+          {/* na tela do dashboard, o título divide a linha com as abas: sobra altura para os blocos */}
+          {screen && (
+            <p className="ml-auto hidden max-w-[46%] truncate text-[20px] leading-tight font-bold tracking-tight @[1100px]:block">{headline}</p>
+          )}
         </div>
 
-        <SkinChrome palette={P} controls={controls} note={note} className="mt-4" />
+        <SkinChrome palette={P} controls={controls} note={note} screen={screen} className="mt-4" />
 
-        {/* título: na primeira aba conta o resultado do período; nas outras, o nome da aba */}
-        <div className="mt-5">
+        <div className={screen ? "mt-4 @[1100px]:hidden" : "mt-5"}>
           <p className="text-[11px] font-medium tracking-[0.1em] text-fg-2 uppercase">{name}</p>
-          <h2 className="mt-1 max-w-[24ch] text-[26px] leading-[1.15] font-bold tracking-tight text-balance @[700px]:text-[32px]">
-            {children ? (
-              PAGES[active].name
-            ) : (
-              <>
-                <span style={{ color: P.accent }}>{int(leads)} leads</span>
-                {sales ? ` e ${int(sales.count)} vendas fechadas` : " no período"}
-              </>
-            )}
-          </h2>
+          <h2 className="mt-1 max-w-[24ch] text-[26px] leading-[1.15] font-bold tracking-tight text-balance @[700px]:text-[32px]">{headline}</h2>
         </div>
 
-        <div className="mt-5">{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="areia" ctx={ctx} grid={grid} nodes={nodes} />}</div>
+        <div className={screen ? "mt-4" : "mt-5"}>{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="areia" ctx={ctx} grid={grid} nodes={nodes} />}</div>
       </div>
     </div>
   );

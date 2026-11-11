@@ -167,6 +167,47 @@ export const readingOrder = (items: PageGrid) => [...items].sort(byPosition);
 
 export const gridRows = (items: PageGrid) => items.reduce((a, i) => Math.max(a, i.y + i.h), 0);
 
+// ---- encaixe na tela (16:9, sem rolar a página) ------------------------------------------
+
+/** Fileira só de cards (KPI, métrica, número do visual) no aperto: o mínimo em que o card ainda cabe inteiro. */
+export const FIT_COMPACT_MIN = 25;
+/** Os gráficos ficam com pelo menos isto por fileira antes de os cards voltarem à altura cheia (ROW). */
+export const FIT_COMFORT_ROW = 20;
+/** Abaixo disso os gráficos ficam ilegíveis: a grade desiste de caber e a página volta a rolar. */
+export const FIT_MIN_ROW = 13;
+
+const clampTo = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/**
+ * Altura de cada fileira para a grade ocupar exatamente `height` px (a altura livre da tela).
+ * As fileiras só de cards não crescem com a tela: ficam entre FIT_COMPACT_MIN e ROW (cedem
+ * altura quando os gráficos apertam). As outras dividem o que sobra por igual.
+ * Devolve null quando não cabe (tela baixa demais ou blocos demais): aí vale a altura padrão.
+ */
+export function fitRows(items: PageGrid, height: number, isCompact: (id: string) => boolean): number[] | null {
+  const rows = gridRows(items);
+  if (!rows || !(height > 0)) return null;
+  const total = height + GAP; // a última fileira não leva o respiro de baixo
+  const compact = Array.from({ length: rows }, (_, r) => {
+    const here = items.filter((it) => it.y <= r && r < it.y + it.h);
+    return here.length > 0 && here.every((it) => isCompact(it.id));
+  });
+  const fixed = compact.filter(Boolean).length;
+  const flex = rows - fixed;
+  if (!flex) return total / rows >= FIT_MIN_ROW ? compact.map(() => total / rows) : null;
+  const card = fixed ? clampTo((total - FIT_COMFORT_ROW * flex) / fixed, FIT_COMPACT_MIN, ROW) : 0;
+  const rest = (total - fixed * card) / flex;
+  if (rest < FIT_MIN_ROW) return null;
+  return compact.map((c) => (c ? card : rest));
+}
+
+/** Onde cada fileira começa (px), com uma posição a mais no fim (o pé da grade). */
+export function rowTops(heights: readonly number[]): number[] {
+  const tops = [0];
+  for (const h of heights) tops.push(tops[tops.length - 1] + h);
+  return tops;
+}
+
 /** Primeiro lugar livre para um bloco novo (de cima para baixo, da esquerda para a direita). */
 export function firstFree(items: PageGrid, w: number, h: number): { x: number; y: number } {
   for (let y = 0; y <= gridRows(items); y++) {

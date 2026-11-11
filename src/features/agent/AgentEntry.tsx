@@ -2,6 +2,7 @@
 
 // Pontos de entrada do painel: barra "Pergunte ao VYZ… ⌘K" no topo e o mascote flutuante.
 
+import { useDragOffset } from "./useDragOffset";
 import { m } from "motion/react";
 import { useSyncExternalStore } from "react";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -43,16 +44,25 @@ const useDesktop = () => useSyncExternalStore(desktopQuery, () => window.matchMe
 export function AgentFab() {
   const { open, setOpen, mascot } = useAgent();
   const desktop = useDesktop();
+  // a pessoa arrasta o botão para onde ele não atrapalha; o lugar fica salvo neste navegador
+  const { ref: fabRef, offset, dragging, wasDrag, handlers } = useDragOffset("vyz:agent-fab");
   if (open) return null;
   const size = desktop ? 64 : 56;
   return (
-    <div className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 md:right-7 md:bottom-7 print:hidden">
-      <Tooltip content="Olá, eu sou o VYZ" side="left">
+    <div
+      ref={fabRef}
+      className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 md:right-7 md:bottom-7 print:hidden"
+      style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
+    >
+      <Tooltip content="Olá, eu sou o VYZ · arraste para mudar de lugar" side="left" disabled={dragging}>
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          {...handlers}
+          onClick={() => {
+            if (!wasDrag()) setOpen(true);
+          }}
           aria-label="Abrir o assistente VYZ"
-          className="group relative inline-flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--panel)]"
+          className={`group relative inline-flex touch-none items-center justify-center rounded-full outline-none select-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--panel)] ${dragging ? "cursor-grabbing" : "cursor-pointer"}`}
           style={{ width: size, height: size }}
         >
           <m.span layoutId="vyz-mascot" transition={{ type: "spring", stiffness: 260, damping: 28 }} className="block">

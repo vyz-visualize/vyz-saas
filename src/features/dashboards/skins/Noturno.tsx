@@ -187,7 +187,7 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
   return (
     // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
     <div data-chart-theme className={screen ? "@container" : "@container rounded-[32px] p-2.5 @[700px]:p-4"} style={{ ...themeVars(P), background: screen ? P.bg : "#05070c" }}>
-      <div className={screen ? "min-h-dvh px-4 pt-3 pb-28 @[700px]:px-6" : "rounded-[26px] p-4 @[700px]:p-6"} style={{ background: `radial-gradient(820px 340px at 88% -12%, rgb(255 179 71 / 0.11), transparent 62%), ${P.bg}` }}>
+      <div className={screen ? "min-h-dvh px-4 pt-3 pb-[var(--screen-pb,7rem)] @[700px]:px-6" : "rounded-[26px] p-4 @[700px]:p-6"} style={{ background: `radial-gradient(820px 340px at 88% -12%, rgb(255 179 71 / 0.11), transparent 62%), ${P.bg}` }}>
         <SkinBar palette={P} bar={bar} className="mb-3" />
         {/* topo: marca do cliente, abas em pílula e período */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
@@ -227,7 +227,7 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
           </div>
         </div>
 
-        <SkinChrome palette={P} controls={controls} note={note} className="mt-4" />
+        <SkinChrome palette={P} controls={controls} note={note} screen={screen} className="mt-4" />
 
         <div className="mt-5">{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="noturno" ctx={ctx} grid={grid} nodes={nodes} />}</div>
       </div>

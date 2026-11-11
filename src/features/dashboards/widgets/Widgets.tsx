@@ -452,7 +452,7 @@ function PlatformCards({ ctx }: { ctx: WidgetContext }) {
   const filters = useDashFilters();
   const clickable = !!filters?.interactive && plats.length > 1;
   return (
-    <div className="grid gap-2 @[460px]:grid-cols-2 @[900px]:grid-cols-3">
+    <div className="grid gap-2 @[460px]:grid-cols-2 @[900px]:grid-cols-3 @[1200px]:grid-cols-4">
       {plats.map((p) => (
         <div
           key={p.id}

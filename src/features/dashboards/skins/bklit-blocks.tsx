@@ -81,8 +81,15 @@ export function themeVars(p: SkinPalette): CSSProperties {
  * Controles do dashboard (período, comparar, ações) e a nota dos filtros dentro da
  * moldura de um visual: são os componentes de sempre, lendo a paleta dele.
  */
-export function SkinChrome({ palette, controls, note, className = "" }: { palette: SkinPalette; controls?: ReactNode; note?: ReactNode; className?: string }) {
+export function SkinChrome({ palette, controls, note, className = "", screen = false }: { palette: SkinPalette; controls?: ReactNode; note?: ReactNode; className?: string; /** Na tela do dashboard os controles sobem para a barra do topo (SkinBar): aqui fica só o aviso de filtros. */ screen?: boolean }) {
   if (!controls && !note) return null;
+  // a margem vai em cada filho: sem filtro ativo não sobra uma faixa vazia em cima dos blocos
+  if (screen)
+    return note ? (
+      <div style={themeVars(palette)} className="@container print:hidden [&>*]:mt-3">
+        {note}
+      </div>
+    ) : null;
   return (
     <div data-chart-theme style={themeVars(palette)} className={`@container space-y-2 print:hidden ${className}`}>
       {controls}
@@ -99,7 +106,7 @@ export function SkinChrome({ palette, controls, note, className = "" }: { palett
 export function SkinBar({ palette, bar, className = "" }: { palette: SkinPalette; bar?: ReactNode; className?: string }) {
   if (!bar) return null;
   return (
-    <div style={themeVars(palette)} className={`flex min-h-10 items-center gap-2 print:hidden ${className}`}>
+    <div style={themeVars(palette)} className={`flex min-h-10 flex-wrap items-center gap-2 print:hidden ${className}`}>
       {bar}
     </div>
   );
@@ -175,7 +182,7 @@ type StatBlockProps = {
 export function StatBlock({ title, v, delta, note, values, bars, color = "var(--accent)", icon: Icon, solid }: StatBlockProps) {
   return (
     <section
-      className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-[22px] p-4 ${solid ? "" : "border border-line bg-card"}`}
+      className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-[22px] px-4 py-3 ${solid ? "" : "border border-line bg-card"}`}
       style={solid ? { background: solid, color: "var(--on-accent)" } : undefined}
     >
       <div className="flex shrink-0 items-center justify-between gap-2">
@@ -558,17 +565,18 @@ export function ShareRings({ items, centerLabel, format, summary, className = ""
     <div role="img" aria-label={summary} className={`flex min-h-0 flex-col ${className}`}>
       <FitChart className="flex-1" minHeight={130}>
         {({ width, height }) => {
-          const size = Math.max(120, Math.min(width, height, 260));
+          // no aperto (encaixe da tela) o anel encolhe com o espaço; pequeno demais, fica sem o texto do centro
+          const size = Math.max(56, Math.min(width, height, 260));
           const n = Math.max(1, data.length);
-          const stroke = Math.max(7, Math.min(12, size / 18));
+          const stroke = Math.max(size < 110 ? 5 : 7, Math.min(12, size / 18));
           const gap = 5;
           return (
             <div className="grid h-full place-items-center" aria-hidden>
-              <RingChart data={data} size={size} strokeWidth={stroke} ringGap={gap} baseInnerRadius={Math.max(30, size / 2 - 8 - n * stroke - (n - 1) * gap)} animationDuration={1000}>
+              <RingChart data={data} size={size} strokeWidth={stroke} ringGap={gap} baseInnerRadius={Math.max(size < 110 ? 12 : 30, size / 2 - 8 - n * stroke - (n - 1) * gap)} animationDuration={1000}>
                 {data.map((d, i) => (
                   <Ring key={d.label} index={i} lineCap="round" />
                 ))}
-                <RingCenter defaultLabel={centerLabel} formatOptions={format} valueClassName={CENTER_VALUE} />
+                {size >= 110 && <RingCenter defaultLabel={centerLabel} formatOptions={format} valueClassName={CENTER_VALUE} />}
               </RingChart>
             </div>
           );
@@ -588,13 +596,13 @@ export function Gauge({ value, max, color, label, summary, className = "" }: Gau
     <div role="img" aria-label={summary} className={`flex min-h-0 flex-col ${className}`}>
       <FitChart className="flex-1" minHeight={110}>
         {({ width, height }) => {
-          const size = Math.max(110, Math.min(width, height, 230));
-          const stroke = Math.max(10, size / 11);
+          const size = Math.max(56, Math.min(width, height, 230));
+          const stroke = Math.max(size < 96 ? 6 : 10, size / 11);
           return (
             <div className="grid h-full place-items-center" aria-hidden>
               <RingChart data={data} size={size} strokeWidth={stroke} baseInnerRadius={size / 2 - 8 - stroke} animationDuration={1000}>
                 <Ring index={0} lineCap="round" />
-                <RingCenter defaultLabel={label} formatOptions={{ maximumFractionDigits: 0 }} suffix="%" />
+                {size >= 96 && <RingCenter defaultLabel={label} formatOptions={{ maximumFractionDigits: 0 }} suffix="%" />}
               </RingChart>
             </div>
           );

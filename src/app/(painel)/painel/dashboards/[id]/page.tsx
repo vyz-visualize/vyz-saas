@@ -17,6 +17,7 @@ import { BrandMark } from "@/features/dashboards/DashboardBody";
 import { PeriodNav } from "@/features/dashboards/PeriodNav";
 import { SampleDashboard } from "@/features/dashboards/SampleDashboard";
 import { anyDashboardTemplate } from "@/features/templates/live";
+import { FocusBarActions } from "@/features/workspace/FocusBarActions";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { getDashboard } from "@/server/dashboards/queries";
@@ -81,6 +82,8 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   if (d.live) {
     return (
       <div style={brandVars(color)}>
+        {/* editar, compartilhar e exportar ficam na barra do topo da tela, não no dashboard */}
+        <FocusBarActions>{actions}</FocusBarActions>
         <Suspense key={`${period}:${customDays}`} fallback={<LiveDashboardSkeleton />}>
           <LiveDashboard
             dashboardId={d.id}
@@ -92,7 +95,6 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
             metricPrefs={d.metricPrefs}
             filters={filters}
             canCustomize={canEdit}
-            actions={actions}
             toolbar={<PeriodNav period={period} customDays={customDays} />}
             logo={<BrandMark brand={brand} />}
           />

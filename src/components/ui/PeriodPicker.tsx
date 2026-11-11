@@ -33,16 +33,18 @@ type Props = {
   onChange: (p: Period, range?: Range) => void;
   maxDays?: number;
   label?: string;
+  /** Sem o rótulo em cima (o botão continua dizendo o que é para leitor de tela): ganha altura onde ela é curta. */
+  labelHidden?: boolean;
 };
 
-export function PeriodPicker({ period, range, customDays, onChange, maxDays = 90, label = "Período" }: Props) {
+export function PeriodPicker({ period, range, customDays, onChange, maxDays = 90, label = "Período", labelHidden = false }: Props) {
   const container = usePortalContainer();
   const [open, setOpen] = useState(false);
   const text =
     period === "custom" ? (range ? `${ddmm(range.from)} – ${ddmm(range.to)} · ${rangeDays(range)} dias` : `Últimos ${customDays} dias`) : SHORTCUTS.find((s) => s.value === period)?.label;
   return (
     <div className="space-y-1">
-      <p className="text-[13px] font-medium text-fg">{label}</p>
+      {!labelHidden && <p className="text-[13px] font-medium text-fg">{label}</p>}
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger
           aria-label={`${label}: ${text}`}

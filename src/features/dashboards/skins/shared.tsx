@@ -178,15 +178,18 @@ export function Panel({
   aside,
   children,
   className = "",
+  fill = false,
 }: {
   title?: string;
   aside?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** O miolo (gráfico) ocupa a altura que o bloco tiver na grade e encolhe com ele no encaixe da tela. */
+  fill?: boolean;
 }) {
   return (
     <section
-      className={`min-w-0 rounded-[14px] border border-line bg-card p-4 ${className}`}
+      className={`min-w-0 rounded-[14px] border border-line bg-card p-4 ${fill ? "fit-fill flex flex-col" : ""} ${className}`}
     >
       {(title || aside) && (
         <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -196,7 +199,7 @@ export function Panel({
           {aside}
         </header>
       )}
-      {children}
+      {fill ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : children}
     </section>
   );
 }

@@ -49,6 +49,8 @@ type Props = {
   extraCards?: readonly SampleExtraMetric[];
   grid: DashboardLayoutState;
   editing?: boolean;
+  /** Encaixa a aba na altura da tela (sem rolar a página). */
+  fit?: boolean;
 };
 
 export function GridPage({
@@ -59,6 +61,7 @@ export function GridPage({
   extraCards = [],
   grid,
   editing,
+  fit,
 }: Props) {
   const kpiCount = layout.kpis.length + extraCards.length;
   const items = grid.items(page);
@@ -104,6 +107,8 @@ export function GridPage({
       items={items}
       blocks={blocks}
       editing={editing}
+      fit={fit}
+      contain
       kpiCount={kpiCount}
       onChange={(g) => grid.change(page, g)}
       onHide={(id) => grid.hide(page, id)}

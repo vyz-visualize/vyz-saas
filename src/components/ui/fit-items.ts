@@ -35,8 +35,8 @@ export function fitItems(widths: readonly number[], available: number, more: num
 
 type UseFit = FitOptions & {
   count: number;
-  /** Espaço disponível a partir da largura medida (padrão: toda). */
-  available?: (width: number) => number;
+  /** Espaço disponível a partir da largura medida (padrão: toda). Recebe também o elemento medido. */
+  available?: (width: number, box: HTMLElement) => number;
   /** Mede o elemento pai, quando a linha divide espaço com outra coisa. */
   measureParent?: boolean;
   /** Mudanças que alteram a largura dos itens (texto de "Preparando…"). */
@@ -62,7 +62,7 @@ export function useFitItems({ count, gap, always, pinned, available, measurePare
       const width = box.clientWidth;
       if (!width) return;
       const widths = Array.from({ length: count }, (_, i) => items.current[i]?.offsetWidth ?? 0);
-      const next = fitItems(widths, availableRef.current ? availableRef.current(width) : width, moreRef.current?.offsetWidth ?? 0, { gap, always, pinned });
+      const next = fitItems(widths, availableRef.current ? availableRef.current(width, box) : width, moreRef.current?.offsetWidth ?? 0, { gap, always, pinned });
       setVisible((v) => (v.length === next.length && v.every((x, i) => x === next[i]) ? v : next));
     };
     measure();

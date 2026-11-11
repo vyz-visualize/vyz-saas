@@ -28,7 +28,7 @@ import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
 import type { Product } from "@/features/pricing/pricing";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
-import { isFocusPath } from "./focus";
+import { FOCUS_ACTIONS_ID, isFocusPath } from "./focus";
 import { subscriptionNotice } from "./notice";
 import { ROLE_LABEL } from "./session";
 import { useWorkspaceSession } from "./WorkspaceProvider";
@@ -404,11 +404,13 @@ function FocusShell({ children }: { children: ReactNode }) {
         <div className="focus-bar flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
           <Link
             href="/painel/dashboards"
-            className="inline-flex h-9 items-center gap-1.5 rounded-control px-2.5 -ml-2.5 text-[13.5px] font-medium text-fg-2 outline-none transition-colors hover:bg-accent-soft hover:text-fg focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control px-2.5 -ml-2.5 text-[13.5px] font-medium text-fg-2 outline-none transition-colors hover:bg-accent-soft hover:text-fg focus-visible:ring-2 focus-visible:ring-accent"
           >
             <ArrowLeft size={16} aria-hidden />
             Dashboards
           </Link>
+          {/* as ações do dashboard (editar, compartilhar, exportar) entram aqui: FocusBarActions */}
+          <div id={FOCUS_ACTIONS_ID} data-actions-slot className="flex min-w-10 flex-1 items-center justify-end" />
           <ThemeToggle className="size-9 shrink-0" />
         </div>
         <SubscriptionBanner />

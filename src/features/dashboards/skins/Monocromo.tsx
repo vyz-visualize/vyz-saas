@@ -142,7 +142,7 @@ export function MonocromoSkin({
     >
       <Blob className="pointer-events-none absolute -top-24 left-1/2 h-[300px] w-[380px] -translate-x-1/2 opacity-60 blur-[2px]" />
       <div
-        className={`relative backdrop-blur-xl ${screen ? "min-h-dvh px-3 pt-3 pb-28 @[700px]:px-4" : "rounded-[30px] border border-white/70 p-3 @[700px]:p-4"}`}
+        className={`relative backdrop-blur-xl ${screen ? "min-h-dvh px-3 pt-3 pb-[var(--screen-pb,7rem)] @[700px]:px-4" : "rounded-[30px] border border-white/70 p-3 @[700px]:p-4"}`}
         style={{ background: "rgba(255,255,255,.35)" }}
       >
         <SkinBar palette={CHART} bar={bar} className="mb-3 px-1" />
@@ -248,7 +248,7 @@ export function MonocromoSkin({
               </span>
             </div>
 
-            <SkinChrome palette={CHART} controls={controls} note={note} className="mt-4" />
+            <SkinChrome palette={CHART} controls={controls} note={note} screen={screen} className="mt-4" />
 
             {children ? <SkinPage palette={CHART} className="mt-5">{children}</SkinPage> : (
             <SkinGrid

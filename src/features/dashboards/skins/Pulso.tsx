@@ -230,7 +230,7 @@ export function PulsoSkin({
         className={`grid overflow-hidden ${screen ? "flex-1" : "rounded-[28px]"} ${children ? "" : "@[1000px]:grid-cols-[minmax(0,1fr)_260px]"}`}
         style={{ background: C.frame }}
       >
-        <div className={`flex gap-5 p-4 @[700px]:p-5 ${screen ? "pb-28 @[700px]:pb-28" : ""}`}>
+        <div className={`flex gap-5 p-4 @[700px]:p-5 ${screen ? "pb-[var(--screen-pb,7rem)] @[700px]:pb-[var(--screen-pb,7rem)]" : ""}`}>
           {/* barra lateral */}
           <aside
             className="hidden w-[76px] shrink-0 flex-col items-center gap-3 rounded-[26px] py-5 text-white @[700px]:flex"
@@ -293,7 +293,7 @@ export function PulsoSkin({
               </span>
             </div>
 
-            <SkinChrome palette={PAGE} controls={controls} note={note} className="mt-4" />
+            <SkinChrome palette={PAGE} controls={controls} note={note} screen={screen} className="mt-4" />
 
             <div className="mt-5">
               {children ? <SkinPage palette={PAGE}>{children}</SkinPage> : (
@@ -460,7 +460,8 @@ export function PulsoSkin({
         {/* coluna da direita: só na primeira aba (as outras usam a largura toda) */}
         {!children && (
         <aside
-          className="border-t p-5 @[1000px]:border-t-0 @[1000px]:border-l"
+          // na tela do dashboard a coluna da direita não dita a altura: acompanha a dos blocos e rola dentro
+          className={`border-t p-5 @[1000px]:border-t-0 @[1000px]:border-l ${screen ? "@[1000px]:overflow-y-auto @[1000px]:[contain:size] @[1000px]:[scrollbar-width:thin]" : ""}`}
           style={{ borderColor: "#eceef4" }}
         >
           <div className="flex items-center justify-between">

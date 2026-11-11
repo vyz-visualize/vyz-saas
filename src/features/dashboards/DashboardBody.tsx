@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
@@ -9,6 +9,7 @@ import { PendingChip } from "@/components/ui/kit";
 import { OverflowTabs } from "@/components/ui/OverflowTabs";
 import { PeriodPicker, rangeDays, type Range } from "@/components/ui/PeriodPicker";
 import { Notices, notify } from "@/components/ui/Toast";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { CreativeList } from "@/features/analytics/creatives/CreativeList";
 import { CreativesPage } from "@/features/analytics/creatives/CreativesPage";
@@ -25,6 +26,7 @@ import { dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
 import type { MetricId } from "@/features/metrics/definitions";
 import type { PageId, PageLayout } from "@/features/templates/types";
+import { FocusBarActions } from "@/features/workspace/FocusBarActions";
 import { ATTRIBUTIONS, periodDays, PERIODS, type DashboardSettings, type PeriodId } from "@/features/workspace/types";
 import type { Brand } from "@/features/workspace/workspace";
 import { ddmmyyyy } from "@/lib/format";
@@ -229,6 +231,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         bar={nav ? skinBar : undefined}
         grid={{
           items: grid.items(p),
+          fit: nav && fit,
           editing: nav && editing && canArrange && arrangePlan,
           onChange: (g) => grid.change(p, g),
           onHide: (id) => grid.hide(p, id),
@@ -249,8 +252,9 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
     ) : null;
   const attribution = ATTRIBUTIONS.find((a) => a.value === spec.settings.attribution)?.label;
 
-  const periodControl = (
+  const periodControl = (labelHidden = false) => (
     <PeriodPicker
+      labelHidden={labelHidden}
       period={period}
       range={range}
       customDays={customDays}
@@ -267,12 +271,15 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
       }}
     />
   );
+  // Na tela do dashboard do painel, cada aba se encaixa na altura do monitor (16:9, sem rolar a página):
+  // o topo fica enxuto (título, abas e controles em menos linhas) e as ações vão para a barra do topo.
+  const fit = !!backHref;
   const compareControl = (
     <Switch
       label={
         <>
-          <span className="@[760px]:hidden">Comparar</span>
-          <span className="hidden @[760px]:inline">Comparar com o período anterior</span>
+          <span className={fit ? "" : "@[760px]:hidden"}>Comparar</span>
+          {!fit && <span className="hidden @[760px]:inline">Comparar com o período anterior</span>}
         </>
       }
       checked={compare}
@@ -283,18 +290,32 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   // o dashboard no modelo escolhido. O cabeçalho padrão some; os controles entram no topo do
   // visual, com a paleta dele, e todas as abas ficam dentro da moldura.
   const framed = isFramedSkin(t.skin);
+  const periodNote = `${periodLabel} · ${days} dias · janela de atribuição: ${attribution}. Os últimos 3 dias ficam em maturação.`;
+  // Na tela cheia, a nota do período vira dica: cada linha de texto a menos é altura para os blocos. No estreito ela segue escrita.
+  const periodHint = (
+    <Tooltip side="bottom" content={<span className="block max-w-[300px] font-normal">{periodNote}</span>}>
+      <button
+        type="button"
+        aria-label={`Sobre o período: ${periodNote}`}
+        className="hidden size-10 shrink-0 items-center justify-center rounded-control border border-line text-fg-2 outline-none transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent @[720px]:inline-flex"
+      >
+        <Info size={16} aria-hidden />
+      </button>
+    </Tooltip>
+  );
   // No painel, esse visual é a tela: vai de ponta a ponta, sem a barra padrão. A barra do topo
   // (voltar e as ações: editar, compartilhar, exportar) entra nele, nas cores dele.
   const screen = framed && !!backHref;
   const skinControls = framed ? (
     <div className="flex flex-wrap items-end gap-2">
       <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
-        <div className="w-full @[540px]:w-52 @[760px]:w-60">{periodControl}</div>
+        <div className="w-full @[540px]:w-52 @[760px]:w-60">{periodControl(screen)}</div>
         <div className="flex h-10 shrink-0 items-center rounded-control border border-line px-2.5 text-[13px] whitespace-nowrap [&>div]:gap-2">
           <Switch label="Comparar" checked={compare} onChange={setCompare} />
         </div>
       </div>
       {customizeId && !editing && <CustomizeButton onClick={() => metrics.openPanel()} />}
+      {screen && periodHint}
       <span className="mb-2 shrink-0 rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap text-fg">Amostra · dados fictícios</span>
       {/* fora do painel (link público) não há barra: as ações, se houver, ficam aqui. Elas medem a largura desta linha. */}
       {!screen && actions && (
@@ -305,7 +326,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
       )}
     </div>
   ) : undefined;
-  // as ações medem a largura da barra para decidir o que cabe: ficam como filhas diretas dela
+  // as ações medem a largura do espaço delas ([data-actions-slot]) para decidir o que cabe
   const skinBar = screen ? (
     <>
       <Link
@@ -315,16 +336,17 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         <ArrowLeft size={16} aria-hidden />
         Dashboards
       </Link>
-      <span className="flex-1" aria-hidden />
-      {actions}
+      {/* período, comparar e personalizar na mesma barra (uma linha a menos em cima dos blocos); no estreito descem para a linha de baixo */}
+      <div className="order-last w-full @[1150px]:order-none @[1150px]:ml-1 @[1150px]:w-auto">{skinControls}</div>
+      <div data-actions-slot className="flex min-w-10 flex-1 justify-end">
+        {actions}
+      </div>
     </>
   ) : undefined;
   const skinNote = framed ? (
     <>
       <FilterBar compare={compare} />
-      <p className="text-[12.5px] text-fg-2">
-        {periodLabel} · {days} dias · janela de atribuição: {attribution}. Os últimos 3 dias ficam em maturação.
-      </p>
+      <p className={`text-[12.5px] text-fg-2 ${screen ? "@[720px]:hidden" : ""}`}>{periodNote}</p>
     </>
   ) : undefined;
   // o miolo das abas que o visual não desenha: os blocos padrão (dentro da moldura, ganham a paleta dele)
@@ -337,28 +359,31 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         </div>
       </div>
     ) : (
-      <GridPage page={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} grid={grid} editing={editing && canArrange && arrangePlan} />
+      <GridPage page={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} grid={grid} editing={editing && canArrange && arrangePlan} fit={fit} />
     );
 
   return (
     <MetricEditProvider value={edit.editor}>
     <FilterProvider value={filterState}>
     {/* data-skin-screen: avisa a moldura do painel (globals.css) que este dashboard toma a tela toda */}
-    <div style={brandStyle(spec.brand)} data-skin-screen={screen ? "" : undefined} data-metric-editing={editing ? edit.section : undefined} className={`space-y-4 ${editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
+    <div style={brandStyle(spec.brand)} data-skin-screen={screen ? "" : undefined} data-metric-editing={editing ? edit.section : undefined} className={editing ? "pb-[62dvh] md:pb-[320px]" : ""}>
+    {/* o espaçamento vale só entre as partes visíveis: a bandeja e o aviso (abaixo) não empurram a página */}
+    <div className={screen ? "" : "space-y-4"}>
       {customizeId && <MetricEditBar state={edit} />}
       {/* avisos curtos do Personalizar (bloco que não cabe, limite da grade) */}
       {customizeId && <Notices placement="top" />}
       {!framed && (
-      <div className="@container space-y-4 print:hidden">
+      <div className={`@container print:hidden ${fit ? "space-y-3" : "space-y-4"}`}>
         <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
-          <div className="flex min-w-0 flex-1 items-start gap-4">
-            <div className="hidden shrink-0 pt-1.5 @[500px]:block">
+          <div className={`flex min-w-0 flex-1 items-start gap-4 ${fit ? "@[900px]:items-center" : ""}`}>
+            <div className={`hidden shrink-0 pt-1.5 @[500px]:block ${fit ? "@[900px]:pt-0" : ""}`}>
               <BrandMark brand={spec.brand} />
             </div>
-            <div className="min-w-0">
-              <h1 className="title truncate text-[1.6rem]">{spec.name}</h1>
+            {/* no encaixe, título, cliente e etiquetas dividem uma linha só */}
+            <div className={fit ? "min-w-0 @[900px]:flex @[900px]:flex-wrap @[900px]:items-center @[900px]:gap-x-3 @[900px]:gap-y-1" : "min-w-0"}>
+              <h1 className={`title truncate ${fit ? "text-[1.6rem] @[900px]:text-[1.3rem]" : "text-[1.6rem]"}`}>{spec.name}</h1>
               <p className="text-[14px] text-fg-2">{spec.client}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <div className={`flex flex-wrap items-center gap-1.5 ${fit ? "mt-2 @[900px]:mt-0" : "mt-2"}`}>
                 {t.sources.map((s) =>
                   // com mais de uma plataforma de anúncios, a fonte também filtra
                   ds.adPlatforms.length > 1 && ds.adPlatforms.includes(s) && !editing ? (
@@ -384,11 +409,12 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
               </div>
             </div>
           </div>
-          {actions}
+          {/* na tela cheia do painel, as ações ficam na barra do topo, não no dashboard */}
+          {fit ? <FocusBarActions>{actions}</FocusBarActions> : actions}
         </header>
 
-        <div className="flex flex-col gap-3">
-          <div className="min-w-0">
+        <div className={fit ? "flex flex-col gap-3 @[1000px]:flex-row @[1000px]:items-end" : "flex flex-col gap-3"}>
+          <div className={fit ? "min-w-0 @[1000px]:flex-1" : "min-w-0"}>
             <OverflowTabs
               label="Páginas do dashboard"
               value={active}
@@ -399,15 +425,16 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
               items={spec.pages.map((p) => ({ value: p, label: PAGES[p].name }))}
             />
           </div>
-          <div className="flex flex-wrap items-end gap-2">
+          <div className={`flex flex-wrap items-end gap-2 ${fit ? "@[1000px]:shrink-0 @[1000px]:flex-nowrap" : ""}`}>
             <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
             <div className="w-full @[540px]:w-52 @[760px]:w-60">
-              {periodControl}
+              {periodControl(fit)}
             </div>
             <div className="flex h-10 shrink-0 items-center rounded-control border border-line px-2.5 text-[13px] whitespace-nowrap [&>div]:gap-2">
               {compareControl}
             </div>
             </div>
+            {fit && periodHint}
             {customizeId && !editing && (
               <div className="ml-auto">
                 <CustomizeButton onClick={() => metrics.openPanel()} />
@@ -425,9 +452,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
             <FilterBar compare={compare} />
           </div>
 
-          <p className="text-[12.5px] text-fg-2 print:hidden">
-            {periodLabel} · {days} dias · janela de atribuição: {attribution}. Os últimos 3 dias ficam em maturação.
-          </p>
+          {/* no encaixe a nota vira dica ao lado do período; no celular ela segue escrita */}
+          <p className={`text-[12.5px] text-fg-2 print:hidden ${fit ? "md:hidden" : ""}`}>{periodNote}</p>
         </>
       )}
 
@@ -503,6 +529,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
           ))}
         </div>
       )}
+    </div>
       {customizeId && <MetricTray state={edit} />}
       {customizeId && <MetricNoticeBar notice={metrics.notice} onUndo={metrics.undo} onDismiss={metrics.dismiss} />}
     </div>

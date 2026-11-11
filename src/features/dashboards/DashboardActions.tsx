@@ -81,8 +81,16 @@ export function DashboardActions({ dashboard, period, pages, onExport }: Props) 
 
   const editHref = `/painel/dashboards/${dashboard.id}/editar`;
   const exportLabel = exporter.pending ? "Preparando…" : "Exportar PDF";
-  // logo e título ficam com pelo menos metade da linha (até 360 px)
-  const { rootRef, moreRef, itemRef, visible } = useFitItems({ count: 3, gap: GAP, always: true, measureParent: true, available: (width) => width - TITLE_GAP - Math.min(360, width / 2), deps: [exporter.pending] });
+  // logo e título ficam com pelo menos metade da linha (até 360 px); na barra do topo da tela
+  // cheia ([data-actions-slot]) o espaço medido já é só o das ações
+  const { rootRef, moreRef, itemRef, visible } = useFitItems({
+    count: 3,
+    gap: GAP,
+    always: true,
+    measureParent: true,
+    available: (width, box) => (box.hasAttribute("data-actions-slot") ? width : width - TITLE_GAP - Math.min(360, width / 2)),
+    deps: [exporter.pending],
+  });
   const show = (i: number) => (visible.includes(i) ? "" : FIT_HIDDEN);
 
   const shown = error ?? exporter.error;

@@ -134,11 +134,12 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
     <div data-metric-editing={editing ? edit.section : undefined} className={`@container space-y-4 ${editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
       {canCustomize && <MetricEditBar state={edit} />}
       <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
-        {logo && <div className="hidden shrink-0 pt-1.5 @[500px]:block">{logo}</div>}
-        <div className="min-w-0 flex-1">
-          <h1 className="title truncate text-[1.55rem]">{data.dashboard.name}</h1>
+        {logo && <div className="hidden shrink-0 pt-1.5 @[500px]:block @[900px]:pt-0.5">{logo}</div>}
+        {/* no largo, título, cliente e etiquetas dividem uma linha: sobra altura para os números */}
+        <div className="min-w-0 flex-1 @[900px]:flex @[900px]:flex-wrap @[900px]:items-center @[900px]:gap-x-3 @[900px]:gap-y-1">
+          <h1 className="title truncate text-[1.55rem] @[900px]:text-[1.3rem]">{data.dashboard.name}</h1>
           {data.dashboard.clientName && <p className="text-[14px] text-fg-2">{data.dashboard.clientName}</p>}
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px]">
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px] @[900px]:mt-0">
             <span className="rounded-chip border border-line px-2 py-0.5 text-fg-2">{livePlatformName(data.platform)}</span>
             {data.accounts.map((a) => (
               <span key={a.id} className="max-w-[16rem] truncate rounded-chip border border-line px-2 py-0.5 text-fg-2" title={a.name}>
@@ -152,6 +153,9 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
         {actions}
       </header>
 
+      {/* abas e período na mesma linha quando cabe */}
+      <div className="flex flex-col gap-4 @[1000px]:flex-row @[1000px]:items-end @[1000px]:gap-3">
+      <div className="min-w-0 @[1000px]:flex-1">
       <OverflowTabs
         label="Páginas do dashboard"
         value={active}
@@ -161,9 +165,10 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
         }}
         items={pages.map((p) => ({ value: p, label: PAGES[p]?.name ?? p }))}
       />
+      </div>
 
       {(toolbar || canCustomize) && (
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2 @[1000px]:shrink-0">
           {/* trocar o período recarrega o dashboard: no modo personalizar perderia o rascunho */}
           <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
             {toolbar}
@@ -175,6 +180,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
           )}
         </div>
       )}
+      </div>
 
       <FilterBar />
 

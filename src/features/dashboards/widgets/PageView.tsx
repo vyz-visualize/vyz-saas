@@ -47,13 +47,15 @@ export function PageView({ layout, ctx, variant = "full", kpiEdit, extraCards = 
           {drop.overlay}
         </div>
       )}
-      <div className={compact ? "grid gap-2 @[440px]:grid-cols-[1.55fr_1fr]" : "grid grid-cols-1 gap-2 @[460px]:grid-cols-2 @[900px]:grid-cols-4"}>
-        {widgets.map((w, i) => (
-          <div key={`${w.type}-${i}`} className={compact ? "min-w-0" : `min-w-0 ${SPAN[w.span ?? 2]}`}>
-            <Widget spec={w} ctx={ctx} delay={440 + i * 70} />
-          </div>
-        ))}
-      </div>
+      {widgets.length > 0 && (
+        <div className={compact ? "grid gap-2 @[440px]:grid-cols-[1.55fr_1fr]" : "grid grid-cols-1 gap-2 @[460px]:grid-cols-2 @[900px]:grid-cols-4"}>
+          {widgets.map((w, i) => (
+            <div key={`${w.type}-${i}`} className={compact ? "min-w-0" : `min-w-0 ${SPAN[w.span ?? 2]}`}>
+              <Widget spec={w} ctx={ctx} delay={440 + i * 70} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
