@@ -313,6 +313,59 @@ export type Database = {
           },
         ]
       }
+      analytics_daily: {
+        Row: {
+          workspace_id: string
+          ad_account_id: string
+          date: string
+          channel: string
+          sessions: number
+          users: number
+          new_users: number
+          engaged_sessions: number
+          key_events: number
+          transactions: number
+          revenue: number
+          synced_at: string
+        }
+        Insert: {
+          workspace_id: string
+          ad_account_id: string
+          date: string
+          channel: string
+          sessions?: number
+          users?: number
+          new_users?: number
+          engaged_sessions?: number
+          key_events?: number
+          transactions?: number
+          revenue?: number
+          synced_at?: string
+        }
+        Update: {
+          workspace_id?: string
+          ad_account_id?: string
+          date?: string
+          channel?: string
+          sessions?: number
+          users?: number
+          new_users?: number
+          engaged_sessions?: number
+          key_events?: number
+          transactions?: number
+          revenue?: number
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_daily_workspace_id_ad_account_id_fkey"
+            columns: ["workspace_id","ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["workspace_id","id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           id: number

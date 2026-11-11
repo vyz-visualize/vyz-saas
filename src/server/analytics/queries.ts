@@ -36,6 +36,7 @@ import type {
   WarehouseRows,
 } from "@/features/analytics/types";
 import { DEFAULT_TIME_ZONE, localDate } from "@/features/sync/dates";
+import type { AnalyticsRow } from "@/features/metrics/warehouse-dataset";
 import { insightsTag } from "@/features/sync/tags";
 import type { PeriodId } from "@/features/workspace/types";
 import { createAdminSupabase } from "@/server/supabase/admin";
@@ -131,6 +132,10 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
 export type TemplateWarehouse = {
   /** Uma entrada por plataforma (Meta, Google) com conta ativa ligada ao dashboard. */
   sets: WarehouseRows[];
+  /** GA4 (analytics_daily) das propriedades ligadas, nos dois períodos. */
+  analytics: AnalyticsRow[];
+  current: DateRange;
+  previous: DateRange;
   accounts: { id: string; name: string; platform: string; lastSyncedAt: string | null }[];
   today: string;
 };
@@ -149,7 +154,7 @@ export async function loadTemplateWarehouse(dashboardId: string, opts: { platfor
   if (error) throw fromPostgrest(error);
   const linked = (sources ?? [])
     .map((s) => s.account)
-    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (a.platform_id === "meta" || a.platform_id === "google") && opts.platforms.includes(a.platform_id))
+    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (a.platform_id === "meta" || a.platform_id === "google" || a.platform_id === "ga4") && opts.platforms.includes(a.platform_id))
     .sort((a, b) => a.id.localeCompare(b.id));
   if (!linked.length) return null;
   const timeZone = linked[0].timezone || DEFAULT_TIME_ZONE;
@@ -157,9 +162,36 @@ export async function loadTemplateWarehouse(dashboardId: string, opts: { platfor
   const period: PeriodId = isPeriodId(opts.period) ? opts.period : "30d";
   const { current, previous } = dashboardRanges(period, opts.customDays ?? 14, today);
   const byPlatform = new Map<LivePlatform, string[]>();
-  for (const a of linked) byPlatform.set(a.platform_id as LivePlatform, [...(byPlatform.get(a.platform_id as LivePlatform) ?? []), a.id]);
-  const sets = await Promise.all([...byPlatform].map(([platform, accountIds]) => readRows({ dashboardId, platform, accountIds, current, previous, breakEvenRoas: null })));
-  return { sets, accounts: linked.map((a) => ({ id: a.id, name: a.name, platform: a.platform_id, lastSyncedAt: a.last_synced_at })), today };
+  for (const a of linked) if (a.platform_id !== "ga4") byPlatform.set(a.platform_id as LivePlatform, [...(byPlatform.get(a.platform_id as LivePlatform) ?? []), a.id]);
+  const ga4 = linked.filter((a) => a.platform_id === "ga4").map((a) => a.id);
+  const [sets, analytics] = await Promise.all([
+    Promise.all([...byPlatform].map(([platform, accountIds]) => readRows({ dashboardId, platform, accountIds, current, previous, breakEvenRoas: null }))),
+    ga4.length ? readAnalytics({ dashboardId, accountIds: ga4, from: previous.from < current.from ? previous.from : current.from, to: current.to }) : Promise.resolve([] as AnalyticsRow[]),
+  ]);
+  return { sets, analytics, current, previous, accounts: linked.map((a) => ({ id: a.id, name: a.name, platform: a.platform_id, lastSyncedAt: a.last_synced_at })), today };
+}
+
+/** GA4 do intervalo, em cache como o armazém (a sincronização invalida pela propriedade). */
+async function readAnalytics(q: { dashboardId: string; accountIds: string[]; from: string; to: string }): Promise<AnalyticsRow[]> {
+  "use cache";
+  if (process.env.NEXT_RUNTIME) {
+    cacheTag(dashboardTag(q.dashboardId), ...q.accountIds.map(insightsTag));
+    cacheLife("hours");
+  }
+  const db = createAdminSupabase();
+  const rows = await fetchAll((a, b) =>
+    db
+      .from("analytics_daily")
+      .select("date, channel, sessions, users, engaged_sessions, key_events, transactions, revenue")
+      .in("ad_account_id", q.accountIds)
+      .gte("date", q.from)
+      .lte("date", q.to)
+      .order("ad_account_id")
+      .order("date")
+      .order("channel")
+      .range(a, b),
+  );
+  return rows.map((r) => ({ date: r.date, channel: r.channel, sessions: num(r.sessions), users: num(r.users), engagedSessions: num(r.engaged_sessions), keyEvents: num(r.key_events), transactions: num(r.transactions), revenue: num(r.revenue) }));
 }
 
 // ---- orgânico ---------------------------------------------------------------------------

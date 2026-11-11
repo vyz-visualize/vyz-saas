@@ -111,7 +111,11 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   const warehouse = template ? await loadTemplateWarehouse(d.id, { platforms: template.sources, period, customDays }) : null;
   const realData =
     warehouse && template
-      ? datasetFromWarehouse(warehouse.sets, { profile: template.profile, today: warehouse.today, goal: d.settings.goal || undefined, margin: d.settings.margin || undefined, budget: d.settings.budget || undefined })
+      ? datasetFromWarehouse(
+          warehouse.sets,
+          { profile: template.profile, today: warehouse.today, current: warehouse.current, previous: warehouse.previous, goal: d.settings.goal || undefined, margin: d.settings.margin || undefined, budget: d.settings.budget || undefined },
+          warehouse.analytics,
+        )
       : undefined;
   return (
     <>

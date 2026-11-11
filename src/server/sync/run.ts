@@ -17,6 +17,7 @@ import { z } from "zod";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { isSyncPlatform } from "@/features/sync/dataset";
 import { isOrganicSyncPlatform } from "@/features/sync/organic";
+import { isAnalyticsSyncPlatform } from "@/features/sync/analytics";
 import { syncRange, type SyncRange, type SyncTrigger } from "@/features/sync/dates";
 import { insightsTag } from "@/features/sync/tags";
 import { logActivity } from "@/server/history/log";
@@ -25,7 +26,7 @@ import { createAdminSupabase } from "@/server/supabase/admin";
 import { AppError, appError } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
 import { sourceFor, type SyncAccount } from "./source";
-import { rollupAccount, writeDataset, writeOrganic } from "./write";
+import { rollupAccount, writeAnalytics, writeDataset, writeOrganic } from "./write";
 
 export type { SyncTrigger } from "@/features/sync/dates";
 
@@ -82,7 +83,7 @@ async function loadAccount(db: DB, adAccountId: string): Promise<SyncAccount> {
     .maybeSingle();
   if (error) throw error;
   if (!data) throw syncError("sync:not_found");
-  if (!isSyncPlatform(data.platform_id) && !isOrganicSyncPlatform(data.platform_id)) throw syncError("sync:unsupported_platform");
+  if (!isSyncPlatform(data.platform_id) && !isOrganicSyncPlatform(data.platform_id) && !isAnalyticsSyncPlatform(data.platform_id)) throw syncError("sync:unsupported_platform");
   if (!data.is_enabled) throw syncError("sync:account_disabled");
   const connection = data.connection;
   if (!data.connection_id || !connection || connection.status !== "active") {
@@ -208,14 +209,19 @@ export async function syncAdAccount(adAccountId: string, trigger: SyncTrigger, o
     let rowsWritten: number;
     let byTable: Record<string, number>;
     const current = account;
-    if (isOrganicSyncPlatform(current.platform)) {
+    if (isAnalyticsSyncPlatform(current.platform)) {
+      // site (GA4): tabela própria, por dia e canal
+      const analytics = await source.fetchAnalytics({ ...current, platform: current.platform }, range);
+      rowsWritten = await writeAnalytics(db, current, analytics, run.createdAt);
+      byTable = { analytics_daily: rowsWritten };
+    } else if (isOrganicSyncPlatform(current.platform)) {
       // orgânico: tabelas próprias, sem rollup (o total por dia já vem da plataforma)
       const organic = await source.fetchOrganic({ ...current, platform: current.platform }, range);
       const written = await writeOrganic(db, current, organic, run.createdAt);
       rowsWritten = written.days + written.posts;
       byTable = { organic_daily: written.days, organic_posts: written.posts };
     } else {
-      const ads = { ...current, platform: current.platform as Exclude<typeof current.platform, "instagram" | "facebook"> };
+      const ads = { ...current, platform: current.platform as Exclude<typeof current.platform, "instagram" | "facebook" | "ga4"> };
       const dataset = await source.fetch(ads, range);
       const written = await writeDataset(db, current, dataset, run.createdAt);
       const days = await rollupAccount(db, current, dataset, range, run.createdAt);

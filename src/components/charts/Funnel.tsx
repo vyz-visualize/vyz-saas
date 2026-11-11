@@ -31,6 +31,8 @@ type FunnelProps = {
  * terroso e o aviso dela fica embaixo.
  */
 export function Funnel({ steps, title, size = "sm", fill = false }: FunnelProps) {
+  // dados reais sem nenhuma etapa no período (conta nova, sem sessões): aviso em vez do desenho
+  if (steps.length < 2) return <p className="grid h-full min-h-24 place-items-center text-[13px] text-fg-2">Sem dados de funil neste período.</p>;
   const drop = biggestDrop(steps);
   const lg = size === "lg";
   const summary = `${title}: ${steps.map((s) => `${s.label} ${s.pct}%`).join(", ")}. Maior queda antes de ${steps[drop].label}.`;

@@ -18,7 +18,16 @@ export type WarehouseDatasetSpec = {
   margin?: number;
   budget?: number;
   maturingDays?: number;
+  /** Períodos (quando não há conta de anúncio para dar o intervalo, só o GA4). */
+  current?: { from: string; to: string };
+  previous?: { from: string; to: string };
 };
+
+/** GA4 por dia e canal (analytics_daily), somado entre propriedades. Receita em reais. */
+export type AnalyticsRow = { date: string; channel: string; sessions: number; users: number; engagedSessions: number; keyEvents: number; transactions: number; revenue: number };
+
+/** Perfis em que a conversão confirmada é a compra (no resto, o evento-chave). */
+const PURCHASE_PROFILES: readonly Profile[] = ["ecommerce", "marketplace", "executivo"];
 
 const DAY = 86_400_000;
 const cents = (v: number | null | undefined) => Math.round((v ?? 0) * 100);
@@ -163,12 +172,48 @@ function productsOf(sets: readonly WarehouseRows[]): Product[] {
   return out.sort((a, b) => b.revenue - a.revenue);
 }
 
+/** Funil do site (GA4): sessões → engajadas → conversões (linhas já do período atual). */
+function siteFunnel(current: readonly DayRow[], analytics: readonly AnalyticsRow[]): { label: string; pct: number }[] {
+  const sessions = current.reduce((a, d) => a + d.sessions, 0);
+  const conv = current.reduce((a, d) => a + d.conversions, 0);
+  const engaged = analytics.reduce((a, r) => a + r.engagedSessions, 0);
+  if (sessions <= 0) return [];
+  const p = (v: number) => Math.round((v / sessions) * 1000) / 10;
+  return [
+    { label: "Sessões", pct: 100 },
+    { label: "Sessões engajadas", pct: Math.min(100, p(engaged)) },
+    { label: "Conversões", pct: p(conv) },
+  ];
+}
+
 /** Linhas do armazém de cada plataforma ligada → Dataset dos widgets. */
-export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: WarehouseDatasetSpec): Dataset {
+export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: WarehouseDatasetSpec, analytics: readonly AnalyticsRow[] = []): Dataset {
   const first = sets[0];
   const maturingDays = spec.maturingDays ?? 3;
-  const current = first ? daysOf(sets, first.current, spec.today, spec.profile, maturingDays) : [];
-  const previous = first ? daysOf(sets, first.previous, spec.today, spec.profile, maturingDays).map((d) => ({ ...d, maturing: false })) : [];
+  const curRange = first?.current ?? spec.current;
+  const prevRange = first?.previous ?? spec.previous;
+  const current = curRange ? daysOf(sets, curRange, spec.today, spec.profile, maturingDays) : [];
+  const previous = prevRange ? daysOf(sets, prevRange, spec.today, spec.profile, maturingDays).map((d) => ({ ...d, maturing: false })) : [];
+  // GA4: sessões do site e a conversão confirmada (sem a atribuição em dobro das plataformas)
+  if (analytics.length) {
+    const byDate = new Map<string, AnalyticsRow[]>();
+    for (const r of analytics) byDate.set(r.date, [...(byDate.get(r.date) ?? []), r]);
+    const purchase = PURCHASE_PROFILES.includes(spec.profile);
+    const apply = (days: DayRow[], range: { from: string; to: string } | undefined) => {
+      if (!range) return;
+      for (const d of days) {
+        const rows = byDate.get(isoAdd(spec.today, -d.ago)) ?? [];
+        const sum = (k: keyof Omit<AnalyticsRow, "date" | "channel">) => rows.reduce((a, r) => a + r[k], 0);
+        d.sessions = Math.round(sum("sessions"));
+        d.conversions = Math.round(purchase ? sum("transactions") : sum("keyEvents"));
+        d.revenue = cents(sum("revenue"));
+        d.leads = d.conversions;
+        if (spec.profile === "imob") d.qualified = d.conversions;
+      }
+    };
+    apply(current, curRange);
+    apply(previous, prevRange);
+  }
   const totals = current.reduce((a, d) => ({ impressions: a.impressions + d.impressions, clicks: a.clicks + d.clicks, conv: a.conv + d.conversions }), { impressions: 0, clicks: 0, conv: 0 });
   const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : 0);
   const { audience, gender } = audienceOf(sets);
@@ -187,7 +232,9 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
     adPlatforms: sets.map((s) => s.platform as PlatformId),
     campaigns: campaignsOf(sets),
     creatives: creativesOf(sets),
-    funnel: totals.impressions > 0 ? [
+    funnel: analytics.length
+      ? siteFunnel(current, curRange ? analytics.filter((r) => r.date >= curRange.from && r.date <= curRange.to) : [])
+      : totals.impressions > 0 ? [
       { label: "Impressões", pct: 100 },
       { label: "Cliques", pct: pct(totals.clicks, totals.impressions) },
       { label: "Conversões", pct: pct(totals.conv, totals.impressions) },
