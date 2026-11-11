@@ -1,0 +1,80 @@
+/*
+ * Bklit UI (gráficos) no visual da VYZ. Os tokens dos gráficos apontam para os
+ * da marca, então acompanham o claro/escuro. As variáveis são declaradas também
+ * em [data-chart-theme]: quem troca --accent num trecho da tela (marca própria
+ * do dashboard, visuais Lavanda/Pulso/Monocromo) marca o contêiner com esse
+ * atributo e os gráficos dali usam a cor local.
+ */
+:root,
+[data-chart-theme] {
+  --chart-1: var(--accent);
+  --chart-2: var(--fg-2);
+  --chart-3: var(--seq-b, #6e7c3a);
+  --chart-4: var(--muted);
+  --chart-5: var(--fg);
+  --chart-positive: var(--accent);
+  --chart-negative: #c9442e;
+
+  --chart-background: var(--card);
+  --chart-foreground: var(--fg);
+  --chart-foreground-muted: var(--fg-2);
+  --chart-label: var(--fg-2);
+
+  --chart-line-primary: var(--chart-1);
+  --chart-line-secondary: var(--chart-2);
+  --chart-crosshair: var(--fg-2);
+  --chart-grid: var(--line);
+  --chart-brush-border: var(--chart-grid);
+
+  --chart-tooltip-background: var(--bg);
+  --chart-tooltip-foreground: var(--fg);
+  --chart-tooltip-muted: var(--fg-2);
+
+  --chart-marker-background: var(--card);
+  --chart-marker-border: var(--line);
+  --chart-marker-foreground: var(--fg);
+  --chart-marker-badge-background: var(--fg);
+  --chart-marker-badge-foreground: var(--bg);
+
+  --chart-indicator-color: var(--fg);
+  --chart-indicator-secondary-color: var(--card);
+  --chart-segment-background: color-mix(in srgb, var(--fg) 6%, transparent);
+  --chart-segment-line: color-mix(in srgb, var(--fg) 25%, transparent);
+
+  --chart-scale-mix: var(--card);
+  --chart-scale-01: var(--line);
+  --chart-scale-02: color-mix(in oklab, var(--chart-1) 35%, var(--chart-scale-mix));
+  --chart-scale-03: color-mix(in oklab, var(--chart-1) 55%, var(--chart-scale-mix));
+  --chart-scale-04: color-mix(in oklab, var(--chart-1) 78%, var(--chart-scale-mix));
+  --chart-scale-05: var(--chart-1);
+  --chart-scale-pattern-color: var(--card);
+
+  --legend: var(--card);
+  --legend-foreground: var(--fg);
+  --legend-muted: var(--bg);
+  --legend-muted-foreground: var(--fg-2);
+  --legend-track: var(--line);
+}
+
+@theme inline {
+  --color-chart-label: var(--chart-label);
+  --color-chart-line-primary: var(--chart-line-primary);
+  --color-chart-line-secondary: var(--chart-line-secondary);
+  --color-chart-brush-border: var(--chart-brush-border);
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-scale-02: var(--chart-scale-02);
+  --color-chart-scale-03: var(--chart-scale-03);
+  --color-chart-scale-04: var(--chart-scale-04);
+  --color-chart-scale-05: var(--chart-scale-05);
+  --color-legend: var(--legend);
+  --color-legend-foreground: var(--legend-foreground);
+  --color-legend-muted: var(--legend-muted);
+  --color-legend-muted-foreground: var(--legend-muted-foreground);
+  --color-legend-track: var(--legend-track);
+  /* nomes do shadcn que o código da Bklit usa em poucos pontos */
+  --color-foreground: var(--fg);
+  --color-background: var(--bg);
+  --color-muted-foreground: var(--fg-2);
+}

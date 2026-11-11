@@ -49,6 +49,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // app nativo (Expo) tem o próprio lint
     "apps/**",
+    // Bklit UI (gráficos): código de terceiros copiado do registry, mantido como veio
+    "src/components/bklit/**",
   ]),
 ]);
 

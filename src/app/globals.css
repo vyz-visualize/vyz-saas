@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../components/bklit/theme.css";
 
 /* Modo escuro: segue data-theme no <html>. O padrão é o escuro. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));

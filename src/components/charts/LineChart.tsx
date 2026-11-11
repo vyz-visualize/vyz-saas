@@ -1,10 +1,18 @@
 "use client";
 
-import { useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
+import { curveLinear, curveMonotoneX } from "d3-shape";
+import { useMemo, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useChart } from "@/components/bklit/charts/chart-context";
+import { ComposedChart } from "@/components/bklit/charts/composed-chart";
+import { Grid } from "@/components/bklit/charts/grid";
+import { Line } from "@/components/bklit/charts/line";
+import { ChartTooltip } from "@/components/bklit/charts/tooltip";
+import { XAxis } from "@/components/bklit/charts/x-axis";
+import { YAxis } from "@/components/bklit/charts/y-axis";
 import { widest, xTickIndices, yTicks } from "./axis";
-import { FitChart } from "./FitChart";
 import { textWidth } from "./labels";
 import { useRangeSelect, type IndexRange } from "./range-select";
+import { useElementSize } from "./useSize";
 
 type LineChartProps = {
   /** Série diária (contexto, em neutro). */
@@ -42,99 +50,76 @@ type LineChartProps = {
 };
 
 /**
- * Linha diária com média móvel, meta e dias em maturação, desenhada sempre
- * em px reais: o SVG tem o tamanho do contêiner e o viewBox igual a ele, então
- * o texto fica com 11 px em qualquer largura. Legenda em cima; etiqueta da
- * meta no fim da linha tracejada, fora da área do traçado.
+ * Linha diária com média móvel, meta e dias em maturação, sobre a Bklit UI
+ * (ComposedChart): traçado, grade, eixos e a dica ao passar o mouse vêm dela; a
+ * faixa de maturação, a linha do alvo com a etiqueta e o trecho selecionado
+ * são camadas nossas, desenhadas com as escalas do gráfico (useChart).
  */
 export function LineChart({ showLegend = true, width, height, ...props }: LineChartProps) {
   const legend = showLegend && <LineLegend avg={!!props.avg} goal={props.goal !== undefined} previous={!!props.previous} maturing={(props.maturingDays ?? 0) > 0} />;
-  if (width !== undefined && height !== undefined) {
-    return (
-      <figure className="m-0">
-        {legend}
-        <LineSvg {...props} W={width} H={height} />
-      </figure>
-    );
-  }
   return (
     <figure className="m-0">
       {legend}
-      <FitChart height={height ?? 200}>{({ width: W, height: H }) => <LineSvg {...props} W={W} H={H} />}</FitChart>
+      <LinePlot {...props} width={width} height={height ?? 200} />
     </figure>
   );
 }
 
 const ddmm = (d: Date) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-/** Datas do eixo X. Só roda no cliente, depois da medida (nunca no prerender). */
-function dayLabels(ago: number[] | undefined, n: number): string[] {
-  if (!ago) return Array.from({ length: n }, (_, i) => `dia ${i + 1}`);
+/** Dia de cada ponto (hoje menos `ago`). Só roda no cliente: o gráfico desenha depois de medir. */
+function dayDates(ago: number[] | undefined, n: number): Date[] {
   const now = new Date();
-  return ago.map((a) => ddmm(new Date(now.getFullYear(), now.getMonth(), now.getDate() - a)));
+  return Array.from({ length: n }, (_, i) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - (ago?.[i] ?? n - 1 - i)));
 }
 
-function LineSvg({
-  values,
-  avg,
-  previous,
-  goal,
-  maturingDays = 0,
-  goalLabel,
-  summary,
-  markGoal,
-  ago,
-  formatY,
-  fontSize: fs = 11,
-  W,
-  H,
-  selection,
-  onSelectRange,
-}: Omit<LineChartProps, "width" | "height" | "showLegend"> & { W: number; H: number }) {
+const num = (v: number | undefined) => (v !== undefined && Number.isFinite(v) ? v : null);
+
+type PlotProps = Omit<LineChartProps, "width" | "height" | "showLegend"> & { width?: number; height: number };
+
+function LinePlot({ values, avg, previous, goal, maturingDays = 0, goalLabel, summary, markGoal, ago, formatY, fontSize: fs = 11, width, height: H, selection, onSelectRange }: PlotProps) {
+  const [ref, size] = useElementSize<HTMLDivElement>();
+  const W = width ?? size?.width ?? 0;
   const range = useRangeSelect(values.length, onSelectRange);
   const [cursor, setCursor] = useState<number | null>(null);
   const n = Math.max(2, values.length);
-  const finite = (v: number[]) => v.filter(Number.isFinite);
+
   // a escala ignora os dias em maturação (o custo do dia dispara enquanto as
   // conversões não chegam); o pico fica preso no topo da área
+  const finite = (v: number[]) => v.filter(Number.isFinite);
   const settled = maturingDays ? values.slice(0, -maturingDays) : values;
   const all = [...finite(settled), ...finite(avg ?? []), ...finite(previous ?? []), ...(goal !== undefined ? [goal] : [])];
-  const rawMin = Math.min(...all);
-  const rawMax = Math.max(...all);
+  const rawMin = all.length ? Math.min(...all) : 0;
+  const rawMax = all.length ? Math.max(...all) : 1;
 
-  const tagH = fs + 8;
   const tagW = goalLabel ? textWidth(goalLabel, fs) + 14 : 0;
-  const xLabelH = fs + 10;
   const top = 8;
-  const plotH = Math.max(40, H - top - xLabelH);
+  const bottom = fs + 22;
+  const plotH = Math.max(40, H - top - bottom);
   const { lo, hi, ticks } = yTicks(rawMin, rawMax, plotH);
-  const yLabels = formatY ? ticks.map(formatY) : [];
-  const pad = { l: formatY ? widest(yLabels, fs) + 10 : 4, r: goalLabel ? tagW + 8 : 8, t: top, b: xLabelH };
-  const plotW = Math.max(40, W - pad.l - pad.r);
-  const plotRight = pad.l + plotW;
-  const plotBottom = pad.t + plotH;
+  const yLabelW = formatY ? widest(ticks.map(formatY), fs) : 0;
+  const margin = useMemo(() => ({ top, bottom, left: yLabelW ? yLabelW + 14 : 6, right: goalLabel ? tagW + 10 : 10 }), [bottom, goalLabel, tagW, yLabelW]);
+  const plotW = Math.max(40, W - margin.left - margin.right);
+  const yDomains = useMemo(() => ({ left: [lo, hi] as [number, number] }), [lo, hi]);
 
-  const x = (i: number) => pad.l + (i / (n - 1)) * plotW;
-  const y = (v: number) => pad.t + (1 - (Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo || 1)) * plotH;
-  const path = (vals: number[]) =>
-    vals
-      .map((v, i) => (Number.isFinite(v) ? `${i && Number.isFinite(vals[i - 1]) ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}` : ""))
-      .join("");
+  const dates = useMemo(() => dayDates(ago, values.length), [ago, values.length]);
+  const labels = useMemo(() => (ago ? dates.map(ddmm) : dates.map((_, i) => `dia ${i + 1}`)), [ago, dates]);
+  const clampY = (v: number | null) => (v === null ? null : Math.min(hi, Math.max(lo, v)));
+  const data = useMemo(
+    () => values.map((v, i) => ({ date: dates[i], dia: clampY(num(v)), media: clampY(num(avg?.[i])), anterior: clampY(num(previous?.[i])), diaReal: num(v) })),
+    // clampY depende só de lo e hi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [values, avg, previous, dates, lo, hi],
+  );
+  const xTicks = Math.max(2, xTickIndices(values.length, plotW, widest(labels, fs)).length);
+  const fmt = (v: unknown) => (typeof v === "number" ? (formatY ? formatY(v) : String(Math.round(v * 100) / 100)) : "—");
 
-  const labels = dayLabels(ago, values.length);
-  const xIdx = xTickIndices(values.length, plotW, widest(labels, fs));
-  const matX = maturingDays ? x(n - maturingDays) - plotW / (n - 1) / 2 : 0;
-  const lastAvg = avg ? [...avg].reverse().findIndex(Number.isFinite) : -1;
-  const lastIdx = lastAvg >= 0 && avg ? avg.length - 1 - lastAvg : -1;
-  const goalY = goal !== undefined ? y(goal) : 0;
-  const tagY = Math.min(plotBottom - tagH, Math.max(pad.t, goalY - tagH / 2));
-
-  const indexAt = (e: PointerEvent<SVGSVGElement>) => {
+  const indexAt = (e: PointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const i = Math.round(((e.clientX - rect.left - pad.l) / plotW) * (n - 1));
+    const i = Math.round(((e.clientX - rect.left - margin.left) / plotW) * (n - 1));
     return i >= 0 && i < values.length ? i : null;
   };
-  const onKey = (e: KeyboardEvent<SVGSVGElement>) => {
+  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
       const step = e.key === "ArrowRight" ? 1 : -1;
@@ -149,15 +134,12 @@ function LineSvg({
       range.keyCommit(cursor);
     }
   };
-  const band = range.preview ?? selection ?? null;
-  const step = plotW / (n - 1);
-  const bandX = band ? Math.max(pad.l, x(band.from) - step / 2) : 0;
   const interactive = onSelectRange
     ? {
         tabIndex: 0,
-        onPointerDown: (e: PointerEvent<SVGSVGElement>) => range.down(e, indexAt(e)),
-        onPointerMove: (e: PointerEvent<SVGSVGElement>) => range.move(indexAt(e)),
-        onPointerUp: (e: PointerEvent<SVGSVGElement>) => range.up(e, indexAt(e)),
+        onPointerDown: (e: PointerEvent<HTMLDivElement>) => range.down(e, indexAt(e)),
+        onPointerMove: (e: PointerEvent<HTMLDivElement>) => range.move(indexAt(e)),
+        onPointerUp: (e: PointerEvent<HTMLDivElement>) => range.up(e, indexAt(e)),
         onPointerCancel: range.cancel,
         onKeyDown: onKey,
         onBlur: () => {
@@ -166,58 +148,93 @@ function LineSvg({
         },
       }
     : {};
+  const band = range.preview ?? selection ?? null;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} role="img" aria-label={onSelectRange ? `${summary} Use as setas para escolher o dia: Enter filtra; Shift e as setas selecionam um trecho.` : summary} className={`block ${onSelectRange ? "cursor-crosshair touch-pan-y rounded-[6px] select-none" : ""}`} {...interactive}>
-      <title>{summary}</title>
-      {band && <rect data-chart-selection x={bandX} y={pad.t} width={Math.min(plotRight, x(band.to) + step / 2) - bandX} height={plotH} fill="var(--accent)" opacity="0.16" rx="3" />}
-      {cursor != null && <line x1={x(cursor)} x2={x(cursor)} y1={pad.t} y2={plotBottom} stroke="var(--fg-2)" strokeWidth="1" strokeDasharray="3 3" />}
-      {ticks.map((t, i) => (
-        <g key={t}>
-          <line x1={pad.l} x2={plotRight} y1={y(t)} y2={y(t)} stroke="var(--line)" strokeWidth="1" />
-          {formatY && (
-            <text x={pad.l - 6} y={y(t) + fs * 0.36} textAnchor="end" fontSize={fs} fill="var(--fg-2)" className="tnum">
-              {yLabels[i]}
-            </text>
-          )}
-        </g>
-      ))}
-
-      {maturingDays > 0 && (
-        <rect className="m-late" style={{ "--d": "1500ms" } as CSSProperties} x={matX} y={pad.t} width={plotRight - matX} height={plotH} fill="var(--accent)" opacity="0.14" rx="3" />
+    <div
+      ref={ref}
+      role="img"
+      aria-label={onSelectRange ? `${summary} Use as setas para escolher o dia: Enter filtra; Shift e as setas selecionam um trecho.` : summary}
+      data-chart-theme
+      className={`relative w-full overflow-hidden text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-accent ${onSelectRange ? "cursor-crosshair touch-pan-y rounded-[6px] select-none" : ""}`}
+      style={{ height: H, width: width ?? undefined, fontSize: fs }}
+      {...interactive}
+    >
+      {W > 0 && (
+        <ComposedChart data={data} margin={margin} aspectRatio="" style={{ height: H, touchAction: "pan-y" }} yDomains={yDomains} animationDuration={900}>
+          <Grid horizontal numTicksRows={Math.max(2, ticks.length - 1)} strokeDasharray="0" />
+          {maturingDays > 0 && <MaturingBand days={maturingDays} count={n} />}
+          {band && <SelectionBand from={band.from} to={band.to} count={n} />}
+          {cursor != null && <CursorLine index={cursor} count={n} />}
+          {previous && <Line dataKey="anterior" stroke="var(--muted)" strokeWidth={1} curve={curveLinear} fadeEdges={false} showHighlight={false} dashFromIndex={0} dashArray="2,3" />}
+          <Line dataKey="dia" stroke="var(--muted)" strokeWidth={1.3} curve={curveLinear} fadeEdges={false} showHighlight={false} />
+          {avg && <Line dataKey="media" stroke="var(--chart-line-primary)" strokeWidth={2.6} curve={curveMonotoneX} fadeEdges={false} />}
+          {goal !== undefined && <GoalLine value={goal} label={goalLabel} labelWidth={tagW} fontSize={fs} mark={markGoal} />}
+          {formatY && <YAxis formatValue={formatY} numTicks={ticks.length} />}
+          <XAxis labels={labels} numTicks={xTicks} />
+          <ChartTooltip
+            showDatePill={false}
+            rows={(p) => [
+              ...(avg ? [{ color: "var(--chart-line-primary)", label: "Média 7 dias", value: fmt(p.media) }] : []),
+              { color: "var(--muted)", label: "No dia", value: fmt(p.diaReal) },
+              ...(previous ? [{ color: "var(--muted)", label: "Período anterior", value: fmt(p.anterior) }] : []),
+            ]}
+          />
+        </ComposedChart>
       )}
+    </div>
+  );
+}
 
-      {xIdx.map((i) => (
-        <text key={i} x={x(i)} y={H - 4} textAnchor={i === values.length - 1 ? "end" : "middle"} fontSize={fs} fill="var(--fg-2)" className="tnum">
-          {labels[i]}
-        </text>
-      ))}
+/** Passo entre dois dias, em px, e o x de um índice. */
+function useSlots(count: number) {
+  const { innerWidth, innerHeight } = useChart();
+  const step = innerWidth / Math.max(1, count - 1);
+  return { step, innerWidth, innerHeight, x: (i: number) => i * step };
+}
 
-      {previous && <path d={path(previous)} fill="none" stroke="var(--muted)" strokeWidth="1" strokeDasharray="2 3" opacity="0.8" />}
+/** Dias que ainda recebem conversões: faixa no fim do gráfico. */
+function MaturingBand({ days, count }: { days: number; count: number }) {
+  const { step, innerWidth, innerHeight, x } = useSlots(count);
+  const from = Math.max(0, x(count - days) - step / 2);
+  return <rect x={from} y={0} width={Math.max(0, innerWidth - from)} height={innerHeight} fill="var(--chart-line-primary)" opacity={0.14} rx={3} />;
+}
 
-      {goal !== undefined && (
-        <g>
-          <line data-intro-target={markGoal ? "" : undefined} x1={pad.l} x2={plotRight} y1={goalY} y2={goalY} stroke="var(--fg-2)" strokeWidth="1" strokeDasharray="4 4" opacity="0.85" />
-          {goalLabel && (
-            // no fim da linha tracejada, fora do traçado: a série nunca cruza a etiqueta
-            <g transform={`translate(${plotRight + 4} ${tagY})`}>
-              <rect width={tagW} height={tagH} rx="4" fill="var(--bg)" stroke="var(--line)" />
-              <text x={tagW / 2} y={tagH / 2 + fs * 0.36} textAnchor="middle" fontSize={fs} fill="var(--fg-2)" className="tnum">
-                {goalLabel}
-              </text>
-            </g>
-          )}
+/** Trecho filtrado (ou sendo arrastado). */
+function SelectionBand({ from, to, count }: { from: number; to: number; count: number }) {
+  const { step, innerWidth, innerHeight, x } = useSlots(count);
+  const x0 = Math.max(0, x(from) - step / 2);
+  return <rect data-chart-selection x={x0} y={0} width={Math.max(0, Math.min(innerWidth, x(to) + step / 2) - x0)} height={innerHeight} fill="var(--chart-line-primary)" opacity={0.16} rx={3} />;
+}
+
+/** Dia escolhido pelo teclado. */
+function CursorLine({ index, count }: { index: number; count: number }) {
+  const { innerHeight, x } = useSlots(count);
+  return <line x1={x(index)} x2={x(index)} y1={0} y2={innerHeight} stroke="var(--chart-crosshair)" strokeWidth={1} strokeDasharray="3 3" />;
+}
+
+// a etiqueta do alvo fica na margem direita: precisa sair do recorte da animação de entrada
+(GoalLine as unknown as { __isPostOverlay?: boolean }).__isPostOverlay = true;
+
+/** Alvo: linha tracejada e a etiqueta no fim dela, fora do traçado (a série nunca cruza a etiqueta). */
+function GoalLine({ value, label, labelWidth, fontSize: fs, mark }: { value: number; label?: string; labelWidth: number; fontSize: number; mark?: boolean }) {
+  const { yScale, innerWidth, innerHeight } = useChart();
+  const y = yScale(value);
+  if (!Number.isFinite(y)) return null;
+  const tagH = fs + 8;
+  const tagY = Math.min(innerHeight - tagH, Math.max(0, y - tagH / 2));
+  return (
+    <g>
+      <line data-intro-target={mark ? "" : undefined} x1={0} x2={innerWidth} y1={y} y2={y} stroke="var(--chart-foreground-muted)" strokeWidth={1} strokeDasharray="4 4" opacity={0.85} />
+      {label && (
+        <g transform={`translate(${innerWidth + 4} ${tagY})`}>
+          <rect width={labelWidth} height={tagH} rx={4} fill="var(--bg)" stroke="var(--chart-grid)" />
+          <text x={labelWidth / 2} y={tagH / 2 + fs * 0.36} textAnchor="middle" fontSize={fs} fill="var(--chart-label)" className="tnum">
+            {label}
+          </text>
         </g>
       )}
-
-      <path d={path(values)} pathLength={1} className="m-draw" style={{ "--d": "420ms" } as CSSProperties} fill="none" stroke="var(--muted)" strokeWidth="1.3" strokeLinejoin="round" />
-      {avg && (
-        <g className="m-late" style={{ "--d": "1250ms" } as CSSProperties}>
-          <path d={path(avg)} fill="none" stroke="var(--accent)" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
-          {lastIdx >= 0 && <circle cx={x(lastIdx)} cy={y(avg[lastIdx])} r="3.4" fill="var(--accent)" />}
-        </g>
-      )}
-    </svg>
+    </g>
   );
 }
 

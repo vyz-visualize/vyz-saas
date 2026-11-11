@@ -6,7 +6,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { PageId, PageLayout } from "@/features/templates/types";
-import { compact, defaultGrid, firstFree, kindOf, limitsOf, normalizeGrid, place, sameGrid, type DashboardLayout, type PageGrid } from "./model";
+import { alignGrid, compact, defaultGrid, firstFree, kindOf, limitsOf, normalizeGrid, place, sameGrid, type DashboardLayout, type PageGrid } from "./model";
 
 export type SaveLayout = (page: PageId, items: PageGrid | null) => Promise<{ ok: true } | { ok: false; error: { message: string } }>;
 
@@ -54,6 +54,10 @@ export function useDashboardLayout({ initial, pages, templateOf, accept, baseOf,
         if (!arrange) return [...g, { id, ...firstFree(g, size.w, size.h), w: size.w, h: size.h }];
         return compact(place(g, { id, ...(at ?? firstFree(g, size.w, size.h)), w: size.w, h: size.h }));
       }),
+    /** Alinhar grade: fecha as fileiras nas 12 colunas e iguala as alturas, sem trocar a ordem. */
+    align: (p: PageId, kpiCount = 4) => update(p, (g) => alignGrid(g, kpiCount)),
+    /** A aba já está alinhada? (o botão avisa em vez de parecer que não fez nada) */
+    isAligned: (p: PageId, kpiCount = 4) => sameGrid(items(p), alignGrid(items(p), kpiCount)),
     /** O que o Personalizar usa junto com as métricas. */
     companion: {
       dirty: changed.length > 0,

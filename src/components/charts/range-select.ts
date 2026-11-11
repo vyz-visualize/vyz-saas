@@ -24,7 +24,7 @@ export function useRangeSelect(n: number, onSelect?: (from: number, to: number) 
   return {
     preview: drag ? ordered(drag.a, drag.b) : null,
     cancel,
-    down(e: PointerEvent<SVGSVGElement>, i: number | null) {
+    down(e: PointerEvent<Element>, i: number | null) {
       if (!onSelect || i == null || e.button !== 0) return;
       if (e.pointerType === "mouse") {
         e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -34,7 +34,7 @@ export function useRangeSelect(n: number, onSelect?: (from: number, to: number) 
     move(i: number | null) {
       if (i != null) setDrag((d) => (d ? { ...d, b: i } : d));
     },
-    up(e: PointerEvent<SVGSVGElement>, i: number | null) {
+    up(e: PointerEvent<Element>, i: number | null) {
       if (!onSelect) return;
       if (drag) {
         const r = ordered(drag.a, i ?? drag.b);

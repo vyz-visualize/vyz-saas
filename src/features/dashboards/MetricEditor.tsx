@@ -4,7 +4,7 @@
 // topo, encaixes na fileira de cards e bandeja embaixo. Mexe só no rascunho de
 // useMetricPrefsState; quem decide o que pode e o que grava continua em metric-prefs.ts.
 
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Info, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Info, LayoutGrid, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { TrendSpark } from "@/components/charts/TrendSpark";
@@ -133,6 +133,8 @@ export type EditorInput = {
   extraTab?: { label: string; render: () => ReactNode };
   /** Mover e redimensionar blocos: true no Avançado, false abaixo dele, sem valor onde não existe grade. */
   arrange?: boolean;
+  /** Alinhar grade (Avançado, em aba com grade): arruma larguras e alturas sem trocar a ordem. */
+  align?: () => void;
 };
 
 export function useMetricEditorState(input: EditorInput) {
@@ -273,6 +275,11 @@ export function MetricEditBar({ state }: { state: EditorState }) {
         </button>
       )}
       <div className="flex shrink-0 flex-wrap gap-2">
+        {input.align && section !== "columns" && (
+          <button type="button" onClick={input.align} disabled={metrics.pending} title="Fecha as fileiras e iguala as alturas, sem trocar a ordem dos blocos" className={`${btn.ghost} h-9 border border-accent/60 text-[13px] whitespace-nowrap`}>
+            <LayoutGrid size={15} aria-hidden /> Alinhar grade
+          </button>
+        )}
         <button type="button" onClick={metrics.restore} disabled={metrics.pending} className={`${btn.ghost} h-9 border border-line text-[13px] whitespace-nowrap`}>
           Restaurar padrão
         </button>

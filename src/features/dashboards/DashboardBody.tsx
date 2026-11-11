@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/controls";
 import { PendingChip } from "@/components/ui/kit";
 import { OverflowTabs } from "@/components/ui/OverflowTabs";
 import { PeriodPicker, rangeDays, type Range } from "@/components/ui/PeriodPicker";
-import { Notices } from "@/components/ui/Toast";
+import { Notices, notify } from "@/components/ui/Toast";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { CreativeList } from "@/features/analytics/creatives/CreativeList";
 import { CreativesPage } from "@/features/analytics/creatives/CreativesPage";
@@ -155,6 +155,14 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
     noKpis: !activeKpis?.length,
     goToCards: pagesWithCards[0] ? () => setPage(pagesWithCards[0]) : undefined,
     arrange: canArrange ? arrangePlan : undefined,
+    align:
+      canArrange && arrangePlan && t && !(active === "criativos" && creatives)
+        ? () => {
+            const n = (activeKpis ?? []).length;
+            if (grid.isAligned(active, n)) notify("A grade desta aba já está alinhada.", "ok");
+            else grid.align(active, n);
+          }
+        : undefined,
     extraTab:
       canArrange && t && !(active === "criativos" && creatives)
         ? {

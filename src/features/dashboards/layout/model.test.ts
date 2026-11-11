@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PageLayout } from "@/features/templates/types";
-import { compact, COLS, constrain, defaultGrid, firstFree, KPIS_ID, limitsOf, metricCardId, normalizeGrid, overlaps, parseMetricCardId, place, sameGrid } from "./model";
+import { alignGrid, compact, COLS, constrain, defaultGrid, firstFree, KPIS_ID, limitsOf, metricCardId, normalizeGrid, overlaps, parseMetricCardId, place, sameGrid } from "./model";
 
 const page: PageLayout = {
   kpis: [{ metric: "spend" }, { metric: "revenue" }, { metric: "roas" }, { metric: "cpa" }, { metric: "ctr" }],
@@ -87,5 +87,86 @@ describe("constrain: o que a grade barra", () => {
 
   it("dentro dos limites redimensiona sem aviso", () => {
     expect(constrain("resize", { ...widget, x: 0, w: 8, h: 10 }, lim)).toEqual({ item: { ...widget, x: 0, w: 8, h: 10 }, blocked: null });
+  });
+});
+
+describe("alignGrid: alinhar a grade", () => {
+  const ids = (g: { id: string }[]) => g.map((i) => i.id);
+  const at = (g: ReturnType<typeof alignGrid>, id: string) => g.find((i) => i.id === id)!;
+
+  it("fileira torta fica com a mesma altura e fecha as 12 colunas", () => {
+    const g = alignGrid([
+      { id: KPIS_ID, x: 0, y: 0, w: 12, h: 4 },
+      { id: "w0", x: 0, y: 4, w: 5, h: 8 },
+      { id: "w1", x: 6, y: 5, w: 3, h: 6 },
+      { id: "w2", x: 9, y: 4, w: 3, h: 10 },
+    ]);
+    expect(at(g, "w0")).toMatchObject({ x: 0, y: 4, h: 10 });
+    expect(at(g, "w1")).toMatchObject({ y: 4, h: 10 });
+    expect(at(g, "w2")).toMatchObject({ y: 4, h: 10 });
+    expect(at(g, "w0").w + at(g, "w1").w + at(g, "w2").w).toBe(COLS);
+    expect(at(g, "w1").x).toBe(at(g, "w0").w);
+    expect(noOverlap(g)).toBe(true);
+  });
+
+  it("não troca a ordem dos blocos nem perde nenhum", () => {
+    const messy = [
+      { id: "w2", x: 8, y: 13, w: 4, h: 7 },
+      { id: KPIS_ID, x: 0, y: 0, w: 12, h: 4 },
+      { id: "w0", x: 0, y: 5, w: 6, h: 8 },
+      { id: "w1", x: 0, y: 14, w: 7, h: 9 },
+    ];
+    const g = alignGrid(messy);
+    expect(ids(g)).toEqual(ids(messy));
+    // sem buraco vertical: w2 sobe para o lado de w0 e os dois dividem a fileira por igual
+    expect(at(g, "w0")).toMatchObject({ x: 0, y: 4, w: 6, h: 8 });
+    expect(at(g, "w2")).toMatchObject({ x: 6, y: 4, w: 6, h: 8 });
+    expect(at(g, "w1")).toMatchObject({ x: 0, y: 12, w: 12 });
+    expect(noOverlap(g)).toBe(true);
+  });
+
+  it("a sobra de colunas mantém iguais os blocos iguais", () => {
+    const row = (ws: number[]) => alignGrid(ws.map((w, i) => ({ id: `w${i}`, x: ws.slice(0, i).reduce((a, b) => a + b, 0), y: 0, w, h: 8 }))).map((i) => i.w);
+    expect(row([5, 3, 3])).toEqual([6, 3, 3]);
+    expect(row([6, 3])).toEqual([6, 6]);
+    expect(row([3, 3, 3])).toEqual([4, 4, 4]);
+    expect(row([4, 4, 4])).toEqual([4, 4, 4]);
+  });
+
+  it("respeita os limites: card de plataforma não passa de 4 colunas nem de 6 linhas", () => {
+    const a = metricCardId("meta", "spend");
+    const b = metricCardId("google", "spend");
+    const g = alignGrid([
+      { id: a, x: 0, y: 0, w: 3, h: 4 },
+      { id: b, x: 3, y: 0, w: 3, h: 4 },
+      { id: "w0", x: 6, y: 0, w: 4, h: 10 },
+    ]);
+    expect(at(g, a)).toMatchObject({ w: 4, h: 6 });
+    expect(at(g, b)).toMatchObject({ w: 4, h: 6 });
+    expect(at(g, "w0")).toMatchObject({ x: 8, w: 4, h: 10 });
+    expect(noOverlap(g)).toBe(true);
+  });
+
+  it("pilha ao lado de um bloco alto: a ordem fica e o último da pilha desce até o pé", () => {
+    const g = alignGrid([
+      { id: "w0", x: 0, y: 0, w: 6, h: 20 },
+      { id: "w1", x: 6, y: 0, w: 6, h: 8 },
+      { id: "w2", x: 6, y: 8, w: 6, h: 9 },
+    ]);
+    expect(at(g, "w0")).toMatchObject({ x: 0, y: 0, w: 6, h: 20 });
+    expect(at(g, "w1")).toMatchObject({ x: 6, y: 0, h: 8 });
+    expect(at(g, "w2")).toMatchObject({ x: 6, y: 8, h: 12 });
+  });
+
+  it("alinhar de novo não muda nada, e o modelo padrão já nasce alinhado", () => {
+    const once = alignGrid([
+      { id: "w0", x: 1, y: 2, w: 4, h: 7 },
+      { id: "w1", x: 7, y: 3, w: 3, h: 9 },
+    ]);
+    expect(sameGrid(alignGrid(once), once)).toBe(true);
+    const base = defaultGrid(page);
+    expect(sameGrid(alignGrid(base, page.kpis.length), base)).toBe(true);
+    // fileira do modelo: funil e barras com a mesma altura
+    expect(at(base, "w1").h).toBe(at(base, "w2").h);
   });
 });

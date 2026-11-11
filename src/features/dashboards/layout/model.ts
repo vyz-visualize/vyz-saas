@@ -131,7 +131,8 @@ export function defaultGrid(layout: PageLayout): PageGrid {
     x += b.w;
     rowH = Math.max(rowH, b.h);
   }
-  return items;
+  // proporção do modelo: quem divide a fileira tem a mesma altura (o funil não fica mais baixo que o gráfico ao lado)
+  return items.map((it) => ({ ...it, h: Math.max(...items.filter((o) => o.y === it.y).map((o) => o.h)) }));
 }
 
 // ---- colisão e encaixe ------------------------------------------------------------------
@@ -175,6 +176,78 @@ export function firstFree(items: PageGrid, w: number, h: number): { x: number; y
     }
   }
   return { x: 0, y: gridRows(items) };
+}
+
+// ---- alinhar ---------------------------------------------------------------------------
+
+/**
+ * "Alinhar grade": arruma a disposição sem trocar a ordem de ninguém. Cada faixa
+ * de blocos lado a lado passa a fechar as 12 colunas (sem buraco no meio nem no
+ * fim) e todos ficam com a mesma altura; as faixas encostam uma na outra. Onde há
+ * blocos empilhados ao lado de um mais alto, a pilha só é esticada até o pé da
+ * faixa. Os limites de cada bloco continuam valendo.
+ */
+export function alignGrid(items: PageGrid, kpiCount = 4): PageGrid {
+  const out: LayoutItem[] = [];
+  let y = 0;
+  for (const band of bandsOf(compact(items))) {
+    const top = Math.min(...band.map((i) => i.y));
+    const sideBySide = band.every((a) => band.every((b) => a === b || a.x + a.w <= b.x || b.x + b.w <= a.x));
+    const placed = sideBySide ? alignRow(band, kpiCount) : stretchStacks(band, top, kpiCount);
+    for (const it of placed) out.push({ ...it, y: y + (sideBySide ? 0 : it.y - top) });
+    y += Math.max(...placed.map((i) => (sideBySide ? i.h : i.y - top + i.h)));
+  }
+  // limites diferentes numa mesma faixa podem deixar um bloco mais baixo: o que está embaixo sobe
+  return compact(items.map((i) => out.find((o) => o.id === i.id)!));
+}
+
+/** Faixas: grupos de blocos que dividem alguma linha da grade, de cima para baixo. */
+function bandsOf(items: PageGrid): LayoutItem[][] {
+  const bands: { bottom: number; items: LayoutItem[] }[] = [];
+  for (const it of [...items].sort(byPosition)) {
+    const last = bands[bands.length - 1];
+    if (last && it.y < last.bottom) {
+      last.items.push(it);
+      last.bottom = Math.max(last.bottom, it.y + it.h);
+    } else bands.push({ bottom: it.y + it.h, items: [it] });
+  }
+  return bands.map((b) => b.items);
+}
+
+/** Fileira simples: mesma altura para todos e larguras que somam 12. */
+function alignRow(row: LayoutItem[], kpiCount: number): LayoutItem[] {
+  const sorted = [...row].sort((a, b) => a.x - b.x);
+  const limits = sorted.map((i) => limitsOf(i.id, kpiCount));
+  const h = Math.max(...sorted.map((i) => i.h));
+  const widths = sorted.map((i) => i.w);
+  // As colunas que sobram vão primeiro para os mais estreitos, todos de uma vez (cards iguais
+  // continuam iguais); se não dá para o grupo inteiro, a sobra vai para o mais largo.
+  let spare = COLS - widths.reduce((a, w) => a + w, 0);
+  while (spare > 0) {
+    const grow = widths.map((w, i) => ({ i, w })).filter(({ i, w }) => w < limits[i].maxW);
+    if (grow.length === 0) break;
+    const min = Math.min(...grow.map((g) => g.w));
+    const narrow = grow.filter((g) => g.w === min);
+    const pick = narrow.length <= spare ? narrow : [[...grow].sort((a, b) => b.w - a.w || a.i - b.i)[0]];
+    for (const { i } of pick) widths[i]++;
+    spare -= pick.length;
+  }
+  let x = 0;
+  return sorted.map((it, i) => {
+    const item = { ...it, x, y: 0, w: widths[i], h: Math.min(h, limits[i].maxH) };
+    x += widths[i];
+    return item;
+  });
+}
+
+/** Faixa com blocos empilhados: fica como está; o último de cada pilha desce até o pé da faixa. */
+function stretchStacks(band: LayoutItem[], top: number, kpiCount: number): LayoutItem[] {
+  const bottom = Math.max(...band.map((i) => i.y + i.h));
+  return band.map((it) => {
+    const below = band.some((o) => o !== it && o.y >= it.y + it.h && o.x < it.x + it.w && it.x < o.x + o.w);
+    if (below) return it;
+    return { ...it, h: Math.min(bottom - it.y, limitsOf(it.id, kpiCount).maxH) };
+  });
 }
 
 // ---- plano -----------------------------------------------------------------------------

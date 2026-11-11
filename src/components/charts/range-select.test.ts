@@ -102,10 +102,11 @@ describe("gráfico por dia", () => {
     document.body.append(host);
     root = createRoot(host);
     await act(async () => root.render(createElement(LineChart, { values: [1, 2, 3, 4, 5], summary: "Linha.", onSelectRange: pick, maturingDays: 0 })));
-    const svg = host.querySelector("svg")!;
-    await key(svg, "ArrowRight");
-    await key(svg, "ArrowRight", true);
-    await key(svg, "Enter");
+    // o gráfico de linha (Bklit) recebe o teclado no contêiner, não no svg
+    const chart = host.querySelector('[role="img"]')!;
+    await key(chart, "ArrowRight");
+    await key(chart, "ArrowRight", true);
+    await key(chart, "Enter");
     expect(pick).toHaveBeenCalledWith(0, 1);
   });
 });
