@@ -44,6 +44,7 @@ export async function chooseBusiness(businessTypeId: string): Promise<ActionResu
     if (!type) throw appError("validation");
     const session = await onboardingSession();
     await saveStep(session.workspace.id, "platforms", { business_type_id: type.id });
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "onboarding.business_chosen", metadata: { business_type_id: type.id } });
   } catch (err) {
     unstable_rethrow(err);
     return toActionError(err);
@@ -110,6 +111,7 @@ export async function goToStep(step: string): Promise<ActionResult> {
     const session = await onboardingSession();
     if (!canGoBackTo(session.workspace.onboardingStep, parsed.data)) throw appError("validation");
     await saveStep(session.workspace.id, parsed.data);
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "onboarding.step_back", metadata: { step: parsed.data } });
   } catch (err) {
     unstable_rethrow(err);
     return toActionError(err);

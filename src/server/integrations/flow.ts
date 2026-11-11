@@ -106,12 +106,27 @@ export async function startConnection(provider: ProviderId, rawNext: string | nu
   return new URL(target);
 }
 
-/** Só para a mensagem: o state venceu (do próprio usuário, não usado) ou é inválido. */
+/**
+ * O state venceu (do próprio usuário, não usado) ou é inválido. Quando o state
+ * é de quem voltou, a falha entra no histórico do workspace dele; um state
+ * desconhecido ou de outra pessoa não tem workspace para registrar (fica no log).
+ */
 async function whyStateFailed(admin: DB, stateHash: string, userId: string, provider: ProviderId): Promise<ConnectErrorCode> {
-  const { data } = await admin.from("oauth_states").select("user_id, provider, consumed_at, expires_at").eq("state_hash", stateHash).maybeSingle();
+  const { data } = await admin.from("oauth_states").select("user_id, workspace_id, provider, consumed_at, expires_at").eq("state_hash", stateHash).maybeSingle();
   if (data && data.user_id !== userId) console.warn("[vyz] retorno de OAuth com state de outro usuário", provider);
-  const expired = !!data && data.user_id === userId && data.provider === provider && !data.consumed_at && Date.parse(data.expires_at) <= Date.now();
-  return expired ? "estado_expirado" : "estado_invalido";
+  if (!data) console.warn("[vyz] retorno de OAuth com state desconhecido", provider);
+  const own = !!data && data.user_id === userId && data.provider === provider;
+  const expired = own && !data.consumed_at && Date.parse(data.expires_at) <= Date.now();
+  const code: ConnectErrorCode = expired ? "estado_expirado" : "estado_invalido";
+  if (data && data.user_id === userId) {
+    await logActivity({
+      workspaceId: data.workspace_id,
+      actorId: userId,
+      event: "integration.connect_failed",
+      metadata: { provider, reason: code, state: expired ? "expired" : data.consumed_at ? "already_used" : "mismatch" },
+    });
+  }
+  return code;
 }
 
 /** Volta do provedor: confere e consome o state, troca o código e grava a conexão. */

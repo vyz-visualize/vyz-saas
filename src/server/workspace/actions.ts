@@ -50,6 +50,7 @@ export async function updateWorkspace(input: WorkspacePatchInput): Promise<Actio
         })
         .eq("id", session.workspace.id),
     );
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "workspace.updated", entityType: "workspace", entityId: session.workspace.id, metadata: { fields: Object.keys(p).filter((k) => p[k as keyof typeof p] !== undefined) } });
     refresh();
     return { ok: true, data: undefined };
   } catch (err) {
@@ -193,5 +194,6 @@ export async function switchWorkspace(workspaceId: string) {
   (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, workspaceId, WORKSPACE_COOKIE_OPTIONS);
   const supabase = await createServerSupabase();
   await supabase.from("profiles").update({ default_workspace_id: workspaceId }).eq("id", viewer.user.id);
+  await logActivity({ workspaceId, actorId: viewer.user.id, event: "workspace.opened", entityType: "workspace", entityId: workspaceId });
   redirect("/painel");
 }

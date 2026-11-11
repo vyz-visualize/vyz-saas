@@ -6,8 +6,10 @@
 // itens (layoutId). A sidebar recolhe com o botão ou com "[", e o estado
 // fica no <html data-sidebar>, aplicado antes da primeira pintura. O topo
 // mostra o plano real da sessão e, quando há, o aviso da assinatura.
+// O dashboard (ver, editar e montar) abre em tela cheia: sem a sidebar do
+// produto, só uma barra fina com o botão de voltar (isFocusPath).
 
-import { AlertTriangle, BarChart3, Check, ListChecks, ChevronsUpDown, FolderKanban, Gem, Home, Inbox, Info, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PanelsTopLeft, Plug, Settings, Share2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, BarChart3, Check, ListChecks, ChevronsUpDown, FolderKanban, Gem, Home, Inbox, Info, LogOut, Menu, PanelLeftClose, PanelLeftOpen, PanelsTopLeft, Plug, Settings, Share2, ShieldCheck } from "lucide-react";
 import { LazyMotion, m, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -26,6 +28,7 @@ import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
 import type { Product } from "@/features/pricing/pricing";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
+import { isFocusPath } from "./focus";
 import { subscriptionNotice } from "./notice";
 import { ROLE_LABEL } from "./session";
 import { useWorkspaceSession } from "./WorkspaceProvider";
@@ -389,9 +392,49 @@ export function AppShell({ children, simulatedBilling = false, isAdmin = false }
   );
 }
 
+/** Dashboard em tela cheia: barra fina com o voltar; o próprio dashboard traz a navegação dele. */
+function FocusShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="shell-content min-h-dvh bg-[var(--panel)] md:h-dvh md:overflow-y-auto print:block print:h-auto print:overflow-visible print:bg-white">
+      <header className="sticky top-0 z-30 border-b border-line bg-[color-mix(in_srgb,var(--panel)_82%,transparent)] backdrop-blur-md print:hidden">
+        <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
+          <Link
+            href="/painel/dashboards"
+            className="inline-flex h-9 items-center gap-1.5 rounded-control px-2.5 -ml-2.5 text-[13.5px] font-medium text-fg-2 outline-none transition-colors hover:bg-accent-soft hover:text-fg focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <ArrowLeft size={16} aria-hidden />
+            Dashboards
+          </Link>
+          <ThemeToggle className="size-9 shrink-0" />
+        </div>
+        <SubscriptionBanner />
+      </header>
+      <main id="conteudo" className="px-4 pt-6 pb-28 sm:px-6 print:p-0">
+        {children}
+      </main>
+    </div>
+  );
+}
+
 function Shell({ children, simulatedBilling }: { children: ReactNode; simulatedBilling: boolean }) {
   const [more, setMore] = useState(false);
   const nav = useNav();
+  const focus = isFocusPath(usePathname());
+  if (focus)
+    return (
+      <LazyMotion features={loadFeatures} strict>
+        <MotionConfig reducedMotion="user">
+          <TooltipProvider>
+            <AgentProvider>
+              <FocusShell>{children}</FocusShell>
+              <AgentFab />
+              <AgentDrawer />
+              <Caption />
+            </AgentProvider>
+          </TooltipProvider>
+        </MotionConfig>
+      </LazyMotion>
+    );
   return (
     <LazyMotion features={loadFeatures} strict>
       <MotionConfig reducedMotion="user">

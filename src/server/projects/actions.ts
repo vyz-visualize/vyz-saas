@@ -48,6 +48,7 @@ export async function renameProject(projectId: string, name: string): Promise<Ac
     const res = await db.from("projects").update({ name: clean }).eq("id", projectId).eq("workspace_id", session.workspace.id).select("id");
     if (res.error && duplicate(res.error)) throw appError("conflict", "Já existe um projeto com esse nome.");
     if (!unwrap(res)?.length) throw appError("project:not_found");
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "project.renamed", entityType: "project", entityId: projectId, metadata: { name: clean } });
     refresh();
     return { ok: true, data: undefined };
   } catch (err) {
@@ -83,6 +84,7 @@ export async function moveAccountToProject(adAccountId: string, projectId: strin
     const db = await createServerSupabase();
     const rows = unwrap(await db.from("ad_accounts").update({ project_id: projectId }).eq("id", adAccountId).eq("workspace_id", session.workspace.id).select("id"));
     if (!rows?.length) throw appError("not_found", "Conta não encontrada.");
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "ad_account.moved_to_project", entityType: "ad_account", entityId: adAccountId, metadata: { project_id: projectId } });
     refresh();
     return { ok: true, data: undefined };
   } catch (err) {

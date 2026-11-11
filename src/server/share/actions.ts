@@ -141,6 +141,7 @@ export async function setReportActive(reportId: string, active: boolean): Promis
     // ao retomar, o próximo envio é recalculado a partir de agora
     const next = active ? nextRunAt({ frequency: report.frequency, weekday: report.weekday, monthDay: report.month_day, sendHour: report.send_hour, timeZone: report.timezone }, new Date()).toISOString() : null;
     unwrap(await supabase.from("scheduled_reports").update({ is_active: active, next_run_at: next }).eq("id", reportId));
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: active ? "report.resumed" : "report.paused", entityType: "scheduled_report", entityId: reportId });
     refresh();
     return { ok: true, data: undefined };
   } catch (err) {
@@ -157,6 +158,7 @@ export async function deleteScheduledReport(reportId: string): Promise<ActionRes
     const supabase = await createServerSupabase();
     const rows = unwrap(await supabase.from("scheduled_reports").delete().eq("id", reportId).eq("workspace_id", session.workspace.id).select("id")) ?? [];
     if (rows.length === 0) throw appError("not_found");
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "report.deleted", entityType: "scheduled_report", entityId: reportId });
     refresh();
     return { ok: true, data: undefined };
   } catch (err) {

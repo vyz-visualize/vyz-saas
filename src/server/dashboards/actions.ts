@@ -165,6 +165,7 @@ export async function updateDashboard(dashboardId: string, input: DashboardField
     }
     // margem e contas mudam o que o dashboard lê: o próximo acesso já vem novo
     updateTag(dashboardTag(dashboardId));
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "dashboard.updated", entityType: "dashboard", entityId: dashboardId, metadata: { pages_changed: !samePages, brand_changed: brandChanged, accounts: accountIds.length } });
   } catch (err) {
     unstable_rethrow(err);
     return toActionError(err);
@@ -176,7 +177,7 @@ export async function updateDashboard(dashboardId: string, input: DashboardField
 export async function saveDashboardMetricPrefs(dashboardId: string, scope: MetricScope, value: ScopePrefs): Promise<ActionResult> {
   try {
     if (!Id.safeParse(dashboardId).success) throw appError("dashboard:not_found");
-    await authorize("member", { access: false });
+    const session = await authorize("member", { access: false });
     const current = await getDashboard(dashboardId);
     if (!current) throw appError("dashboard:not_found");
     const t = anyDashboardTemplate(current.templateId);
@@ -187,6 +188,7 @@ export async function saveDashboardMetricPrefs(dashboardId: string, scope: Metri
     const db = await createServerSupabase();
     const next = withScope(current.metricPrefs, scope, clean);
     unwrap(await db.from("dashboards").update({ metric_prefs: next as Json }).eq("id", dashboardId));
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "dashboard.metrics_changed", entityType: "dashboard", entityId: dashboardId, metadata: { scope } });
     return { ok: true, data: undefined };
   } catch (err) {
     unstable_rethrow(err);
@@ -218,6 +220,7 @@ export async function saveDashboardLayout(dashboardId: string, page: string, ite
     }
     const db = await createServerSupabase();
     unwrap(await db.from("dashboards").update({ layout: next as Json }).eq("id", dashboardId));
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: items == null ? "dashboard.layout_reset" : "dashboard.layout_changed", entityType: "dashboard", entityId: dashboardId, metadata: { page: pageId, blocks: next[pageId]?.length ?? 0 } });
     return { ok: true, data: undefined };
   } catch (err) {
     unstable_rethrow(err);

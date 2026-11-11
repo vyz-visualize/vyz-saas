@@ -18,6 +18,7 @@ import { appError, fromPostgrest, toActionError, type ActionResult } from "@/ser
 import { createServerSupabase } from "@/server/supabase/server";
 import { sendTemplate } from "./client";
 import { recordOut, ReportContext, sendReport } from "./service";
+import { logActivity } from "@/server/history/log";
 
 const CODE_TTL_MS = 10 * 60_000;
 const MAX_ATTEMPTS = 5;
@@ -62,6 +63,7 @@ export async function startWhatsappVerification(input: { phone: string; consent:
     await recordOut(db, sub.id, "codigo", { ...r, body: r.body.replace(code, "******") });
     if (r.status === "failed") throw appError("whatsapp:send", r.error ?? "Não conseguimos enviar o código.");
     if (r.status === "simulado") console.info(`[vyz] whatsapp simulado: código de verificação ${code}`);
+    await logActivity({ workspaceId: s.workspace.id, actorId: s.user.id, event: "whatsapp.verification_started", entityType: "whatsapp_subscription", entityId: sub.id, metadata: { number_changed: changed } });
     refresh();
     return { ok: true, data: { phone, simulated: r.status === "simulado" } };
   } catch (err) {
@@ -106,6 +108,7 @@ export async function confirmWhatsappCode(input: { code: string }): Promise<Acti
     if (verified && verified.reports.includes("boas-vindas") && !verified.welcome_sent_at) {
       await sendReport(new ReportContext(db), verified, "boas-vindas").catch((e) => console.error("[vyz] whatsapp boas-vindas", e));
     }
+    await logActivity({ workspaceId: s.workspace.id, actorId: s.user.id, event: "whatsapp.verified", entityType: "whatsapp_subscription", entityId: sub.id });
     refresh();
     return { ok: true, data: undefined };
   } catch (err) {
@@ -128,6 +131,7 @@ export async function updateWhatsappPreferences(input: z.input<typeof Prefs>): P
     const supabase = await createServerSupabase();
     const { error } = await supabase.from("whatsapp_subscriptions").update(patch).eq("workspace_id", s.workspace.id).eq("user_id", s.user.id);
     if (error) throw fromPostgrest(error);
+    await logActivity({ workspaceId: s.workspace.id, actorId: s.user.id, event: "whatsapp.preferences_changed", entityType: "whatsapp_subscription", metadata: { ...(patch.reports ? { reports: patch.reports } : {}), ...(patch.paused !== undefined ? { paused: patch.paused } : {}) } });
     refresh();
     return { ok: true, data: undefined };
   } catch (err) {
@@ -146,6 +150,7 @@ export async function sendWhatsappTest(): Promise<ActionResult<{ status: string 
     if (!(await hitRateLimit("whatsapp_test_user", s.user.id))) throw appError("rate_limited");
     const r = await sendReport(new ReportContext(createAdminSupabase()), sub, "teste");
     if (r?.status === "failed") throw appError("whatsapp:send", r.error ?? "Falha no envio.");
+    await logActivity({ workspaceId: s.workspace.id, actorId: s.user.id, event: "whatsapp.test_sent", entityType: "whatsapp_subscription", entityId: sub.id, metadata: { status: r?.status ?? "sem dados" } });
     refresh();
     return { ok: true, data: { status: r?.status ?? "sem dados" } };
   } catch (err) {
@@ -161,6 +166,7 @@ export async function removeWhatsapp(): Promise<ActionResult> {
     const supabase = await createServerSupabase();
     const { error } = await supabase.from("whatsapp_subscriptions").delete().eq("workspace_id", s.workspace.id).eq("user_id", s.user.id);
     if (error) throw fromPostgrest(error);
+    await logActivity({ workspaceId: s.workspace.id, actorId: s.user.id, event: "whatsapp.removed", entityType: "whatsapp_subscription" });
     refresh();
     return { ok: true, data: undefined };
   } catch (err) {

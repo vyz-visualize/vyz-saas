@@ -12,6 +12,7 @@ import { authorize } from "@/server/auth/workspace";
 import { toActionError, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 import { applyTaskFor, saveAutopilotFor, undoFor } from "./service";
+import { logActivity } from "@/server/history/log";
 
 async function run<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   try {
@@ -28,7 +29,9 @@ async function run<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
 export async function applyTaskAction(taskId: string): Promise<ActionResult<OptimizationLogDTO>> {
   return run(async () => {
     const session = await authorize("member");
-    return applyTaskFor(await createServerSupabase(), session.workspace.id, session.user.id, taskId);
+    const log = await applyTaskFor(await createServerSupabase(), session.workspace.id, session.user.id, taskId);
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "optimization.applied", entityType: "task", entityId: taskId });
+    return log;
   });
 }
 
@@ -36,7 +39,9 @@ export async function applyTaskAction(taskId: string): Promise<ActionResult<Opti
 export async function undoOptimization(runId: string): Promise<ActionResult<OptimizationLogDTO>> {
   return run(async () => {
     const session = await authorize("member");
-    return undoFor(session.workspace.id, session.user.id, runId);
+    const log = await undoFor(session.workspace.id, session.user.id, runId);
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "optimization.undone", entityType: "optimization_run", entityId: runId });
+    return log;
   });
 }
 
@@ -45,6 +50,8 @@ export async function saveAutopilot(projectId: string, rules: Partial<AutopilotR
   return run(async () => {
     const session = await authorize("admin");
     const ent = session.access.entitlements ?? ENTITLEMENTS[session.access.tier ?? "base"];
-    return saveAutopilotFor(await createServerSupabase(), session.workspace.id, session.user.id, projectId, rules, !!ent.autoOptimize);
+    const saved = await saveAutopilotFor(await createServerSupabase(), session.workspace.id, session.user.id, projectId, rules, !!ent.autoOptimize);
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "optimization.autopilot_saved", entityType: "project", entityId: projectId, metadata: { fields: Object.keys(rules ?? {}).slice(0, 20) } });
+    return saved;
   });
 }

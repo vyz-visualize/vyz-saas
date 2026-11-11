@@ -10,7 +10,7 @@ const ID = "11111111-1111-4111-8111-111111111111";
 const updates: unknown[] = [];
 const current = { templateId: "meta-ecommerce", pages: ["visao-geral"], metricPrefs: { google: { kpis: { hidden: ["cpc"], shown: [] } } } as object };
 
-vi.mock("@/server/auth/workspace", () => ({ authorize: vi.fn(async () => ({ workspace: { id: "ws" } })) }));
+vi.mock("@/server/auth/workspace", () => ({ authorize: vi.fn(async () => ({ workspace: { id: "ws" }, user: { id: "user" } })) }));
 vi.mock("./queries", () => ({ getDashboard: vi.fn(async () => current) }));
 vi.mock("@/server/supabase/server", () => ({
   createServerSupabase: vi.fn(async () => ({

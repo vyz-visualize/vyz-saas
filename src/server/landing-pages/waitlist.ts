@@ -9,6 +9,7 @@ import type { TablesInsert } from "@/lib/supabase/database.types";
 import { authorize } from "@/server/auth/workspace";
 import { appError, fromPostgrest, toActionError, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
+import { logActivity } from "@/server/history/log";
 
 /** Inscreve quem está logado. Já inscrito não é erro: a tela só mostra "Você está na lista". */
 export async function joinLandingWaitlist(rawUseCase: unknown): Promise<ActionResult<{ already: boolean }>> {
@@ -24,6 +25,7 @@ export async function joinLandingWaitlist(rawUseCase: unknown): Promise<ActionRe
     const { error } = await supabase.from("landing_waitlist").insert(row);
     if (error?.code === "23505") return { ok: true, data: { already: true } };
     if (error) throw fromPostgrest(error);
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "landing.waitlist_joined", metadata: { has_use_case: !!useCase } });
     return { ok: true, data: { already: false } };
   } catch (err) {
     return toActionError(err);

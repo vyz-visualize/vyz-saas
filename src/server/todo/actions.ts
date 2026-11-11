@@ -15,6 +15,7 @@ import { appError, toActionError, unwrap, type ActionResult } from "@/server/sup
 import { createServerSupabase } from "@/server/supabase/server";
 import { createTaskRow, updateTaskRow } from "./mutations";
 import { todoLevel } from "./queries";
+import { logActivity } from "@/server/history/log";
 
 async function run<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   try {
@@ -30,14 +31,19 @@ async function run<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
 export async function createTask(input: unknown): Promise<ActionResult<TaskDTO>> {
   return run(async () => {
     const session = await authorize("member");
-    return createTaskRow(await createServerSupabase(), session.workspace.id, session.user.id, input, todoLevel(session));
+    const task = await createTaskRow(await createServerSupabase(), session.workspace.id, session.user.id, input, todoLevel(session));
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "task.created", entityType: "task", entityId: task.id });
+    return task;
   });
 }
 
 export async function updateTask(taskId: string, patch: unknown): Promise<ActionResult<TaskDTO>> {
   return run(async () => {
     const session = await authorize("member");
-    return updateTaskRow(await createServerSupabase(), session.workspace.id, taskId, patch, todoLevel(session));
+    const task = await updateTaskRow(await createServerSupabase(), session.workspace.id, taskId, patch, todoLevel(session));
+    const fields = patch && typeof patch === "object" ? Object.keys(patch).slice(0, 20) : [];
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "task.updated", entityType: "task", entityId: task.id, metadata: { fields } });
+    return task;
   });
 }
 
@@ -48,6 +54,7 @@ export async function deleteTask(taskId: string): Promise<ActionResult> {
     const db = await createServerSupabase();
     const rows = unwrap(await db.from("tasks").delete().eq("id", taskId).eq("workspace_id", session.workspace.id).select("id"));
     if (!rows?.length) throw appError("task:not_found", "Tarefa não encontrada.");
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "task.deleted", entityType: "task", entityId: taskId });
     return undefined;
   });
 }
@@ -77,7 +84,9 @@ export async function createTaskGroup(name: string): Promise<ActionResult<{ id: 
     const r = GroupName.safeParse(name);
     if (!r.success) throw appError("validation", r.error.issues[0].message, { name: r.error.issues[0].message });
     const db = await createServerSupabase();
-    return unwrap(await db.from("task_groups").insert({ workspace_id: session.workspace.id, name: r.data, created_by: session.user.id }).select("id, name").single())!;
+    const group = unwrap(await db.from("task_groups").insert({ workspace_id: session.workspace.id, name: r.data, created_by: session.user.id }).select("id, name").single())!;
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "task_group.created", entityType: "task_group", entityId: group.id });
+    return group;
   });
 }
 
@@ -113,6 +122,7 @@ export async function applyPlaybook(playbookId: string, input: { start?: string;
       seen_at: now,
     }));
     unwrap(await db.from("tasks").insert(rows).select("id"));
+    await logActivity({ workspaceId: ws, actorId: session.user.id, event: "task.playbook_applied", entityType: "task_group", entityId: group.id, metadata: { playbook: playbook.id, tasks: rows.length, project_id: projectId } });
     return { created: rows.length, groupId: group.id };
   });
 }
