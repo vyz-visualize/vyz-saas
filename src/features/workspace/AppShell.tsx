@@ -27,7 +27,6 @@ import { TIER_LABEL } from "@/features/pricing/entitlements";
 import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
 import type { Product } from "@/features/pricing/pricing";
-import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { FOCUS_ACTIONS_ID, isFocusPath } from "./focus";
 import { subscriptionNotice } from "./notice";
 import { ROLE_LABEL } from "./session";
@@ -44,7 +43,7 @@ const NAVS: Record<Product, NavItem[]> = {
     { href: "/painel/a-fazer", label: "A Fazer", icon: ListChecks },
     { href: "/painel/contas", label: "Contas", icon: Plug },
     { href: "/painel/compartilhar", label: "Compartilhar", icon: Share2 },
-    ...(SHOW_LANDING_PAGES ? [] : [{ href: "/painel/landing-pages", label: "Landing pages", icon: PanelsTopLeft, short: "LPs", soon: true }]),
+    // Landing pages: fora do menu da linha Dashboards até o lançamento; a rota continua existindo
     { href: "/painel/plano", label: "Plano", icon: Gem },
     { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
   ],
