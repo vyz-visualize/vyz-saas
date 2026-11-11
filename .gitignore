@@ -44,3 +44,6 @@ next-env.d.ts
 
 # credenciais do painel admin
 secrets/
+
+# vídeos de demonstração (verificação OAuth) ficam fora do git
+*.mp4
