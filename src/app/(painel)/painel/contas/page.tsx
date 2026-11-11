@@ -22,8 +22,8 @@ export default function Page({ searchParams }: PageProps<"/painel/contas">) {
 async function Contas({ searchParams }: { searchParams: PageProps<"/painel/contas">["searchParams"] }) {
   await connection();
   const session = await requireWorkspace({ next: "/painel/contas" });
-  const [state, manual, query] = await Promise.all([getConnectState(), listAdAccounts({ manual: true }), searchParams]);
-  return <AccountsPage state={state} manual={manual} result={connectResult(query)} now={new Date().toISOString()} timeZone={session.workspace.timezone} />;
+  const [state, manual, imported, query] = await Promise.all([getConnectState(), listAdAccounts({ manual: true }), listAdAccounts({ imported: true }), searchParams]);
+  return <AccountsPage state={state} manual={manual} imported={imported} result={connectResult(query)} now={new Date().toISOString()} timeZone={session.workspace.timezone} />;
 }
 
 function AccountsSkeleton() {

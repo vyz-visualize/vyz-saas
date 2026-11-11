@@ -128,4 +128,4 @@ Os templates de `live.ts` (`dataMode: "live"`) leem o que a sincronização grav
 |---|---|---|
 | Básico | 5 (2 com dados reais, 3 com visual próprio) | 4 |
 | Padrão | 8 | 8 |
-| Avançado | 33 (2 com visual próprio na Bklit UI) | 13 |
+| Avançado | 34 (2 com visual próprio na Bklit UI, 1 de planilha com dados reais) | 13 |

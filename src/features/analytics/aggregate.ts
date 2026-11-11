@@ -34,6 +34,7 @@ import type {
   FunnelByStage,
   FunnelStep,
   GoogleView,
+  ImportView,
   HeatCell,
   ImpressionShareVM,
   Kpi,
@@ -698,6 +699,39 @@ export function aggregateDashboard(rows: WarehouseRows, opts: AggregateOptions):
       devices: breakdownSlices(rows, "device"),
       regions: breakdownSlices(rows, "region"),
     };
+    return view;
+  }
+
+  if (rows.platform === "import") {
+    const wholeConversions = rows.accountDaily.every((r) => Number.isInteger(r.conversions));
+    const kpis = buildKpis(
+      [
+        { id: "spend", label: "Investimento", format: "money", better: "neutral", spendBased: true, pick: (r) => t(r).spend },
+        { id: "value", label: "Receita", format: "money", better: "up", pick: (r) => t(r).value },
+        { id: "roas", label: "ROAS", format: "ratio", better: "up", spendBased: true, note: roasNote, help: "Receita ÷ investimento. Equilíbrio = 1 ÷ margem.", pick: (r) => t(r).roas },
+        // planilha costuma trazer conversões inteiras; com fração (atribuição), mostra a casa decimal
+        { id: "conversions", label: "Conversões", format: wholeConversions ? "int" : "decimal", better: "up", pick: (r) => t(r).conversions },
+        { id: "cpa", label: "Custo por conversão", format: "money", better: "down", spendBased: true, pick: (r) => t(r).cpa },
+        { id: "ctr", label: "CTR", format: "pct", better: "up", pick: (r) => t(r).ctr },
+        { id: "cpc", label: "CPC médio", format: "money", better: "down", spendBased: true, pick: (r) => t(r).cpc },
+        { id: "cpm", label: "CPM", format: "money", better: "down", spendBased: true, help: "Custo por mil impressões.", pick: (r) => t(r).cpm },
+      ],
+      cur,
+      prev,
+      dates,
+      byDate,
+    );
+    const extraKpis = buildKpis(
+      [
+        { id: "impressions", label: "Impressões", format: "int", better: "neutral", pick: (r) => t(r).impressions },
+        { id: "clicks", label: "Cliques", format: "int", better: "up", pick: (r) => t(r).clicks },
+      ],
+      cur,
+      prev,
+      dates,
+      byDate,
+    );
+    const view: ImportView = { platform: "import", ...base, kpis, extraKpis };
     return view;
   }
 

@@ -10,7 +10,7 @@ import type { PeriodId } from "@/features/workspace/types";
 import { loadLiveDashboard } from "@/server/analytics/queries";
 import type { DB } from "@/server/supabase/server";
 
-export type DashboardPulse = { id: string; name: string; platform: "meta" | "google"; currency: string; spend: number | null; value: number; conversions: number; roas: number | null; previousSpend: number | null; previousConversions: number };
+export type DashboardPulse = { id: string; name: string; platform: "meta" | "google" | "import"; currency: string; spend: number | null; value: number; conversions: number; roas: number | null; previousSpend: number | null; previousConversions: number };
 
 export async function loadWorkspaceInsights(db: DB, workspaceId: string, period: PeriodId = "7d", max = 12): Promise<{ insights: Insight[]; pulse: DashboardPulse[] }> {
   const { data, error } = await db.from("dashboards").select("id, template_id").eq("workspace_id", workspaceId).order("updated_at", { ascending: false }).limit(50);

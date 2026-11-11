@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/kit";
 import { OverflowTabs } from "@/components/ui/OverflowTabs";
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS } from "@/features/accounts/platforms";
-import { GOOGLE_CATALOG, META_CATALOG, type CatalogMetric } from "@/features/dashboards/metric-prefs";
+import { GOOGLE_CATALOG, IMPORT_CATALOG, META_CATALOG, type CatalogMetric } from "@/features/dashboards/metric-prefs";
 import { MetricVisibilityProvider, useMetricPrefsState, type SaveMetricPrefs } from "@/features/dashboards/metric-prefs-context";
 import { MetricEditProvider } from "@/features/dashboards/metric-edit-context";
 import { MetricNoticeBar } from "@/features/dashboards/MetricActions";
@@ -26,13 +26,18 @@ import { formatValue } from "./format";
 import { ddmm, ddmmyyyyIso } from "./ranges";
 import type { PageProps } from "./shared";
 import { RESULT_METRICS, RESULTS_MIXED_REASON } from "./live-metrics";
+import { ImportCampaigns, ImportOverview } from "./import/ImportPages";
 import type { DashboardView, LiveDashboardData, LivePlatform } from "./types";
 
 /** Páginas que cada dashboard live sabe desenhar, na ordem padrão. */
 export const LIVE_PAGES: Record<LivePlatform, Partial<Record<PageId, ComponentType<PageProps>>>> = {
   meta: { "visao-geral": MetaOverview, campanhas: MetaCampaigns, funil: MetaFunnel, criativos: MetaCreatives, publico: MetaAudience },
   google: { "visao-geral": GoogleOverview, campanhas: GoogleCampaigns, termos: GoogleTerms, produtos: GoogleProducts },
+  import: { "visao-geral": ImportOverview, campanhas: ImportCampaigns },
 };
+
+/** Nome que a tela mostra para a origem dos dados do dashboard. */
+export const livePlatformName = (platform: LivePlatform) => (platform === "import" ? "Planilha" : PLATFORMS[platform].name);
 
 /** As páginas pedidas que existem na plataforma (na ordem pedida); vazio = todas. */
 export function livePages(platform: LivePlatform, pageIds?: readonly PageId[]): PageId[] {
@@ -60,7 +65,7 @@ export type LiveDashboardViewProps = {
   filterNavigate?: (search: string) => void;
 };
 
-const CATALOG: Record<LivePlatform, readonly CatalogMetric[]> = { meta: META_CATALOG, google: GOOGLE_CATALOG };
+const CATALOG: Record<LivePlatform, readonly CatalogMetric[]> = { meta: META_CATALOG, google: GOOGLE_CATALOG, import: IMPORT_CATALOG };
 
 /** A conta tem esse número no período? Sem dado, o painel desabilita a métrica. */
 function liveHasData(view: DashboardView, id: string): boolean {
@@ -134,7 +139,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
           <h1 className="title truncate text-[1.55rem]">{data.dashboard.name}</h1>
           {data.dashboard.clientName && <p className="text-[14px] text-fg-2">{data.dashboard.clientName}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11.5px]">
-            <span className="rounded-chip border border-line px-2 py-0.5 text-fg-2">{PLATFORMS[data.platform].name}</span>
+            <span className="rounded-chip border border-line px-2 py-0.5 text-fg-2">{livePlatformName(data.platform)}</span>
             {data.accounts.map((a) => (
               <span key={a.id} className="max-w-[16rem] truncate rounded-chip border border-line px-2 py-0.5 text-fg-2" title={a.name}>
                 {a.name}
@@ -187,7 +192,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
         {data.status === "no_accounts" ? (
           <EmptyState
             title="Nenhuma conta ativa neste dashboard"
-            text={`Ative uma conta do ${PLATFORMS[data.platform].name} e ligue ao dashboard para ver os números.`}
+            text={data.platform === "import" ? "Importe uma planilha em Contas e ligue a conta ao dashboard para ver os números." : `Ative uma conta do ${PLATFORMS[data.platform].name} e ligue ao dashboard para ver os números.`}
             action={
               <Link href="/painel/contas" className={btn.small}>
                 Ir para Contas

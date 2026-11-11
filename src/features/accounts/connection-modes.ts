@@ -13,7 +13,7 @@
 //   restricted  API existe, mas o acesso depende de aprovação difícil;
 //   no_api      sem API para anunciantes hoje.
 
-import type { PlatformId } from "./platforms";
+import { PLATFORM_ORDER, PLATFORMS, type PlatformId } from "./platforms";
 
 export type ConnectMode = "oauth_write" | "oauth_read" | "import";
 export type ConnectStatus = "live" | "planned" | "restricted" | "no_api";
@@ -140,3 +140,8 @@ export const MODE_LABEL: Record<ConnectMode, string> = {
 
 /** O VYZ aplica mudanças nesta plataforma pela API. */
 export const canWrite = (id: PlatformId) => CONNECTIONS[id].mode === "oauth_write" && CONNECTIONS[id].status === "live";
+
+/** Plataformas de mídia que entram por planilha (CSV ou Google Sheets). O CRM genérico não entra: não é mídia. */
+export const IMPORT_PLATFORMS: PlatformId[] = PLATFORM_ORDER.filter((p) => CONNECTIONS[p].mode === "import" && PLATFORMS[p].kind === "ads");
+
+export const isImportPlatform = (id: string): id is PlatformId => (IMPORT_PLATFORMS as string[]).includes(id);

@@ -55,6 +55,8 @@ export type AdAccountDTO = {
   lastSync: LastSyncDTO | null;
   /** Cadastrada pelo ID (sem conexão; status "pending"). */
   manual: boolean;
+  /** Conta alimentada por planilha (sem conexão). sheet = ligada a um link do Google Sheets, que atualiza todo dia. */
+  imported: { sheet: boolean } | null;
   /** Campos do cadastro manual, já normalizados (ex.: { account, measurement }). */
   fields: Record<string, string>;
   /** Dashboards que usam a conta. */

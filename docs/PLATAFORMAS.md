@@ -140,13 +140,15 @@ Por isso, no VYZ elas são da modalidade **importação por planilha**: o client
 - transforma o link de uma planilha do Google no endereço de exportação em CSV, aceitando só `https://docs.google.com/spreadsheets/d/<id>` (`sheetsCsvUrl`);
 - traz o modelo de arquivo para a pessoa baixar (`IMPORT_TEMPLATE_CSV`).
 
-### O que falta ligar (depende de decisão e de mudança no banco)
+### Como a importação funciona de ponta a ponta
 
-1. **Conta ativa sem login.** Hoje `ad_accounts` só deixa ativar conta que tem conexão (OAuth). Conta de planilha precisa de uma migration que libere isso, e de uma regra para o limite do plano (conta como 1 conta?).
-2. **Gravação.** Server Action que confere o acesso, lê o arquivo (ou busca o CSV do Google Sheets), grava com `writeDataset` + `rollupAccount` e registra em `sync_runs` e em `activity_events`.
-3. **Tela.** Em Contas, o cartão da plataforma de planilha ganha "Importar planilha": arquivo ou link, prévia com o resumo e os erros por linha.
-4. **Dashboard.** Os modelos com dados reais leem só Meta e Google (`TEMPLATE_PLATFORM`). Falta um modelo que leia qualquer plataforma importada (visão geral e campanhas).
-5. **Atualização do Google Sheets.** Reler o link todo dia junto com a sincronização agendada.
+1. **Tela.** Em Contas, a seção "Importação por planilha" (`src/features/accounts/ImportSection.tsx`): escolhe a plataforma, dá um nome para a conta e sobe um CSV ou cola o link do Google Sheets. O arquivo é conferido no navegador (resumo ou linhas com erro) antes de enviar.
+2. **Servidor.** `importSpreadsheet` (`src/server/import/actions.ts`, só admin): confere o plano, lê e valida de novo, cria a conta já ativa (ou usa a que existe) e grava pelo mesmo caminho da sincronização (`writeDataset` + `rollupAccount`). Cada importação é uma linha em `sync_runs` e um evento em `activity_events`. No período da planilha, a conta fica igual ao arquivo; dias fora dele não mudam.
+3. **Google Sheets.** A planilha precisa estar compartilhada como "Qualquer pessoa com o link". O servidor só busca `https://docs.google.com/spreadsheets/d/<id>/export?format=csv&gid=<aba>` e só segue redirecionamento para o próprio Google (`src/server/import/sheets.ts`); tempo máximo de 15 s e 2 MB. O link fica salvo na conta (`metadata.sheet`) e é relido todo dia pela rota do agendador (`/api/cron/sync`, `src/server/import/scheduled.ts`). Falha (link fechado, linha inválida) aparece na conta.
+4. **Banco.** Migração `20261111130000_import_accounts.sql`: conta ativa precisa de conexão ou de `metadata.source = 'import'`. Quem está logado não consegue ativar conta sem conexão por conta própria (não muda o `status`); só o servidor cria a conta de planilha ativa. Ela conta no limite do plano como qualquer outra (mesmo gatilho). Testes em `src/server/import/import-accounts.db.test.ts`.
+5. **Dashboard.** Modelo com dados reais "Planilha · Mídia paga" (`planilha-midia`, Avançado), com Visão geral e Campanhas. Lê as contas de qualquer plataforma de planilha ligadas ao dashboard (`LivePlatform = "import"`, páginas em `src/features/analytics/import/ImportPages.tsx`).
+
+O que ainda não tem: login do Google para planilha fechada (hoje é só por link compartilhado) e planilha com colunas além das do modelo.
 
 ## Otimizações (botão Aplicar e automático)
 

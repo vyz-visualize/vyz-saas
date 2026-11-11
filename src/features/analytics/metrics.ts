@@ -9,6 +9,7 @@ import type { LivePlatform } from "./types";
 const BY_PLATFORM: Record<LivePlatform, Partial<Record<string, MetricId>>> = {
   meta: { spend: "spend", revenue: "revenue", roas: "roas", purchases: "conversions", cpa: "cpa", ticket: "ticket", cpm: "cpm" },
   google: { spend: "spend", value: "revenue", roas: "roas", conversions: "conversions", cpa: "cpa", ctr: "ctr", cpc: "cpc" },
+  import: { spend: "spend", value: "revenue", roas: "roas", conversions: "conversions", cpa: "cpa", ctr: "ctr", cpc: "cpc", cpm: "cpm" },
 };
 
 /** Métrica do assistente que corresponde a um KPI live (undefined = sem par). */

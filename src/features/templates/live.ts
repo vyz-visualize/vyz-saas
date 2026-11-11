@@ -2,6 +2,7 @@
 // conectadas (insights_* no banco). Os de DASHBOARD_TEMPLATES usam dados de
 // exemplo. Os dois juntos formam o catálogo (npm run db:catalog).
 
+import { IMPORT_PLATFORMS } from "@/features/accounts/connection-modes";
 import { DASHBOARD_TEMPLATES } from "./dashboards";
 import type { DashboardTemplate } from "./types";
 
@@ -26,6 +27,18 @@ export const LIVE_TEMPLATES: DashboardTemplate[] = [
     sources: ["google"],
     pages: ["visao-geral", "campanhas", "termos", "produtos"],
     description: "Valor de conversão e ROAS por tipo de campanha, parcela de impressões, termos de pesquisa e os produtos que mais vendem.",
+    dataMode: "live",
+  },
+  {
+    // plataformas sem API (Shopee, Spotify, Globo, ChatGPT Ads): os dados entram por planilha em Contas
+    id: "planilha-midia",
+    name: "Planilha · Mídia paga",
+    category: "Mídia",
+    tier: "avancado",
+    profile: "midia",
+    sources: IMPORT_PLATFORMS,
+    pages: ["visao-geral", "campanhas"],
+    description: "Para as plataformas que entram por planilha (CSV ou Google Sheets): investimento, receita, ROAS e custo por conversão por dia e por campanha.",
     dataMode: "live",
   },
 ];

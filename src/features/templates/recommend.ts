@@ -52,6 +52,7 @@ export const TEMPLATE_WORDS: Record<string, string[]> = {
   "meta-essencial": ["essencial", "simples", "básico"],
   "metas-pacing": ["meta do mês", "metas", "pacing", "verba", "orçamento"],
   "mmm-mix-midia": ["mmm", "mix de mídia", "marketing mix", "saturação", "incremental", "realocar"],
+  "planilha-midia": ["planilha", "csv", "google sheets", "excel", "importar", "importação", "shopee", "spotify", "globo", "chatgpt"],
   "painel-areia": ["areia", "terracota", "bege", "tons claros"],
   "painel-lavanda": ["lavanda", "lilás", "escuro"],
   "painel-monocromo": ["monocromo", "preto e branco", "minimalista", "linha do tempo"],

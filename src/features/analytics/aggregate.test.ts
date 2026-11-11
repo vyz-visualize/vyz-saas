@@ -302,3 +302,44 @@ describe("prévia com o gerador", () => {
     expect(sampleDashboardData("outro")).toBeNull();
   });
 });
+
+describe("dashboard de planilha (plataformas sem API)", () => {
+  const current = { from: "2026-11-01", to: "2026-11-02", days: 2 };
+  const previous = { from: "2026-10-30", to: "2026-10-31", days: 2 };
+  const day = (date: string, spend: number, conversions: number, value: number) => ({ date, spend, impressions: 1000, reach: null, clicks: 50, linkClicks: null, landingPageViews: null, addToCart: null, initiateCheckout: null, conversions, conversionValue: value, videoViews: null, videoThruplays: null, searchImpressionShare: null, searchLostIsBudget: null, searchLostIsRank: null });
+  const rows = {
+    platform: "import" as const,
+    current,
+    previous,
+    accountDaily: [day("2026-10-31", 80, 2, 200), day("2026-11-01", 100, 4, 500), day("2026-11-02", 100, 6, 700)],
+    campaigns: [{ id: "marca", name: "Marca", status: "active", channel: null, funnelStage: null, dailyBudget: null }],
+    campaignDaily: [
+      { ...day("2026-11-01", 100, 4, 500), campaignId: "marca" },
+      { ...day("2026-11-02", 100, 6, 700), campaignId: "marca" },
+    ],
+    ads: [],
+    adDaily: [],
+    breakdownDaily: [],
+    searchTermDaily: [],
+    products: [],
+    productDaily: [],
+  };
+
+  it("soma o que a planilha trouxe e calcula ROAS, custo por conversão, CTR e CPC", () => {
+    const view = aggregateDashboard(rows, { breakEvenRoas: 2.5 });
+    expect(view.platform).toBe("import");
+    expect(view.hasData).toBe(true);
+    const kpi = (id: string) => [...view.kpis, ...(view.extraKpis ?? [])].find((k) => k.id === id);
+    expect(view.kpis.map((k) => k.id)).toEqual(["spend", "value", "roas", "conversions", "cpa", "ctr", "cpc", "cpm"]);
+    expect(kpi("spend")?.value).toBe(200);
+    expect(kpi("value")?.value).toBe(1200);
+    expect(kpi("roas")?.value).toBe(6);
+    expect(kpi("conversions")).toMatchObject({ value: 10, format: "int" });
+    expect(kpi("cpa")?.value).toBe(20);
+    expect(kpi("ctr")?.value).toBeCloseTo(0.05);
+    expect(kpi("cpc")?.value).toBe(2);
+    expect(kpi("impressions")?.value).toBe(2000);
+    expect(view.campaigns).toHaveLength(1);
+    expect(view.campaigns[0]).toMatchObject({ id: "marca", spend: 200, roas: 6 });
+  });
+});

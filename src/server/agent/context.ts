@@ -14,13 +14,14 @@ import { kpiMetric } from "@/features/analytics/metrics";
 import type { Totals as ViewTotals } from "@/features/analytics/types";
 import { monthToDate, periodTotals, type WarehouseDay } from "@/features/agent/engine/warehouse";
 import { datasetFor, pageLayout, sampleDefaultKpis } from "@/features/dashboards/data";
-import { GOOGLE_CATALOG, META_CATALOG, pageKpiIds, parseMetricPrefs, sampleCatalog, visibleIds } from "@/features/dashboards/metric-prefs";
+import { GOOGLE_CATALOG, IMPORT_CATALOG, META_CATALOG, pageKpiIds, parseMetricPrefs, sampleCatalog, visibleIds } from "@/features/dashboards/metric-prefs";
 import type { MetricId } from "@/features/metrics/definitions";
 import { periodFromQuery } from "@/features/dashboards/model";
 import { currentTotals, previousTotals, totals, type Totals } from "@/features/metrics/compute";
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
 import { localDate } from "@/features/sync/dates";
 import { dashboardTemplate } from "@/features/templates/dashboards";
+import { TEMPLATE_PLATFORM } from "@/features/analytics/preview";
 import { LIVE_TEMPLATES } from "@/features/templates/live";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { periodDays, type PeriodId } from "@/features/workspace/types";
@@ -129,9 +130,9 @@ export async function loadAgentContext(now = new Date(), focus?: AgentFocus, dep
         ids.flatMap((id) => rows.get(id) ?? []),
         ranges,
       );
-      const platform = LIVE_TEMPLATES.find((t) => t.id === d.template_id)?.sources.includes("google") ? "google" : "meta";
+      const platform = TEMPLATE_PLATFORM[d.template_id] ?? "meta";
       // o assistente responde sobre qualquer métrica; só o "Mostrar no painel" precisa do card visível
-      const shown = visibleIds(platform === "google" ? GOOGLE_CATALOG : META_CATALOG, "kpis", parseMetricPrefs(d.metric_prefs)[platform]?.kpis);
+      const shown = visibleIds(platform === "google" ? GOOGLE_CATALOG : platform === "import" ? IMPORT_CATALOG : META_CATALOG, "kpis", parseMetricPrefs(d.metric_prefs)[platform]?.kpis);
       const kpis = shown.map((id) => kpiMetric(platform, id)).filter((m): m is MetricId => !!m);
       return [{ dashboardId: d.id, dashboardName: d.name, client, profile: "ecommerce", cur, prev, kpis }];
     }

@@ -16,6 +16,7 @@ import type { PeriodId } from "@/features/workspace/types";
 export const SAMPLE_CLIENTS: Record<LivePlatform, { client: string; account: string; dashboard: string }> = {
   meta: { client: "VYZ", account: "VYZ · Assinaturas", dashboard: "Meta Ads · Visão geral" },
   google: { client: "VYZ", account: "VYZ · Brasil", dashboard: "Google Ads · Visão geral" },
+  import: { client: "VYZ", account: "VYZ · Planilha", dashboard: "Planilha · Visão geral" },
 };
 
 /**

@@ -83,6 +83,7 @@ const loadAdAccounts = cache(async (): Promise<AdAccountDTO[]> => {
           }
         : null,
       manual,
+      imported: r.connection_id === null && meta.source === "import" ? { sheet: isRecord(meta.sheet) } : null,
       fields: manual ? stringFields(meta.fields) : {},
       dashboards: r.sources.flatMap((s) => (s.dashboard ? [{ id: s.dashboard.id, name: s.dashboard.name }] : [])),
       projectId: r.project_id,
@@ -130,9 +131,11 @@ export async function listConnections(): Promise<ConnectionDTO[]> {
 }
 
 /** Contas do workspace (conectadas e cadastradas pelo ID), com a última sincronização. */
-export async function listAdAccounts(filter: { platformId?: string; manual?: boolean } = {}): Promise<AdAccountDTO[]> {
+export async function listAdAccounts(filter: { platformId?: string; manual?: boolean; imported?: boolean } = {}): Promise<AdAccountDTO[]> {
   const all = await loadAdAccounts();
-  return all.filter((a) => (!filter.platformId || a.platformId === filter.platformId) && (filter.manual === undefined || a.manual === filter.manual));
+  return all.filter(
+    (a) => (!filter.platformId || a.platformId === filter.platformId) && (filter.manual === undefined || a.manual === filter.manual) && (filter.imported === undefined || (a.imported !== null) === filter.imported),
+  );
 }
 
 /** Estado da conexão por plataforma (Meta Ads, Google Ads) e o limite do plano. */

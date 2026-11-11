@@ -8,7 +8,7 @@ import { metric as baseMetric, type MetricId, type Profile } from "@/features/me
 
 export type MetricGroup = "gerais" | "conversoes" | "custos" | "taxas" | "video" | "engajamento";
 export type MetricSection = "kpis" | "columns";
-export type MetricScope = "meta" | "google" | "sample";
+export type MetricScope = "meta" | "google" | "import" | "sample";
 
 export const METRIC_GROUP_LABEL: Record<MetricGroup, string> = { gerais: "Gerais", conversoes: "Conversões", custos: "Custos", taxas: "Taxas", video: "Vídeo", engajamento: "Engajamento" };
 export const METRIC_GROUPS: MetricGroup[] = ["gerais", "conversoes", "custos", "taxas", "video", "engajamento"];
@@ -99,6 +99,20 @@ export const GOOGLE_CATALOG: CatalogMetric[] = [
   ...GOOGLE_EXTRA_METRICS.map(extraCatalog),
 ];
 
+/** Dashboard de planilha: só o que a planilha traz (investimento, impressões, cliques, conversões, receita) e as contas com isso. */
+export const IMPORT_CATALOG: CatalogMetric[] = [
+  { id: "spend", label: "Investimento", group: "gerais", help: "Quanto foi investido em anúncios no período, pela planilha.", spendDerived: true, kpi: "default", column: true },
+  { id: "value", label: "Receita", group: "conversoes", help: "Receita das conversões informada na planilha.", kpi: "default", column: true },
+  { id: "conversions", label: "Conversões", group: "conversoes", help: "Conversões informadas na planilha.", kpi: "default", column: true },
+  { id: "impressions", label: "Impressões", group: "gerais", help: "Quantas vezes os anúncios apareceram.", kpi: "optional", column: true },
+  { id: "clicks", label: "Cliques", group: "gerais", help: "Cliques nos anúncios.", kpi: "optional", column: true },
+  { id: "cpa", label: "Custo por conversão", group: "custos", help: "Investimento ÷ conversões.", spendDerived: true, kpi: "default", column: true },
+  { id: "cpc", label: "CPC médio", group: "custos", help: "Custo por clique = investimento ÷ cliques.", spendDerived: true, kpi: "default", column: true },
+  { id: "cpm", label: "CPM", group: "custos", help: "Custo por mil impressões = investimento ÷ impressões × 1000.", spendDerived: true, kpi: "default" },
+  { id: "roas", label: "ROAS", group: "taxas", help: "Retorno sobre o investimento = receita ÷ investimento.", spendDerived: true, kpi: "default", column: true },
+  { id: "ctr", label: "CTR", group: "taxas", help: "Cliques ÷ impressões do período inteiro.", kpi: "default", column: true },
+];
+
 /** Grupo, explicação e relação com o investimento de cada métrica dos dashboards de exemplo. */
 const SAMPLE_INFO: Record<MetricId, { group: MetricGroup; help: string; spendDerived?: boolean }> = {
   spend: { group: "gerais", help: "Quanto foi gasto em anúncios no período.", spendDerived: true },
@@ -175,7 +189,7 @@ const ids = (raw: unknown): string[] => (Array.isArray(raw) ? raw.filter((v): v 
 export function parseMetricPrefs(raw: unknown): MetricPrefs {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   const out: MetricPrefs = {};
-  for (const scope of ["meta", "google", "sample"] as const) {
+  for (const scope of ["meta", "google", "import", "sample"] as const) {
     const s = (raw as Record<string, unknown>)[scope];
     if (!s || typeof s !== "object") continue;
     const scoped: ScopePrefs = {};

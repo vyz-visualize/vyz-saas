@@ -21,6 +21,7 @@ import type { AdAccountDTO, ConnectState } from "@/features/integrations/types";
 import { btnSmallDanger } from "@/features/integrations/ui";
 import { removeAdAccount } from "@/server/integrations/actions";
 import { AccountForm } from "./AccountForm";
+import { ImportSection } from "./ImportSection";
 import { manualIdLabel, MANUAL_PLATFORMS } from "./manual";
 import { PLATFORMS } from "./platforms";
 
@@ -47,6 +48,8 @@ type AccountsPageProps = {
   state: ConnectState;
   /** Contas cadastradas pelo ID. */
   manual: AdAccountDTO[];
+  /** Contas alimentadas por planilha (CSV ou Google Sheets). */
+  imported: AdAccountDTO[];
   /** Volta do login (?conectado= / ?erro=). */
   result: ConnectResult | null;
   /** Horário da renderização no servidor. */
@@ -153,7 +156,7 @@ function ProviderSection({
   );
 }
 
-export function AccountsPage({ state, manual, result, now, timeZone }: AccountsPageProps) {
+export function AccountsPage({ state, manual, imported, result, now, timeZone }: AccountsPageProps) {
   const [banner, setBanner] = useState(result);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<AdAccountDTO | null>(null);
@@ -225,6 +228,17 @@ export function AccountsPage({ state, manual, result, now, timeZone }: AccountsP
           </section>
         );
       })}
+
+      <ImportSection
+        accounts={imported}
+        canManage={state.canManage}
+        now={now}
+        timeZone={timeZone}
+        onRemove={(a) => {
+          setRemoveError(null);
+          setRemoving(a);
+        }}
+      />
 
       <section aria-labelledby="pl-manual" className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">

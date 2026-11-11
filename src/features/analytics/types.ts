@@ -7,7 +7,8 @@ import type { ObjectiveResult } from "./creatives/objectives";
 import type { FilterDim, FilterInfo } from "./filters";
 import type { AdCreativeMetrics, BreakdownDimension, CampaignExtraMetrics } from "@/features/sync/dataset";
 
-export type LivePlatform = "meta" | "google";
+/** "import" = plataformas sem API que entram por planilha (Shopee, Spotify...): só o que a planilha traz. */
+export type LivePlatform = "meta" | "google" | "import";
 
 export type DateRange = { from: string; to: string; days: number };
 
@@ -333,7 +334,10 @@ export type GoogleView = ViewBase & {
   productCategories: SliceVM[];
 };
 
-export type DashboardView = MetaView | GoogleView;
+/** Planilha: KPIs, série diária e campanhas (ViewBase), sem as quebras das plataformas com API. */
+export type ImportView = ViewBase & { platform: "import" };
+
+export type DashboardView = MetaView | GoogleView | ImportView;
 
 export type LiveAccount = { id: string; name: string; currency: string; timeZone: string; lastSyncedAt: string | null };
 

@@ -11,6 +11,7 @@ import "server-only";
 // Ocultar investimento acontece depois do cache, antes de ir para o navegador.
 
 import { cacheLife, cacheTag } from "next/cache";
+import { isImportPlatform } from "@/features/accounts/connection-modes";
 import { z } from "zod";
 import { aggregateDashboard, redactSpend } from "@/features/analytics/aggregate";
 import { cutCreatives, type CreativesAccess } from "@/features/analytics/creatives/access";
@@ -78,7 +79,8 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
   if (sErr) throw fromPostgrest(sErr);
   const accounts: LiveAccount[] = (sources ?? [])
     .map((s) => s.account)
-    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && a.platform_id === platform)
+    // planilha: qualquer plataforma que entra por importação; as outras, só a do template
+    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (platform === "import" ? isImportPlatform(a.platform_id) : a.platform_id === platform))
     .map((a) => ({ id: a.id, name: a.name, currency: a.currency, timeZone: a.timezone || DEFAULT_TIME_ZONE, lastSyncedAt: a.last_synced_at }))
     .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -211,7 +213,7 @@ const basicRow = (r: BasicColumns) => ({ spend: num(r.spend), impressions: num(r
 
 const BASIC_COLUMNS = "spend, impressions, clicks, conversions, conversion_value";
 
-const BREAKDOWNS: Record<LivePlatform, string[]> = { meta: ["age_gender", "placement", "device", "region"], google: ["device", "hour"] };
+const BREAKDOWNS: Record<LivePlatform, string[]> = { meta: ["age_gender", "placement", "device", "region"], google: ["device", "hour"], import: [] };
 
 async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
   const ids = q.accountIds;

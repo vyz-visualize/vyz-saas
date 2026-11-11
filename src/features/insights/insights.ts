@@ -136,7 +136,7 @@ export function dashboardInsights(data: LiveDashboardData, limit = 6): Insight[]
       const who = cell.gender === "female" ? "Mulheres" : cell.gender === "male" ? "Homens" : "Pessoas";
       push({ id: "audience", tone: "info", title: `${who} de ${cell.age} trazem ${pctFmt(cell.valueShare)} da receita`, body: `É o público que mais compra ${span}${cell.roas !== null ? `, com ROAS ${ratio(cell.roas)}` : ""}.`, weight: 35 });
     }
-  } else {
+  } else if (view.platform === "google") {
     // 5. termos de pesquisa que gastam sem converter
     if (view.wastedSpend && view.wastedShare >= 0.08) {
       const term = view.wastedTerms[0]?.term;

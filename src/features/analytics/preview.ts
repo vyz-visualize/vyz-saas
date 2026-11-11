@@ -11,7 +11,7 @@ import { dashboardRanges, maturingStart } from "./ranges";
 import type { DateRange, LiveDashboardData, LivePlatform, WarehouseRows } from "./types";
 
 /** Template live → plataforma. */
-export const TEMPLATE_PLATFORM: Record<string, LivePlatform> = { "meta-ecommerce": "meta", "google-ecommerce": "google" };
+export const TEMPLATE_PLATFORM: Record<string, LivePlatform> = { "meta-ecommerce": "meta", "google-ecommerce": "google", "planilha-midia": "import" };
 
 /** Do conjunto do gerador (ou de qualquer fonte) para as linhas do armazém. */
 export function datasetToRows(ds: AccountDataset, current: DateRange, previous: DateRange): WarehouseRows {
@@ -34,7 +34,22 @@ export function datasetToRows(ds: AccountDataset, current: DateRange, previous: 
 const SAMPLE_ACCOUNT: Record<LivePlatform, { id: string; name: string }> = {
   meta: { id: "act_amostra_vyz", name: "Loja Exemplo · Vendas" },
   google: { id: "000-000-0000", name: "Loja Exemplo · Brasil" },
+  import: { id: "planilha-amostra", name: "Loja Exemplo · Planilha" },
 };
+
+const SAMPLE_NAME: Record<LivePlatform, string> = { meta: "Meta Ads · E-commerce", google: "Google Ads · E-commerce", import: "Planilha · Mídia paga" };
+
+/**
+ * Linhas de amostra de uma plataforma. A planilha usa os números do gerador do
+ * Google só com o que uma planilha traz: campanhas e totais por dia.
+ */
+function sampleWarehouse(platform: LivePlatform, current: DateRange, previous: DateRange): WarehouseRows {
+  const account = SAMPLE_ACCOUNT[platform];
+  const ds = generateAccountData({ platform: platform === "import" ? "google" : platform, accountExternalId: account.id, accountName: account.name, endDate: current.to, days: current.days + previous.days });
+  const rows = datasetToRows(ds, current, previous);
+  if (platform !== "import") return rows;
+  return { ...rows, platform: "import", campaigns: rows.campaigns.map((c) => ({ ...c, channel: null, funnelStage: null })), ads: [], adDaily: [], breakdownDaily: [], searchTermDaily: [], products: [], productDaily: [] };
+}
 
 export type SampleOptions = { period?: PeriodId; customDays?: number; breakEvenRoas?: number | null; today?: string };
 
@@ -42,9 +57,7 @@ export type SampleOptions = { period?: PeriodId; customDays?: number; breakEvenR
 export function sampleRows(platform: LivePlatform, opts: Pick<SampleOptions, "period" | "customDays" | "today"> = {}): WarehouseRows {
   const today = opts.today ?? localDate(new Date(), DEFAULT_TIME_ZONE);
   const { current, previous } = dashboardRanges(opts.period ?? "30d", opts.customDays ?? 30, today);
-  const account = SAMPLE_ACCOUNT[platform];
-  const ds = generateAccountData({ platform, accountExternalId: account.id, accountName: account.name, endDate: current.to, days: current.days + previous.days });
-  return datasetToRows(ds, current, previous);
+  return sampleWarehouse(platform, current, previous);
 }
 
 /** Dados de amostra de um template live, no mesmo formato do servidor. */
@@ -55,10 +68,9 @@ export function sampleDashboardData(templateId: string, opts: SampleOptions = {}
   const today = opts.today ?? localDate(new Date(), DEFAULT_TIME_ZONE);
   const { current, previous } = dashboardRanges(opts.period ?? "30d", opts.customDays ?? 30, today);
   const account = SAMPLE_ACCOUNT[platform];
-  const ds = generateAccountData({ platform, accountExternalId: account.id, accountName: account.name, endDate: current.to, days: current.days + previous.days });
-  const view = aggregateDashboard(datasetToRows(ds, current, previous), { breakEvenRoas: opts.breakEvenRoas === undefined ? 2.5 : opts.breakEvenRoas });
+  const view = aggregateDashboard(sampleWarehouse(platform, current, previous), { breakEvenRoas: opts.breakEvenRoas === undefined ? 2.5 : opts.breakEvenRoas });
   return {
-    dashboard: { id: `amostra-${templateId}`, name: platform === "meta" ? "Meta Ads · E-commerce" : "Google Ads · E-commerce", clientName: "Loja Exemplo", templateId },
+    dashboard: { id: `amostra-${templateId}`, name: SAMPLE_NAME[platform], clientName: "Loja Exemplo", templateId },
     platform,
     status: "ok",
     accounts: [{ id: account.id, name: account.name, currency: "BRL", timeZone: DEFAULT_TIME_ZONE, lastSyncedAt: null }],
