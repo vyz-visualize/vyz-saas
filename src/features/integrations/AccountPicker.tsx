@@ -41,6 +41,8 @@ type AccountPickerProps = {
   onRemove?: (account: AdAccountDTO) => void;
   /** Avisa a escolha atual (com o que ainda não foi salvo) e como salvá-la. */
   onSelectionChange?: (selection: PickerSelection) => void;
+  /** Salva a cada toque no toggle (página de contas): sem botão Salvar no fim da lista. */
+  autoSave?: boolean;
 };
 
 export type PickerSelection = {
@@ -91,7 +93,9 @@ export function SyncBadge({ summary }: { summary: SyncSummary }) {
   );
 }
 
-export function AccountPicker({ provider, platformId, accounts, projects, maxPerProject, canManage, canSync = canManage, now, timeZone, onSaved, saveLabel = "Salvar escolha", onRemove, onSelectionChange }: AccountPickerProps) {
+export function AccountPicker({ provider, platformId, accounts, projects, maxPerProject, canManage, canSync = canManage, now, timeZone, onSaved, saveLabel = "Salvar escolha", onRemove, onSelectionChange, autoSave = false }: AccountPickerProps) {
+  // conta tocada por último: o aviso de salvando/salvo aparece na linha dela, não no fim da lista
+  const [touched, setTouched] = useState<string | null>(null);
   // Só o que mudou em relação ao banco; depois de salvar, volta a valer o banco.
   const [draft, setDraft] = useState<Record<string, boolean>>({});
   const [saving, startSave] = useTransition();
@@ -114,6 +118,7 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
 
   function setProject(a: AdAccountDTO, project: string) {
     setMessage(null);
+    setTouched(a.id);
     setProjectDraft((d) => {
       const next = { ...d, [a.id]: project };
       if (project === (a.projectId ?? projects[0]?.id ?? "")) delete next[a.id];
@@ -123,6 +128,7 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
 
   function toggle(a: AdAccountDTO, on: boolean) {
     setMessage(null);
+    setTouched(a.id);
     setDraft((d) => {
       const next = { ...d, [a.id]: on };
       if (on === a.isEnabled) delete next[a.id];
@@ -140,6 +146,11 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
     const res = await setEnabledAccounts(platformId ?? PROVIDERS[provider].platformId, selected.map((a) => a.id), assign);
     if (!res.ok) {
       setMessage({ tone: "error", text: res.error.message });
+      // salvando a cada toque: o toggle volta ao que está no banco
+      if (autoSave) {
+        setDraft({});
+        setProjectDraft({});
+      }
       return false;
     }
     setDraft({});
@@ -161,6 +172,10 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
     saveRef.current = save;
   });
   const count = selected.length;
+  // salvar a cada toque: assim que a escolha muda, grava (uma de cada vez)
+  useEffect(() => {
+    if (autoSave && dirty && !saving) saveRef.current();
+  }, [autoSave, dirty, saving]);
   useEffect(() => {
     onSelectionChange?.({ dirty, count, save: () => (dirty ? saveRef.current() : Promise.resolve(true)) });
   }, [onSelectionChange, dirty, count]);
@@ -223,6 +238,11 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
                       </label>
                     )}
                     {a.dashboards.length > 0 && <p className="mt-1.5 pl-[52px] text-[12.5px] text-fg-2">Em: {a.dashboards.map((d) => d.name).join(", ")}</p>}
+                    {autoSave && touched === a.id && (saving || message) && (
+                      <p role="status" className={`mt-1.5 pl-[52px] text-[12.5px] ${!saving && message?.tone === "error" ? "text-error-fg" : "text-fg-2"}`}>
+                        {saving ? "Salvando…" : message?.text}
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2 pl-[52px] sm:pl-0">
                     {rowSyncing ? <SyncBadge summary={{ tone: "running", label: "Sincronizando…" }} /> : summary && <SyncBadge summary={summary} />}
@@ -271,7 +291,7 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
           )}
           {!canManage && <p className="text-fg-2">Só administradores escolhem as contas.</p>}
         </div>
-        {canManage && (dirty || onSaved) && (
+        {canManage && !autoSave && (dirty || onSaved) && (
           <div className="flex flex-wrap gap-2">
             {dirty && !saving && (
               <button

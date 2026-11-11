@@ -145,6 +145,7 @@ function ProviderSection({
           maxPerProject={state.limit.maxAccountsPerPlatform}
           canManage={state.canManage}
           canSync={state.canSync}
+          autoSave
           now={now}
           timeZone={timeZone}
           onRemove={onRemove}
@@ -164,6 +165,7 @@ function ProviderSection({
           maxPerProject={state.limit.maxAccountsPerPlatform}
           canManage={state.canManage}
           canSync={state.canSync}
+          autoSave
           now={now}
           timeZone={timeZone}
           onRemove={onRemove}
