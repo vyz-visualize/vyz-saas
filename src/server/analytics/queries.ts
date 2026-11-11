@@ -126,6 +126,42 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
   };
 }
 
+// ---- qualquer modelo com as contas ligadas ---------------------------------------------------
+
+export type TemplateWarehouse = {
+  /** Uma entrada por plataforma (Meta, Google) com conta ativa ligada ao dashboard. */
+  sets: WarehouseRows[];
+  accounts: { id: string; name: string; platform: string; lastSyncedAt: string | null }[];
+  today: string;
+};
+
+/**
+ * Linhas do armazém das contas ligadas a um dashboard de modelo comum (não os "ao vivo"),
+ * por plataforma, para o modelo desenhar com dados reais. null = nenhuma conta ativa ligada.
+ */
+export async function loadTemplateWarehouse(dashboardId: string, opts: { platforms: readonly string[]; period: PeriodId; customDays?: number; db?: DB }): Promise<TemplateWarehouse | null> {
+  if (!Uuid.safeParse(dashboardId).success) return null;
+  const db = opts.db ?? (await createServerSupabase());
+  const { data: sources, error } = await db
+    .from("dashboard_sources")
+    .select("account:ad_accounts!dashboard_sources_workspace_id_ad_account_id_fkey(id, name, platform_id, timezone, is_enabled, last_synced_at)")
+    .eq("dashboard_id", dashboardId);
+  if (error) throw fromPostgrest(error);
+  const linked = (sources ?? [])
+    .map((s) => s.account)
+    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (a.platform_id === "meta" || a.platform_id === "google") && opts.platforms.includes(a.platform_id))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  if (!linked.length) return null;
+  const timeZone = linked[0].timezone || DEFAULT_TIME_ZONE;
+  const today = localDate(new Date(), timeZone);
+  const period: PeriodId = isPeriodId(opts.period) ? opts.period : "30d";
+  const { current, previous } = dashboardRanges(period, opts.customDays ?? 14, today);
+  const byPlatform = new Map<LivePlatform, string[]>();
+  for (const a of linked) byPlatform.set(a.platform_id as LivePlatform, [...(byPlatform.get(a.platform_id as LivePlatform) ?? []), a.id]);
+  const sets = await Promise.all([...byPlatform].map(([platform, accountIds]) => readRows({ dashboardId, platform, accountIds, current, previous, breakEvenRoas: null })));
+  return { sets, accounts: linked.map((a) => ({ id: a.id, name: a.name, platform: a.platform_id, lastSyncedAt: a.last_synced_at })), today };
+}
+
 // ---- orgânico ---------------------------------------------------------------------------
 
 type OrganicQuery = { dashboardId: string; profiles: OrganicProfile[]; current: DateRange; previous: DateRange };

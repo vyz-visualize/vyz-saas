@@ -1,0 +1,206 @@
+// Dados reais em qualquer modelo: as linhas do armazém (Meta e Google, já sincronizadas)
+// viram o mesmo Dataset que a amostra gera, e os widgets de todos os modelos desenham
+// sem saber de onde veio. Valores do armazém em reais; o Dataset trabalha em centavos.
+// O que as contas não trazem (CRM, carteira de clientes, projetos) fica vazio.
+
+import type { PlatformId } from "@/features/accounts/platforms";
+import type { WarehouseRows } from "@/features/analytics/types";
+import { parseAgeGender } from "@/features/sync/breakdowns";
+import type { Profile } from "./definitions";
+import type { AudienceRow, Campaign, Creative, Dataset, DayRow, Product } from "./source";
+
+export type WarehouseDatasetSpec = {
+  profile: Profile;
+  /** Hoje, no fuso das contas (YYYY-MM-DD): conta o "dias atrás" e o mês da verba. */
+  today: string;
+  /** Meta de CPA (centavos), margem (0 a 1) e verba mensal (centavos), das configurações. */
+  goal?: number;
+  margin?: number;
+  budget?: number;
+  maturingDays?: number;
+};
+
+const DAY = 86_400_000;
+const cents = (v: number | null | undefined) => Math.round((v ?? 0) * 100);
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / DAY);
+const isoAdd = (iso: string, days: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + days * DAY).toISOString().slice(0, 10);
+
+function emptyDay(ago: number): DayRow {
+  return { ago, spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0, leads: 0, qualified: 0, visits: 0, calls: 0, sessions: 0, views: 0, byPlatform: {}, maturing: false };
+}
+
+/** Dias do intervalo, do mais antigo ao mais novo, somando todas as plataformas. */
+function daysOf(sets: readonly WarehouseRows[], range: { from: string; to: string }, today: string, profile: Profile, maturingDays: number): DayRow[] {
+  const n = dayDiff(range.to, range.from) + 1;
+  const out: DayRow[] = [];
+  const at = new Map<string, DayRow>();
+  for (let i = 0; i < n; i++) {
+    const date = isoAdd(range.from, i);
+    const ago = dayDiff(today, date);
+    const d = emptyDay(ago);
+    // como no ao vivo: os últimos dias do período ainda recebem conversões
+    d.maturing = dayDiff(range.to, date) < maturingDays;
+    out.push(d);
+    at.set(date, d);
+  }
+  for (const rows of sets) {
+    const pid = rows.platform as PlatformId;
+    for (const r of rows.accountDaily) {
+      const d = at.get(r.date);
+      if (!d) continue;
+      const spend = cents(r.spend);
+      const conv = Math.round(r.conversions);
+      d.spend += spend;
+      d.impressions += r.impressions;
+      d.clicks += r.clicks;
+      d.conversions += conv;
+      d.revenue += cents(r.conversionValue);
+      d.sessions += r.landingPageViews ?? r.linkClicks ?? r.clicks;
+      d.views += r.videoViews ?? 0;
+      const p = d.byPlatform[pid] ?? { spend: 0, impressions: 0, clicks: 0, conv: 0 };
+      d.byPlatform[pid] = { spend: p.spend + spend, impressions: p.impressions + r.impressions, clicks: p.clicks + r.clicks, conv: p.conv + conv };
+    }
+  }
+  // as contas trazem conversões; nos modelos de leads, a conversão é o lead
+  for (const d of out) {
+    d.leads = d.conversions;
+    if (profile === "imob") d.qualified = d.conversions;
+  }
+  return out;
+}
+
+const inRange = (date: string, r: { from: string; to: string }) => date >= r.from && date <= r.to;
+
+function campaignsOf(sets: readonly WarehouseRows[]): Campaign[] {
+  const out: Campaign[] = [];
+  for (const rows of sets) {
+    const names = new Map(rows.campaigns.map((c) => [c.id, c.name]));
+    const sum = new Map<string, Campaign>();
+    for (const r of rows.campaignDaily) {
+      if (!inRange(r.date, rows.current)) continue;
+      const c = sum.get(r.campaignId) ?? { id: r.campaignId, name: names.get(r.campaignId) ?? "Campanha", platform: rows.platform as PlatformId, spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0 };
+      c.spend += cents(r.spend);
+      c.impressions += r.impressions;
+      c.clicks += r.clicks;
+      c.conversions += Math.round(r.conversions);
+      c.revenue += cents(r.conversionValue);
+      sum.set(r.campaignId, c);
+    }
+    out.push(...sum.values());
+  }
+  return out.filter((c) => c.spend > 0 || c.impressions > 0).sort((a, b) => b.spend - a.spend);
+}
+
+function creativesOf(sets: readonly WarehouseRows[]): Creative[] {
+  const out: Creative[] = [];
+  for (const rows of sets) {
+    const info = new Map(rows.ads.map((a) => [a.id, a]));
+    const sum = new Map<string, Creative & { reach: number }>();
+    for (const r of rows.adDaily) {
+      if (!inRange(r.date, rows.current)) continue;
+      const a = info.get(r.adId);
+      const c = sum.get(r.adId) ?? { id: r.adId, name: a?.name ?? "Anúncio", format: a?.format ?? "imagem", platform: rows.platform as PlatformId, spend: 0, impressions: 0, clicks: 0, conversions: 0, frequency: 0, tone: 0, reach: 0 };
+      c.spend += cents(r.spend);
+      c.impressions += r.impressions;
+      c.clicks += r.linkClicks ?? r.clicks;
+      c.conversions += Math.round(r.conversions);
+      c.reach += r.reach ?? 0;
+      sum.set(r.adId, c);
+    }
+    out.push(
+      ...[...sum.values()].map(({ reach, ...c }, i) => ({ ...c, frequency: reach > 0 ? Math.round((c.impressions / reach) * 10) / 10 : 0, tone: i % 6 })),
+    );
+  }
+  return out.filter((c) => c.spend > 0).sort((a, b) => b.spend - a.spend);
+}
+
+const AGE_LABEL: Record<string, string> = { "18-24": "18 a 24", "25-34": "25 a 34", "35-44": "35 a 44", "45-54": "45 a 54", "55-64": "55 a 64", "65+": "65+" };
+
+function audienceOf(sets: readonly WarehouseRows[]): { audience: AudienceRow[]; gender: { label: string; share: number }[] } {
+  const byAge = new Map<string, { spend: number; conv: number }>();
+  const byGender = { female: 0, male: 0 };
+  for (const rows of sets) {
+    for (const r of rows.breakdownDaily) {
+      if (r.dimension !== "age_gender" || !inRange(r.date, rows.current)) continue;
+      const p = parseAgeGender(r.value);
+      if (!p) continue;
+      const a = byAge.get(p.age) ?? { spend: 0, conv: 0 };
+      a.spend += cents(r.spend);
+      a.conv += r.conversions;
+      byAge.set(p.age, a);
+      if (p.gender === "female" || p.gender === "male") byGender[p.gender] += r.impressions;
+    }
+  }
+  const totalSpend = [...byAge.values()].reduce((s, a) => s + a.spend, 0);
+  const audience = [...byAge.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([age, a]) => ({ label: AGE_LABEL[age] ?? age, share: totalSpend > 0 ? a.spend / totalSpend : 0, cpa: a.conv > 0 ? Math.round(a.spend / a.conv) : 0 }));
+  const g = byGender.female + byGender.male;
+  return {
+    audience,
+    gender: g > 0 ? [
+      { label: "Mulheres", share: byGender.female / g },
+      { label: "Homens", share: byGender.male / g },
+    ] : [],
+  };
+}
+
+function productsOf(sets: readonly WarehouseRows[]): Product[] {
+  const out: Product[] = [];
+  for (const rows of sets) {
+    const titles = new Map(rows.products.map((p) => [p.id, p.title]));
+    const sum = new Map<string, Product>();
+    for (const r of rows.productDaily) {
+      if (!inRange(r.date, rows.current)) continue;
+      const p = sum.get(r.productId) ?? { name: titles.get(r.productId) ?? "Produto", sold: 0, revenue: 0, spend: 0 };
+      p.sold += Math.round(r.conversions);
+      p.revenue += cents(r.conversionValue);
+      p.spend += cents(r.spend);
+      sum.set(r.productId, p);
+    }
+    out.push(...sum.values());
+  }
+  return out.sort((a, b) => b.revenue - a.revenue);
+}
+
+/** Linhas do armazém de cada plataforma ligada → Dataset dos widgets. */
+export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: WarehouseDatasetSpec): Dataset {
+  const first = sets[0];
+  const maturingDays = spec.maturingDays ?? 3;
+  const current = first ? daysOf(sets, first.current, spec.today, spec.profile, maturingDays) : [];
+  const previous = first ? daysOf(sets, first.previous, spec.today, spec.profile, maturingDays).map((d) => ({ ...d, maturing: false })) : [];
+  const totals = current.reduce((a, d) => ({ impressions: a.impressions + d.impressions, clicks: a.clicks + d.clicks, conv: a.conv + d.conversions }), { impressions: 0, clicks: 0, conv: 0 });
+  const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : 0);
+  const { audience, gender } = audienceOf(sets);
+
+  // verba: gasto do mês corrente (até hoje) contra a verba mensal das configurações
+  const month = spec.today.slice(0, 7);
+  const spentMonth = current.concat(previous).reduce((s, d) => (isoAdd(spec.today, -d.ago).slice(0, 7) === month ? s + d.spend : s), 0);
+  const [y, m] = month.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const day = Number(spec.today.slice(8, 10));
+
+  return {
+    spec: { seed: "warehouse", profile: spec.profile, sources: sets.map((s) => s.platform as PlatformId), days: current.length, goal: spec.goal, margin: spec.margin, budget: spec.budget },
+    current,
+    previous,
+    adPlatforms: sets.map((s) => s.platform as PlatformId),
+    campaigns: campaignsOf(sets),
+    creatives: creativesOf(sets),
+    funnel: totals.impressions > 0 ? [
+      { label: "Impressões", pct: 100 },
+      { label: "Cliques", pct: pct(totals.clicks, totals.impressions) },
+      { label: "Conversões", pct: pct(totals.conv, totals.impressions) },
+    ] : [],
+    projects: [],
+    audience,
+    gender,
+    products: productsOf(sets),
+    crm: [],
+    clients: [],
+    alerts: [],
+    budget: { monthly: spec.budget ?? 0, spent: spentMonth, day, daysInMonth },
+    goal: spec.goal ?? 0,
+    breakEven: spec.margin ? 1 / spec.margin : 0,
+  };
+}

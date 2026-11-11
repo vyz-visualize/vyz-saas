@@ -74,3 +74,10 @@ export function anyDashboardTemplate(id: string): DashboardTemplate | undefined 
 }
 
 export const isLiveTemplate = (id: string) => LIVE_TEMPLATES.some((t) => t.id === id);
+
+/** Plataformas que um modelo comum já lê das contas reais (as outras ficam na amostra). */
+export const REAL_DATA_PLATFORMS = ["meta", "google"] as const;
+
+/** O modelo deixa escolher contas: os "ao vivo" sempre; os outros, se usam Meta ou Google. */
+export const usesAccounts = (t: Pick<DashboardTemplate, "id" | "sources">) => isLiveTemplate(t.id) || t.sources.some((s) => (REAL_DATA_PLATFORMS as readonly string[]).includes(s));
+

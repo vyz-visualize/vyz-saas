@@ -20,6 +20,7 @@ import type { CreativesData, SampleExtraMetric } from "@/features/analytics/type
 import { formatValue as formatLive } from "@/features/analytics/format";
 import { currentTotals, platformPart, series, totals } from "@/features/metrics/compute";
 import { filterDataset } from "@/features/metrics/filter-dataset";
+import type { Dataset } from "@/features/metrics/source";
 import { DEFAULT_TIME_ZONE, localDate } from "@/features/sync/dates";
 import { formatValue as formatMetricValue, metric as metricDefinition } from "@/features/metrics/definitions";
 import { dashboardTemplate } from "@/features/templates/dashboards";
@@ -86,6 +87,8 @@ type BodyProps = {
   extraMetrics?: readonly SampleExtraMetric[];
   /** A página de Criativos vem do servidor: trocar o período precisa navegar. */
   onPeriodChange?: (period: PeriodId, customDays: number) => void;
+  /** Dados reais das contas ligadas (já no período da URL). Sem isso, a amostra do modelo. */
+  dataset?: Dataset;
   /** Filtros que vieram na URL. */
   initialFilters?: DashFilters;
   /** Galeria e métricas novas vêm do servidor: filtrar precisa navegar. Sem isso, só troca o endereço. */
@@ -102,7 +105,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref }: BodyProps) {
+export function DashboardBody({ dataset, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
@@ -110,7 +113,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   const [range, setRange] = useState<Range | null>(null);
   const [compare, setCompare] = useState(true);
   const days = periodDays({ period, customDays });
-  const ds = useMemo(() => datasetFor({ ...spec, settings: spec.settings }, days), [spec, days]);
+  const ds = useMemo(() => dataset ?? datasetFor({ ...spec, settings: spec.settings }, days), [dataset, spec, days]);
   const defaults = useMemo(() => (t ? sampleDefaultKpis(t, spec.pages) : []), [t, spec.pages]);
   const catalog = useMemo(() => sampleCatalog(t?.profile ?? "ecommerce", defaults, t?.sources), [t, defaults]);
   const extraById = useMemo(() => new Map(extraMetrics.map((m) => [m.id, m])), [extraMetrics]);

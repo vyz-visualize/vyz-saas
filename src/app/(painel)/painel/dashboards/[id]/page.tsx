@@ -21,6 +21,8 @@ import { FocusBarActions } from "@/features/workspace/FocusBarActions";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { getDashboard } from "@/server/dashboards/queries";
+import { loadTemplateWarehouse } from "@/server/analytics/queries";
+import { datasetFromWarehouse } from "@/features/metrics/warehouse-dataset";
 import { isSamePageNavigation } from "@/server/http/request";
 import { logActivity } from "@/server/history/log";
 
@@ -105,9 +107,16 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   }
 
   const template = anyDashboardTemplate(d.templateId);
+  // contas da Meta e do Google ligadas: o modelo desenha com os dados reais delas
+  const warehouse = template ? await loadTemplateWarehouse(d.id, { platforms: template.sources, period, customDays }) : null;
+  const realData =
+    warehouse && template
+      ? datasetFromWarehouse(warehouse.sets, { profile: template.profile, today: warehouse.today, goal: d.settings.goal || undefined, margin: d.settings.margin || undefined, budget: d.settings.budget || undefined })
+      : undefined;
   return (
     <>
       <SampleDashboard
+        realData={realData}
         dashboard={{
           id: d.id,
           templateId: d.templateId,
@@ -126,9 +135,9 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
         initialFilters={filters}
         backHref="/painel/dashboards"
         creatives={
-          template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays, filters }) : undefined
+          template && !realData ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays, filters }) : undefined
         }
-        extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays, filters }) : undefined}
+        extraMetrics={template && !realData ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays, filters }) : undefined}
       />
       {/* no modelo que toma a tela toda, a vitrine ganha de volta o respiro da página (globals.css) */}
       <div className="focus-extra">{upsell}</div>

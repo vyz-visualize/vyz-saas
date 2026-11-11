@@ -18,7 +18,7 @@ import { allowedPages, copyName, defaultPages, settingsToDb, type DashboardDetai
 import { createDashboardSchema, dashboardFieldsSchema, type CreateDashboardInput, type DashboardFields } from "@/features/dashboards/schema";
 import { canUse } from "@/features/pricing/entitlements";
 import type { Json } from "@/lib/supabase/database.types";
-import { anyDashboardTemplate, isLiveTemplate } from "@/features/templates/live";
+import { anyDashboardTemplate, isLiveTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
 import type { DashboardTemplate } from "@/features/templates/types";
 import type { WorkspaceSession } from "@/features/workspace/session";
 import { dashboardTag } from "@/server/analytics/queries";
@@ -66,14 +66,19 @@ function pagesFor(t: DashboardTemplate, session: WorkspaceSession, asked: readon
  * mesmo desativadas: o histórico continua visível.
  */
 async function sourcesFor(db: DB, session: WorkspaceSession, t: DashboardTemplate, ids: readonly string[], keep: readonly string[] = []): Promise<string[]> {
-  if (!isLiveTemplate(t.id)) return [];
+  if (!usesAccounts(t)) return [];
   const unique = [...new Set(ids)];
-  if (unique.length === 0) throw appError("validation", "Escolha pelo menos uma conta.", { accountIds: "Escolha pelo menos uma conta." });
+  // modelo comum: as contas são opcionais (sem conta, mostra a amostra)
+  if (unique.length === 0) {
+    if (!isLiveTemplate(t.id)) return [];
+    throw appError("validation", "Escolha pelo menos uma conta.", { accountIds: "Escolha pelo menos uma conta." });
+  }
   const rows = unwrap(await db.from("ad_accounts").select("id, name, platform_id, is_enabled").eq("workspace_id", session.workspace.id).in("id", unique)) ?? [];
   const byId = new Map(rows.map((r) => [r.id, r]));
   for (const id of unique) {
     const a = byId.get(id);
     if (!a || !t.sources.includes(a.platform_id as never)) throw appError("dashboard:source_platform");
+    if (!isLiveTemplate(t.id) && !(REAL_DATA_PLATFORMS as readonly string[]).includes(a.platform_id)) throw appError("dashboard:source_platform");
     if (!a.is_enabled && !keep.includes(id)) throw appError("dashboard:source_disabled", `Ative a conta “${a.name}” em Contas antes de usá-la num dashboard.`);
   }
   return unique;
@@ -160,7 +165,7 @@ export async function updateDashboard(dashboardId: string, input: DashboardField
     // Páginas e contas são trocas atômicas em funções próprias (cada uma numa transação)
     if (!samePages) unwrap(await db.rpc("set_dashboard_pages", { p_dashboard_id: dashboardId, p_page_type_ids: pages }));
     const before = current.sources.map((s) => s.id).sort();
-    if (isLiveTemplate(t.id) && [...accountIds].sort().join() !== before.join()) {
+    if (usesAccounts(t) && [...accountIds].sort().join() !== before.join()) {
       unwrap(await db.rpc("set_dashboard_sources", { p_dashboard_id: dashboardId, p_ad_account_ids: accountIds }));
     }
     // margem e contas mudam o que o dashboard lê: o próximo acesso já vem novo

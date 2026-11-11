@@ -122,7 +122,14 @@ export function DashboardsList({ items, limit, planLabel, canEdit }: Props) {
                           {PLATFORMS[s].short}
                         </span>
                       ))}
-                      {!d.live && <span className="rounded-chip border border-dashed border-line px-2 py-0.5 text-[11px] text-fg-2">Amostra</span>}
+                      {!d.live &&
+                        (d.sources.some((s) => s.isEnabled) ? (
+                          <span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[11px] text-fg" title={d.sources.filter((s) => s.isEnabled).map((s) => s.name).join(" · ")}>
+                            Dados reais · {d.sources.filter((s) => s.isEnabled).length} {d.sources.filter((s) => s.isEnabled).length === 1 ? "conta" : "contas"}
+                          </span>
+                        ) : (
+                          <span className="rounded-chip border border-dashed border-line px-2 py-0.5 text-[11px] text-fg-2">Amostra</span>
+                        ))}
                     </p>
                   </div>
                 </Link>

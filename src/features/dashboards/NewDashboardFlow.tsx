@@ -13,7 +13,7 @@ import { Checkbox, LockBadge, PendingChip, SelectField, TextField } from "@/comp
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { availableIn, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
-import { anyDashboardTemplate, isLiveTemplate } from "@/features/templates/live";
+import { anyDashboardTemplate, isLiveTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { ATTRIBUTIONS, PERIODS, type PeriodId } from "@/features/workspace/types";
@@ -133,7 +133,11 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
     const t = initialTemplate ? anyDashboardTemplate(initialTemplate) : undefined;
     return t ? withTemplate(EMPTY, t, pagesTier, sources) : EMPTY;
   });
-  const [step, setStep] = useState(() => (dashboard ? (isLiveTemplate(dashboard.templateId) ? 2 : 3) : draft.templateId ? (isLiveTemplate(draft.templateId) ? 2 : 3) : 1));
+  const accountStep = (id: string) => {
+    const tt = anyDashboardTemplate(id);
+    return tt && usesAccounts(tt) ? 2 : 3;
+  };
+  const [step, setStep] = useState(() => (dashboard ? accountStep(dashboard.templateId) : draft.templateId ? accountStep(draft.templateId) : 1));
   // ao criar sem modelo escolhido, o assistente pergunta o que a pessoa quer; "procurar você mesmo" fecha e mostra a galeria
   const [assistant, setAssistant] = useState(() => !dashboard && !draft.templateId);
   const [preview, setPreview] = useState<{ id: string; n: number } | null>(null);
@@ -143,24 +147,26 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
 
   const t = draft.templateId ? anyDashboardTemplate(draft.templateId) : undefined;
   const live = !!t && isLiveTemplate(t.id);
+  // modelo comum de Meta ou Google: escolhe as contas também (sem conta, fica a amostra)
+  const pickAccounts = !!t && usesAccounts(t);
   const save = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const atLimit = !editing && used >= limit;
-  const platformSources = t ? sources.filter((s) => t.sources.includes(s.platformId)) : [];
+  const platformSources = t ? sources.filter((s) => t.sources.includes(s.platformId) && (live || (REAL_DATA_PLATFORMS as readonly string[]).includes(s.platformId))) : [];
   const options = t ? pageOptions(t, pagesTier) : [];
   const isLeadProfile = t && ["leads", "imob", "saude", "educacao", "infoproduto"].includes(t.profile);
   // dashboards de exemplo não usam contas: o passo 2 fica de fora
-  const skip = t && !live ? [2] : [];
+  const skip = t && !pickAccounts ? [2] : [];
   const go = (s: number) => setStep(skip.includes(s) ? (s > step ? s + 1 : s - 1) : s);
   const accountsMissing = live && draft.accountIds.length === 0;
   // na edição o template não muda: o primeiro passo é o das contas (ou das páginas)
-  const firstStep = editing ? (live ? 2 : 3) : 1;
+  const firstStep = editing ? (pickAccounts ? 2 : 3) : 1;
 
   const enabledAccounts = sources.reduce<Partial<Record<PlatformId, number>>>((acc, s) => (s.isEnabled ? { ...acc, [s.platformId]: (acc[s.platformId] ?? 0) + 1 } : acc), {});
   function pickTemplate(id: string) {
     const tt = anyDashboardTemplate(id);
     if (!tt) return;
     setDraft((d) => withTemplate(d, tt, pagesTier, sources));
-    setStep(isLiveTemplate(tt.id) ? 2 : 3);
+    setStep(usesAccounts(tt) ? 2 : 3);
   }
 
   function submit() {
@@ -176,7 +182,7 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
       customDays: draft.customDays,
       attribution: draft.attribution,
       pages: draft.pages,
-      accountIds: live ? draft.accountIds : [],
+      accountIds: pickAccounts ? draft.accountIds : [],
       brandColor: whiteLabel ? draft.brandColor : null,
       hideVyz: whiteLabel ? draft.hideVyz : false,
     };
@@ -230,10 +236,11 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
         </>
       )}
 
-      {t && step === 2 && live && (
+      {t && step === 2 && pickAccounts && (
         <Section title={`Contas · ${t.name}`}>
           <p className="mb-4 text-[14px] text-fg-2">
-            Escolha as contas do {t.sources.map((s) => PLATFORMS[s].name).join(" e ")} que alimentam este dashboard. Os números de todas são somados.
+            Escolha as contas do {(live ? t.sources : t.sources.filter((s) => (REAL_DATA_PLATFORMS as readonly string[]).includes(s))).map((s) => PLATFORMS[s].name).join(" e ")} que alimentam este dashboard. Os números de todas são somados.
+            {!live && " Sem conta marcada, o modelo mostra dados de exemplo."}
           </p>
           {platformSources.length === 0 ? (
             <div className="flex flex-col gap-3 rounded-control border border-dashed border-line p-4 text-[14px] sm:flex-row sm:items-center sm:justify-between">
@@ -429,7 +436,7 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
             <Info label="Dashboard" value={[draft.name.trim() || t.name, draft.client.trim()].filter(Boolean).join(" · ")} />
             <Info
               label="Contas"
-              value={live ? platformSources.filter((s) => draft.accountIds.includes(s.id)).map((s) => s.name).join(", ") || "nenhuma" : "dados de exemplo"}
+              value={pickAccounts ? platformSources.filter((s) => draft.accountIds.includes(s.id)).map((s) => s.name).join(", ") || (live ? "nenhuma" : "dados de exemplo") : "dados de exemplo"}
             />
             <Info label="Páginas" value={draft.pages.map((p) => PAGES[p].name).join(", ") || "nenhuma"} />
             <Info label={isLeadProfile ? "Meta de CPL" : "Meta de CPA"} value={draft.goal ? brl(draft.goal, { decimals: false }) : "automática"} />
@@ -437,9 +444,9 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
             <Info label="Verba mensal" value={draft.budget ? brl(draft.budget, { decimals: false }) : "automática"} />
             <Info label="Período e atribuição" value={`${PERIODS.find((p) => p.value === draft.period)?.label} · ${ATTRIBUTIONS.find((a) => a.value === draft.attribution)?.label}`} />
           </dl>
-          {!live && (
+          {!live && draft.accountIds.length === 0 && (
             <div className="mt-4">
-              <PendingChip label="Modelo com dados de exemplo" detail="Os números são fictícios. Para os números das suas contas, use um template com dados reais (Meta Ads ou Google Ads · E-commerce)." />
+              <PendingChip label="Modelo com dados de exemplo" detail={pickAccounts ? "Nenhuma conta marcada: os números são fictícios. Volte ao passo Contas para ver os dados reais." : "Os números são fictícios: este modelo ainda não lê contas desta plataforma."} />
             </div>
           )}
           {atLimit ? (
@@ -514,7 +521,7 @@ function withTemplate(d: Draft, t: DashboardTemplate, pagesTier: Tier, sources: 
     ...d,
     templateId: t.id,
     pages: defaultPages(t, pagesTier),
-    accountIds: isLiveTemplate(t.id) ? sources.filter((s) => s.isEnabled && t.sources.includes(s.platformId)).map((s) => s.id) : [],
+    accountIds: usesAccounts(t) ? sources.filter((s) => s.isEnabled && t.sources.includes(s.platformId) && (isLiveTemplate(t.id) || (REAL_DATA_PLATFORMS as readonly string[]).includes(s.platformId))).map((s) => s.id) : [],
   };
 }
 

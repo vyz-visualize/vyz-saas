@@ -12,6 +12,7 @@ import type { PageId } from "@/features/templates/types";
 import type { Brand } from "@/features/workspace/workspace";
 import { saveDashboardLayout, saveDashboardMetricPrefs } from "@/server/dashboards/actions";
 import { DashboardActions } from "./DashboardActions";
+import type { Dataset } from "@/features/metrics/source";
 import { DashboardBody, type DashboardSpec } from "./DashboardBody";
 import { periodQuery } from "./model";
 
@@ -34,9 +35,11 @@ type Props = {
   initialFilters?: DashFilters;
   /** No painel: para onde o voltar leva (o modelo com visual próprio toma a tela toda e traz o voltar nele). */
   backHref?: string;
+  /** Dados reais das contas ligadas: trocar o período navega e o servidor lê de novo. */
+  realData?: Dataset;
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -57,6 +60,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
   return (
     <DashboardBody
       spec={{ ...dashboard, brand }}
+      dataset={realData}
       hideSpend={hideSpend}
       assemble={assemble}
       printing={printing}
@@ -65,9 +69,9 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       initialPage={initialPage}
       initialFilters={initialFilters}
       backHref={backHref}
-      onFilterNavigate={creatives || extraMetrics?.length ? (search) => router.replace(`${pathname}${search}`, { scroll: false }) : undefined}
+      onFilterNavigate={creatives || extraMetrics?.length || realData ? (search) => router.replace(`${pathname}${search}`, { scroll: false }) : undefined}
       onPeriodChange={
-        creatives || extraMetrics?.length
+        creatives || extraMetrics?.length || realData
           ? (period, customDays) => {
               const q = new URLSearchParams(params?.toString() ?? "");
               q.delete("periodo");
