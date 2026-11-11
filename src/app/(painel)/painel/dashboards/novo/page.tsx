@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/ui/kit";
@@ -25,6 +26,8 @@ async function Novo({ searchParams }: { searchParams: PageProps<"/painel/dashboa
   const session = await requireWorkspace({ minRole: "member", next: "/painel/dashboards/novo" });
   const [sources, dashboards, query] = await Promise.all([listSourceOptions(), listDashboards(), searchParams]);
   const template = typeof query.template === "string" ? query.template : null;
+  // o novo dashboard é um popup na lista; esta página fica só para os links com modelo (assistente)
+  if (!template) redirect("/painel/dashboards?novo=1");
   return (
     <NewDashboardFlow
       sources={sources}

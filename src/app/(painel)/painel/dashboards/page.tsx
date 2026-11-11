@@ -5,25 +5,36 @@ import { DashboardsList } from "@/features/dashboards/DashboardsList";
 import { TIER_LABEL } from "@/features/pricing/entitlements";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
-import { listDashboards } from "@/server/dashboards/queries";
+import { listDashboards, listSourceOptions } from "@/server/dashboards/queries";
 
 export const metadata: Metadata = { title: "Dashboards" };
 
-export default function Page() {
+export default function Page({ searchParams }: PageProps<"/painel/dashboards">) {
   return (
     <Suspense fallback={<ListSkeleton />}>
-      <Lista />
+      <Lista searchParams={searchParams} />
     </Suspense>
   );
 }
 
 // Sessão e banco são dados da requisição: dentro do Suspense.
-async function Lista() {
+async function Lista({ searchParams }: Pick<PageProps<"/painel/dashboards">, "searchParams">) {
   await connection();
   const session = await requireWorkspace({ next: "/painel/dashboards" });
-  const items = await listDashboards();
+  const [items, sources, query] = await Promise.all([listDashboards(), listSourceOptions(), searchParams]);
   const tier = session.access.tier ?? "base";
-  return <DashboardsList items={items} limit={session.access.entitlements?.maxDashboards ?? 0} planLabel={TIER_LABEL[tier]} canEdit={hasRole(session.role, "member")} />;
+  return (
+    <DashboardsList
+      items={items}
+      limit={session.access.entitlements?.maxDashboards ?? 0}
+      planLabel={TIER_LABEL[tier]}
+      canEdit={hasRole(session.role, "member")}
+      sources={sources}
+      tier={tier}
+      pagesTier={session.access.entitlements?.pages ?? "base"}
+      openNew={query.novo === "1"}
+    />
+  );
 }
 
 function ListSkeleton() {

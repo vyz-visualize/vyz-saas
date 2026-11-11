@@ -149,7 +149,9 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
   const save = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const atLimit = !editing && used >= limit;
   const platformSources = t ? sources.filter((s) => t.sources.includes(s.platformId) && (live || (REAL_DATA_PLATFORMS as readonly string[]).includes(s.platformId))) : [];
-  const options = t ? pageOptions(t, pagesTier) : [];
+  // modelo novo: só as páginas das plataformas com conta marcada (e as que o dashboard já tem)
+  const fitting = t?.composed ? new Set<string>([...composePages([...new Set(sources.filter((s) => draft.accountIds.includes(s.id)).map((s) => s.platformId))]), ...draft.pages]) : null;
+  const options = t ? pageOptions(t, pagesTier).filter((o) => !fitting || fitting.has(o.id)) : [];
   const isLeadProfile = t && ["leads", "imob", "saude", "educacao", "infoproduto"].includes(t.profile);
   // dashboards de exemplo não usam contas: o passo 2 fica de fora
   const skip = t && !pickAccounts ? [2] : [];

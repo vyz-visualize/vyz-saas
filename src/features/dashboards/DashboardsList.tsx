@@ -1,6 +1,9 @@
 "use client";
 
 import { Plus, Radio, Trash2 } from "lucide-react";
+import { NewDashboardDialog } from "./NewDashboardDialog";
+import type { SourceOption } from "./model";
+import type { Tier } from "@/features/pricing/entitlements";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { EmptyState, Modal, PageHeader } from "@/components/ui/kit";
@@ -66,9 +69,16 @@ type Props = {
   planLabel: string;
   /** viewer só olha. */
   canEdit: boolean;
+  /** Para o popup de novo dashboard. */
+  sources: SourceOption[];
+  tier: Tier;
+  pagesTier: Tier;
+  /** Abre o popup já ao carregar (?novo=1). */
+  openNew?: boolean;
 };
 
-export function DashboardsList({ items, limit, planLabel, canEdit }: Props) {
+export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier, pagesTier, openNew = false }: Props) {
+  const [creating, setCreating] = useState(openNew && canEdit);
   const [removing, setRemoving] = useState<DashboardListItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -85,14 +95,14 @@ export function DashboardsList({ items, limit, planLabel, canEdit }: Props) {
   }
 
   const newButton = canEdit && (
-    <Link href="/painel/dashboards/novo?novo=1" className={btn.small}>
+    <button type="button" className={btn.small} onClick={() => setCreating(true)} disabled={atLimit} title={atLimit ? "Limite do plano atingido" : undefined}>
       <Plus size={16} aria-hidden /> Novo dashboard
-    </Link>
+    </button>
   );
 
   return (
     <div className="space-y-8">
-      <PageHeader eyebrow="Dashboards" title="Meus dashboards" text="Cada dashboard parte de um template e lê as contas que você ligou a ele." actions={newButton} />
+      <PageHeader eyebrow="Dashboards" title="Meus dashboards" text="Cada dashboard tem um visual, um objetivo e as contas que você ligou a ele." actions={newButton} />
       <div className="rounded-card border border-line bg-card p-4">
         <UsageBar used={items.length} limit={limit} label={`Dashboards × limite do ${planLabel}`} />
         {atLimit && canEdit && <p className="mt-2 text-[13px] text-fg-2">Você chegou ao limite do plano. Apague um dashboard ou troque de plano em Plano.</p>}
@@ -141,7 +151,7 @@ export function DashboardsList({ items, limit, planLabel, canEdit }: Props) {
                       setError(null);
                       setRemoving(d);
                     }}
-                    className="absolute top-2 right-2 inline-flex size-8 items-center justify-center rounded-control border border-line bg-card opacity-100 transition-opacity hover:border-error focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    className="absolute top-2 right-2 inline-flex size-8 items-center justify-center rounded-control border border-line bg-card/90 text-fg-2 backdrop-blur transition-colors hover:border-error hover:text-error"
                   >
                     <Trash2 size={14} aria-hidden />
                   </button>
@@ -151,6 +161,7 @@ export function DashboardsList({ items, limit, planLabel, canEdit }: Props) {
           })}
         </ul>
       )}
+      {canEdit && <NewDashboardDialog open={creating} onClose={() => setCreating(false)} sources={sources} tier={tier} pagesTier={pagesTier} />}
       <DeleteDashboardModal dashboard={removing} pending={pending} error={error} onConfirm={remove} onClose={() => setRemoving(null)} />
     </div>
   );
