@@ -6,17 +6,20 @@ import "server-only";
 
 import { PLATFORMS } from "@/features/accounts/platforms";
 import type { AccountDataset, SyncPlatform } from "@/features/sync/dataset";
+import { generateOrganicData } from "@/features/sync/mock/organic";
+import type { OrganicDataset, OrganicPlatform } from "@/features/sync/organic";
 import { addDays, localDate, type SyncRange } from "@/features/sync/dates";
 import { generateAccountData } from "@/features/sync/mock-generator";
 import { appError } from "@/server/supabase/errors";
 import { fetchGoogleDataset } from "./live/google";
 import { fetchMetaDataset } from "./live/meta";
+import { fetchOrganicDataset } from "./live/organic";
 
 export type SyncAccount = {
   id: string;
   workspaceId: string;
   connectionId: string;
-  platform: SyncPlatform;
+  platform: SyncPlatform | OrganicPlatform;
   externalId: string;
   name: string;
   currency: string;
@@ -29,7 +32,9 @@ export type SyncAccount = {
 export interface SyncSource {
   readonly kind: "mock" | "live";
   /** Entidades e fatos diários da conta no intervalo (inclusive). */
-  fetch(account: SyncAccount, range: SyncRange): Promise<AccountDataset>;
+  fetch(account: SyncAccount & { platform: SyncPlatform }, range: SyncRange): Promise<AccountDataset>;
+  /** Orgânico (Instagram e Página do Facebook). */
+  fetchOrganic(account: SyncAccount & { platform: OrganicPlatform }, range: SyncRange): Promise<OrganicDataset>;
 }
 
 /**
@@ -52,6 +57,9 @@ export const mockSource: SyncSource = {
       anchorDate: storyAnchor(account),
     });
   },
+  async fetchOrganic(account, range) {
+    return generateOrganicData({ platform: account.platform, accountExternalId: account.externalId, accountName: account.name, endDate: range.to, days: range.days, anchorDate: storyAnchor(account) });
+  },
 };
 
 // Fonte real: Meta (Insights por campanha, anúncio e conta) e Google Ads (GAQL
@@ -64,6 +72,9 @@ export const liveSource: SyncSource = {
     if (account.platform === "meta") return fetchMetaDataset(account, range);
     if (account.platform === "google") return fetchGoogleDataset(account, range);
     throw appError("sync:not_configured", `A importação de dados reais do ${PLATFORMS[account.platform as keyof typeof PLATFORMS]?.name ?? account.platform} ainda não está configurada.`);
+  },
+  async fetchOrganic(account, range) {
+    return fetchOrganicDataset(account, range);
   },
 };
 

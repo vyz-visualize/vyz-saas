@@ -36,6 +36,13 @@ const AD_ACCOUNT_FIELDS = "id,account_id,name,currency,timezone_name,account_sta
 type TokenResponse = { access_token: string; token_type?: string; expires_in?: number };
 type DebugToken = { data?: { app_id?: string; is_valid?: boolean; scopes?: string[]; expires_at?: number } };
 type GraphPage<T> = { data?: T[]; paging?: { cursors?: { after?: string }; next?: string } };
+type MetaPage = {
+  id: string;
+  name?: string;
+  instagram_business_account?: { id: string; username?: string; name?: string };
+};
+// Páginas que o login enxerga e o Instagram profissional ligado a cada uma (orgânico).
+const PAGE_FIELDS = "id,name,instagram_business_account{id,username,name}";
 type MetaAdAccount = {
   id: string;
   account_id: string;
@@ -72,6 +79,42 @@ function accountStatus(code: number | undefined): DiscoveredAccount["status"] {
   if (code === 1 || code === 9) return "active";
   if (code === 100 || code === 101) return "closed";
   return "disabled";
+}
+
+/** Página do Facebook e o Instagram ligado a ela viram contas próprias (orgânico). Cada uma conta 1 no plano. */
+export function pageAccounts(p: MetaPage): DiscoveredAccount[] {
+  const out: DiscoveredAccount[] = [
+    {
+      platform_id: "facebook",
+      external_id: p.id,
+      name: (p.name?.trim() || `Página ${p.id}`).slice(0, 200),
+      currency: "BRL",
+      timezone: "America/Sao_Paulo",
+      status: "active",
+      business_external_id: null,
+      business_name: null,
+      manager_external_id: null,
+      metadata: { source: "meta" },
+    },
+  ];
+  const ig = p.instagram_business_account;
+  if (ig?.id) {
+    const handle = ig.username?.trim();
+    out.push({
+      platform_id: "instagram",
+      external_id: ig.id,
+      name: (handle ? `@${handle}` : ig.name?.trim() || `Instagram ${ig.id}`).slice(0, 200),
+      currency: "BRL",
+      timezone: "America/Sao_Paulo",
+      status: "active",
+      business_external_id: null,
+      business_name: null,
+      // a Página a que o perfil está ligado (é por ela que a API chega no Instagram)
+      manager_external_id: p.id,
+      metadata: { source: "meta", page_id: p.id, page_name: p.name ?? null },
+    });
+  }
+  return out;
 }
 
 function toAccount(a: MetaAdAccount): DiscoveredAccount {
@@ -130,9 +173,10 @@ export function metaProvider(): OAuthProvider {
       const info = (await fetchJson<DebugToken>(debug, { label: "Meta: conferência do token" })).data;
       if (!info?.is_valid || info.app_id !== appId) throw new ProviderError("troca_falhou", "Meta: token inválido ou de outro app");
       const scopes = info.scopes ?? [];
-      if (!scopes.includes("ads_read") && !scopes.includes("ads_management")) {
-        throw new ProviderError("permissoes_negadas", "Meta: ads_read não concedido");
-      }
+      // basta um dos dois mundos: anúncios (ads_read) ou orgânico (Páginas e Instagram)
+      const ads = scopes.includes("ads_read") || scopes.includes("ads_management");
+      const organic = scopes.includes("pages_show_list") || scopes.includes("instagram_basic");
+      if (!ads && !organic) throw new ProviderError("permissoes_negadas", "Meta: nem ads_read nem pages_show_list concedidos");
 
       // expires_at = 0 → não expira (token de usuário do sistema).
       const expiresAt = info.expires_at
@@ -163,6 +207,19 @@ export function metaProvider(): OAuthProvider {
         // Segue pelo cursor (não pela URL "next": ela não leva o appsecret_proof).
         after = res.paging?.next ? res.paging.cursors?.after : undefined;
         if (!after) break;
+      }
+      // Orgânico: Páginas e o Instagram ligado a cada uma. Sem a permissão (login antigo ou
+      // só de anúncios), o Meta recusa: a lista segue só com as contas de anúncio.
+      try {
+        let cursor: string | undefined;
+        for (let page = 0; page < MAX_PAGES; page++) {
+          const res = await graph<GraphPage<MetaPage>>("/me/accounts", { fields: PAGE_FIELDS, limit: PAGE_SIZE, ...(cursor ? { after: cursor } : {}) }, accessToken, "Meta: Páginas");
+          for (const pg of res.data ?? []) if (pg?.id) out.push(...pageAccounts(pg));
+          cursor = res.paging?.next ? res.paging.cursors?.after : undefined;
+          if (!cursor) break;
+        }
+      } catch (err) {
+        if (!(err instanceof ProviderError) || (err.status ?? 500) >= 500) throw err;
       }
       return out;
     },

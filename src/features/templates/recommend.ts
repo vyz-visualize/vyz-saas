@@ -31,6 +31,8 @@ export const CATEGORY_WORDS: Record<DashboardCategory, string[]> = {
 /** Palavras que apontam para um modelo específico (pesam mais que as da categoria). */
 export const TEMPLATE_WORDS: Record<string, string[]> = {
   "meta-ecommerce": ["dados reais", "minhas contas", "conta conectada", "facebook", "instagram"],
+  "meta-organico": ["organico", "seguidores", "engajamento", "posts", "reels", "stories", "perfil do instagram"],
+  "meta-organico-pago": ["organico e pago", "pago e organico", "organico com anuncios", "seguidores e vendas"],
   "google-ecommerce": ["dados reais", "minhas contas", "conta conectada", "shopping", "pmax", "termos de pesquisa"],
   "agencia-carteira": ["carteira", "todos os clientes", "vários clientes", "meus clientes"],
   "clinicas-saude": ["clínica", "saúde", "médico", "dentista", "consulta", "agendamento", "paciente", "odontologia", "estética"],
@@ -133,8 +135,8 @@ export function recommendTemplates(text: string, o: RecommendOptions): Recommend
       if (hit.length === 0) score -= 2;
       else {
         score += hit.length * 1.5;
-        // modelo feito só para aquela plataforma
-        if (t.sources.length === 1) score += 2;
+        // modelo feito só para aquela plataforma (Instagram e Página, opcionais nos modelos do Meta, não contam)
+        if (t.sources.filter((src) => PLATFORMS[src].kind !== "social").length === 1) score += 2;
         // pediu só o que o modelo cobre, sem sobrar plataforma
         if (hit.length === platforms.length) score += 0.5;
         reasons.push(...hit.map((p) => PLATFORMS[p].name));

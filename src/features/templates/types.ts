@@ -43,7 +43,9 @@ export type PageId =
   | "canais"
   | "saude-conta"
   | "executivo"
-  | "termos";
+  | "termos"
+  | "organico"
+  | "conteudo";
 
 export type BuildContext = { profile: Profile; sources: PlatformId[] };
 

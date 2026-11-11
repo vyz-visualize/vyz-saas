@@ -107,7 +107,7 @@ function tablesWithWorkspaceId() {
 
 /** O que sai em cascata por um pai da lista, sem precisar estar nela. */
 const CASCADED = new Set([
-  "ad_campaigns", "ads", "ad_products", "insights_account_daily", "insights_ad_daily", "insights_breakdown_daily", "insights_campaign_daily", "insights_product_daily", "insights_search_term_daily",
+  "ad_campaigns", "ads", "ad_products", "insights_account_daily", "insights_ad_daily", "insights_breakdown_daily", "insights_campaign_daily", "insights_product_daily", "insights_search_term_daily", "organic_daily", "organic_posts",
   "dashboard_pages", "dashboard_sources", "share_links", "scheduled_reports", "scheduled_report_recipients", "landing_page_versions", "landing_page_submissions", "connection_secrets", "subscription_items",
 ]);
 

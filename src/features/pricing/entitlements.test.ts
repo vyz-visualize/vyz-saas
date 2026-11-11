@@ -17,14 +17,14 @@ describe("limites por plano", () => {
   });
 
   it("rótulo dos cartões da LP", () => {
-    expect(templateCountsLabel("base")).toBe("5 templates de dashboard · 4 de landing page");
-    expect(templateCountsLabel("pro")).toBe("8 templates de dashboard · 8 de landing page");
-    expect(templateCountsLabel("avancado")).toBe("34 templates de dashboard · 13 de landing page");
+    expect(templateCountsLabel("base")).toBe("7 templates de dashboard · 4 de landing page");
+    expect(templateCountsLabel("pro")).toBe("10 templates de dashboard · 8 de landing page");
+    expect(templateCountsLabel("avancado")).toBe("36 templates de dashboard · 13 de landing page");
   });
 
-  it("Base só usa Meta, Google Ads e GA4", () => {
+  it("Base só usa Meta (com Instagram e Página, que vêm pelo mesmo login), Google Ads e GA4", () => {
     const base = Object.values(PLATFORMS).filter((p) => canUse("base", p.tier)).map((p) => p.id);
-    expect(base.sort()).toEqual(["ga4", "google", "meta"]);
+    expect(base.sort()).toEqual(["facebook", "ga4", "google", "instagram", "meta"]);
     expect(canUse("pro", PLATFORMS.tiktok.tier)).toBe(true);
   });
 

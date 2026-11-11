@@ -26,7 +26,7 @@ function tokens(id: ProviderId): OAuthTokens {
 
 function accounts(id: ProviderId): DiscoveredAccount[] {
   return MOCK_ACCOUNTS[id].map((a) => ({
-    platform_id: id,
+    platform_id: a.platform ?? id,
     external_id: a.externalId,
     name: a.name,
     currency: a.currency,

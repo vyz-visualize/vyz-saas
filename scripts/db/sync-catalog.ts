@@ -25,8 +25,9 @@ if (!url) throw new Error("SUPABASE_DB_URL não definido (.env.local)");
 const PRICED: PlanId[] = ["base", "pro", "avancado"];
 const PERIODS: Period[] = ["mensal", "anual"];
 // Login que conecta cada plataforma (o YouTube entra pelo login do Google Ads).
-const OAUTH: Partial<Record<PlatformId, ProviderId>> = { ...Object.fromEntries(PROVIDER_IDS.map((p) => [p, p])), youtube: "google" };
-const CONNECT_READY: PlatformId[] = [...PROVIDER_IDS];
+// Instagram e Página do Facebook (orgânico) chegam pelo login do Meta.
+const OAUTH: Partial<Record<PlatformId, ProviderId>> = { ...Object.fromEntries(PROVIDER_IDS.map((p) => [p, p])), youtube: "google", instagram: "meta", facebook: "meta" };
+const CONNECT_READY: PlatformId[] = [...PROVIDER_IDS, "instagram", "facebook"];
 
 async function main() {
   const sql = postgres(url!, { ssl: "require", max: 1, prepare: false, onnotice: () => {} });

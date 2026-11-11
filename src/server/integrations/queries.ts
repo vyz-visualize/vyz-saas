@@ -8,6 +8,7 @@ import { cache } from "react";
 import type { PlatformId } from "@/features/accounts/platforms";
 import { countUnits } from "@/features/integrations/limits";
 import { PROVIDER_IDS, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
+import { ORGANIC_PLATFORMS } from "@/features/sync/organic";
 import type { AdAccountDTO, AdAccountStatus, ConnectionDTO, ConnectionStatus, ConnectState, PlatformConnectState, SyncTrigger } from "@/features/integrations/types";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import { hasRole } from "@/features/workspace/session";
@@ -148,13 +149,16 @@ export async function getConnectState(): Promise<ConnectState> {
     const platformId = PROVIDERS[provider].platformId;
     const list = accounts.filter((a) => a.platformId === platformId && !a.manual);
     const conns = connections.filter((c) => c.provider === provider);
+    // Meta: o mesmo login traz o orgânico (Instagram e Página), cada um com o seu seletor
+    const extras = provider === "meta" ? ORGANIC_PLATFORMS.map((p) => ({ platformId: p, accounts: accounts.filter((a) => a.platformId === p && !a.manual) })).filter((e) => e.accounts.length > 0) : [];
     return {
       platformId,
       provider,
       connected: conns.some((c) => c.status === "active"),
       connections: conns,
       accounts: list,
-      enabledCount: list.filter((a) => a.isEnabled).length,
+      enabledCount: list.filter((a) => a.isEnabled).length + extras.reduce((n, e) => n + e.accounts.filter((a) => a.isEnabled).length, 0),
+      ...(extras.length ? { extras } : {}),
     };
   };
 

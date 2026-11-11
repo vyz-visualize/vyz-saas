@@ -6,7 +6,8 @@ import { PLATFORM_ORDER, PLATFORMS, type PlatformId } from "./platforms";
 import { validateId } from "./validate";
 
 /** Plataformas que entram pelo login (botão Conectar). */
-export const OAUTH_PLATFORMS: PlatformId[] = ["meta", "google"];
+// Instagram e Página do Facebook vêm pelo login do Meta (sem cadastro pelo ID).
+export const OAUTH_PLATFORMS: PlatformId[] = ["meta", "instagram", "facebook", "google"];
 
 /** Plataformas do cadastro manual, na ordem da tela. */
 export const MANUAL_PLATFORMS: PlatformId[] = PLATFORM_ORDER.filter((p) => !OAUTH_PLATFORMS.includes(p));

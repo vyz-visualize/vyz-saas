@@ -2224,6 +2224,145 @@ export type Database = {
           },
         ]
       }
+      organic_daily: {
+        Row: {
+          workspace_id: string
+          ad_account_id: string
+          date: string
+          followers: number | null
+          follows: number | null
+          unfollows: number | null
+          views: number
+          reach: number | null
+          profile_views: number | null
+          accounts_engaged: number | null
+          interactions: number
+          likes: number | null
+          comments: number | null
+          shares: number | null
+          saves: number | null
+          link_clicks: number | null
+          posts: number
+          synced_at: string
+        }
+        Insert: {
+          workspace_id: string
+          ad_account_id: string
+          date: string
+          followers?: number | null
+          follows?: number | null
+          unfollows?: number | null
+          views?: number
+          reach?: number | null
+          profile_views?: number | null
+          accounts_engaged?: number | null
+          interactions?: number
+          likes?: number | null
+          comments?: number | null
+          shares?: number | null
+          saves?: number | null
+          link_clicks?: number | null
+          posts?: number
+          synced_at?: string
+        }
+        Update: {
+          workspace_id?: string
+          ad_account_id?: string
+          date?: string
+          followers?: number | null
+          follows?: number | null
+          unfollows?: number | null
+          views?: number
+          reach?: number | null
+          profile_views?: number | null
+          accounts_engaged?: number | null
+          interactions?: number
+          likes?: number | null
+          comments?: number | null
+          shares?: number | null
+          saves?: number | null
+          link_clicks?: number | null
+          posts?: number
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organic_daily_workspace_id_ad_account_id_fkey"
+            columns: ["workspace_id","ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["workspace_id","id"]
+          },
+        ]
+      }
+      organic_posts: {
+        Row: {
+          id: string
+          workspace_id: string
+          ad_account_id: string
+          external_id: string
+          kind: string
+          caption: string | null
+          permalink: string | null
+          thumbnail_url: string | null
+          published_at: string
+          views: number | null
+          reach: number | null
+          likes: number | null
+          comments: number | null
+          shares: number | null
+          saves: number | null
+          interactions: number
+          synced_at: string
+        }
+        Insert: {
+          id?: string
+          workspace_id: string
+          ad_account_id: string
+          external_id: string
+          kind: string
+          caption?: string | null
+          permalink?: string | null
+          thumbnail_url?: string | null
+          published_at: string
+          views?: number | null
+          reach?: number | null
+          likes?: number | null
+          comments?: number | null
+          shares?: number | null
+          saves?: number | null
+          interactions?: number
+          synced_at?: string
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          ad_account_id?: string
+          external_id?: string
+          kind?: string
+          caption?: string | null
+          permalink?: string | null
+          thumbnail_url?: string | null
+          published_at?: string
+          views?: number | null
+          reach?: number | null
+          likes?: number | null
+          comments?: number | null
+          shares?: number | null
+          saves?: number | null
+          interactions?: number
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organic_posts_workspace_id_ad_account_id_fkey"
+            columns: ["workspace_id","ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["workspace_id","id"]
+          },
+        ]
+      }
       payment_transactions: {
         Row: {
           id: string

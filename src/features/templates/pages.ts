@@ -162,6 +162,23 @@ export const PAGES: Record<PageId, PageDef> = {
       widgets: [{ type: "creatives", span: 4, title: "Anúncios do período" }],
     }),
   },
+  // orgânico (Instagram e Página do Facebook): só nos modelos com dados reais do Meta
+  organico: {
+    id: "organico",
+    name: "Orgânico",
+    tier: "base",
+    templateOnly: true,
+    description: "Seguidores, visualizações, alcance e engajamento do Instagram e da Página.",
+    build: () => ({ kpis: [], widgets: [] }),
+  },
+  conteudo: {
+    id: "conteudo",
+    name: "Conteúdo",
+    tier: "base",
+    templateOnly: true,
+    description: "Ranking de posts, reels e stories por interações, e o que cada formato entrega.",
+    build: () => ({ kpis: [], widgets: [] }),
+  },
   metas: {
     id: "metas",
     name: "Metas e progresso",

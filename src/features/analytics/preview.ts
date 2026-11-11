@@ -2,16 +2,20 @@
 // sincronização grava no modo de teste) vira as linhas do armazém e passa pela
 // mesma agregação. Os ids externos servem de ids. Roda no navegador.
 
+import { aggregateOrganic, type OrganicDayRow, type OrganicPostRow, type OrganicProfile, type OrganicView } from "./organic";
+import { generateOrganicData } from "@/features/sync/mock/organic";
+import { organicDayRow, organicPostRow } from "@/features/sync/organic";
 import { generateAccountData } from "@/features/sync/mock-generator";
 import type { AccountDataset } from "@/features/sync/dataset";
-import { DEFAULT_TIME_ZONE, localDate } from "@/features/sync/dates";
+import { DEFAULT_TIME_ZONE, diffDays, localDate } from "@/features/sync/dates";
 import type { PeriodId } from "@/features/workspace/types";
 import { aggregateDashboard } from "./aggregate";
 import { dashboardRanges, maturingStart } from "./ranges";
 import type { DateRange, LiveDashboardData, LivePlatform, WarehouseRows } from "./types";
 
 /** Template live → plataforma. */
-export const TEMPLATE_PLATFORM: Record<string, LivePlatform> = { "meta-ecommerce": "meta", "google-ecommerce": "google", "planilha-midia": "import" };
+// Orgânico (Instagram e Página) usa a estrutura do Meta: os números dele vêm em data.organic.
+export const TEMPLATE_PLATFORM: Record<string, LivePlatform> = { "meta-ecommerce": "meta", "meta-organico": "meta", "meta-organico-pago": "meta", "google-ecommerce": "google", "planilha-midia": "import" };
 
 /** Do conjunto do gerador (ou de qualquer fonte) para as linhas do armazém. */
 export function datasetToRows(ds: AccountDataset, current: DateRange, previous: DateRange): WarehouseRows {
@@ -70,7 +74,7 @@ export function sampleDashboardData(templateId: string, opts: SampleOptions = {}
   const account = SAMPLE_ACCOUNT[platform];
   const view = aggregateDashboard(sampleWarehouse(platform, current, previous), { breakEvenRoas: opts.breakEvenRoas === undefined ? 2.5 : opts.breakEvenRoas });
   return {
-    dashboard: { id: `amostra-${templateId}`, name: SAMPLE_NAME[platform], clientName: "Loja Exemplo", templateId },
+    dashboard: { id: `amostra-${templateId}`, name: ORGANIC_NAMES[templateId] ?? SAMPLE_NAME[platform], clientName: "Loja Exemplo", templateId },
     platform,
     status: "ok",
     accounts: [{ id: account.id, name: account.name, currency: "BRL", timeZone: DEFAULT_TIME_ZONE, lastSyncedAt: null }],
@@ -82,5 +86,30 @@ export function sampleDashboardData(templateId: string, opts: SampleOptions = {}
     hideSpend: false,
     sample: true,
     view,
+    ...(ORGANIC_TEMPLATES.has(templateId) ? { organic: sampleOrganic(current, previous) } : {}),
   };
+}
+
+const ORGANIC_NAMES: Record<string, string> = { "meta-organico": "Instagram e Página · Orgânico", "meta-organico-pago": "Meta · Orgânico + Anúncios" };
+
+/** Modelos que mostram o orgânico (Instagram e Página). */
+const ORGANIC_TEMPLATES = new Set(["meta-ecommerce", "meta-organico", "meta-organico-pago"]);
+
+const SAMPLE_PROFILES: OrganicProfile[] = [
+  { id: "amostra-instagram", name: "@lojaexemplo", platform: "instagram" },
+  { id: "amostra-pagina", name: "Loja Exemplo", platform: "facebook" },
+];
+
+/** Orgânico do gerador para a prévia (galeria, onboarding): os dois perfis, no período e no anterior. */
+export function sampleOrganic(current: DateRange, previous: DateRange): OrganicView {
+  const from = previous.from < current.from ? previous.from : current.from;
+  const days = diffDays(from, current.to) + 1;
+  const dayRows: OrganicDayRow[] = [];
+  const postRows: OrganicPostRow[] = [];
+  for (const p of SAMPLE_PROFILES) {
+    const d = generateOrganicData({ platform: p.platform, accountExternalId: p.id, accountName: p.name, endDate: current.to, days, anchorDate: current.to });
+    for (const x of d.daily) dayRows.push({ ad_account_id: p.id, ...organicDayRow(x) });
+    for (const x of d.posts) postRows.push({ ad_account_id: p.id, ...organicPostRow(x) });
+  }
+  return aggregateOrganic(SAMPLE_PROFILES, dayRows, postRows, current, previous);
 }

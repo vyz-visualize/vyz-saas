@@ -3,6 +3,7 @@
 // Miolo dos dashboards com dados reais: cabeçalho, abas e a página ativa. Os
 // dados já chegam prontos (servidor ou prévia); trocar de aba não consulta nada.
 
+import { OrganicContent, OrganicOverview } from "./organic/OrganicPages";
 import Link from "next/link";
 import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { EmptyState } from "@/components/ui/kit";
@@ -31,7 +32,7 @@ import type { DashboardView, LiveDashboardData, LivePlatform } from "./types";
 
 /** Páginas que cada dashboard live sabe desenhar, na ordem padrão. */
 export const LIVE_PAGES: Record<LivePlatform, Partial<Record<PageId, ComponentType<PageProps>>>> = {
-  meta: { "visao-geral": MetaOverview, campanhas: MetaCampaigns, funil: MetaFunnel, criativos: MetaCreatives, publico: MetaAudience },
+  meta: { "visao-geral": MetaOverview, campanhas: MetaCampaigns, funil: MetaFunnel, criativos: MetaCreatives, publico: MetaAudience, organico: OrganicOverview, conteudo: OrganicContent },
   google: { "visao-geral": GoogleOverview, campanhas: GoogleCampaigns, termos: GoogleTerms, produtos: GoogleProducts },
   import: { "visao-geral": ImportOverview, campanhas: ImportCampaigns },
 };
@@ -40,6 +41,8 @@ export const LIVE_PAGES: Record<LivePlatform, Partial<Record<PageId, ComponentTy
 export const livePlatformName = (platform: LivePlatform) => (platform === "import" ? "Planilha" : PLATFORMS[platform].name);
 
 /** As páginas pedidas que existem na plataforma (na ordem pedida); vazio = todas. */
+const ORGANIC_PAGES = new Set<PageId>(["organico", "conteudo"]);
+
 export function livePages(platform: LivePlatform, pageIds?: readonly PageId[]): PageId[] {
   const known = Object.keys(LIVE_PAGES[platform]) as PageId[];
   const asked = (pageIds ?? []).filter((p, i, all) => known.includes(p) && all.indexOf(p) === i);
@@ -98,7 +101,10 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
   const resultsMixed = data.view.platform === "meta" && !!data.view.resultsMixed;
   const liveCatalog = useMemo(() => (resultsMixed ? CATALOG[data.platform].map((m) => (RESULT_IDS.has(m.id) ? { ...m, kpi: undefined } : m)) : CATALOG[data.platform]), [data.platform, resultsMixed]);
   const metrics = useMetricPrefsState({ dashboardId: data.dashboard.id, scope: data.platform, catalog: liveCatalog, normalizeCatalog: CATALOG[data.platform], initial: metricPrefs, hideSpend: data.hideSpend, saveAction: saveMetrics });
-  const pages = livePages(data.platform, pageIds);
+  // sem Instagram nem Página ligados, as abas do orgânico saem (a não ser num modelo só de orgânico)
+  const allPages = livePages(data.platform, pageIds);
+  const paidPages = allPages.filter((p) => !ORGANIC_PAGES.has(p));
+  const pages = data.organic || !paidPages.length ? allPages : paidPages;
   const [page, setPage] = useState<PageId>(initialPage && pages.includes(initialPage) ? initialPage : pages[0]);
   const active = pages.includes(page) ? page : pages[0];
   const Page = LIVE_PAGES[data.platform][active]!;

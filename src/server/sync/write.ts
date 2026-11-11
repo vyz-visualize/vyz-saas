@@ -11,6 +11,7 @@ import "server-only";
 
 import { chunk, runLimited, withRetry } from "@/features/sync/batch";
 import type { AccountDataset } from "@/features/sync/dataset";
+import { organicDayRow, organicPostRow, type OrganicDataset } from "@/features/sync/organic";
 import { accountReachRows, adRows, campaignRows, FACT_KEYS, FACT_TABLES, factRows, idLookup, productRows, type FactTable } from "@/features/sync/rows";
 import { AppError } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
@@ -132,4 +133,32 @@ export async function writeDataset(db: DB, account: SyncAccount, dataset: Accoun
   for (const table of FACT_TABLES) byTable[table] = facts[table].length;
   const factCount = FACT_TABLES.reduce((total, table) => total + facts[table].length, 0);
   return { entities: campaigns.length + ads.length + products.length, facts: factCount, byTable };
+}
+
+/**
+ * Orgânico (Instagram e Página): grava o total por dia em organic_daily e os posts
+ * (números de vida inteira) em organic_posts. No período, apaga os dias que a
+ * fonte não devolveu mais. Os posts ficam: um post fora da janela relida mantém
+ * os últimos números lidos.
+ */
+export async function writeOrganic(db: DB, account: SyncAccount, dataset: OrganicDataset, syncedAt: string): Promise<{ days: number; posts: number }> {
+  const scope = { workspace_id: account.workspaceId, ad_account_id: account.id, synced_at: syncedAt };
+  // Seguidores sem histórico (null: a API do Instagram só dá o número de agora) não
+  // apagam o que já estava no banco. O PostgREST grava as colunas da união das linhas
+  // de um lote, então os dias com e sem seguidores vão em lotes separados.
+  const all = dataset.daily.map((d) => ({ ...scope, ...organicDayRow(d) }));
+  const withFollowers = all.filter((r) => r.followers !== null);
+  const withoutFollowers = all.filter((r) => r.followers === null).map(({ followers: _omit, ...rest }) => rest);
+  const days = [...withFollowers, ...withoutFollowers];
+  const posts = dataset.posts.map((p) => ({ ...scope, ...organicPostRow(p) }));
+  const dayBatches = [...chunk<object>(withFollowers, BATCH_SIZE), ...chunk<object>(withoutFollowers, BATCH_SIZE)];
+  await runLimited(
+    [
+      ...dayBatches.map((rows) => () => request((signal) => db.from("organic_daily").upsert(rows as never[], { onConflict: "ad_account_id,date" }).abortSignal(signal))),
+      ...chunk(posts, BATCH_SIZE).map((rows) => () => request((signal) => db.from("organic_posts").upsert(rows as never[], { onConflict: "ad_account_id,external_id" }).abortSignal(signal))),
+    ],
+    CONCURRENCY,
+  );
+  await request((signal) => db.from("organic_daily").delete().eq("ad_account_id", account.id).gte("date", dataset.range.from).lte("date", dataset.range.to).lt("synced_at", syncedAt).abortSignal(signal));
+  return { days: days.length, posts: posts.length };
 }

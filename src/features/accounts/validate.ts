@@ -18,6 +18,8 @@ export function maskId(kind: FieldKind, raw: string): string {
       return d ? `act_${d}` : "";
     }
     case "metaBusiness":
+    case "instagramAccount":
+    case "facebookPage":
     case "ga4Property":
     case "digits":
       return digits(raw).slice(0, 20);
@@ -42,6 +44,11 @@ export function validateId(kind: FieldKind, raw: string): Check {
     }
     case "metaBusiness": {
       if (!/^\d{5,20}$/.test(v)) return { ok: false, error: "O ID do BM tem só dígitos (5 a 20)." };
+      return { ok: true, value: v };
+    }
+    case "instagramAccount":
+    case "facebookPage": {
+      if (!/^\d{5,20}$/.test(v)) return { ok: false, error: "O ID tem só dígitos (5 a 20)." };
       return { ok: true, value: v };
     }
     case "googleCustomer": {

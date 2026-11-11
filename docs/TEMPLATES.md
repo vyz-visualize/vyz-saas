@@ -133,3 +133,11 @@ Os templates de `live.ts` (`dataMode: "live"`) leem o que a sincronização grav
 | Básico | 5 (2 com dados reais, 3 com visual próprio) | 4 |
 | Padrão | 8 | 8 |
 | Avançado | 34 (2 com visual próprio na Bklit UI, 1 de planilha com dados reais) | 13 |
+
+## Orgânico (Instagram e Página do Facebook)
+
+O login do Meta também traz as Páginas e o Instagram profissional ligado a cada uma (`listAccounts` em `server/integrations/providers/meta.ts`). Cada perfil vira uma conta própria em `ad_accounts` (plataformas `instagram` e `facebook`, tipo `social`, `oauth_provider = meta` no catálogo) e conta 1 conta do plano. A sincronização grava em `organic_daily` (por dia) e `organic_posts` (cada post com os números de vida inteira), pelo `fetchOrganicDataset` (real) ou `generateOrganicData` (simulado). Desde 2025 o Meta não dá mais impressões: o número principal é **visualizações** (Instagram `views`, Página `page_media_view`).
+
+No dashboard, o orgânico chega em `data.organic` (`aggregateOrganic`, `features/analytics/organic.ts`) para qualquer modelo com dados reais que tenha um Instagram ou uma Página ligados. As abas são `organico` (cards, série e tabela por perfil) e `conteudo` (ranking de posts, reels e stories), em `features/analytics/organic/OrganicPages.tsx`. Modelos: `meta-organico` (só orgânico), `meta-organico-pago` (orgânico + anúncios) e a aba Orgânico no `meta-ecommerce`. Sem perfil ligado, as abas do orgânico somem dos modelos que têm anúncios.
+
+Antes de publicar uma mudança aqui: `npm run db:push` (migração `20261112090000_organic.sql`) e `npm run db:catalog` (plataformas, páginas e modelos novos).

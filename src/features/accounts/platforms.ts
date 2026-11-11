@@ -2,6 +2,8 @@ import type { Tier } from "@/features/pricing/entitlements";
 
 export type PlatformId =
   | "meta"
+  | "instagram"
+  | "facebook"
   | "google"
   | "ga4"
   | "tiktok"
@@ -22,6 +24,8 @@ export type PlatformId =
 export type FieldKind =
   | "metaAccount"
   | "metaBusiness"
+  | "instagramAccount"
+  | "facebookPage"
   | "googleCustomer"
   | "ga4Property"
   | "ga4Measurement"
@@ -42,7 +46,8 @@ export type Platform = {
   name: string;
   /** Sigla curta (selos e miniaturas). */
   short: string;
-  kind: "ads" | "analytics" | "crm";
+  /** social = orgânico (Instagram, Página do Facebook): vem pelo login do Meta. */
+  kind: "ads" | "analytics" | "crm" | "social";
   /** Plano mínimo. Básico: Meta, Google Ads e GA4. Padrão: + TikTok, LinkedIn e CRMs. Avançado: todas. */
   tier: Tier;
   /** Campo principal (o ID que identifica a conta). */
@@ -60,6 +65,22 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
       { key: "account", label: "Conta de anúncio", kind: "metaAccount", placeholder: "act_1234567890", hint: "Aceita só os dígitos; o act_ entra sozinho." },
       { key: "business", label: "ID do Business Manager", kind: "metaBusiness", placeholder: "123456789012345", optional: true },
     ],
+  },
+  instagram: {
+    id: "instagram",
+    name: "Instagram",
+    short: "IG",
+    kind: "social",
+    tier: "base",
+    fields: [{ key: "account", label: "ID do perfil do Instagram", kind: "instagramAccount", placeholder: "17841400000000000" }],
+  },
+  facebook: {
+    id: "facebook",
+    name: "Página do Facebook",
+    short: "FB",
+    kind: "social",
+    tier: "base",
+    fields: [{ key: "account", label: "ID da Página", kind: "facebookPage", placeholder: "100000000000000" }],
   },
   google: {
     id: "google",
@@ -202,6 +223,8 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
 
 export const PLATFORM_ORDER: PlatformId[] = [
   "meta",
+  "instagram",
+  "facebook",
   "google",
   "ga4",
   "tiktok",
@@ -226,3 +249,5 @@ const TIER_RANK: Record<Tier, number> = { base: 0, pro: 1, avancado: 2, personal
 export const platformsForTier = (tier: Tier) => PLATFORM_ORDER.map((id) => PLATFORMS[id]).filter((p) => TIER_RANK[p.tier] <= TIER_RANK[tier]);
 
 export const isAdPlatform = (id: PlatformId) => PLATFORMS[id].kind === "ads";
+/** Orgânico (Instagram, Página): sem investimento; números próprios em organic_daily e organic_posts. */
+export const isOrganicPlatform = (id: string): id is "instagram" | "facebook" => id === "instagram" || id === "facebook";

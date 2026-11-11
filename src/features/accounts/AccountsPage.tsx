@@ -152,6 +152,23 @@ function ProviderSection({
       ) : (
         platform.connected && <p className="text-[14px] text-fg-2">Este login não enxerga {noAccount(provider)}. Confira o acesso no {info.name} e reconecte.</p>
       )}
+
+      {/* orgânico pelo mesmo login (Meta: Instagram e Página do Facebook), cada um com a sua escolha */}
+      {platform.extras?.map((extra) => (
+        <AccountPicker
+          key={extra.platformId}
+          provider={provider}
+          platformId={extra.platformId}
+          accounts={extra.accounts}
+          projects={state.projects}
+          maxPerProject={state.limit.maxAccountsPerPlatform}
+          canManage={state.canManage}
+          canSync={state.canSync}
+          now={now}
+          timeZone={timeZone}
+          onRemove={onRemove}
+        />
+      ))}
     </section>
   );
 }

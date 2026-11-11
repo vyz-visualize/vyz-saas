@@ -74,6 +74,8 @@ export type PlatformConnectState = {
   /** Contas vistas pelas conexões (as que saíram de uma conexão desfeita também). */
   accounts: AdAccountDTO[];
   enabledCount: number;
+  /** Outras plataformas que chegam pelo mesmo login (Meta: Instagram e Página do Facebook). */
+  extras?: { platformId: PlatformId; accounts: AdAccountDTO[] }[];
 };
 
 export type ConnectState = {

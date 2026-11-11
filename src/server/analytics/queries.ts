@@ -14,6 +14,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { isImportPlatform } from "@/features/accounts/connection-modes";
 import { z } from "zod";
 import { aggregateDashboard, redactSpend } from "@/features/analytics/aggregate";
+import { aggregateOrganic, type OrganicDayRow, type OrganicPostRow, type OrganicProfile, type OrganicView } from "@/features/analytics/organic";
+import { isOrganicPlatform } from "@/features/accounts/platforms";
 import { cutCreatives, type CreativesAccess } from "@/features/analytics/creatives/access";
 import { aggregateFiltered } from "@/features/analytics/filtered";
 import { NO_FILTERS, type DashFilters } from "@/features/analytics/filters";
@@ -77,6 +79,12 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     .select("account:ad_accounts!dashboard_sources_workspace_id_ad_account_id_fkey(id, name, platform_id, currency, timezone, is_enabled, last_synced_at)")
     .eq("dashboard_id", dashboardId);
   if (sErr) throw fromPostgrest(sErr);
+  // orgânico (Instagram e Página): lido à parte, em organic_daily e organic_posts
+  const organicProfiles: OrganicProfile[] = (sources ?? [])
+    .map((s) => s.account)
+    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && isOrganicPlatform(a.platform_id))
+    .map((a) => ({ id: a.id, name: a.name, platform: a.platform_id as OrganicProfile["platform"] }))
+    .sort((a, b) => a.id.localeCompare(b.id));
   const accounts: LiveAccount[] = (sources ?? [])
     .map((s) => s.account)
     // planilha: qualquer plataforma que entra por importação; as outras, só a do template
@@ -84,7 +92,8 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     .map((a) => ({ id: a.id, name: a.name, currency: a.currency, timeZone: a.timezone || DEFAULT_TIME_ZONE, lastSyncedAt: a.last_synced_at }))
     .sort((a, b) => a.id.localeCompare(b.id));
 
-  const timeZone = accounts[0]?.timeZone ?? DEFAULT_TIME_ZONE;
+  const organicTz = (sources ?? []).map((s) => s.account).find((a) => a && organicProfiles.some((p) => p.id === a.id))?.timezone;
+  const timeZone = accounts[0]?.timeZone ?? organicTz ?? DEFAULT_TIME_ZONE;
   const period: PeriodId = isPeriodId(opts.period) ? opts.period : "30d";
   const { current, previous } = dashboardRanges(period, opts.customDays ?? 14, localDate(new Date(), timeZone));
   const margin = dashboard.margin == null ? null : Number(dashboard.margin);
@@ -94,13 +103,14 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     ? await readWarehouse({ dashboardId, platform, accountIds: accounts.map((a) => a.id), current, previous, breakEvenRoas }, opts.filters ?? NO_FILTERS)
     : aggregateDashboard(emptyRows(platform, current, previous), { breakEvenRoas });
   if (opts.hideSpend) view = redactSpend(view);
+  const organic = organicProfiles.length ? await readOrganic({ dashboardId, profiles: organicProfiles, current, previous }) : undefined;
   const currency = accounts[0]?.currency ?? "BRL";
   const cut = cutCreatives(view, opts.creatives ?? {}, { hideSpend: !!opts.hideSpend, currency });
 
   return {
     dashboard: { id: dashboard.id, name: dashboard.name, clientName: dashboard.client_name, templateId: dashboard.template_id },
     platform,
-    status: !accounts.length ? "no_accounts" : view.hasData ? "ok" : "no_data",
+    status: !accounts.length && !organicProfiles.length ? "no_accounts" : view.hasData || organic?.hasData ? "ok" : "no_data",
     accounts,
     // contas de moedas diferentes não se somam com conversão: vale a primeira
     currency,
@@ -112,7 +122,50 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     sample: false,
     view: cut.view,
     creatives: cut.creatives,
+    ...(organic ? { organic } : {}),
   };
+}
+
+// ---- orgânico ---------------------------------------------------------------------------
+
+type OrganicQuery = { dashboardId: string; profiles: OrganicProfile[]; current: DateRange; previous: DateRange };
+
+/** Orgânico do período e do anterior, em cache como o armazém (a sincronização invalida pela conta). */
+async function readOrganic(q: OrganicQuery): Promise<OrganicView> {
+  "use cache";
+  if (process.env.NEXT_RUNTIME) {
+    cacheTag(dashboardTag(q.dashboardId), ...q.profiles.map((p) => insightsTag(p.id)));
+    cacheLife("hours");
+  }
+  const db = createAdminSupabase();
+  const ids = q.profiles.map((p) => p.id);
+  // os seguidores do início do período anterior pedem um dia antes
+  const from = q.previous.from < q.current.from ? q.previous.from : q.current.from;
+  const [days, posts] = await Promise.all([
+    fetchAll<OrganicDayRow>((a, b) =>
+      db
+        .from("organic_daily")
+        .select("ad_account_id, date, followers, follows, unfollows, views, reach, profile_views, accounts_engaged, interactions, link_clicks, posts")
+        .in("ad_account_id", ids)
+        .gte("date", from)
+        .lte("date", q.current.to)
+        .order("ad_account_id")
+        .order("date")
+        .range(a, b),
+    ),
+    fetchAll<OrganicPostRow>((a, b) =>
+      db
+        .from("organic_posts")
+        .select("ad_account_id, external_id, kind, caption, permalink, thumbnail_url, published_at, views, reach, likes, comments, shares, saves, interactions")
+        .in("ad_account_id", ids)
+        .gte("published_at", `${q.current.from}T00:00:00Z`)
+        .lte("published_at", `${q.current.to}T23:59:59Z`)
+        .order("published_at", { ascending: false })
+        .range(a, b),
+    ),
+  ]);
+  const toNum = (r: OrganicDayRow): OrganicDayRow => ({ ...r, followers: opt(r.followers), views: num(r.views), reach: opt(r.reach) });
+  return aggregateOrganic(q.profiles, days.map(toNum), posts.map((p) => ({ ...p, views: opt(p.views), reach: opt(p.reach) })), q.current, q.previous);
 }
 
 // ---- leitura em cache ---------------------------------------------------------------------

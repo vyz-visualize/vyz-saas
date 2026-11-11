@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Switch } from "@/components/ui/controls";
 import { btn } from "@/components/ui/styles";
 import { resyncAccount, setEnabledAccounts, type EnabledAccountsResult } from "@/server/integrations/actions";
+import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { fitsProject, type BillableRef } from "./limits";
 import { PROVIDERS, type ProviderId } from "./providers";
 import { accountStatusLabel, syncSummary, type SyncSummary } from "./sync-label";
@@ -20,6 +21,8 @@ import { btnSmallOutline } from "./ui";
 
 type AccountPickerProps = {
   provider: ProviderId;
+  /** Plataforma das contas quando não é a do login (Meta: Instagram e Página do Facebook, orgânico). */
+  platformId?: PlatformId;
   /** Contas vistas pelas conexões desta plataforma (getConnectState). */
   accounts: AdAccountDTO[];
   /** Projetos ativos: cada conta ligada entra em um. */
@@ -53,7 +56,9 @@ const ref = (a: AdAccountDTO): BillableRef => ({ platformId: a.platformId, exter
 
 type Group = { key: string; title: string; accounts: AdAccountDTO[] };
 
-function groupsOf(provider: ProviderId, accounts: AdAccountDTO[]): Group[] {
+function groupsOf(provider: ProviderId, accounts: AdAccountDTO[], platformId?: PlatformId): Group[] {
+  // orgânico (Instagram, Página): um grupo só, com o nome da plataforma
+  if (platformId && platformId !== PROVIDERS[provider].platformId) return [{ key: platformId, title: PLATFORMS[platformId].name, accounts }];
   const label = PROVIDERS[provider].groupLabel;
   const map = new Map<string, Group>();
   for (const a of accounts) {
@@ -86,7 +91,7 @@ export function SyncBadge({ summary }: { summary: SyncSummary }) {
   );
 }
 
-export function AccountPicker({ provider, accounts, projects, maxPerProject, canManage, canSync = canManage, now, timeZone, onSaved, saveLabel = "Salvar escolha", onRemove, onSelectionChange }: AccountPickerProps) {
+export function AccountPicker({ provider, platformId, accounts, projects, maxPerProject, canManage, canSync = canManage, now, timeZone, onSaved, saveLabel = "Salvar escolha", onRemove, onSelectionChange }: AccountPickerProps) {
   // Só o que mudou em relação ao banco; depois de salvar, volta a valer o banco.
   const [draft, setDraft] = useState<Record<string, boolean>>({});
   const [saving, startSave] = useTransition();
@@ -100,7 +105,7 @@ export function AccountPicker({ provider, accounts, projects, maxPerProject, can
   const isOn = (a: AdAccountDTO) => draft[a.id] ?? a.isEnabled;
   const selected = accounts.filter(isOn);
   const dirty = accounts.some((a) => isOn(a) !== a.isEnabled) || Object.keys(projectDraft).length > 0;
-  const groups = useMemo(() => groupsOf(provider, accounts), [provider, accounts]);
+  const groups = useMemo(() => groupsOf(provider, accounts, platformId), [provider, accounts, platformId]);
   const busy = saving || syncing;
   const inProject = (project: string, except?: AdAccountDTO) => selected.filter((s) => s !== except && projectOf(s) === project).map(ref);
   const fitsIn = (a: AdAccountDTO, project: string) => fitsProject(ref(a), inProject(project, a), maxPerProject);
@@ -132,7 +137,7 @@ export function AccountPicker({ provider, accounts, projects, maxPerProject, can
 
   async function persist(): Promise<boolean> {
     const assign = Object.fromEntries(selected.filter((a) => projectOf(a)).map((a) => [a.id, projectOf(a)]));
-    const res = await setEnabledAccounts(PROVIDERS[provider].platformId, selected.map((a) => a.id), assign);
+    const res = await setEnabledAccounts(platformId ?? PROVIDERS[provider].platformId, selected.map((a) => a.id), assign);
     if (!res.ok) {
       setMessage({ tone: "error", text: res.error.message });
       return false;

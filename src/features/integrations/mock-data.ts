@@ -14,8 +14,10 @@ export type MockAccount = {
   timezone: string;
   /** Meta: Business Manager dono da conta. */
   business?: { id: string; name: string };
-  /** Google Ads: conta de administrador (MCC) que dá acesso. */
+  /** Google Ads: conta de administrador (MCC) que dá acesso. Instagram: a Página a que ele está ligado. */
   manager?: { id: string; name: string };
+  /** Plataforma, quando não é a do próprio login (Meta: Página do Facebook e Instagram, orgânico). */
+  platform?: "facebook" | "instagram";
 };
 
 /** O que falta para a conexão real (texto do selo "Modo de teste"). */
@@ -69,6 +71,9 @@ export const MOCK_ACCOUNTS: Record<ProviderId, MockAccount[]> = {
     { externalId: "act_1029384756", name: "Loja Exemplo · Vendas", currency: "BRL", timezone: "America/Sao_Paulo", business: LOJA_BM },
     { externalId: "act_5647382910", name: "Loja Exemplo · Remarketing", currency: "BRL", timezone: "America/Sao_Paulo", business: LOJA_BM },
     { externalId: "act_8473629105", name: "Marca Dois · Brasil", currency: "BRL", timezone: "America/Sao_Paulo", business: MARCA_BM },
+    // orgânico: a Página e o Instagram ligado a ela
+    { externalId: "104857392016483", name: "Loja Exemplo", currency: "BRL", timezone: "America/Sao_Paulo", platform: "facebook" },
+    { externalId: "17841400123456789", name: "@lojaexemplo", currency: "BRL", timezone: "America/Sao_Paulo", platform: "instagram", manager: { id: "104857392016483", name: "Loja Exemplo" } },
   ],
   google: [
     { externalId: "123-456-7890", name: "Loja Exemplo · Brasil", currency: "BRL", timezone: "America/Sao_Paulo", manager: MCC },
@@ -82,7 +87,7 @@ export type MockAccountGroup = { id: string; name: string; accounts: MockAccount
 export function mockAccountGroups(provider: ProviderId): MockAccountGroup[] {
   const groups = new Map<string, MockAccountGroup>();
   for (const a of MOCK_ACCOUNTS[provider]) {
-    const owner = a.business ?? a.manager ?? { id: a.externalId, name: a.name };
+    const owner = a.platform ? { id: "organico", name: "Páginas e Instagram" } : (a.business ?? a.manager ?? { id: a.externalId, name: a.name });
     const group = groups.get(owner.id) ?? { id: owner.id, name: owner.name, accounts: [] };
     group.accounts.push(a);
     groups.set(owner.id, group);

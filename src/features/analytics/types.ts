@@ -2,6 +2,7 @@
 // (insights_* em camelCase, já filtradas por conta e período) e os view models
 // que a tela desenha. A agregação (aggregate.ts) liga um ao outro.
 
+import type { OrganicView } from "./organic";
 import type { Tier } from "@/features/pricing/entitlements";
 import type { ObjectiveResult } from "./creatives/objectives";
 import type { FilterDim, FilterInfo } from "./filters";
@@ -360,4 +361,6 @@ export type LiveDashboardData = {
   /** Página de Criativos já cortada pelo plano (servidor). Sem isso: prévia, com a galeria. */
   creatives?: CreativesData;
   view: DashboardView;
+  /** Orgânico (Instagram e Página do Facebook) dos perfis ligados ao dashboard. */
+  organic?: OrganicView;
 };

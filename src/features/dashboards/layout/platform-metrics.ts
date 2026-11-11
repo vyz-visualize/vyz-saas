@@ -61,6 +61,16 @@ export const PLATFORM_API: Record<PlatformId, PlatformApi> = {
     api: "Google Ads API (campanhas de vídeo)",
     metrics: [m("spend", "metrics.cost_micros"), m("impressions", "metrics.impressions"), m("views", "metrics.video_views"), m("viewRate", "metrics.video_view_rate"), m("cpv", "metrics.average_cpv"), m("clicks", "metrics.clicks"), m("ctr", "metrics.ctr"), m("conversions", "metrics.conversions")],
   },
+  instagram: {
+    status: "sync",
+    api: "Instagram API com Login do Facebook (Insights)",
+    metrics: [m("views", "views"), m("impressions", "views"), m("clicks", "profile_links_taps")],
+  },
+  facebook: {
+    status: "sync",
+    api: "Pages API (Page Insights)",
+    metrics: [m("views", "page_media_view"), m("impressions", "page_media_view"), m("clicks", "page_total_actions")],
+  },
   ga4: {
     status: "soon",
     api: "GA4 Data API",

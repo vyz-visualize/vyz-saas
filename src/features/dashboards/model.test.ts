@@ -78,7 +78,7 @@ describe("páginas pelo plano", () => {
     expect(opts.find((o) => o.id === "produtos")?.locked).toBe(true);
     expect(opts.find((o) => o.id === "termos")?.locked).toBe(false);
     expect(defaultPages(google, "pro")).toEqual(["visao-geral", "campanhas", "termos"]);
-    expect(defaultPages(meta, "base")).toEqual(["visao-geral", "campanhas", "funil", "criativos"]);
+    expect(defaultPages(meta, "base")).toEqual(["visao-geral", "campanhas", "funil", "criativos", "organico"]);
   });
 
   it("exemplo: biblioteca sem as páginas exclusivas de outros templates", () => {

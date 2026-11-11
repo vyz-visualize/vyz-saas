@@ -11,6 +11,7 @@ import "server-only";
 // tentar de novo.
 
 import { SYNC_PLATFORMS } from "@/features/sync/dataset";
+import { ORGANIC_PLATFORMS } from "@/features/sync/organic";
 import type { Enums } from "@/lib/supabase/database.types";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import { syncAdAccount, type SyncErrorCode } from "./run";
@@ -58,7 +59,7 @@ export async function syncDueAccounts(opts: ScheduledOptions = {}): Promise<Sche
       recent:sync_runs!sync_runs_workspace_id_ad_account_id_fkey(id)`,
     )
     .eq("is_enabled", true)
-    .in("platform_id", SYNC_PLATFORMS)
+    .in("platform_id", [...SYNC_PLATFORMS, ...ORGANIC_PLATFORMS])
     .eq("connection.status", "active")
     .in("workspace.subscriptions.status", ACCESS_STATUSES)
     // nenhuma tentativa (certa ou com erro) depois do corte

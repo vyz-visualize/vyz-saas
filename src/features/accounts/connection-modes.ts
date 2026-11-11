@@ -34,6 +34,18 @@ export const CONNECTIONS: Record<PlatformId, PlatformConnection> = {
     writes: ["pausar e reativar campanha", "orçamento diário"],
     note: "Login do Meta: dados e otimizações aplicadas pelo VYZ.",
   },
+  instagram: {
+    mode: "oauth_read",
+    status: "live",
+    writes: [],
+    note: "Vem pelo login do Meta: seguidores, visualizações, interações e posts.",
+  },
+  facebook: {
+    mode: "oauth_read",
+    status: "live",
+    writes: [],
+    note: "Vem pelo login do Meta: seguidores, visualizações, interações e posts.",
+  },
   google: {
     mode: "oauth_write",
     status: "live",

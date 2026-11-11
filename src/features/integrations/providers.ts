@@ -56,11 +56,17 @@ export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
     loginGender: "m",
     accountNoun: "conta de anúncio",
     accountGender: "f",
-    planRule: "Cada Business Manager conta como 1 conta do plano.",
+    planRule: "Cada Business Manager conta como 1 conta do plano; cada Instagram e cada Página, também 1.",
     groupLabel: "Business Manager",
     permissions: [
       { scope: "ads_read", label: "Ler os relatórios de anúncios", detail: "Campanhas, conjuntos, anúncios e métricas das contas que você escolher." },
       { scope: "business_management", label: "Ver os seus Business Managers", detail: "Para listar as contas de anúncio de cada BM." },
+      { scope: "ads_management", label: "Aplicar otimizações", detail: "Pausar campanhas e mudar o orçamento diário, só quando você clica em Aplicar ou liga o automático." },
+      { scope: "pages_show_list", label: "Ver as suas Páginas", detail: "Para listar as Páginas do Facebook e os Instagrams ligados a elas." },
+      { scope: "read_insights", label: "Ler os números das Páginas", detail: "Seguidores, visualizações e interações das Páginas que você escolher." },
+      { scope: "pages_read_engagement", label: "Ler os posts das Páginas", detail: "Posts e as interações deles, para o ranking de conteúdo." },
+      { scope: "instagram_basic", label: "Ver o perfil do Instagram", detail: "Nome, seguidores e posts do perfil." },
+      { scope: "instagram_manage_insights", label: "Ler os números do Instagram", detail: "Alcance, visualizações e interações do perfil, dos posts, reels e stories." },
     ],
   },
   google: {
