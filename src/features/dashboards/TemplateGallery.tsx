@@ -31,12 +31,16 @@ const SAMPLE_CLIENT: Record<string, string> = {
   Executivo: "Grupo Horizonte",
 };
 
+const PREVIEW_TABS: PageId[] = ["visao-geral", "meta-ads", "google-ads", "site", "funil"];
+
 export function TemplatePreview({ t, page, variant = "full" }: { t: DashboardTemplate; page?: PageId; variant?: "full" | "compact" }) {
   const client = SAMPLE_CLIENT[t.category];
   const ds = datasetFor({ templateId: t.id, name: t.name, client }, 30);
   const p = page ?? t.pages[0];
+  // modelo novo: as abas de um exemplo com Meta, Google e GA4 (não as 13 possíveis)
+  const tabs = t.composed ? PREVIEW_TABS : t.pages;
   if (t.skin && p === t.pages[0]) {
-    return <SkinView skin={t.skin} ctx={makeContext(ds)} name={t.name} client={client} pages={t.pages} active={p} periodLabel="Últimos 30 dias" />;
+    return <SkinView skin={t.skin} ctx={makeContext(ds)} name={t.name} client={client} pages={tabs} active={p} periodLabel="Últimos 30 dias" />;
   }
   return (
     <div className="bg-bg p-3">

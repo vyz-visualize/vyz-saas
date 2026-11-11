@@ -11,7 +11,7 @@ import { btn } from "@/components/ui/styles";
 import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements";
 import { anyDashboardTemplate } from "@/features/templates/live";
 import { composedId, OBJECTIVES, VISUALS, type ObjectiveId } from "@/features/templates/dashboards/composed";
-import { TemplatePreview } from "./TemplateGallery";
+import { TemplateThumb } from "./TemplateGallery";
 
 export function ModelPicker({ tier, initialObjective = "ecommerce", onUse }: { tier: Tier; initialObjective?: ObjectiveId; onUse: (templateId: string) => void }) {
   const [objective, setObjective] = useState<ObjectiveId>(initialObjective);
@@ -19,7 +19,7 @@ export function ModelPicker({ tier, initialObjective = "ecommerce", onUse }: { t
     <div className="space-y-6">
       <section className="space-y-3">
         <h2 className="title text-[17px] text-fg">1. Qual é o objetivo?</h2>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {OBJECTIVES.map((o) => (
             <button
               key={o.id}
@@ -46,7 +46,7 @@ export function ModelPicker({ tier, initialObjective = "ecommerce", onUse }: { t
             return (
               <li key={v.id} className="relative overflow-hidden rounded-card border border-line bg-card">
                 <div className={open ? "" : "pointer-events-none select-none blur-[3px] opacity-70"} aria-hidden={!open}>
-                  <TemplatePreview t={t} variant="compact" />
+                  <TemplateThumb t={t} height={190} />
                 </div>
                 <div className="flex items-center justify-between gap-3 border-t border-line p-3">
                   <div className="min-w-0">
