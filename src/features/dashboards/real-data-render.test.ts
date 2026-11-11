@@ -36,6 +36,7 @@ describe("modelos comuns com dados reais", () => {
         const root = createRoot(host);
         await act(async () => root.render(createElement(DashboardBody, { dataset, spec: { templateId: t.id, name: "Real", client: "Cliente", pages: t.pages, settings: DEFAULT_SETTINGS }, initialPage: page })));
         expect(host.textContent?.length).toBeGreaterThan(0);
+        expect(host.textContent).not.toContain("Template não encontrado");
         await act(async () => root.unmount());
         host.remove();
       }

@@ -5,6 +5,7 @@
 // Guia: docs/TEMPLATES.md
 
 import type { DashboardCategory, DashboardTemplate } from "../types";
+import { COMPOSED_TEMPLATES } from "./composed";
 import ecommerceVisaoGeral from "./catalog/ecommerce-visao-geral";
 import leadsVisaoGeral from "./catalog/leads-visao-geral";
 import imobiliarioLeads from "./catalog/imobiliario-leads";
@@ -76,6 +77,7 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
 
 export const DASHBOARD_CATEGORIES: DashboardCategory[] = ["E-commerce", "Leads", "Imobiliário", "Negócio local", "Agência", "Mídia", "Executivo"];
 
+/** Modelo pelo id: os de exemplo e os novos (visual + objetivo). */
 export function dashboardTemplate(id: string): DashboardTemplate | undefined {
-  return DASHBOARD_TEMPLATES.find((t) => t.id === id);
+  return DASHBOARD_TEMPLATES.find((t) => t.id === id) ?? COMPOSED_TEMPLATES.find((t) => t.id === id);
 }
