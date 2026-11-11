@@ -37,8 +37,8 @@ type LineChartProps = {
   formatY?: (v: number) => string;
   /** Largura e altura já medidas. Sem as duas, o gráfico mede o contêiner. */
   width?: number;
-  /** Altura em px (medida, ou fixa quando o gráfico mede só a largura). */
-  height?: number;
+  /** Altura em px (medida, ou fixa quando o gráfico mede só a largura). "fill" ocupa a altura do contêiner (flex), com mínimo de 200 px. */
+  height?: number | "fill";
   /** Texto dos rótulos, em px (fixo, não escala com a largura). */
   fontSize?: number;
   /** Legenda em cima (desligue quando ela vem de fora). */
@@ -57,10 +57,11 @@ type LineChartProps = {
  */
 export function LineChart({ showLegend = true, width, height, ...props }: LineChartProps) {
   const legend = showLegend && <LineLegend avg={!!props.avg} goal={props.goal !== undefined} previous={!!props.previous} maturing={(props.maturingDays ?? 0) > 0} />;
+  const fill = height === "fill";
   return (
-    <figure className="m-0">
+    <figure className={fill ? "m-0 flex min-h-0 flex-1 flex-col" : "m-0"}>
       {legend}
-      <LinePlot {...props} width={width} height={height ?? 200} />
+      <LinePlot {...props} width={width} height={fill ? undefined : (height ?? 200)} />
     </figure>
   );
 }
@@ -75,11 +76,13 @@ function dayDates(ago: number[] | undefined, n: number): Date[] {
 
 const num = (v: number | undefined) => (v !== undefined && Number.isFinite(v) ? v : null);
 
-type PlotProps = Omit<LineChartProps, "width" | "height" | "showLegend"> & { width?: number; height: number };
+/** Sem altura = ocupa a do contêiner (medida). */
+type PlotProps = Omit<LineChartProps, "width" | "height" | "showLegend"> & { width?: number; height?: number };
 
-function LinePlot({ values, avg, previous, goal, maturingDays = 0, goalLabel, summary, markGoal, ago, formatY, fontSize: fs = 11, width, height: H, selection, onSelectRange }: PlotProps) {
+function LinePlot({ values, avg, previous, goal, maturingDays = 0, goalLabel, summary, markGoal, ago, formatY, fontSize: fs = 11, width, height, selection, onSelectRange }: PlotProps) {
   const [ref, size] = useElementSize<HTMLDivElement>();
   const W = width ?? size?.width ?? 0;
+  const H = height ?? Math.max(200, Math.floor(size?.height ?? 0));
   const range = useRangeSelect(values.length, onSelectRange);
   const [cursor, setCursor] = useState<number | null>(null);
   const n = Math.max(2, values.length);
@@ -157,7 +160,7 @@ function LinePlot({ values, avg, previous, goal, maturingDays = 0, goalLabel, su
       aria-label={onSelectRange ? `${summary} Use as setas para escolher o dia: Enter filtra; Shift e as setas selecionam um trecho.` : summary}
       data-chart-theme
       className={`relative w-full overflow-hidden text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-accent ${onSelectRange ? "cursor-crosshair touch-pan-y rounded-[6px] select-none" : ""}`}
-      style={{ height: H, width: width ?? undefined, fontSize: fs }}
+      style={{ ...(height ? { height: H } : { flex: "1 1 0", minHeight: 200 }), width: width ?? undefined, fontSize: fs }}
       {...interactive}
     >
       {W > 0 && (

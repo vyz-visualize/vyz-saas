@@ -54,7 +54,9 @@ Quem importa continua usando `@/features/templates/dashboards` e `@/features/tem
 
 Um template pode ter `skin` (`types.ts` → `SkinId`): a **primeira aba** dele é desenhada por um componente próprio em `src/features/dashboards/skins/<Nome>.tsx`, com paleta e composição fixas; as outras abas usam os widgets padrão. O visual lê os mesmos dados de exemplo (`WidgetContext`), respeita o investimento oculto e aparece também na galeria e no PDF.
 
-Hoje: `lavanda` (painel-lavanda), `pulso` (painel-pulso), `monocromo` (painel-monocromo), todos no Básico; e as análises do Avançado, que seguem o tema do painel: `criativos-ao-vivo` (ranking em tempo real, duelo com teste de CTR, fadiga), `previsao` (regressão com sazonalidade da semana, faixa de 95%, chance de bater a meta, simulador de verba) e `mmm` (base + canais com adstock e saturação, ROI marginal e otimizador da mesma verba). Todos calculam sobre os dados de exemplo. Visual novo: crie o componente, registre em `skins/index.tsx` e no `SkinId`.
+Hoje: `lavanda` (painel-lavanda), `pulso` (painel-pulso), `monocromo` (painel-monocromo), todos no Básico; `noturno` (painel-noturno, e-commerce em azul-noite e âmbar) e `areia` (painel-areia, leads com CRM em tons de areia e terracota), no Avançado, com todos os gráficos na Bklit UI; e as análises do Avançado, que seguem o tema do painel: `criativos-ao-vivo` (ranking em tempo real, duelo com teste de CTR, fadiga), `previsao` (regressão com sazonalidade da semana, faixa de 95%, chance de bater a meta, simulador de verba) e `mmm` (base + canais com adstock e saturação, ROI marginal e otimizador da mesma verba). Todos calculam sobre os dados de exemplo. Visual novo: crie o componente, registre em `skins/index.tsx` e no `SkinId`, e declare os blocos em `skins/blocks.ts`.
+
+Visual novo com a Bklit UI: use as peças de `skins/bklit-blocks.tsx` (`StatBlock`, `DailyChart`, `ShareRings`, `Gauge`, `StageFunnel`, `RankBars`, `Block`). O visual declara a paleta dele (`SkinPalette`) e põe `themeVars(paleta)` com `data-chart-theme` no contêiner: os tokens da VYZ (`--accent`, `--card`, `--fg`...) passam a valer a paleta ali dentro, então os gráficos, as classes do Tailwind (`bg-card`, `text-fg-2`) e os cartões que a pessoa solta na grade acompanham. Entra na lista `SPECIAL` da galeria (`TemplateGallery.tsx`) e ganha palavras em `TEMPLATE_WORDS` (`recommend.ts`).
 
 ### Disposição e métricas por plataforma (modo Personalizar)
 
@@ -126,4 +128,4 @@ Os templates de `live.ts` (`dataMode: "live"`) leem o que a sincronização grav
 |---|---|---|
 | Básico | 5 (2 com dados reais, 3 com visual próprio) | 4 |
 | Padrão | 8 | 8 |
-| Avançado | 31 | 13 |
+| Avançado | 33 (2 com visual próprio na Bklit UI) | 13 |

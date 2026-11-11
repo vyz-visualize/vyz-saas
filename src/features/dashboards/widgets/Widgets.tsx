@@ -3,6 +3,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { BarList } from "@/components/charts/BarList";
+import { StageFunnel } from "@/components/charts/StageFunnel";
 import { Funnel } from "@/components/charts/Funnel";
 import { LineChart } from "@/components/charts/LineChart";
 import { Scatter } from "@/components/charts/Scatter";
@@ -58,9 +59,9 @@ export function makeContext(ds: Dataset, opts: Partial<WidgetContext> = {}): Wid
 const HIDDEN = "•••";
 const short = (id: PlatformId) => PLATFORMS[id].short;
 
-export function Card({ title, children, delay = 440, className = "", aside, note }: { title?: string; children: ReactNode; delay?: number; className?: string; aside?: ReactNode; /** Selo "não filtrado por". */ note?: string | null }) {
+export function Card({ title, children, delay = 440, className = "", aside, note, fill = false }: { title?: string; children: ReactNode; delay?: number; className?: string; aside?: ReactNode; /** Selo "não filtrado por". */ note?: string | null; /** O conteúdo (gráfico) ocupa a altura que o bloco tiver na grade. */ fill?: boolean }) {
   return (
-    <section className={`m-in min-w-0 rounded-[10px] border border-line bg-card p-3 ${className}`} style={{ "--d": `${delay}ms` } as CSSProperties}>
+    <section className={`m-in min-w-0 rounded-[10px] border border-line bg-card p-3 ${fill ? "flex flex-col" : ""} ${className}`} style={{ "--d": `${delay}ms` } as CSSProperties}>
       {(title || aside) && (
         <header className="mb-2 flex items-baseline justify-between gap-2">
           {title && <h3 className="text-[11.5px] leading-snug font-semibold text-fg">{title}</h3>}
@@ -72,7 +73,7 @@ export function Card({ title, children, delay = 440, className = "", aside, note
           <NotFilteredBadge text={note} />
         </p>
       )}
-      {children}
+      {fill ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : children}
     </section>
   );
 }
@@ -204,15 +205,15 @@ export function Widget({ spec, ctx: shown, delay }: { spec: WidgetSpec; ctx: Wid
     case "line": {
       const d = lineData(spec, ctx);
       return (
-        <Card title={title} delay={delay} note={note}>
-          <LineChart {...d} {...lineSelection(ctx, filters)} previous={ctx.showPrevious && prevRows(ctx).length === d.values.length ? series(prevRows(ctx), spec.metric) : undefined} markGoal={ctx.markGoal} />
+        <Card title={title} delay={delay} note={note} fill>
+          <LineChart height="fill" {...d} {...lineSelection(ctx, filters)} previous={ctx.showPrevious && prevRows(ctx).length === d.values.length ? series(prevRows(ctx), spec.metric) : undefined} markGoal={ctx.markGoal} />
         </Card>
       );
     }
     case "funnel":
       return (
-        <Card title={title} delay={delay} note={note}>
-          <Funnel steps={ds.funnel} title={title ?? "Funil"} />
+        <Card title={title} delay={delay} note={note} fill>
+          <Funnel steps={ds.funnel} title={title ?? "Funil"} fill />
         </Card>
       );
     case "scatter":
@@ -223,7 +224,7 @@ export function Widget({ spec, ctx: shown, delay }: { spec: WidgetSpec; ctx: Wid
       );
     case "bars":
       return (
-        <Card title={spec.reference === "goal" && title ? `${title} ${brl(ds.goal, { decimals: false })}` : title} delay={delay} note={note}>
+        <Card title={spec.reference === "goal" && title ? `${title} ${brl(ds.goal, { decimals: false })}` : title} delay={delay} note={note} fill>
           <BarsWidget spec={spec} ctx={ctx} />
         </Card>
       );
@@ -295,19 +296,20 @@ export function Widget({ spec, ctx: shown, delay }: { spec: WidgetSpec; ctx: Wid
       );
     case "crm":
       return (
-        <Card title={title} delay={delay} note={note}>
-          <ul className="space-y-2" aria-label="Etapas do CRM">
-            {ds.crm.map((s, i) => (
-              <li key={s.stage} className="grid grid-cols-[5rem_1fr_auto] items-center gap-2 text-[11px]">
-                <span className="text-fg">{s.stage}</span>
-                <span className="h-3 rounded-[3px]" style={{ width: `${Math.max(3, (s.count / ds.crm[0].count) * 100)}%`, background: ["var(--seq-a)", "var(--seq-b)", "var(--seq-c)", "var(--seq-d)", "var(--accent)"][i] }} />
-                <span className="text-right tnum">
-                  <span className="font-semibold">{int(s.count)}</span>
-                  <span className="ml-2 text-fg-2">{ctx.hideSpend ? "" : brlCompact(s.value)}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
+        <Card title={title} delay={delay} note={note} fill>
+          {/* funil deitado da Bklit UI: etapa, quantidade, valor parado e quanto avança para a próxima */}
+          <div data-chart-theme className="flex min-h-[170px] flex-1 flex-col">
+            <StageFunnel
+              className="flex-1"
+              orientation="horizontal"
+              color="var(--chart-line-primary)"
+              steps={ds.crm.map((s, i) => {
+                const pass = i > 0 && ds.crm[i - 1].count > 0 ? `${Math.round((s.count / ds.crm[i - 1].count) * 100)}% avançam` : null;
+                return { label: s.stage, value: s.count, display: int(s.count), note: [ctx.hideSpend ? null : brlCompact(s.value), pass].filter(Boolean).join(" · ") || undefined };
+              })}
+              summary={`Etapas do CRM: ${ds.crm.map((s) => `${s.stage} ${int(s.count)}`).join(", ")}.`}
+            />
+          </div>
         </Card>
       );
     case "alerts":
@@ -400,10 +402,11 @@ function BarsWidget({ spec, ctx }: { spec: BarsSpec; ctx: WidgetContext }) {
   const filters = useDashFilters();
   const data = barData(spec, ctx);
   const dim: FilterDim | null = spec.source === "campaigns" ? "campaigns" : spec.source === "platforms" && ctx.ds.spec.sources.length > 1 ? "platforms" : null;
-  if (!filters?.interactive || !dim) return <BarList {...data} />;
+  if (!filters?.interactive || !dim) return <BarList {...data} fill />;
   return (
     <BarList
       {...data}
+      fill
       action={{
         label: (it) => filterAria(dim, it.label),
         tone: (it) => filterTone(filters, dim, it.id ?? ""),

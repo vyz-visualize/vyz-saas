@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, type KeyboardEvent, type PointerEvent } from "react";
+import { curveLinear } from "d3-shape";
+import { useMemo, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { ComposedChart } from "@/components/bklit/charts/composed-chart";
+import { Grid } from "@/components/bklit/charts/grid";
+import { Line } from "@/components/bklit/charts/line";
+import { SeriesBar } from "@/components/bklit/charts/series-bar";
+import { XAxis } from "@/components/bklit/charts/x-axis";
+import { YAxis } from "@/components/bklit/charts/y-axis";
+import { niceYDomain } from "@/components/bklit/charts/y-domain-utils";
 import { widest, xTickIndices, yTicks } from "./axis";
 import { FitChart } from "./FitChart";
 import { useRangeSelect, type IndexRange } from "./range-select";
@@ -37,8 +45,9 @@ type ComboChartProps = {
 
 /**
  * Barras + linha num eixo só (as duas na mesma unidade: nunca dois eixos Y).
- * Desenhado em px reais. Passar o mouse ou as setas do teclado mostra o dia.
- * Os dias em maturação ficam numa faixa clara no fim.
+ * O desenho (barras, linha, grade e eixos) é da Bklit UI (ComposedChart); por
+ * cima fica a nossa camada de interação, alinhada na mesma escala: o dia sob o
+ * mouse ou as setas do teclado, o trecho selecionado e a faixa de maturação.
  */
 export function ComboChart({ height = 260, ...props }: ComboChartProps) {
   const fill = height === "fill";
@@ -72,7 +81,10 @@ function ComboSvg({ points, formatY, tooltip, summary, fontSize: fs = 11, W, H, 
   const top = 10;
   const xLabelH = fs + 12;
   const plotH = Math.max(40, H - top - xLabelH);
-  const { lo, hi, ticks } = yTicks(Math.min(0, ...values), Math.max(1, ...values), plotH);
+  const t = yTicks(Math.min(0, ...values), Math.max(1, ...values), plotH);
+  // a Bklit arredonda o domínio (d3 nice): a camada de cima usa o mesmo arredondamento para o ponto cair na linha
+  const [lo, hi] = niceYDomain([t.lo, t.hi]);
+  const ticks = t.ticks;
   const yLabels = ticks.map(formatY);
   const pad = { l: widest(yLabels, fs) + 12, r: 8 };
   const plotW = Math.max(40, W - pad.l - pad.r);
@@ -80,16 +92,9 @@ function ComboSvg({ points, formatY, tooltip, summary, fontSize: fs = 11, W, H, 
   const barW = Math.max(2, Math.min(28, slot * 0.62));
   const cx = (i: number) => pad.l + slot * (i + 0.5);
   const y = (v: number) => top + (1 - (v - lo) / (hi - lo || 1)) * plotH;
-  const base = y(Math.max(lo, 0));
   const labels = points.map((p) => p.label);
   const xIdx = xTickIndices(n, plotW - slot, widest(labels, fs));
   const firstMaturing = points.findIndex((p) => p.maturing);
-
-  let line = "";
-  points.forEach((p, i) => {
-    if (p.line == null) return;
-    line += `${line && points[i - 1]?.line != null ? "L" : "M"}${cx(i).toFixed(1)},${y(p.line).toFixed(1)}`;
-  });
 
   const indexAt = (e: PointerEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -117,7 +122,14 @@ function ComboSvg({ points, formatY, tooltip, summary, fontSize: fs = 11, W, H, 
     }
   };
   const band = range.preview ?? selection ?? null;
-  const dimmed = (i: number) => !!band && (i < band.from || i > band.to);
+
+  // um dia por linha, a partir de hoje para trás: a Bklit pede datas, o rótulo do eixo é o nosso
+  const data = useMemo(() => {
+    const base = new Date(2000, 0, 1).getTime();
+    return points.map((p, i) => ({ date: new Date(base + i * 86_400_000), bar: p.bar != null && p.bar > 0 ? p.bar : null, line: p.line }));
+  }, [points]);
+  const margin = useMemo(() => ({ top, bottom: xLabelH, left: pad.l, right: pad.r }), [pad.l, pad.r, top, xLabelH]);
+  const yDomains = useMemo(() => ({ left: [lo, hi] as [number, number] }), [lo, hi]);
 
   const tip = active != null ? tooltip(active) : null;
   const tipLeft = active != null ? Math.min(Math.max(cx(active) + 12, 0), W - 188) : 0;
@@ -141,50 +153,32 @@ function ComboSvg({ points, formatY, tooltip, summary, fontSize: fs = 11, W, H, 
           setActive(null);
           range.cancel();
         }}
-        className={`block touch-pan-y rounded-[6px] ${onSelectRange ? "cursor-crosshair select-none" : ""}`}
+        className={`relative z-10 block touch-pan-y rounded-[6px] outline-none focus-visible:ring-2 focus-visible:ring-accent ${onSelectRange ? "cursor-crosshair select-none" : ""}`}
       >
         <title>{summary}</title>
-        {firstMaturing >= 0 && (
-          <g>
-            <rect x={pad.l + slot * firstMaturing} y={top} width={slot * (n - firstMaturing)} height={plotH} fill="var(--accent)" opacity="0.09" rx="4" />
-          </g>
-        )}
+        {firstMaturing >= 0 && <rect x={pad.l + slot * firstMaturing} y={top} width={slot * (n - firstMaturing)} height={plotH} fill="var(--accent)" opacity="0.09" rx="4" />}
         {band && <rect data-chart-selection x={pad.l + slot * band.from} y={top} width={slot * (band.to - band.from + 1)} height={plotH} fill="var(--accent)" opacity="0.16" rx="4" />}
-        {ticks.map((t, i) => (
-          <g key={t}>
-            <line x1={pad.l} x2={pad.l + plotW} y1={y(t)} y2={y(t)} stroke="var(--line)" strokeWidth="1" strokeDasharray={t === 0 ? undefined : "2 4"} />
-            <text x={pad.l - 8} y={y(t) + fs * 0.36} textAnchor="end" fontSize={fs} fill="var(--fg-2)" className="tnum">
-              {yLabels[i]}
-            </text>
-          </g>
-        ))}
-        {points.map((p, i) =>
-          p.bar == null || p.bar <= 0 ? null : (
-            <rect
-              key={i}
-              x={cx(i) - barW / 2}
-              y={y(p.bar)}
-              width={barW}
-              height={Math.max(1, base - y(p.bar))}
-              rx={Math.min(3, barW / 3)}
-              fill={active === i ? "var(--fg-2)" : "var(--muted)"}
-              opacity={dimmed(i) ? 0.3 : p.maturing ? 0.6 : 1}
-            />
-          ),
-        )}
-        {line && <path d={line} pathLength={1} className="m-draw" fill="none" stroke="var(--accent)" strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" />}
+        {/* fora do trecho selecionado, o gráfico esmaece */}
+        {band && band.from > 0 && <rect x={pad.l} y={top} width={slot * band.from} height={plotH} fill="var(--card)" opacity="0.62" />}
+        {band && band.to < n - 1 && <rect x={pad.l + slot * (band.to + 1)} y={top} width={slot * (n - 1 - band.to)} height={plotH} fill="var(--card)" opacity="0.62" />}
         {active != null && (
           <g aria-hidden>
+            <rect x={cx(active) - barW / 2 - 2} y={top} width={barW + 4} height={plotH} fill="var(--fg-2)" opacity="0.1" rx="4" />
             <line x1={cx(active)} x2={cx(active)} y1={top} y2={top + plotH} stroke="var(--fg-2)" strokeWidth="1" strokeDasharray="3 3" />
             {points[active].line != null && <circle cx={cx(active)} cy={y(points[active].line!)} r="4.5" fill="var(--accent)" stroke="var(--card)" strokeWidth="2" />}
           </g>
         )}
-        {xIdx.map((i) => (
-          <text key={i} x={cx(i)} y={H - 4} textAnchor="middle" fontSize={fs} fill="var(--fg-2)" className="tnum">
-            {labels[i]}
-          </text>
-        ))}
       </svg>
+      {/* o desenho: Bklit por baixo, na mesma margem e na mesma escala da camada de cima */}
+      <div className="pointer-events-none absolute inset-0 z-0" style={{ fontSize: fs }} data-chart-theme aria-hidden>
+        <ComposedChart data={data} margin={margin} aspectRatio="" style={{ height: H, width: W }} yDomains={yDomains} maxBarSize={28} animationDuration={900}>
+          <Grid horizontal numTicksRows={Math.max(2, ticks.length - 1)} strokeDasharray="2,4" />
+          <SeriesBar dataKey="bar" fill="var(--muted)" radius={3} />
+          <Line dataKey="line" stroke="var(--chart-line-primary)" strokeWidth={2.25} curve={curveLinear} fadeEdges={false} showHighlight={false} />
+          <YAxis formatValue={formatY} numTicks={ticks.length} />
+          <XAxis labels={labels} numTicks={Math.max(2, xIdx.length)} />
+        </ComposedChart>
+      </div>
       {tip && active != null && (
         <div
           role="status"

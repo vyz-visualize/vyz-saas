@@ -1,5 +1,6 @@
 "use client";
 
+import { AreaSparkline, LineSparkline } from "@/components/bklit/charts/sparkline";
 import { FitChart } from "./FitChart";
 
 type TrendSparkProps = {
@@ -17,44 +18,48 @@ type TrendSparkProps = {
 const STROKE = { good: "var(--accent)", bad: "var(--error-fg)", neutral: "var(--accent)" };
 
 /**
- * Sparkline com área suave (ou só a linha), em px reais. Os dias em maturação saem
- * tracejados (as conversões ainda chegam). Decorativa: o número vem ao lado.
+ * Sparkline com área suave (ou só a linha), desenhada pela Bklit UI. Os dias em
+ * maturação saem tracejados (as conversões ainda chegam): são um segundo traço,
+ * na mesma escala, colado no fim do primeiro. Decorativa: o número vem ao lado.
  */
 export function TrendSpark({ values, maturing = 0, tone = "neutral", line = false, className = "" }: TrendSparkProps) {
   const finite = values.filter((v): v is number => v != null && Number.isFinite(v));
   if (finite.length < 2) return <div className={className} aria-hidden />;
+  const n = values.length;
+  const cut = Math.max(2, n - Math.max(0, maturing));
+  const row = (v: number | null) => ({ v: v != null && Number.isFinite(v) ? v : null });
+  const settled = values.slice(0, cut).map(row);
+  const late = cut < n ? values.slice(cut - 1).map(row) : [];
+  // os dois traços dividem a mesma escala para emendar sem degrau
+  const domain: [number, number] = [Math.min(...finite), Math.max(...finite)];
+  const color = STROKE[tone];
   return (
     <FitChart className={className} minHeight={28}>
       {({ width: W, height: H }) => {
-        const min = Math.min(...finite);
-        const max = Math.max(...finite);
-        const p = 2;
-        const n = values.length;
-        const x = (i: number) => p + (i / Math.max(1, n - 1)) * (W - 2 * p);
-        const y = (v: number) => p + (1 - (v - min) / (max - min || 1)) * (H - 2 * p);
-        const cut = n - maturing;
-        const seg = (from: number, to: number) => {
-          let d = "";
-          for (let i = from; i < to; i++) {
-            const v = values[i];
-            if (v == null) continue;
-            d += `${d && values[i - 1] != null ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
-          }
-          return d;
-        };
-        const settled = seg(0, cut);
-        const late = maturing ? seg(Math.max(0, cut - 1), n) : "";
-        const firstIdx = values.findIndex((v) => v != null);
-        const lastIdx = n - 1 - [...values].reverse().findIndex((v) => v != null);
-        const area = settled ? `${settled}L${x(Math.min(cut, n) - 1).toFixed(1)},${H}L${x(firstIdx).toFixed(1)},${H}Z` : "";
-        const color = STROKE[tone];
+        const settledW = late.length ? Math.max(8, ((cut - 1) / Math.max(1, n - 1)) * W) : W;
+        const Settled = line ? LineSparkline : AreaSparkline;
         return (
-          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block overflow-visible" aria-hidden>
-            {!line && area && <path d={area} fill={color} opacity="0.1" />}
-            <path d={settled} fill="none" stroke={color} strokeWidth="1.75" strokeLinejoin="round" strokeLinecap="round" />
-            {late && <path d={late} fill="none" stroke={color} strokeWidth="1.5" strokeDasharray="2 3" opacity="0.7" />}
-            {!line && values[lastIdx] != null && <circle cx={x(lastIdx)} cy={y(values[lastIdx]!)} r="2.5" fill={color} />}
-          </svg>
+          <div className="flex h-full items-stretch" aria-hidden data-chart-theme>
+            <Settled
+              data={settled}
+              dataKey="v"
+              width={settledW}
+              height={H}
+              color={color}
+              strokeWidth={1.75}
+              yDomain={domain}
+              padding={{ top: 3, bottom: 3, left: 2, right: late.length ? 0 : 4 }}
+              endDot={!line && late.length === 0}
+              interactive={false}
+              animationDuration={700}
+              {...(line ? {} : { fill: "gradient" as const, fillOpacity: 0.18 })}
+            />
+            {late.length > 1 && (
+              <span className="[&_path]:[stroke-dasharray:2_3] opacity-70">
+                <LineSparkline data={late} dataKey="v" width={Math.max(6, W - settledW)} height={H} color={color} strokeWidth={1.5} yDomain={domain} padding={{ top: 3, bottom: 3, left: 0, right: 4 }} endDot={!line} interactive={false} animationDuration={700} />
+              </span>
+            )}
+          </div>
         );
       }}
     </FitChart>

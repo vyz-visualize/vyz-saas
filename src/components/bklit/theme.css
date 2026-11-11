@@ -49,6 +49,12 @@
   --chart-scale-05: var(--chart-1);
   --chart-scale-pattern-color: var(--card);
 
+  /* nomes do shadcn que o código da Bklit lê direto (trilho do anel, rótulo em destaque) */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --muted-foreground: var(--fg-2);
+  --border: var(--line);
+
   --legend: var(--card);
   --legend-foreground: var(--fg);
   --legend-muted: var(--bg);

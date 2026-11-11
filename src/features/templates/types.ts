@@ -62,7 +62,7 @@ export type PageDef = {
 export type DashboardCategory = "E-commerce" | "Leads" | "Imobiliário" | "Negócio local" | "Agência" | "Mídia" | "Executivo";
 
 /** Visual próprio da primeira aba (features/dashboards/skins). */
-export type SkinId = "lavanda" | "pulso" | "monocromo" | "criativos-ao-vivo" | "previsao" | "mmm";
+export type SkinId = "lavanda" | "pulso" | "monocromo" | "noturno" | "areia" | "criativos-ao-vivo" | "previsao" | "mmm";
 
 export type DashboardTemplate = {
   id: string;

@@ -31,6 +31,8 @@ import ecommerceCompleto from "./catalog/ecommerce-completo";
 import painelLavanda from "./catalog/painel-lavanda";
 import painelPulso from "./catalog/painel-pulso";
 import painelMonocromo from "./catalog/painel-monocromo";
+import painelNoturno from "./catalog/painel-noturno";
+import painelAreia from "./catalog/painel-areia";
 import criativosAoVivo from "./catalog/criativos-ao-vivo";
 import previsaoKpis from "./catalog/previsao-kpis";
 import mmmMixMidia from "./catalog/mmm-mix-midia";
@@ -44,7 +46,9 @@ export const DASHBOARD_TEMPLATES: DashboardTemplate[] = [
   ecommerceVisaoGeral,
   leadsVisaoGeral,
   metaEssencial,
-  // ---- Avançado (todos)
+  // ---- Avançado (todos): primeiro os 2 com visual próprio desenhado com a Bklit UI
+  painelNoturno,
+  painelAreia,
   criativosAoVivo,
   previsaoKpis,
   mmmMixMidia,

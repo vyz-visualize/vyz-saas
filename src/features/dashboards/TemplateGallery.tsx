@@ -136,8 +136,8 @@ type GalleryProps = {
 const missingAccount = (t: DashboardTemplate, enabled: GalleryProps["enabledAccounts"]) =>
   t.dataMode === "live" && !t.sources.some((s) => (enabled[s] ?? 0) > 0);
 
-/** Os três modelos com desenho próprio; os demais usam o visual padrão da VYZ. */
-const SPECIAL: SkinId[] = ["lavanda", "pulso", "monocromo"];
+/** Os modelos com desenho próprio; os demais usam o visual padrão da VYZ. */
+const SPECIAL: SkinId[] = ["lavanda", "pulso", "monocromo", "noturno", "areia"];
 const isSpecial = (t: DashboardTemplate) => !!t.skin && SPECIAL.includes(t.skin);
 
 /** O que cada categoria resolve, para quem bate o olho na lista. */
@@ -170,7 +170,7 @@ function Group({ id, title, text, count, children }: { id: string; title: string
 
 /**
  * Galeria de modelos. Sem filtro, vem organizada em grupos: os que leem as
- * contas conectadas, os três visuais especiais e o padrão VYZ por tipo de
+ * contas conectadas, os visuais especiais e o padrão VYZ por tipo de
  * negócio. Com filtro (categoria, plataforma, plano ou busca), vira uma lista
  * só com o que combina. A busca ignora acento.
  */
@@ -303,7 +303,7 @@ export function TemplateGallery({ tier, enabledAccounts, canCreate, onUse, onAsk
               {live.map(card)}
             </Group>
           )}
-          <Group id="h-special" title="Visuais especiais" count={samples.filter(isSpecial).length} text="Três modelos com desenho próprio: Lavanda, Pulso e Monocromo. Dados de exemplo.">
+          <Group id="h-special" title="Visuais especiais" count={samples.filter(isSpecial).length} text="Modelos com desenho próprio: Lavanda, Pulso, Monocromo, Noturno e Areia. Dados de exemplo.">
             {samples.filter(isSpecial).map(card)}
           </Group>
           {DASHBOARD_CATEGORIES.map((c) => {

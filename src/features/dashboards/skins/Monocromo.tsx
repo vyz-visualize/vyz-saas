@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ComponentType } from "react";
 import { PAGES } from "@/features/templates/pages";
+import { ChartTheme, dayDates, FlowLines, PatternBars, Spark, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
@@ -32,14 +33,12 @@ import {
   chrono,
   dayLabel,
   decimal,
-  fit,
   initials,
   int,
   label,
   money,
   pct,
   platformName,
-  smoothPath,
   value,
   type SkinProps,
 } from "./shared";
@@ -53,6 +52,10 @@ const C = {
   fg2: "#6d6d6d",
   line: "rgba(0,0,0,.12)",
 };
+
+// cores dos gráficos (Bklit UI): preto sobre o vidro claro, branco sobre o painel preto
+const CHART: SkinPalette = { scheme: "light", bg: "#ffffff", card: "#ffffff", fg: C.fg, fg2: C.fg2, line: "#d9d9d9", accent: "#111111", accentSoft: "#e6e6e6", onAccent: "#ffffff", muted: "#9b9b9b", error: "#b3261e", errorSoft: "#f6dcd6", good: "#111111" };
+const CHART_DARK: SkinPalette = { ...CHART, scheme: "dark", bg: "#1c1c1c", card: "#0d0d0d", fg: "#ffffff", fg2: "rgb(255 255 255 / 0.7)", line: "rgb(255 255 255 / 0.2)", accent: "#ffffff", onAccent: "#0d0d0d" };
 
 const ICONS: ComponentType<{ size?: number }>[] = [
   Home,
@@ -102,6 +105,8 @@ export function MonocromoSkin({
     chrono(ctx.ds.previous).map((d) => d.conversions),
     12,
   );
+  const lineStep = Math.max(1, Math.ceil(days.length / 12));
+  const lineDates = dayDates(days.filter((_, i) => i % lineStep === 0).map((d) => d.ago), ctx.today);
   const platforms = ctx.ds.adPlatforms;
   const platTotals = platforms.map((p) => {
     const cs = ctx.ds.campaigns.filter((c) => c.platform === p);
@@ -367,7 +372,21 @@ export function MonocromoSkin({
                     <p className="text-[10.5px]" style={{ color: C.fg2 }}>
                       Contra o período anterior
                     </p>
-                    <TwoLines a={curLine} b={prevLine} />
+                    <ChartTheme palette={CHART} className="mt-3 flex min-h-[80px] flex-1 flex-col">
+                      <FlowLines
+                        className="flex-1"
+                        wavy
+                        points={curLine.map((v, i) => ({ atual: v, anterior: prevLine[i] ?? 0 }))}
+                        dates={lineDates}
+                        series={[
+                          { key: "anterior", label: "Período anterior", color: "#9b9b9b", width: 1 },
+                          { key: "atual", label: label(ctx, "conversions"), color: "#111111", width: 1.4 },
+                        ]}
+                        format={(_, v) => int(v)}
+                        pin={{ index: Math.floor(curLine.length * 0.55), key: "atual", color: "#ffffff", ring: "#111111", r: 3.5 }}
+                        summary={`${label(ctx, "conversions")} no período contra o anterior: ${conv.up ? "+" : "−"}${conv.text}.`}
+                      />
+                    </ChartTheme>
                     <ul className="mt-3 space-y-2 text-[10.5px]">
                       {(
                         [
@@ -493,7 +512,9 @@ export function MonocromoSkin({
                             {pct(ctx.cur.ctr)}
                           </span>
                         </span>
-                        <Spark values={ctrSpark} />
+                        <span className="block h-6 w-[90px]" aria-hidden>
+                          <Spark values={ctrSpark} color="#111111" variant="line" strokeWidth={1} endDot={false} className="h-full" />
+                        </span>
                       </span>
                     </header>
                     <div
@@ -563,28 +584,25 @@ export function MonocromoSkin({
                           <p className="text-[13px] font-medium">
                             Cliques por semana
                           </p>
-                          <div className="mt-3 flex h-[110px] items-end gap-2">
-                            {bars.map((b, i) => {
-                              const h = (b / Math.max(1, ...bars)) * 100;
-                              return (
-                                <div
-                                  key={i}
-                                  className="flex flex-1 flex-col justify-end gap-[3px]"
-                                  style={{ height: `${Math.max(12, h)}%` }}
-                                >
-                                  {Array.from(
-                                    { length: Math.max(1, Math.round(h / 12)) },
-                                    (_, k) => (
-                                      <span
-                                        key={k}
-                                        className="h-[5px] w-full rounded-[1px] bg-white"
-                                      />
-                                    ),
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
+                          {/* barras em traços: o padrão vem de um <pattern> e a barra é da Bklit */}
+                          <svg width="0" height="0" className="absolute" aria-hidden>
+                            <defs>
+                              <pattern id="mono-tracos" width="8" height="8" patternUnits="userSpaceOnUse">
+                                <rect width="8" height="5" rx="1" fill="#ffffff" />
+                              </pattern>
+                            </defs>
+                          </svg>
+                          <ChartTheme palette={CHART_DARK} className="mt-3 flex h-[110px] flex-col">
+                            <PatternBars
+                              className="flex-1"
+                              values={bars}
+                              labels={bars.map((_, i) => `Semana ${i + 1}`)}
+                              fill="url(#mono-tracos)"
+                              what="Cliques"
+                              format={int}
+                              summary={`Cliques por semana: ${bars.map((b) => int(b)).join(", ")}.`}
+                            />
+                          </ChartTheme>
                         </div>
                       </div>
                     </div>
@@ -655,54 +673,6 @@ function Stat({
         </span>
       </span>
     </span>
-  );
-}
-
-function TwoLines({ a, b }: { a: number[]; b: number[] }) {
-  const w = 220;
-  const h = 70;
-  const all = [...a, ...b];
-  const max = Math.max(...all, 1);
-  const min = Math.min(...all, max);
-  const scale = (vs: number[]) =>
-    fit([...vs, max, min], w, h)
-      .slice(0, vs.length)
-      .map(([, y], i): [number, number] => [
-        (i / Math.max(1, vs.length - 1)) * w,
-        y,
-      ]);
-  const pa = scale(a);
-  const last = pa[Math.floor(pa.length * 0.55)];
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      className="mt-3 h-[80px] w-full overflow-visible"
-      aria-hidden
-    >
-      <path
-        d={smoothPath(scale(b))}
-        fill="none"
-        stroke="#9b9b9b"
-        strokeWidth="1"
-      />
-      <path d={smoothPath(pa)} fill="none" stroke="#111" strokeWidth="1.2" />
-      {last && (
-        <circle cx={last[0]} cy={last[1]} r="3" fill="#fff" stroke="#111" />
-      )}
-    </svg>
-  );
-}
-
-function Spark({ values }: { values: number[] }) {
-  return (
-    <svg viewBox="0 0 90 24" className="h-6 w-[90px]" aria-hidden>
-      <path
-        d={smoothPath(fit(values, 90, 24))}
-        fill="none"
-        stroke="#111"
-        strokeWidth="1"
-      />
-    </svg>
   );
 }
 

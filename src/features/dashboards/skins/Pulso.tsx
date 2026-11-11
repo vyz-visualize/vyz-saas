@@ -24,20 +24,19 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ComponentType } from "react";
 import { PAGES } from "@/features/templates/pages";
+import { ChartTheme, dayDates, FlowLines, Spark, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
   chrono,
   dayLabel,
   decimal,
-  fit,
   initials,
   int,
   label,
   money,
   pct,
   platformName,
-  smoothPath,
   value,
   type SkinProps,
 } from "./shared";
@@ -54,6 +53,9 @@ const C = {
   fg2: "#9a98b4",
   green: "#2fbf5a",
 };
+
+// cores dos gráficos (Bklit UI) sobre o roxo: tooltip escuro, texto branco
+const CHART: SkinPalette = { scheme: "dark", bg: "#463b8a", card: "#5b4ca8", fg: "#ffffff", fg2: "rgb(255 255 255 / 0.75)", line: "rgb(255 255 255 / 0.25)", accent: "#f47aa2", accentSoft: "#fde4ec", onAccent: "#ffffff", muted: "rgb(255 255 255 / 0.3)", error: "#ffd0c8", errorSoft: "#5a2a3a", good: "#8ff0b0" };
 
 const ICONS: ComponentType<{ size?: number }>[] = [
   Home,
@@ -94,6 +96,18 @@ export function PulsoSkin({
     mode === "dia"
       ? days.slice(-10).map((d) => dayLabel(d.ago, ctx.today))
       : points.map((_, i) => `S${i + 1}`);
+  // período anterior, no mesmo agrupamento (a linha clara atrás)
+  const before = chrono(ctx.ds.previous);
+  const prevPoints =
+    mode === "dia"
+      ? before.slice(-10).map((d) => d.leads || d.conversions)
+      : buckets(
+          before.map((d) => d.leads || d.conversions),
+          10,
+        );
+  const size = Math.max(1, Math.ceil(days.length / 10));
+  const pointDays = mode === "dia" ? days.slice(-10) : days.filter((_, i) => i % size === 0);
+  const pointDates = dayDates(pointDays.map((d) => d.ago), ctx.today);
   const peak = points.indexOf(Math.max(...points));
   const [hover, setHover] = useState<number | null>(null);
   const mark = hover ?? peak;
@@ -145,7 +159,7 @@ export function PulsoSkin({
     return (
       <div className="flex flex-col pt-7">
         <section
-          className="relative flex-1 rounded-[22px] px-4 pt-11 pb-4 shadow-[0_10px_30px_rgba(60,50,120,.08)]"
+          className="relative flex flex-1 flex-col rounded-[22px] px-4 pt-11 pb-4 shadow-[0_10px_30px_rgba(60,50,120,.08)]"
           style={{ background: "#fff" }}
         >
           <span
@@ -164,7 +178,8 @@ export function PulsoSkin({
           <p className="text-center text-[11px]" style={{ color: C.fg2 }}>
             {platformName(c.platform)} · {money(ctx, c.spend, true)}
           </p>
-          <p className="mt-4 flex justify-between text-[11.5px] font-semibold">
+          {/* o progresso fica na base do card: sobra de altura vira respiro no meio, não um vazio embaixo */}
+          <p className="mt-auto flex justify-between pt-4 text-[11.5px] font-semibold">
             <span>Progresso</span>
             <span>{Math.round(share * 100)}%</span>
           </p>
@@ -291,12 +306,22 @@ export function PulsoSkin({
                           <ChevronDown size={13} />
                         </button>
                       </div>
-                      <Wave
-                        points={points}
-                        mark={mark}
-                        onHover={setHover}
-                        label={label(ctx, conv)}
-                      />
+                      <ChartTheme palette={CHART} className="mt-2 flex h-[150px] min-h-0 flex-col">
+                        <FlowLines
+                          className="flex-1"
+                          wavy
+                          points={points.map((v, i) => ({ atual: v, anterior: prevPoints[i] ?? 0 }))}
+                          dates={pointDates}
+                          series={[
+                            { key: "anterior", label: "Período anterior", color: "rgb(255 255 255 / 0.28)", width: 2 },
+                            { key: "atual", label: label(ctx, conv), color: "#f47aa2", width: 3, area: 0.16 },
+                          ]}
+                          format={(_, v) => int(v)}
+                          pin={{ index: peak, key: "atual", color: "#f47aa2", ring: "#ffffff", column: true, caption: { value: int(points[peak] ?? 0), label: label(ctx, conv), bg: "#463b8a", fg: "#ffffff" } }}
+                          onHover={setHover}
+                          summary={`${label(ctx, conv)} por ${mode === "dia" ? "dia" : "semana"}: pico de ${int(points[peak] ?? 0)}.`}
+                        />
+                      </ChartTheme>
                       <div className="flex justify-between px-5 pb-1 text-[10.5px] text-white/70">
                         {labels.map((l, i) => (
                           <span
@@ -380,7 +405,9 @@ export function PulsoSkin({
                           {label(ctx, cost)}
                         </p>
                       </div>
-                      <MiniArea values={costSeries} />
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[90px] opacity-40" aria-hidden>
+                        <Spark values={costSeries} color="#ffffff" variant="solid" strokeWidth={0} endDot={false} className="h-full" />
+                      </div>
                       <div className="relative flex items-end justify-between p-4 pt-2">
                         <div>
                           <p className="text-[11px] text-white/80">Período</p>
@@ -525,110 +552,6 @@ export function PulsoSkin({
         </aside>
       </div>
     </div>
-  );
-}
-
-function Wave({
-  points,
-  mark,
-  onHover,
-  label: what,
-}: {
-  points: number[];
-  mark: number;
-  onHover: (i: number | null) => void;
-  label: string;
-}) {
-  const w = 600;
-  const h = 150;
-  const pts = fit(points, w, h, 0.2);
-  const d = smoothPath(pts);
-  const [mx, my] = pts[mark] ?? [0, 0];
-  const colW = w / Math.max(1, points.length);
-  return (
-    <div className="relative mt-2 h-[150px]">
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        preserveAspectRatio="none"
-        className="absolute inset-0 size-full"
-        aria-hidden
-      >
-        <path d={`${d} L${w},${h} L0,${h} Z`} fill="rgba(255,255,255,.08)" />
-        <path
-          d={smoothPath(pts.map(([x, y]) => [x, Math.min(h, y + 26)]))}
-          fill="none"
-          stroke="rgba(255,255,255,.15)"
-          strokeWidth="2"
-          vectorEffect="non-scaling-stroke"
-        />
-        <rect
-          x={mx - colW / 2.6}
-          y="0"
-          width={colW / 1.3}
-          height={h}
-          rx="10"
-          fill="rgba(255,255,255,.12)"
-        />
-        <path
-          d={d}
-          fill="none"
-          stroke="#f47aa2"
-          strokeWidth="3"
-          vectorEffect="non-scaling-stroke"
-        />
-        {points.map((_, i) => (
-          <rect
-            key={i}
-            x={i * colW - colW / 2 + (i === 0 ? colW / 2 : 0)}
-            y="0"
-            width={colW}
-            height={h}
-            fill="transparent"
-            onMouseEnter={() => onHover(i)}
-            onMouseLeave={() => onHover(null)}
-          />
-        ))}
-      </svg>
-      <span
-        className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-[#f47aa2]"
-        style={{ left: `${(mx / w) * 100}%`, top: `${(my / h) * 100}%` }}
-      />
-      <span
-        className="pointer-events-none absolute rounded-[8px] bg-[#4a3f8f]/90 px-3 py-1.5 text-[12px] leading-tight"
-        style={
-          mx / w > 0.7
-            ? {
-                right: `calc(${100 - (mx / w) * 100}% + 18px)`,
-                top: `calc(${(my / h) * 100}% - 8px)`,
-              }
-            : {
-                left: `calc(${(mx / w) * 100}% + 18px)`,
-                top: `calc(${(my / h) * 100}% - 8px)`,
-              }
-        }
-      >
-        <span className="block text-[14px] font-bold tnum">
-          {int(points[mark] ?? 0)}
-        </span>
-        <span className="block text-white/80">{what}</span>
-      </span>
-    </div>
-  );
-}
-
-function MiniArea({ values }: { values: number[] }) {
-  const w = 300;
-  const h = 70;
-  const d = smoothPath(fit(values, w, h, 0.15));
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-      className="pointer-events-none absolute right-0 bottom-0 h-[90px] w-full opacity-40"
-      aria-hidden
-    >
-      <path d={`${d} L${w},${h} L0,${h} Z`} fill="rgba(255,255,255,.45)" />
-    </svg>
   );
 }
 

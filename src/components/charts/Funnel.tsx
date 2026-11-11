@@ -1,6 +1,6 @@
-import type { CSSProperties } from "react";
+"use client";
 
-const SEQ = ["var(--seq-a)", "var(--seq-b)", "var(--seq-c)", "var(--seq-d)", "var(--seq-d)"];
+import { StageFunnel } from "./StageFunnel";
 
 /** Índice da etapa que recebe a maior queda relativa. */
 export function biggestDrop(steps: { pct: number }[]): number {
@@ -21,35 +21,32 @@ type FunnelProps = {
   title: string;
   /** "lg": texto de leitura (painel de "Como funciona"). */
   size?: "sm" | "lg";
-  /** Distribui as etapas na altura toda do contêiner. */
+  /** Ocupa a altura toda do contêiner. */
   fill?: boolean;
 };
 
-/** Funil com a passagem entre etapas e a maior queda marcada em vermelho terroso. Barras com 10 px ou mais. */
+/**
+ * Funil com a passagem entre etapas, desenhado pela Bklit UI: os rótulos ficam ao
+ * lado do desenho (nunca em cima da cor), a etapa da maior queda vai em vermelho
+ * terroso e o aviso dela fica embaixo.
+ */
 export function Funnel({ steps, title, size = "sm", fill = false }: FunnelProps) {
   const drop = biggestDrop(steps);
   const lg = size === "lg";
   const summary = `${title}: ${steps.map((s) => `${s.label} ${s.pct}%`).join(", ")}. Maior queda antes de ${steps[drop].label}.`;
+  const data = steps.map((s, i) => ({
+    label: s.label,
+    value: s.pct,
+    display: `${s.pct}%`,
+    note: i > 0 && steps[i - 1].pct > 0 ? `${Math.round((s.pct / steps[i - 1].pct) * 100)}% avançam` : undefined,
+    color: i === drop ? "var(--chart-negative)" : undefined,
+  }));
   return (
-    <div role="img" aria-label={summary} className={fill ? "h-full" : ""}>
-      <ul className={fill ? "flex h-full flex-col justify-between gap-2" : lg ? "space-y-3" : "space-y-2"} aria-hidden>
-        {steps.map((s, i) => (
-          <li key={s.label}>
-            <div className={`flex items-baseline justify-between leading-tight ${lg ? "text-[13px]" : "text-[11px]"}`}>
-              <span className="text-fg">{s.label}</span>
-              <span className="font-bold tnum text-fg">{s.pct}%</span>
-            </div>
-            <div className={`mt-1 w-full ${lg ? "h-3" : "h-2.5"}`}>
-              <div className="m-bar h-full rounded-[3px]" style={{ width: `${Math.max(2, s.pct)}%`, background: SEQ[i], "--d": `${620 + i * 140}ms` } as CSSProperties} />
-            </div>
-            {i === drop && (
-              <p className={`m-blink mt-0.5 font-semibold text-error-fg ${lg ? "text-[12px]" : "text-[11px]"}`} style={{ "--d": `${900 + steps.length * 140}ms` } as CSSProperties}>
-                ↓ maior queda
-              </p>
-            )}
-          </li>
-        ))}
-      </ul>
+    <div className={`flex flex-col ${fill ? "min-h-0 flex-1" : ""}`} data-chart-theme style={fill ? { minHeight: 190 } : { height: lg ? 330 : 220 }}>
+      <StageFunnel steps={data} color="var(--chart-line-primary)" summary={summary} large={lg} className="flex-1" />
+      <p className={`mt-1.5 shrink-0 font-semibold text-error-fg ${lg ? "text-[12px]" : "text-[11px]"}`} aria-hidden>
+        ↓ maior queda: {steps[drop - 1]?.label} → {steps[drop].label}
+      </p>
     </div>
   );
 }

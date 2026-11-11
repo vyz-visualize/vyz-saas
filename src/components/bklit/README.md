@@ -16,7 +16,8 @@ clsx, tailwind-merge, @number-flow/react, @base-ui/react e motion (já usada).
 ## O que mudamos em relação ao original
 
 - `@/lib/utils` virou `@/components/bklit/lib/utils`.
-- Datas e números em pt-BR (era en-US) em chart-formatters.ts e no heatmap.
+- Datas e números em pt-BR (era en-US) em chart-formatters.ts, no heatmap e
+  em chart-stat-flow.ts (número do centro do anel).
 - theme.css (nosso): os tokens `--chart-*` e `--legend*` apontam para os tokens
   da VYZ. Importado em src/app/globals.css.
 

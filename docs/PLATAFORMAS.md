@@ -127,6 +127,27 @@ Essas plataformas não têm API aberta para nós:
 
 Por isso, no VYZ elas são da modalidade **importação por planilha**: o cliente sobe um CSV ou liga uma planilha do Google Sheets com data, campanha, investimento, impressões, cliques, conversões e receita. Quando alguma abrir uma API, mudamos a linha dela em `connection-modes.ts` e construímos o login.
 
+### Importação por planilha: o que já existe
+
+`src/features/import/spreadsheet.ts` (puro, com testes) faz a parte que independe de banco e de tela:
+
+- lê CSV com vírgula, ponto e vírgula ou tabulação, com aspas e BOM (`parseCsv`);
+- reconhece as colunas pelo nome em português ou inglês (`mapHeader`): data, campanha e investimento são obrigatórias; impressões, cliques, conversões e receita são opcionais;
+- aceita número brasileiro ou americano e datas em dd/mm/aaaa ou aaaa-mm-dd;
+- valida linha por linha e recusa o arquivo inteiro se alguma estiver errada, dizendo a linha (`readSpreadsheet`). Limites: 2 MB, 20 mil linhas, 500 campanhas;
+- soma linhas repetidas da mesma data e campanha;
+- converte para o formato do armazém (`toDataset`: campanhas com id estável pelo nome, fatos por campanha e por conta, como em `features/sync/dataset.ts`);
+- transforma o link de uma planilha do Google no endereço de exportação em CSV, aceitando só `https://docs.google.com/spreadsheets/d/<id>` (`sheetsCsvUrl`);
+- traz o modelo de arquivo para a pessoa baixar (`IMPORT_TEMPLATE_CSV`).
+
+### O que falta ligar (depende de decisão e de mudança no banco)
+
+1. **Conta ativa sem login.** Hoje `ad_accounts` só deixa ativar conta que tem conexão (OAuth). Conta de planilha precisa de uma migration que libere isso, e de uma regra para o limite do plano (conta como 1 conta?).
+2. **Gravação.** Server Action que confere o acesso, lê o arquivo (ou busca o CSV do Google Sheets), grava com `writeDataset` + `rollupAccount` e registra em `sync_runs` e em `activity_events`.
+3. **Tela.** Em Contas, o cartão da plataforma de planilha ganha "Importar planilha": arquivo ou link, prévia com o resumo e os erros por linha.
+4. **Dashboard.** Os modelos com dados reais leem só Meta e Google (`TEMPLATE_PLATFORM`). Falta um modelo que leia qualquer plataforma importada (visão geral e campanhas).
+5. **Atualização do Google Sheets.** Reler o link todo dia junto com a sincronização agendada.
+
 ## Otimizações (botão Aplicar e automático)
 
 - Só aparecem em tarefas de campanhas do Meta, do Google ou do TikTok com conexão ativa.

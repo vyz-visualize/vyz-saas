@@ -22,6 +22,7 @@ import {
 import { useMemo, useState } from "react";
 import type { PlatformId } from "@/features/accounts/platforms";
 import { PAGES } from "@/features/templates/pages";
+import { ChartTheme, dayDates, FlowLines, WeekBars, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
@@ -29,7 +30,6 @@ import {
   chrono,
   dayLabel,
   decimal,
-  fit,
   initials,
   int,
   label,
@@ -51,6 +51,9 @@ const C = {
   dark2: "#2a2b3c",
   panel: "linear-gradient(140deg,#5d55d8 0%,#6f63e6 55%,#5a4fd2 100%)",
 };
+
+// cores dos gráficos (Bklit UI) dentro dos cards claros
+const CHART: SkinPalette = { scheme: "light", bg: "#ffffff", card: "#ffffff", fg: C.fg, fg2: C.fg2, line: C.line, accent: C.accent, accentSoft: C.accentSoft, onAccent: "#ffffff", muted: C.accentSoft, error: "#d92d20", errorSoft: "#fde7e4", good: "#1f9d55" };
 
 type Tab = "todas" | PlatformId;
 
@@ -93,6 +96,9 @@ export function LavandaSkin({
         )[i],
       ),
   );
+  // o primeiro dia de cada parte do ROAS (título do tooltip)
+  const roasStep = Math.max(1, Math.ceil(days.length / 9));
+  const roasDates = dayDates(days.filter((_, i) => i % roasStep === 0).map((d) => d.ago), ctx.today);
   const cpa = change(ctx, "cpa");
   const rev = change(ctx, "revenue");
   const roas = change(ctx, "roas");
@@ -217,6 +223,8 @@ export function LavandaSkin({
           </span>
         </div>
 
+        {/* respiro entre o título e os cards */}
+        <div className="mt-5">
         <SkinGrid
           skin="lavanda"
           ctx={ctx}
@@ -256,31 +264,18 @@ export function LavandaSkin({
                   {money(ctx, ctx.cur.revenue)}
                 </p>
                 <Trend c={rev} />
-                <div className="mt-auto flex h-[88px] items-end gap-2 pt-3">
-                  {revenueBars.map((v, i) => {
-                    const max = Math.max(...revenueBars, 1);
-                    return (
-                      <div
-                        key={i}
-                        className="flex flex-1 flex-col items-center gap-1"
-                      >
-                        <div
-                          className="w-full rounded-[6px]"
-                          style={{
-                            height: `${Math.max(10, (v / max) * 70)}px`,
-                            background:
-                              i === revenueBars.length - 1
-                                ? C.accent
-                                : `color-mix(in srgb, ${C.accent} ${30 + i * 10}%, white)`,
-                          }}
-                        />
-                        <span className="text-[9px]" style={{ color: C.fg2 }}>
-                          S{i + 1}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <ChartTheme palette={CHART} className="mt-2 flex min-h-[92px] flex-1 flex-col">
+                  <WeekBars
+                    className="flex-1"
+                    values={revenueBars}
+                    labels={revenueBars.map((_, i) => `S${i + 1}`)}
+                    color={C.accent}
+                    soft={C.accentSoft}
+                    what={label(ctx, "revenue")}
+                    format={(v) => money(ctx, v, true)}
+                    summary={`${label(ctx, "revenue")} em ${revenueBars.length} partes do período: total de ${money(ctx, ctx.cur.revenue)}.`}
+                  />
+                </ChartTheme>
               </section>
             ),
             "s-roas": (
@@ -296,7 +291,16 @@ export function LavandaSkin({
                   {value(ctx, "roas")}
                 </p>
                 <Trend c={roas} />
-                <LineDots values={roasLine} />
+                <ChartTheme palette={CHART} className="mt-2 flex min-h-[92px] flex-1 flex-col">
+                  <FlowLines
+                    className="-mx-4 -mb-4 flex-1 overflow-hidden rounded-b-[20px]"
+                    points={roasLine.map((v) => ({ roas: v }))}
+                    dates={roasDates}
+                    series={[{ key: "roas", label: label(ctx, "roas"), color: C.accent, width: 2.2, area: 0.26 }]}
+                    format={(_, v) => (ctx.hideSpend ? "•••" : decimal(v, 1))}
+                    summary={`${label(ctx, "roas")} ao longo do período: média de ${value(ctx, "roas")}.`}
+                  />
+                </ChartTheme>
               </section>
             ),
             "s-plataformas": (
@@ -633,6 +637,7 @@ export function LavandaSkin({
             ),
           }}
         />
+        </div>
       </div>
     </div>
   );
@@ -669,48 +674,6 @@ function Pill({
     >
       {children}
     </span>
-  );
-}
-
-function LineDots({ values }: { values: number[] }) {
-  const w = 220;
-  const h = 90;
-  const pts = fit(values, w, h);
-  const line = pts.map((p) => p.join(",")).join(" ");
-  return (
-    <svg
-      viewBox={`0 0 ${w} ${h}`}
-      className="mt-auto h-[96px] w-full overflow-visible pt-2"
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id="lav-area" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor={C.accent} stopOpacity="0.25" />
-          <stop offset="1" stopColor={C.accent} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={`0,${h} ${line} ${w},${h}`} fill="url(#lav-area)" />
-      <polyline
-        points={line}
-        fill="none"
-        stroke={C.accent}
-        strokeWidth="2"
-        vectorEffect="non-scaling-stroke"
-      />
-      {pts.map(([x, y], i) => (
-        <circle
-          key={i}
-          cx={x}
-          cy={y}
-          r={i === pts.length - 1 ? 4 : 3}
-          fill={i === pts.length - 1 ? "#fff" : C.accent}
-          stroke={C.accent}
-          strokeWidth="2"
-          vectorEffect="non-scaling-stroke"
-        />
-      ))}
-    </svg>
   );
 }
 
