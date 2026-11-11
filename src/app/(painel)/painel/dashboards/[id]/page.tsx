@@ -16,6 +16,7 @@ import { periodFromQuery } from "@/features/dashboards/model";
 import { BrandMark } from "@/features/dashboards/DashboardBody";
 import { PeriodNav } from "@/features/dashboards/PeriodNav";
 import { SampleDashboard } from "@/features/dashboards/SampleDashboard";
+import { DashboardSkeleton } from "@/features/dashboards/BuildingDashboard";
 import { anyDashboardTemplate } from "@/features/templates/live";
 import type { PlatformId } from "@/features/accounts/platforms";
 import { FocusBarActions } from "@/features/workspace/FocusBarActions";
@@ -31,7 +32,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default function Page({ params, searchParams }: PageProps<"/painel/dashboards/[id]">) {
   return (
-    <Suspense fallback={<LiveDashboardSkeleton />}>
+    <Suspense fallback={<DashboardSkeleton />}>
       <Ver params={params} searchParams={searchParams} />
     </Suspense>
   );

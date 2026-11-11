@@ -16,6 +16,7 @@ import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { fitsProject, type BillableRef } from "./limits";
 import { PROVIDERS, type ProviderId } from "./providers";
 import { accountStatusLabel, syncSummary, type SyncSummary } from "./sync-label";
+import { SyncProgress, useRefreshWhile } from "./SyncProgress";
 import type { AdAccountDTO } from "./types";
 import { btnSmallOutline } from "./ui";
 
@@ -108,6 +109,16 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
   const [syncing, startSync] = useTransition();
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  // importação em andamento (ou recém-pedida): a página atualiza sozinha até terminar
+  // logo depois de ligar/sincronizar a execução ainda nem começou no banco: espera até 20 s por ela
+  const [waiting, setWaiting] = useState(false);
+  useEffect(() => {
+    if (!waiting) return;
+    const t = window.setTimeout(() => setWaiting(false), 20_000);
+    return () => window.clearTimeout(t);
+  }, [waiting]);
+  const importing = waiting || accounts.some((a) => a.isEnabled && syncSummary(a, now, timeZone)?.tone === "running");
+  useRefreshWhile(importing);
 
   // projeto de cada conta: o escolhido agora, o salvo, ou o primeiro (o banco cria um se não houver)
   const [projectDraft, setProjectDraft] = useState<Record<string, string>>({});
@@ -166,7 +177,10 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
     const active = `${n} ${n === 1 ? "conta ativa" : "contas ativas"}`;
     if (failed.length) setMessage({ tone: "error", text: `${active}, mas ${failed.length === 1 ? "uma conta não importou" : `${failed.length} contas não importaram`} os dados: ${failed[0].error}` });
     else if (res.data.synced.length) setMessage({ tone: "ok", text: `Pronto: ${active}. Os últimos 90 dias já estão no VYZ.` });
-    else if (res.data.syncing) setMessage({ tone: "ok", text: `Pronto: ${active}. A importação dos últimos 90 dias começou.` });
+    else if (res.data.syncing) {
+      setWaiting(true);
+      setMessage({ tone: "ok", text: `Pronto: ${active}. A importação dos últimos 90 dias começou.` });
+    }
     else setMessage({ tone: "ok", text: `Pronto: ${active}.` });
     onSaved?.(res.data);
     return true;
@@ -193,7 +207,10 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
       const res = await resyncAccount(a.id);
       setSyncingId(null);
       if (!res.ok) setMessage({ tone: "error", text: `${a.name}: ${res.error.message}` });
-      else setMessage({ tone: "ok", text: res.data.syncing ? `${a.name}: sincronização começou.` : `${a.name}: dados dos últimos 7 dias atualizados.` });
+      else {
+        if (res.data.syncing) setWaiting(true);
+        setMessage({ tone: "ok", text: res.data.syncing ? `${a.name}: sincronização começou.` : `${a.name}: dados dos últimos 7 dias atualizados.` });
+      }
     });
   }
 
@@ -270,7 +287,7 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
                     )}
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2 pl-[52px] sm:pl-0">
-                    {rowSyncing ? <SyncBadge summary={{ tone: "running", label: "Sincronizando…" }} /> : summary && <SyncBadge summary={summary} />}
+                    {summary?.tone === "running" ? <SyncProgress account={a} /> : rowSyncing ? <SyncBadge summary={{ tone: "running", label: "Sincronizando…" }} /> : summary && <SyncBadge summary={summary} />}
                     {canSync && a.isEnabled && connected && (
                       <button type="button" onClick={() => resync(a)} disabled={busy || dirty} className={btnSmallOutline} aria-label={`Sincronizar ${a.name}`}>
                         <RefreshCw size={14} aria-hidden className={rowSyncing ? "animate-spin motion-reduce:animate-none" : ""} />

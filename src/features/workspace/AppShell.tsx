@@ -228,7 +228,7 @@ function Sidebar() {
   return (
     <aside
       aria-label="Navegação do painel"
-      className="hidden h-dvh w-[260px] shrink-0 flex-col overflow-hidden py-4 pl-3 transition-[width] duration-300 ease-[cubic-bezier(0.32,1.15,0.6,1)] sb-closed:w-[104px] sb-closed:delay-100 md:flex print:hidden"
+      className="hidden h-dvh w-[232px] shrink-0 flex-col overflow-hidden py-4 pl-3 transition-[width] duration-300 ease-[cubic-bezier(0.32,1.15,0.6,1)] sb-closed:w-[104px] sb-closed:delay-100 md:flex print:hidden"
     >
       <div className="flex h-10 items-center justify-between gap-1 pr-3 pl-2">
         <Link href="/painel" aria-label="VYZ, início do painel" className="block w-[72px] shrink-0 rounded-[6px] outline-none transition-[width] duration-300 ease-brand focus-visible:ring-2 focus-visible:ring-[var(--sidebar-fg)]/70 sb-closed:w-[42px]">
