@@ -392,12 +392,16 @@ export function AppShell({ children, simulatedBilling = false, isAdmin = false }
   );
 }
 
-/** Dashboard em tela cheia: barra fina com o voltar; o próprio dashboard traz a navegação dele. */
+/**
+ * Dashboard em tela cheia: barra fina com o voltar; o próprio dashboard traz a navegação dele.
+ * O modelo com visual próprio vai de ponta a ponta e traz o voltar dentro dele, nas cores dele:
+ * a barra (.focus-bar) e o respiro do <main> somem pelo globals.css ([data-skin-screen]).
+ */
 function FocusShell({ children }: { children: ReactNode }) {
   return (
     <div className="shell-content min-h-dvh bg-[var(--panel)] md:h-dvh md:overflow-y-auto print:block print:h-auto print:overflow-visible print:bg-white">
-      <header className="sticky top-0 z-30 border-b border-line bg-[color-mix(in_srgb,var(--panel)_82%,transparent)] backdrop-blur-md print:hidden">
-        <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
+      <header className="focus-header sticky top-0 z-30 border-b border-line bg-[color-mix(in_srgb,var(--panel)_82%,transparent)] backdrop-blur-md print:hidden">
+        <div className="focus-bar flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
           <Link
             href="/painel/dashboards"
             className="inline-flex h-9 items-center gap-1.5 rounded-control px-2.5 -ml-2.5 text-[13.5px] font-medium text-fg-2 outline-none transition-colors hover:bg-accent-soft hover:text-fg focus-visible:ring-2 focus-visible:ring-accent"
@@ -409,7 +413,7 @@ function FocusShell({ children }: { children: ReactNode }) {
         </div>
         <SubscriptionBanner />
       </header>
-      <main id="conteudo" className="px-4 pt-6 pb-28 sm:px-6 print:p-0">
+      <main id="conteudo" className="focus-main px-4 pt-6 pb-28 sm:px-6 print:p-0">
         {children}
       </main>
     </div>

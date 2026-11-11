@@ -22,7 +22,7 @@ import {
 import { useMemo, useState } from "react";
 import type { PlatformId } from "@/features/accounts/platforms";
 import { PAGES } from "@/features/templates/pages";
-import { ChartTheme, dayDates, FlowLines, SkinChrome, SkinPage, WeekBars, type SkinPalette } from "./bklit-blocks";
+import { ChartTheme, dayDates, FlowLines, SkinBar, SkinChrome, SkinPage, WeekBars, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
@@ -72,6 +72,8 @@ export function LavandaSkin({
   controls,
   note,
   children,
+  screen,
+  bar,
 }: SkinProps) {
   const campaigns = useMemo(
     () => [...ctx.ds.campaigns].sort((a, b) => b.spend - a.spend),
@@ -119,14 +121,16 @@ export function LavandaSkin({
     i % 3 === 0 ? "Ativa" : i % 3 === 1 ? "Aprendizado" : "Limitada";
 
   return (
+    // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
     <div
-      className="@container rounded-[28px] p-3 @[700px]:p-6"
-      style={{ background: C.bg, color: C.fg }}
+      className={screen ? "@container" : "@container rounded-[28px] p-3 @[700px]:p-6"}
+      style={{ background: screen ? "#f8f9fd" : C.bg, color: C.fg }}
     >
       <div
-        className="rounded-[24px] p-4 @[700px]:p-6"
+        className={screen ? "min-h-dvh px-4 pt-3 pb-28 @[700px]:px-6" : "rounded-[24px] p-4 @[700px]:p-6"}
         style={{ background: "#f8f9fd" }}
       >
+        <SkinBar palette={PAGE} bar={bar} className="mb-3" />
         {/* topo: marca, navegação em pílulas e ícones */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -198,14 +202,16 @@ export function LavandaSkin({
           </div>
         </div>
 
-        {/* título */}
+        {/* título (com o voltar de verdade no topo, a seta de enfeite sai para não repetir) */}
         <div className="mt-6 flex flex-wrap items-center gap-4">
-          <span
-            className="grid size-10 place-items-center rounded-full border"
-            style={{ borderColor: C.line, background: C.card }}
-          >
-            <ArrowLeft size={16} />
-          </span>
+          {!bar && (
+            <span
+              className="grid size-10 place-items-center rounded-full border"
+              style={{ borderColor: C.line, background: C.card }}
+            >
+              <ArrowLeft size={16} />
+            </span>
+          )}
           <div className="min-w-0 flex-1">
             <h2 className="text-[30px] leading-none font-bold tracking-[-0.03em]">
               {name}

@@ -122,12 +122,14 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
         assemble={query.novo === "1"}
         initialPage={q.page}
         initialFilters={filters}
+        backHref="/painel/dashboards"
         creatives={
           template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays, filters }) : undefined
         }
         extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays, filters }) : undefined}
       />
-      {upsell}
+      {/* no modelo que toma a tela toda, a vitrine ganha de volta o respiro da página (globals.css) */}
+      <div className="focus-extra">{upsell}</div>
     </>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { Switch } from "@/components/ui/controls";
@@ -86,6 +88,8 @@ type BodyProps = {
   initialFilters?: DashFilters;
   /** Galeria e métricas novas vêm do servidor: filtrar precisa navegar. Sem isso, só troca o endereço. */
   onFilterNavigate?: (search: string) => void;
+  /** No painel: para onde o voltar leva. Com ele, o modelo com visual próprio toma a tela toda (de ponta a ponta) e traz o voltar no topo dele. */
+  backHref?: string;
 };
 
 /** Os cards de uma aba do exemplo: os dela que seguem visíveis e, depois, os adicionados. */
@@ -96,7 +100,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate }: BodyProps) {
+export function DashboardBody({ spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
@@ -221,6 +225,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         periodLabel={periodLabel}
         controls={nav ? skinControls : undefined}
         note={nav ? skinNote : undefined}
+        screen={nav && screen}
+        bar={nav ? skinBar : undefined}
         grid={{
           items: grid.items(p),
           editing: nav && editing && canArrange && arrangePlan,
@@ -277,10 +283,11 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   // o dashboard no modelo escolhido. O cabeçalho padrão some; os controles entram no topo do
   // visual, com a paleta dele, e todas as abas ficam dentro da moldura.
   const framed = isFramedSkin(t.skin);
+  // No painel, esse visual é a tela: vai de ponta a ponta, sem a barra padrão. A barra do topo
+  // (voltar e as ações: editar, compartilhar, exportar) entra nele, nas cores dele.
+  const screen = framed && !!backHref;
   const skinControls = framed ? (
-    // as ações medem a largura desta linha para decidir o que cabe: ficam como filhas diretas dela.
-    // Com largura, tudo numa linha só (ações à direita); sem, as ações descem para a segunda linha.
-    <div className="flex flex-wrap items-end gap-2 @[1080px]:flex-nowrap">
+    <div className="flex flex-wrap items-end gap-2">
       <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
         <div className="w-full @[540px]:w-52 @[760px]:w-60">{periodControl}</div>
         <div className="flex h-10 shrink-0 items-center rounded-control border border-line px-2.5 text-[13px] whitespace-nowrap [&>div]:gap-2">
@@ -289,9 +296,28 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
       </div>
       {customizeId && !editing && <CustomizeButton onClick={() => metrics.openPanel()} />}
       <span className="mb-2 shrink-0 rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap text-fg">Amostra · dados fictícios</span>
+      {/* fora do painel (link público) não há barra: as ações, se houver, ficam aqui. Elas medem a largura desta linha. */}
+      {!screen && actions && (
+        <>
+          <span className="flex-1" aria-hidden />
+          {actions}
+        </>
+      )}
+    </div>
+  ) : undefined;
+  // as ações medem a largura da barra para decidir o que cabe: ficam como filhas diretas dela
+  const skinBar = screen ? (
+    <>
+      <Link
+        href={backHref}
+        className="-ml-2 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control px-2 text-[13.5px] font-medium text-fg-2 outline-none transition-colors hover:bg-accent-soft hover:text-fg focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        <ArrowLeft size={16} aria-hidden />
+        Dashboards
+      </Link>
       <span className="flex-1" aria-hidden />
       {actions}
-    </div>
+    </>
   ) : undefined;
   const skinNote = framed ? (
     <>
@@ -317,7 +343,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   return (
     <MetricEditProvider value={edit.editor}>
     <FilterProvider value={filterState}>
-    <div style={brandStyle(spec.brand)} data-metric-editing={editing ? edit.section : undefined} className={`space-y-4 ${editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
+    {/* data-skin-screen: avisa a moldura do painel (globals.css) que este dashboard toma a tela toda */}
+    <div style={brandStyle(spec.brand)} data-skin-screen={screen ? "" : undefined} data-metric-editing={editing ? edit.section : undefined} className={`space-y-4 ${editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
       {customizeId && <MetricEditBar state={edit} />}
       {/* avisos curtos do Personalizar (bloco que não cabe, limite da grade) */}
       {customizeId && <Notices placement="top" />}

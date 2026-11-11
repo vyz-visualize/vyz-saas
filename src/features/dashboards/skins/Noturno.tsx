@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import { biggestDrop, platformPart } from "@/features/metrics/compute";
 import { PAGES } from "@/features/templates/pages";
 import { brlCompact } from "@/lib/format";
-import { Block, SkinChrome, SkinPage, DailyChart, dayDates, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
+import { Block, SkinBar, SkinChrome, SkinPage, DailyChart, dayDates, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import { brl, change, chrono, daily, dayLabel, decimal, HIDDEN, initials, int, label, money, platformName, platformShort, value, type SkinProps } from "./shared";
 
@@ -34,7 +34,7 @@ const TEAL = "#5fd6c0";
 const CHANNEL = [P.accent, BLUE, VIOLET, TEAL];
 const HERO = "linear-gradient(140deg,#ffc76e 0%,#ff9f43 100%)";
 
-export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children }: SkinProps) {
+export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar }: SkinProps) {
   const [mode, setMode] = useState<"dia" | "semana">("dia");
   const hide = !!ctx.hideSpend;
   const current = ctx.ds.current;
@@ -185,8 +185,10 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
   };
 
   return (
-    <div data-chart-theme className="@container rounded-[32px] p-2.5 @[700px]:p-4" style={{ ...themeVars(P), background: "#05070c" }}>
-      <div className="rounded-[26px] p-4 @[700px]:p-6" style={{ background: `radial-gradient(820px 340px at 88% -12%, rgb(255 179 71 / 0.11), transparent 62%), ${P.bg}` }}>
+    // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
+    <div data-chart-theme className={screen ? "@container" : "@container rounded-[32px] p-2.5 @[700px]:p-4"} style={{ ...themeVars(P), background: screen ? P.bg : "#05070c" }}>
+      <div className={screen ? "min-h-dvh px-4 pt-3 pb-28 @[700px]:px-6" : "rounded-[26px] p-4 @[700px]:p-6"} style={{ background: `radial-gradient(820px 340px at 88% -12%, rgb(255 179 71 / 0.11), transparent 62%), ${P.bg}` }}>
+        <SkinBar palette={P} bar={bar} className="mb-3" />
         {/* topo: marca do cliente, abas em pílula e período */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="flex min-w-0 items-center gap-3">

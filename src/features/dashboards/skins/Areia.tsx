@@ -10,7 +10,7 @@ import { useMemo, useState } from "react";
 import { platformPart } from "@/features/metrics/compute";
 import { PAGES } from "@/features/templates/pages";
 import { brlCompact } from "@/lib/format";
-import { Block, SkinChrome, SkinPage, DailyChart, dayDates, Gauge, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
+import { Block, SkinBar, SkinChrome, SkinPage, DailyChart, dayDates, Gauge, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import { brl, change, chrono, daily, dayLabel, HIDDEN, initials, int, label, money, pct, platformName, value, type SkinProps } from "./shared";
 
@@ -35,7 +35,7 @@ const PLUM = "#7a5c8e";
 const ORIGIN = [P.accent, TEAL, OCHRE, PLUM];
 const HERO = "linear-gradient(140deg,#d2634a 0%,#b9472f 100%)";
 
-export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children }: SkinProps) {
+export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar }: SkinProps) {
   const [mode, setMode] = useState<"dia" | "semana">("dia");
   const hide = !!ctx.hideSpend;
   const current = ctx.ds.current;
@@ -170,8 +170,10 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
   };
 
   return (
-    <div data-chart-theme className="@container rounded-[32px] p-2.5 @[700px]:p-4" style={{ ...themeVars(P), background: "#e4d9c7" }}>
-      <div className="rounded-[26px] p-4 @[700px]:p-6" style={{ background: P.bg }}>
+    // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
+    <div data-chart-theme className={screen ? "@container" : "@container rounded-[32px] p-2.5 @[700px]:p-4"} style={{ ...themeVars(P), background: screen ? P.bg : "#e4d9c7" }}>
+      <div className={screen ? "min-h-dvh px-4 pt-3 pb-28 @[700px]:px-6" : "rounded-[26px] p-4 @[700px]:p-6"} style={{ background: P.bg }}>
+        <SkinBar palette={P} bar={bar} className="mb-3" />
         {/* topo: cliente, abas sublinhadas e período */}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line pb-3">
           <div className="flex items-center gap-2.5">

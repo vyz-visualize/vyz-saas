@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ComponentType } from "react";
 import { PAGES } from "@/features/templates/pages";
-import { ChartTheme, dayDates, FlowLines, PatternBars, SkinChrome, SkinPage, Spark, type SkinPalette } from "./bklit-blocks";
+import { ChartTheme, dayDates, FlowLines, PatternBars, SkinBar, SkinChrome, SkinPage, Spark, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
@@ -81,6 +81,8 @@ export function MonocromoSkin({
   controls,
   note,
   children,
+  screen,
+  bar,
 }: SkinProps) {
   const days = chrono(ctx.ds.current);
   const campaigns = useMemo(
@@ -133,15 +135,17 @@ export function MonocromoSkin({
   );
 
   return (
+    // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
     <div
-      className="@container relative overflow-hidden rounded-[32px] p-3 @[700px]:p-8"
+      className={`@container relative overflow-hidden ${screen ? "" : "rounded-[32px] p-3 @[700px]:p-8"}`}
       style={{ background: C.bg, color: C.fg }}
     >
       <Blob className="pointer-events-none absolute -top-24 left-1/2 h-[300px] w-[380px] -translate-x-1/2 opacity-60 blur-[2px]" />
       <div
-        className="relative rounded-[30px] border border-white/70 p-3 backdrop-blur-xl @[700px]:p-4"
+        className={`relative backdrop-blur-xl ${screen ? "min-h-dvh px-3 pt-3 pb-28 @[700px]:px-4" : "rounded-[30px] border border-white/70 p-3 @[700px]:p-4"}`}
         style={{ background: "rgba(255,255,255,.35)" }}
       >
+        <SkinBar palette={CHART} bar={bar} className="mb-3 px-1" />
         <div className="flex gap-4">
           {/* menu lateral */}
           <aside

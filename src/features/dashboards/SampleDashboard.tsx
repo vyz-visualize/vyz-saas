@@ -32,9 +32,11 @@ type Props = {
   initialPage?: PageId;
   /** Filtros que vieram na URL. */
   initialFilters?: DashFilters;
+  /** No painel: para onde o voltar leva (o modelo com visual próprio toma a tela toda e traz o voltar nele). */
+  backHref?: string;
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -62,6 +64,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       extraMetrics={extraMetrics}
       initialPage={initialPage}
       initialFilters={initialFilters}
+      backHref={backHref}
       onFilterNavigate={creatives || extraMetrics?.length ? (search) => router.replace(`${pathname}${search}`, { scroll: false }) : undefined}
       onPeriodChange={
         creatives || extraMetrics?.length

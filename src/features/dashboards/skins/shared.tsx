@@ -31,6 +31,10 @@ export type SkinProps = {
   note?: React.ReactNode;
   /** Conteúdo das outras abas (blocos padrão): o visual mantém a moldura e aplica o tema dele em volta. */
   children?: React.ReactNode;
+  /** Tela do dashboard no painel: o visual vai de ponta a ponta (sem a moldura de fora, sem cantos) e ocupa a altura da tela. Sem isso (galeria, miniatura, PDF, link público), fica como cartão. */
+  screen?: boolean;
+  /** Barra da tela (voltar para a lista): o visual encaixa no topo dele, com a paleta dele. */
+  bar?: React.ReactNode;
 };
 
 export const HIDDEN = "•••";

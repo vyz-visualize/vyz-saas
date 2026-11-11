@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ComponentType } from "react";
 import { PAGES } from "@/features/templates/pages";
-import { ChartTheme, dayDates, FlowLines, SkinChrome, SkinPage, Spark, type SkinPalette } from "./bklit-blocks";
+import { ChartTheme, dayDates, FlowLines, SkinBar, SkinChrome, SkinPage, Spark, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
@@ -88,6 +88,8 @@ export function PulsoSkin({
   controls,
   note,
   children,
+  screen,
+  bar,
 }: SkinProps) {
   const days = chrono(ctx.ds.current);
   const [mode, setMode] = useState<"dia" | "semana">("semana");
@@ -218,15 +220,17 @@ export function PulsoSkin({
   };
 
   return (
+    // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
     <div
-      className="@container rounded-[32px] p-3 @[700px]:p-8"
-      style={{ background: C.bg, color: C.fg }}
+      className={screen ? "@container flex min-h-dvh flex-col" : "@container rounded-[32px] p-3 @[700px]:p-8"}
+      style={{ background: screen ? C.frame : C.bg, color: C.fg }}
     >
+      <SkinBar palette={PAGE} bar={bar} className="px-4 pt-3 @[700px]:px-5" />
       <div
-        className={`grid overflow-hidden rounded-[28px] ${children ? "" : "@[1000px]:grid-cols-[minmax(0,1fr)_260px]"}`}
+        className={`grid overflow-hidden ${screen ? "flex-1" : "rounded-[28px]"} ${children ? "" : "@[1000px]:grid-cols-[minmax(0,1fr)_260px]"}`}
         style={{ background: C.frame }}
       >
-        <div className="flex gap-5 p-4 @[700px]:p-5">
+        <div className={`flex gap-5 p-4 @[700px]:p-5 ${screen ? "pb-28 @[700px]:pb-28" : ""}`}>
           {/* barra lateral */}
           <aside
             className="hidden w-[76px] shrink-0 flex-col items-center gap-3 rounded-[26px] py-5 text-white @[700px]:flex"

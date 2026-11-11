@@ -764,6 +764,29 @@ details.lines summary::-webkit-details-marker {
 }
 
 
+/* ---- Dashboard com visual próprio na tela toda ----------------------- */
+/* O modelo com visual próprio (Lavanda, Pulso, Monocromo, Noturno, Areia) vai de ponta a ponta:
+   some o respiro da página e a barra padrão (o voltar entra no visual, nas cores dele; o botão de
+   tema não tem o que trocar ali). O aviso da assinatura, quando há, continua no topo. */
+.shell-content:has([data-skin-screen]) > .focus-header {
+  border-bottom-width: 0;
+}
+.shell-content:has([data-skin-screen]) > .focus-header > .focus-bar {
+  display: none;
+}
+.shell-content:has([data-skin-screen]) > .focus-main {
+  padding: 0;
+}
+/* a barra do Personalizar gruda no topo (sem a barra padrão em cima) e ganha o respiro que a página perdeu */
+.shell-content:has([data-skin-screen]) [data-metric-edit-bar] {
+  top: 8px;
+  margin: 12px 12px 0;
+}
+/* o que vem depois do dashboard (vitrine das abas do plano) recupera o respiro */
+.shell-content:has([data-skin-screen]) .focus-extra:not(:empty) {
+  padding: 24px 16px 112px;
+}
+
 /* ---- Impressão (PDF do dashboard) ----------------------------------- */
 /* A4 paisagem, uma página do dashboard por folha, sempre nas cores do modo claro. */
 /* PDF: o miolo da impressão já nasce na largura útil do A4 deitado

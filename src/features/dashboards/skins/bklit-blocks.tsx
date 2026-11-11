@@ -95,6 +95,15 @@ export function SkinChrome({ palette, controls, note, className = "" }: { palett
  * As outras abas do dashboard dentro da moldura de um visual: os blocos padrão
  * (cards, tabelas, gráficos) ganham a paleta e o canto arredondado dele.
  */
+/** Barra da tela do dashboard (o voltar e as ações), no topo do visual e com a paleta dele. */
+export function SkinBar({ palette, bar, className = "" }: { palette: SkinPalette; bar?: ReactNode; className?: string }) {
+  if (!bar) return null;
+  return (
+    <div style={themeVars(palette)} className={`flex min-h-10 items-center gap-2 print:hidden ${className}`}>
+      {bar}
+    </div>
+  );
+}
 export function SkinPage({ palette, children, className = "" }: { palette: SkinPalette; children: ReactNode; className?: string }) {
   return (
     <div data-chart-theme style={themeVars(palette)} className={`@container [&_.m-in]:rounded-[18px] ${className}`}>
