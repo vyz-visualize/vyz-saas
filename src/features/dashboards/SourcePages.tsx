@@ -5,7 +5,10 @@
 // Instagram, Página do Facebook e Conteúdo. Com as contas ligadas, os números são os
 // reais; sem elas, a amostra (o mesmo desenho).
 
+import { useRef, type ReactNode } from "react";
 import { LineChart } from "@/components/charts/LineChart";
+import { FIT_BOTTOM } from "./layout/GridCanvas";
+import { useFitHeight } from "./layout/useFitHeight";
 import type { DateRange, Kpi, LiveDashboardData } from "@/features/analytics/types";
 import { OrganicContent, OrganicOverview } from "@/features/analytics/organic/OrganicPages";
 import type { OrganicView } from "@/features/analytics/organic";
@@ -24,6 +27,22 @@ export type SourceExtras = {
   analytics: AnalyticsRow[];
   organic: { instagram?: OrganicView; facebook?: OrganicView; all?: OrganicView };
 };
+
+/**
+ * Encaixe na altura da tela (16:9, sem rolar a página), como a grade dos blocos: a moldura
+ * fica com a altura livre e o miolo se divide nela; o que não cabe rola dentro do bloco.
+ */
+// @container: os cards e as colunas se ajustam à largura da página (sem ele, ficam 2 por linha e enormes)
+export function FitFrame({ fit, children }: { fit: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const h = useFitHeight(ref, fit, FIT_BOTTOM);
+  const on = fit && h != null && h > 240;
+  return (
+    <div ref={ref} data-fit-on={on ? "" : undefined} style={on ? { height: h } : undefined} className={`@container ${on ? "flex min-h-0 flex-col overflow-hidden" : ""}`}>
+      {children}
+    </div>
+  );
+}
 
 const PURCHASE: readonly Profile[] = ["ecommerce", "marketplace", "executivo"];
 const inRange = (d: string, r: DateRange) => d >= r.from && d <= r.to;
@@ -62,16 +81,20 @@ export function SitePage({ extras, profile }: { extras: SourceExtras; profile: P
   const today = addDays(extras.current.to, 1);
   const ago = cur.series.map((_, i) => diffDays(addDays(extras.current.from, i), today));
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2.5 @[640px]:grid-cols-3 @[1040px]:grid-cols-6">
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <div className="grid shrink-0 grid-cols-2 gap-2.5 @[640px]:grid-cols-3 @[1040px]:grid-cols-6">
         {kpis.map((k) => (
           <KpiCard key={k.id} kpi={k} currency={extras.currency} maturing={0} featured={k.id === "site-conv"} />
         ))}
       </div>
-      <Panel title="Sessões por dia" subtitle={`${ddmm(extras.current.from)} a ${ddmm(extras.current.to)} · todas as propriedades ligadas`}>
-        <LineChart height={220} values={cur.series} ago={ago} formatY={(v) => int(v)} summary={`Sessões por dia: ${int(cur.sessions)} no período.`} />
-      </Panel>
-      <ChannelTable extras={extras} profile={profile} spendByChannel={{}} />
+      <div className="grid min-h-0 flex-1 gap-3 @[1040px]:grid-cols-2">
+        <Panel title="Sessões por dia" subtitle={`${ddmm(extras.current.from)} a ${ddmm(extras.current.to)} · todas as propriedades ligadas`} className="min-h-0">
+          <LineChart height={200} values={cur.series} ago={ago} formatY={(v) => int(v)} summary={`Sessões por dia: ${int(cur.sessions)} no período.`} />
+        </Panel>
+        <div className="min-h-0 overflow-auto">
+          <ChannelTable extras={extras} profile={profile} spendByChannel={{}} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -83,11 +106,13 @@ export function ChannelsPage({ extras, profile, ds }: { extras: SourceExtras; pr
   const spend: Record<string, number> = {};
   for (const d of ds.current) for (const [p, v] of Object.entries(d.byPlatform)) if (SPEND_CHANNEL[p]) spend[SPEND_CHANNEL[p]] = (spend[SPEND_CHANNEL[p]] ?? 0) + (v?.spend ?? 0) / 100;
   return (
-    <div className="space-y-3">
-      <p className="text-[13px] text-fg-2">
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <p className="shrink-0 text-[13px] text-fg-2">
         Conversões e receita vêm do GA4 (sem a atribuição em dobro das plataformas). O investimento da Meta entra em Paid Social e o do Google Ads em Paid Search.
       </p>
-      <ChannelTable extras={extras} profile={profile} spendByChannel={spend} />
+      <div className="min-h-0 flex-1 overflow-auto">
+        <ChannelTable extras={extras} profile={profile} spendByChannel={spend} />
+      </div>
     </div>
   );
 }
@@ -141,5 +166,6 @@ function ChannelTable({ extras, profile, spendByChannel }: { extras: SourceExtra
 export function OrganicSourcePage({ extras, which }: { extras: SourceExtras; which: "instagram" | "facebook" | "conteudo" }) {
   const organic = which === "conteudo" ? extras.organic.all : extras.organic[which];
   const data = { currency: extras.currency, current: extras.current, organic } as LiveDashboardData;
-  return which === "conteudo" ? <OrganicContent data={data} /> : <OrganicOverview data={data} />;
+  // o orgânico tem mais blocos do que cabe numa tela: rola dentro da moldura, não a página
+  return <div className="h-full min-h-0 overflow-auto">{which === "conteudo" ? <OrganicContent data={data} /> : <OrganicOverview data={data} />}</div>;
 }

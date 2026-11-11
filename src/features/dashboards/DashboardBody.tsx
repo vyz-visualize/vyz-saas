@@ -33,7 +33,7 @@ import type { Brand } from "@/features/workspace/workspace";
 import { ddmmyyyy } from "@/lib/format";
 import { brandVars } from "./brand";
 import { datasetFor, pageLayout, sampleDefaultKpis } from "./data";
-import { ChannelsPage, OrganicSourcePage, SitePage, type SourceExtras } from "./SourcePages";
+import { ChannelsPage, FitFrame, OrganicSourcePage, SitePage, type SourceExtras } from "./SourcePages";
 import { PAGE_PLATFORM } from "@/features/templates/dashboards/composed";
 import { dashboardRanges } from "@/features/analytics/ranges";
 import { sampleOrganic } from "@/features/analytics/preview";
@@ -241,14 +241,17 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     return makeContext(scoped.ds, { ...ctxOptions, base: baseCtx, chart: scoped.chart, platformsDs: scoped.platforms });
   };
   // páginas que não são de anúncio: Site, Força dos canais, Instagram, Página e Conteúdo
-  const sourcePage = (p: PageId): ReactNode | null => {
+  const sourcePage = (p: PageId, fitScreen = false): ReactNode | null => {
     if (!sourceExtras) return null;
-    if (p === "site") return <SitePage extras={sourceExtras} profile={t.profile} />;
-    if (p === "canais-site") return <ChannelsPage extras={sourceExtras} profile={t.profile} ds={ds} />;
-    if (p === "instagram") return <OrganicSourcePage extras={sourceExtras} which="instagram" />;
-    if (p === "pagina-facebook") return <OrganicSourcePage extras={sourceExtras} which="facebook" />;
-    if (p === "conteudo") return <OrganicSourcePage extras={sourceExtras} which="conteudo" />;
-    return null;
+    const page =
+      p === "site" ? <SitePage extras={sourceExtras} profile={t.profile} />
+      : p === "canais-site" ? <ChannelsPage extras={sourceExtras} profile={t.profile} ds={ds} />
+      : p === "instagram" ? <OrganicSourcePage extras={sourceExtras} which="instagram" />
+      : p === "pagina-facebook" ? <OrganicSourcePage extras={sourceExtras} which="facebook" />
+      : p === "conteudo" ? <OrganicSourcePage extras={sourceExtras} which="conteudo" />
+      : null;
+    // na tela do painel, encaixa na altura (16:9, sem rolar a página), como a grade dos blocos
+    return page && <FitFrame fit={fitScreen}>{page}</FitFrame>;
   };
   // métrica nova sem valor do servidor não vira card: o contador e a tela continuam batendo
   const idsOf = (p: PageId) => pageKpiIds(catalog, pageLayout(t, p).kpis.map((k) => k.metric), metrics.prefs?.kpis, { hideSpend }).filter((id) => isSampleMetric(id) || extraById.has(id));
@@ -396,7 +399,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   ) : undefined;
   // o miolo das abas que o visual não desenha: os blocos padrão (dentro da moldura, ganham a paleta dele)
   const pageContent =
-    sourcePage(active) ?? (active === "criativos" && creatives ? (
+    sourcePage(active, !!backHref && !printing) ?? (active === "criativos" && creatives ? (
       <div className="space-y-2">
         <PageView layout={{ ...layoutOf(active), widgets: [] }} ctx={creativesCtx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
         <div data-dim-self>
