@@ -39,6 +39,7 @@ import { PlatformTray } from "./layout/LayoutEditor";
 import type { DashboardLayout } from "./layout/model";
 import { useDashboardLayout, type SaveLayout } from "./layout/useDashboardLayout";
 import { SkinView } from "./skins";
+import { isFramedSkin } from "./skins/blocks";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
 
@@ -208,7 +209,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? "";
   // template com visual próprio: a primeira aba dele sai no estilo da referência
   const skinned = (p: PageId) => !!t.skin && p === t.pages[0];
-  const skinView = (p: PageId, nav: boolean) =>
+  const skinView = (p: PageId, nav: boolean, content?: ReactNode) =>
     t.skin ? (
       <SkinView
         skin={t.skin}
@@ -218,6 +219,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         pages={spec.pages}
         active={p}
         periodLabel={periodLabel}
+        controls={nav ? skinControls : undefined}
+        note={nav ? skinNote : undefined}
         grid={{
           items: grid.items(p),
           editing: nav && editing && canArrange && arrangePlan,
@@ -234,9 +237,82 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
               }
             : undefined
         }
-      />
+      >
+        {content}
+      </SkinView>
     ) : null;
   const attribution = ATTRIBUTIONS.find((a) => a.value === spec.settings.attribution)?.label;
+
+  const periodControl = (
+    <PeriodPicker
+      period={period}
+      range={range}
+      customDays={customDays}
+      maxDays={60}
+      onChange={(p, r) => {
+        setPeriod(p);
+        // o trecho de dias só vale dentro do período
+        if (filterState.filters.days) filterState.remove("days");
+        if (r) {
+          setRange(r);
+          setCustomDays(Math.max(3, rangeDays(r)));
+        }
+        onPeriodChange?.(p, r ? Math.max(3, rangeDays(r)) : customDays);
+      }}
+    />
+  );
+  const compareControl = (
+    <Switch
+      label={
+        <>
+          <span className="@[760px]:hidden">Comparar</span>
+          <span className="hidden @[760px]:inline">Comparar com o período anterior</span>
+        </>
+      }
+      checked={compare}
+      onChange={setCompare}
+    />
+  );
+  // Visual com moldura própria (Lavanda, Pulso, Monocromo, Noturno, Areia): a tela mostra só
+  // o dashboard no modelo escolhido. O cabeçalho padrão some; os controles entram no topo do
+  // visual, com a paleta dele, e todas as abas ficam dentro da moldura.
+  const framed = isFramedSkin(t.skin);
+  const skinControls = framed ? (
+    // as ações medem a largura desta linha para decidir o que cabe: ficam como filhas diretas dela.
+    // Com largura, tudo numa linha só (ações à direita); sem, as ações descem para a segunda linha.
+    <div className="flex flex-wrap items-end gap-2 @[1080px]:flex-nowrap">
+      <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
+        <div className="w-full @[540px]:w-52 @[760px]:w-60">{periodControl}</div>
+        <div className="flex h-10 shrink-0 items-center rounded-control border border-line px-2.5 text-[13px] whitespace-nowrap [&>div]:gap-2">
+          <Switch label="Comparar" checked={compare} onChange={setCompare} />
+        </div>
+      </div>
+      {customizeId && !editing && <CustomizeButton onClick={() => metrics.openPanel()} />}
+      <span className="mb-2 shrink-0 rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap text-fg">Amostra · dados fictícios</span>
+      <span className="flex-1" aria-hidden />
+      {actions}
+    </div>
+  ) : undefined;
+  const skinNote = framed ? (
+    <>
+      <FilterBar compare={compare} />
+      <p className="text-[12.5px] text-fg-2">
+        {periodLabel} · {days} dias · janela de atribuição: {attribution}. Os últimos 3 dias ficam em maturação.
+      </p>
+    </>
+  ) : undefined;
+  // o miolo das abas que o visual não desenha: os blocos padrão (dentro da moldura, ganham a paleta dele)
+  const pageContent =
+    active === "criativos" && creatives ? (
+      <div className="space-y-2">
+        <PageView layout={{ ...layoutOf(active), widgets: [] }} ctx={creativesCtx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
+        <div data-dim-self>
+          <CreativesPage data={creatives} />
+        </div>
+      </div>
+    ) : (
+      <GridPage page={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} grid={grid} editing={editing && canArrange && arrangePlan} />
+    );
 
   return (
     <MetricEditProvider value={edit.editor}>
@@ -245,6 +321,7 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
       {customizeId && <MetricEditBar state={edit} />}
       {/* avisos curtos do Personalizar (bloco que não cabe, limite da grade) */}
       {customizeId && <Notices placement="top" />}
+      {!framed && (
       <div className="@container space-y-4 print:hidden">
         <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
           <div className="flex min-w-0 flex-1 items-start gap-4">
@@ -298,34 +375,10 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
           <div className="flex flex-wrap items-end gap-2">
             <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
             <div className="w-full @[540px]:w-52 @[760px]:w-60">
-              <PeriodPicker
-                period={period}
-                range={range}
-                customDays={customDays}
-                maxDays={60}
-                onChange={(p, r) => {
-                  setPeriod(p);
-                  // o trecho de dias só vale dentro do período
-                  if (filterState.filters.days) filterState.remove("days");
-                  if (r) {
-                    setRange(r);
-                    setCustomDays(Math.max(3, rangeDays(r)));
-                  }
-                  onPeriodChange?.(p, r ? Math.max(3, rangeDays(r)) : customDays);
-                }}
-              />
+              {periodControl}
             </div>
             <div className="flex h-10 shrink-0 items-center rounded-control border border-line px-2.5 text-[13px] whitespace-nowrap [&>div]:gap-2">
-              <Switch
-                label={
-                  <>
-                    <span className="@[760px]:hidden">Comparar</span>
-                    <span className="hidden @[760px]:inline">Comparar com o período anterior</span>
-                  </>
-                }
-                checked={compare}
-                onChange={setCompare}
-              />
+              {compareControl}
             </div>
             </div>
             {customizeId && !editing && (
@@ -337,29 +390,31 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
         </div>
       </div>
 
-      <div className="print:hidden">
-        <FilterBar compare={compare} />
-      </div>
+      )}
 
-      <p className="text-[12.5px] text-fg-2 print:hidden">
-        {periodLabel} · {days} dias · janela de atribuição: {attribution}. Os últimos 3 dias ficam em maturação.
-      </p>
+      {!framed && (
+        <>
+          <div className="print:hidden">
+            <FilterBar compare={compare} />
+          </div>
+
+          <p className="text-[12.5px] text-fg-2 print:hidden">
+            {periodLabel} · {days} dias · janela de atribuição: {attribution}. Os últimos 3 dias ficam em maturação.
+          </p>
+        </>
+      )}
 
       {!printing && (
         <div className="relative" data-anim={assemble ? "on" : "off"}>
           <div className="scanner" aria-hidden />
           <div className="m-unveil">
-            {active === "criativos" && creatives ? (
-              <div key={active} className="space-y-2">
-                <PageView layout={{ ...layoutOf(active), widgets: [] }} ctx={creativesCtx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
-                <div data-dim-self>
-                  <CreativesPage data={creatives} />
-                </div>
-              </div>
+            {framed ? (
+              // a moldura do visual fica montada; só o miolo troca de aba
+              skinView(active, true, skinned(active) ? undefined : <div key={active}>{pageContent}</div>)
             ) : skinned(active) ? (
               <div key={active}>{skinView(active, true)}</div>
             ) : (
-              <GridPage key={active} page={active} layout={layoutOf(active)} ctx={ctx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} grid={grid} editing={editing && canArrange && arrangePlan} />
+              <div key={active}>{pageContent}</div>
             )}
           </div>
         </div>
@@ -412,6 +467,8 @@ export function DashboardBody({ spec, hideSpend, assemble, actions, printing, cu
                 </div>
               ) : skinned(p) ? (
                 skinView(p, false)
+              ) : framed ? (
+                skinView(p, false, <PageView layout={layoutOf(p)} ctx={ctx} extraCards={extrasOf(p)} />)
               ) : (
                 <PageView layout={layoutOf(p)} ctx={ctx} extraCards={extrasOf(p)} />
               )}

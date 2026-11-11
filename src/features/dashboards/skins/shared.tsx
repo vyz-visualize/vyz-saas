@@ -25,6 +25,12 @@ export type SkinProps = {
   periodLabel: string;
   /** Disposição dos blocos (salva e, no Personalizar do Avançado, editável). Sem isso, a padrão. */
   grid?: SkinGridControl;
+  /** Controles do dashboard (período, comparar, personalizar, ações): o visual encaixa no topo dele. Sem isso (galeria, PDF), só o desenho. */
+  controls?: React.ReactNode;
+  /** Filtros ativos e a nota do período, logo abaixo dos controles. */
+  note?: React.ReactNode;
+  /** Conteúdo das outras abas (blocos padrão): o visual mantém a moldura e aplica o tema dele em volta. */
+  children?: React.ReactNode;
 };
 
 export const HIDDEN = "•••";

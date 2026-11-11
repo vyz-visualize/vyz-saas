@@ -13,6 +13,7 @@ import { anyDashboardTemplate } from "@/features/templates/live";
 import { deleteDashboard } from "@/server/dashboards/actions";
 import { datasetFor, pageLayout } from "./data";
 import type { DashboardListItem } from "./model";
+import { SkinView } from "./skins";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
 
@@ -21,6 +22,17 @@ export function DashboardThumb({ d }: { d: Pick<DashboardListItem, "templateId" 
   const t = dashboardTemplate(d.templateId);
   if (!t) return null;
   const ds = datasetFor(d, 30);
+  const first = d.pages[0] ?? t.pages[0];
+  // modelo com visual próprio: a miniatura é o próprio visual (a primeira aba dele), não os blocos padrão
+  if (t.skin && first === t.pages[0]) {
+    return (
+      <ScaledPreview height={150} width={1100}>
+        <div inert>
+          <SkinView skin={t.skin} ctx={makeContext(ds)} name={d.name} client={d.client} pages={d.pages.length ? d.pages : t.pages} active={first} periodLabel="Últimos 30 dias" />
+        </div>
+      </ScaledPreview>
+    );
+  }
   return (
     <ScaledPreview height={150} width={760}>
       <div className="bg-bg p-3">

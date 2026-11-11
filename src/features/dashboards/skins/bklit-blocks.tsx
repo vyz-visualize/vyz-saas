@@ -68,7 +68,39 @@ export function themeVars(p: SkinPalette): CSSProperties {
     "--error-fg": p.error,
     "--error-soft": p.errorSoft,
     "--good": p.good,
+    "--panel": p.bg,
+    // escala dos blocos padrão (funil, etapas): do destaque para o claro, na paleta do visual
+    "--seq-a": p.accent,
+    "--seq-b": `color-mix(in srgb, ${p.accent} 78%, ${p.card})`,
+    "--seq-c": `color-mix(in srgb, ${p.accent} 56%, ${p.card})`,
+    "--seq-d": `color-mix(in srgb, ${p.accent} 36%, ${p.card})`,
   } as CSSProperties;
+}
+
+/**
+ * Controles do dashboard (período, comparar, ações) e a nota dos filtros dentro da
+ * moldura de um visual: são os componentes de sempre, lendo a paleta dele.
+ */
+export function SkinChrome({ palette, controls, note, className = "" }: { palette: SkinPalette; controls?: ReactNode; note?: ReactNode; className?: string }) {
+  if (!controls && !note) return null;
+  return (
+    <div data-chart-theme style={themeVars(palette)} className={`@container space-y-2 print:hidden ${className}`}>
+      {controls}
+      {note}
+    </div>
+  );
+}
+
+/**
+ * As outras abas do dashboard dentro da moldura de um visual: os blocos padrão
+ * (cards, tabelas, gráficos) ganham a paleta e o canto arredondado dele.
+ */
+export function SkinPage({ palette, children, className = "" }: { palette: SkinPalette; children: ReactNode; className?: string }) {
+  return (
+    <div data-chart-theme style={themeVars(palette)} className={`@container [&_.m-in]:rounded-[18px] ${className}`}>
+      {children}
+    </div>
+  );
 }
 
 /**

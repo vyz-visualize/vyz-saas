@@ -22,7 +22,7 @@ import {
 import { useMemo, useState } from "react";
 import type { PlatformId } from "@/features/accounts/platforms";
 import { PAGES } from "@/features/templates/pages";
-import { ChartTheme, dayDates, FlowLines, WeekBars, type SkinPalette } from "./bklit-blocks";
+import { ChartTheme, dayDates, FlowLines, SkinChrome, SkinPage, WeekBars, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
@@ -55,6 +55,9 @@ const C = {
 // cores dos gráficos (Bklit UI) dentro dos cards claros
 const CHART: SkinPalette = { scheme: "light", bg: "#ffffff", card: "#ffffff", fg: C.fg, fg2: C.fg2, line: C.line, accent: C.accent, accentSoft: C.accentSoft, onAccent: "#ffffff", muted: C.accentSoft, error: "#d92d20", errorSoft: "#fde7e4", good: "#1f9d55" };
 
+// controles e outras abas: os componentes padrão na paleta lilás, sobre o fundo claro da moldura
+const PAGE: SkinPalette = { ...CHART, bg: "#f8f9fd", accentSoft: "#e4e1fd", muted: "#c9c4fb" };
+
 type Tab = "todas" | PlatformId;
 
 export function LavandaSkin({
@@ -66,6 +69,9 @@ export function LavandaSkin({
   onPage,
   periodLabel,
   grid,
+  controls,
+  note,
+  children,
 }: SkinProps) {
   const campaigns = useMemo(
     () => [...ctx.ds.campaigns].sort((a, b) => b.spend - a.spend),
@@ -223,8 +229,11 @@ export function LavandaSkin({
           </span>
         </div>
 
-        {/* respiro entre o título e os cards */}
+        <SkinChrome palette={PAGE} controls={controls} note={note} className="mt-4" />
+
+        {/* respiro entre o título e os cards; nas outras abas, os blocos padrão na paleta do visual */}
         <div className="mt-5">
+        {children ? <SkinPage palette={PAGE}>{children}</SkinPage> : (
         <SkinGrid
           skin="lavanda"
           ctx={ctx}
@@ -637,6 +646,7 @@ export function LavandaSkin({
             ),
           }}
         />
+        )}
         </div>
       </div>
     </div>

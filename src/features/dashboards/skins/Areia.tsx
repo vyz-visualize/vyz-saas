@@ -10,7 +10,7 @@ import { useMemo, useState } from "react";
 import { platformPart } from "@/features/metrics/compute";
 import { PAGES } from "@/features/templates/pages";
 import { brlCompact } from "@/lib/format";
-import { Block, DailyChart, dayDates, Gauge, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
+import { Block, SkinChrome, SkinPage, DailyChart, dayDates, Gauge, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import { brl, change, chrono, daily, dayLabel, HIDDEN, initials, int, label, money, pct, platformName, value, type SkinProps } from "./shared";
 
@@ -35,7 +35,7 @@ const PLUM = "#7a5c8e";
 const ORIGIN = [P.accent, TEAL, OCHRE, PLUM];
 const HERO = "linear-gradient(140deg,#d2634a 0%,#b9472f 100%)";
 
-export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid }: SkinProps) {
+export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children }: SkinProps) {
   const [mode, setMode] = useState<"dia" | "semana">("dia");
   const hide = !!ctx.hideSpend;
   const current = ctx.ds.current;
@@ -194,23 +194,31 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
               </button>
             ))}
           </nav>
-          <span className="ml-auto flex h-9 items-center gap-2 rounded-full border border-line px-3 text-[11.5px] text-fg-2" style={{ background: P.card }}>
-            <CalendarDays size={14} /> {periodLabel}
-          </span>
+          {!controls && (
+            <span className="ml-auto flex h-9 items-center gap-2 rounded-full border border-line px-3 text-[11.5px] text-fg-2" style={{ background: P.card }}>
+              <CalendarDays size={14} /> {periodLabel}
+            </span>
+          )}
         </div>
 
-        {/* título que conta o resultado do período */}
+        <SkinChrome palette={P} controls={controls} note={note} className="mt-4" />
+
+        {/* título: na primeira aba conta o resultado do período; nas outras, o nome da aba */}
         <div className="mt-5">
           <p className="text-[11px] font-medium tracking-[0.1em] text-fg-2 uppercase">{name}</p>
           <h2 className="mt-1 max-w-[24ch] text-[26px] leading-[1.15] font-bold tracking-tight text-balance @[700px]:text-[32px]">
-            <span style={{ color: P.accent }}>{int(leads)} leads</span>
-            {sales ? ` e ${int(sales.count)} vendas fechadas` : " no período"}
+            {children ? (
+              PAGES[active].name
+            ) : (
+              <>
+                <span style={{ color: P.accent }}>{int(leads)} leads</span>
+                {sales ? ` e ${int(sales.count)} vendas fechadas` : " no período"}
+              </>
+            )}
           </h2>
         </div>
 
-        <div className="mt-5">
-          <SkinGrid skin="areia" ctx={ctx} grid={grid} nodes={nodes} />
-        </div>
+        <div className="mt-5">{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="areia" ctx={ctx} grid={grid} nodes={nodes} />}</div>
       </div>
     </div>
   );

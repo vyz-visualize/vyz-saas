@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ComponentType } from "react";
 import { PAGES } from "@/features/templates/pages";
-import { ChartTheme, dayDates, FlowLines, PatternBars, Spark, type SkinPalette } from "./bklit-blocks";
+import { ChartTheme, dayDates, FlowLines, PatternBars, SkinChrome, SkinPage, Spark, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
@@ -78,6 +78,9 @@ export function MonocromoSkin({
   onPage,
   periodLabel,
   grid,
+  controls,
+  note,
+  children,
 }: SkinProps) {
   const days = chrono(ctx.ds.current);
   const campaigns = useMemo(
@@ -241,6 +244,9 @@ export function MonocromoSkin({
               </span>
             </div>
 
+            <SkinChrome palette={CHART} controls={controls} note={note} className="mt-4" />
+
+            {children ? <SkinPage palette={CHART} className="mt-5">{children}</SkinPage> : (
             <SkinGrid
               skin="monocromo"
               ctx={ctx}
@@ -610,6 +616,7 @@ export function MonocromoSkin({
                 ),
               }}
             />
+            )}
           </div>
         </div>
       </div>

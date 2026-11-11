@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dashboardTemplate } from "@/features/templates/dashboards";
-import { SKIN_BLOCKS } from "../skins/blocks";
+import { FRAMED_SKINS, isFramedSkin, SKIN_BLOCKS } from "../skins/blocks";
 import { canArrangeLayout, normalizeGrid, overlaps, withMetricCards } from "./model";
 import { pageRules } from "./page-rules";
 
@@ -38,5 +38,18 @@ describe("disposição nas abas com visual próprio", () => {
     const g = withMetricCards(base, ["m:meta:ctr"]);
     expect(g.slice(0, base.length)).toEqual(base);
     expect(g.every((a) => g.every((b) => !overlaps(a, b)))).toBe(true);
+  });
+});
+
+describe("visuais com moldura própria", () => {
+  it("são os cinco desenhados, e cada um tem blocos declarados", () => {
+    expect([...FRAMED_SKINS].sort()).toEqual(["areia", "lavanda", "monocromo", "noturno", "pulso"]);
+    for (const skin of FRAMED_SKINS) expect(SKIN_BLOCKS[skin].length).toBeGreaterThan(0);
+  });
+  it("as análises que seguem o tema do painel e os modelos sem visual não tomam a tela", () => {
+    expect(isFramedSkin("previsao")).toBe(false);
+    expect(isFramedSkin("mmm")).toBe(false);
+    expect(isFramedSkin(undefined)).toBe(false);
+    expect(isFramedSkin("noturno")).toBe(true);
   });
 });

@@ -86,3 +86,7 @@ export const SKIN_BLOCKS: Record<SkinId, SkinBlock[]> = {
 
 export const skinGrid = (skin: SkinId): PageGrid => SKIN_BLOCKS[skin].map(({ id, x, y, w, h }) => ({ id, x, y, w, h }));
 export const isSkinBlock = (skin: SkinId, id: string) => SKIN_BLOCKS[skin].some((s) => s.id === id);
+
+/** Visuais com moldura própria (topo, menu e fundo): tomam a tela do dashboard inteira, em todas as abas. */
+export const FRAMED_SKINS: SkinId[] = ["lavanda", "pulso", "monocromo", "noturno", "areia"];
+export const isFramedSkin = (skin: SkinId | undefined): boolean => !!skin && FRAMED_SKINS.includes(skin);

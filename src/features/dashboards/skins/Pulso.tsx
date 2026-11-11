@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, type ComponentType } from "react";
 import { PAGES } from "@/features/templates/pages";
-import { ChartTheme, dayDates, FlowLines, Spark, type SkinPalette } from "./bklit-blocks";
+import { ChartTheme, dayDates, FlowLines, SkinChrome, SkinPage, Spark, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
@@ -57,6 +57,9 @@ const C = {
 // cores dos gráficos (Bklit UI) sobre o roxo: tooltip escuro, texto branco
 const CHART: SkinPalette = { scheme: "dark", bg: "#463b8a", card: "#5b4ca8", fg: "#ffffff", fg2: "rgb(255 255 255 / 0.75)", line: "rgb(255 255 255 / 0.25)", accent: "#f47aa2", accentSoft: "#fde4ec", onAccent: "#ffffff", muted: "rgb(255 255 255 / 0.3)", error: "#ffd0c8", errorSoft: "#5a2a3a", good: "#8ff0b0" };
 
+// controles e outras abas: os componentes padrão em roxo, sobre o branco da moldura
+const PAGE: SkinPalette = { scheme: "light", bg: "#ffffff", card: "#f6f5fb", fg: "#3a3566", fg2: "#8f8cab", line: "#e7e4f2", accent: "#6a5bb8", accentSoft: "#e6e2f6", onAccent: "#ffffff", muted: "#cfcbe6", error: "#d8366f", errorSoft: "#fde4ec", good: "#2fbf5a" };
+
 const ICONS: ComponentType<{ size?: number }>[] = [
   Home,
   FileText,
@@ -82,6 +85,9 @@ export function PulsoSkin({
   onPage,
   periodLabel,
   grid,
+  controls,
+  note,
+  children,
 }: SkinProps) {
   const days = chrono(ctx.ds.current);
   const [mode, setMode] = useState<"dia" | "semana">("semana");
@@ -217,7 +223,7 @@ export function PulsoSkin({
       style={{ background: C.bg, color: C.fg }}
     >
       <div
-        className="grid overflow-hidden rounded-[28px] @[1000px]:grid-cols-[minmax(0,1fr)_260px]"
+        className={`grid overflow-hidden rounded-[28px] ${children ? "" : "@[1000px]:grid-cols-[minmax(0,1fr)_260px]"}`}
         style={{ background: C.frame }}
       >
         <div className="flex gap-5 p-4 @[700px]:p-5">
@@ -266,12 +272,15 @@ export function PulsoSkin({
                 </p>
                 <h2 className="truncate text-[20px] font-bold">{name}</h2>
               </div>
+              {/* sem os controles (galeria, PDF), o período aparece só como etiqueta */}
+              {!controls && (
               <span
                 className="hidden h-10 w-[180px] items-center gap-2 rounded-[12px] px-3 text-[12px] @[640px]:flex"
                 style={{ background: "#f0f1f6", color: C.fg2 }}
               >
                 <Search size={15} /> {periodLabel}
               </span>
+              )}
               <span
                 className="grid size-10 place-items-center rounded-full text-[12px] font-bold text-white"
                 style={{ background: C.purpleFlat }}
@@ -280,7 +289,10 @@ export function PulsoSkin({
               </span>
             </div>
 
+            <SkinChrome palette={PAGE} controls={controls} note={note} className="mt-4" />
+
             <div className="mt-5">
+              {children ? <SkinPage palette={PAGE}>{children}</SkinPage> : (
               <SkinGrid
                 skin="pulso"
                 ctx={ctx}
@@ -436,11 +448,13 @@ export function PulsoSkin({
                   "s-prog3": progCard(2),
                 }}
               />
+              )}
             </div>
           </div>
         </div>
 
-        {/* coluna da direita */}
+        {/* coluna da direita: só na primeira aba (as outras usam a largura toda) */}
+        {!children && (
         <aside
           className="border-t p-5 @[1000px]:border-t-0 @[1000px]:border-l"
           style={{ borderColor: "#eceef4" }}
@@ -550,6 +564,7 @@ export function PulsoSkin({
             </ul>
           </div>
         </aside>
+        )}
       </div>
     </div>
   );

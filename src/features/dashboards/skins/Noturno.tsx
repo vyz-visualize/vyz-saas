@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import { biggestDrop, platformPart } from "@/features/metrics/compute";
 import { PAGES } from "@/features/templates/pages";
 import { brlCompact } from "@/lib/format";
-import { Block, DailyChart, dayDates, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
+import { Block, SkinChrome, SkinPage, DailyChart, dayDates, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
 import { brl, change, chrono, daily, dayLabel, decimal, HIDDEN, initials, int, label, money, platformName, platformShort, value, type SkinProps } from "./shared";
 
@@ -34,7 +34,7 @@ const TEAL = "#5fd6c0";
 const CHANNEL = [P.accent, BLUE, VIOLET, TEAL];
 const HERO = "linear-gradient(140deg,#ffc76e 0%,#ff9f43 100%)";
 
-export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid }: SkinProps) {
+export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children }: SkinProps) {
   const [mode, setMode] = useState<"dia" | "semana">("dia");
   const hide = !!ctx.hideSpend;
   const current = ctx.ds.current;
@@ -213,18 +213,21 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <span className="flex h-9 items-center gap-2 rounded-full border border-line px-3 text-[11.5px] text-fg-2">
-              <CalendarDays size={14} /> {periodLabel}
-            </span>
+            {/* sem os controles (galeria, PDF), o período aparece só como etiqueta */}
+            {!controls && (
+              <span className="flex h-9 items-center gap-2 rounded-full border border-line px-3 text-[11.5px] text-fg-2">
+                <CalendarDays size={14} /> {periodLabel}
+              </span>
+            )}
             <span className="grid size-9 place-items-center rounded-full text-[11px] font-bold" style={{ background: P.card, border: `1px solid ${P.line}` }}>
               {initials(client)}
             </span>
           </div>
         </div>
 
-        <div className="mt-5">
-          <SkinGrid skin="noturno" ctx={ctx} grid={grid} nodes={nodes} />
-        </div>
+        <SkinChrome palette={P} controls={controls} note={note} className="mt-4" />
+
+        <div className="mt-5">{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="noturno" ctx={ctx} grid={grid} nodes={nodes} />}</div>
       </div>
     </div>
   );
