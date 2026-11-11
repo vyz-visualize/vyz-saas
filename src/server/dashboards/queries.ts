@@ -65,7 +65,7 @@ export const getDashboard = cache(async (id: string): Promise<DashboardDetail | 
   return row ? fromJoined(row as unknown as JoinedDashboard) : null;
 });
 
-/** Contas do Meta e do Google do workspace (para escolher as fontes). Ativas primeiro. */
+/** Todas as contas do workspace (Meta, Google, GA4, orgânico, planilha): o assistente filtra pelas plataformas do modelo. Ativas primeiro. */
 export const listSourceOptions = cache(async (): Promise<SourceOption[]> => {
   const session = await currentWorkspace();
   const supabase = await createServerSupabase();
@@ -75,7 +75,6 @@ export const listSourceOptions = cache(async (): Promise<SourceOption[]> => {
         .from("ad_accounts")
         .select("id, name, platform_id, business_name, is_enabled, last_synced_at")
         .eq("workspace_id", session.workspace.id)
-        .in("platform_id", ["meta", "google"])
         .order("is_enabled", { ascending: false })
         .order("name"),
     ) ?? [];
