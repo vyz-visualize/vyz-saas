@@ -6,7 +6,7 @@ import "server-only";
 // provedor. O destino da volta sai do banco (validado na ida), nunca da URL do
 // retorno. Erros voltam como ?erro=<codigo> (features/integrations/results.ts).
 
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { isStateToken, pkceChallenge, randomToken, sha256Hex } from "@/features/integrations/oauth";
 import type { ProviderId } from "@/features/integrations/providers";
 import { RETURN_DEFAULT, storedReturnPath, withConnectResult, type ConnectErrorCode } from "@/features/integrations/results";
@@ -20,6 +20,7 @@ import { createAdminSupabase } from "@/server/supabase/admin";
 import { AppError, unwrap } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
 import { getProvider, ProviderError } from "./providers";
+import { syncAdAccounts } from "@/server/sync/run";
 import { nullable } from "./tokens";
 
 /** URL de retorno cadastrada no provedor: a mesma no início e na troca do código. */
@@ -196,6 +197,8 @@ export async function finishConnection(provider: ProviderId, params: URLSearchPa
 
   const oauth = getProvider(provider);
   try {
+    // relógio com folga: as contas criadas por esta conexão são as "novas" (ligadas a seguir)
+    const connectStartedAt = new Date(Date.now() - 60_000).toISOString();
     const tokens = await oauth.exchangeCode({ code, codeVerifier: row.code_verifier ?? undefined, redirectUri: callbackUri(origin, provider), params });
     const [profile, accounts] = await Promise.all([oauth.fetchProfile(tokens.accessToken), oauth.listAccounts(tokens.accessToken)]);
     // Tokens vão direto para o Vault (integration_connect); nada fica em coluna comum.
@@ -216,6 +219,16 @@ export async function finishConnection(provider: ProviderId, params: URLSearchPa
       }),
     );
     await log("integration.connected", { accounts: accounts.length, mock: oauth.isMock }, connectionId ?? undefined);
+    if (connectionId) {
+      const enabled = await enableNewAccounts(admin, workspaceId, connectionId, connectStartedAt).catch((err) => {
+        console.error("[vyz] ligar contas novas", provider, err instanceof Error ? err.message : err);
+        return [] as string[];
+      });
+      if (enabled.length) {
+        await log("ad_accounts.selection_changed", { enabled, disabled: [], automatic: true }, connectionId);
+        after(() => syncAdAccounts(enabled, "initial", { actorId: user.id }));
+      }
+    }
     return new URL(withConnectResult(back, { conectado: provider }), origin);
   } catch (err) {
     const erro = connectFailureCode(err);
@@ -224,3 +237,24 @@ export async function finishConnection(provider: ProviderId, params: URLSearchPa
     return fail(erro);
   }
 }
+
+/**
+ * Quem acabou de escolher as contas na tela do provedor não deveria ter de ligá-las de novo
+ * no VYZ. As contas que esta conexão trouxe pela primeira vez (ativas no provedor) entram
+ * ligadas, por plataforma, se TODAS couberem no plano; se não couberem, ficam desligadas e a
+ * pessoa escolhe (melhor do que o VYZ escolher por ela). Reconectar não religa o que a pessoa
+ * desligou: só conta conta nova. O limite do plano é do banco (gatilho): passou, ligou.
+ */
+async function enableNewAccounts(admin: DB, workspaceId: string, connectionId: string, since: string): Promise<string[]> {
+  const fresh = unwrap(await admin.from("ad_accounts").select("id, platform_id").eq("workspace_id", workspaceId).eq("connection_id", connectionId).eq("status", "active").eq("is_enabled", false).gte("created_at", since)) ?? [];
+  const enabled: string[] = [];
+  for (const platform of new Set(fresh.map((a) => a.platform_id))) {
+    const current = unwrap(await admin.from("ad_accounts").select("id").eq("workspace_id", workspaceId).eq("platform_id", platform).eq("is_enabled", true)) ?? [];
+    const add = fresh.filter((a) => a.platform_id === platform).map((a) => a.id);
+    const { error } = await admin.rpc("set_enabled_ad_accounts", { p_workspace_id: workspaceId, p_platform_id: platform, p_ad_account_ids: [...current.map((a) => a.id), ...add] });
+    if (error) continue; // passou do plano: a pessoa escolhe quais ligar
+    enabled.push(...add);
+  }
+  return enabled;
+}
+
