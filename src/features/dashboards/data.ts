@@ -2,6 +2,7 @@ import type { MetricId } from "@/features/metrics/definitions";
 import { MockSource, type Dataset } from "@/features/metrics/source";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
+import { composedLayout } from "@/features/templates/dashboards/composed";
 import type { DashboardTemplate, PageId, PageLayout } from "@/features/templates/types";
 import type { DashboardSettings } from "@/features/workspace/types";
 import { TEMPLATE_PLATFORM } from "@/features/analytics/preview";
@@ -35,6 +36,11 @@ export function datasetFor(spec: Spec, days: number): Dataset {
 }
 
 export function pageLayout(t: DashboardTemplate, page: PageId): PageLayout {
+  // modelos novos: as métricas fortes de mercado no topo (composed.ts)
+  if (t.composed) {
+    const l = composedLayout(page, t.profile);
+    if (l) return l;
+  }
   return PAGES[page].build({ profile: t.profile, sources: t.sources });
 }
 

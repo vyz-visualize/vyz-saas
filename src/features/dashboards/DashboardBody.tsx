@@ -249,6 +249,8 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       : p === "instagram" ? <OrganicSourcePage extras={sourceExtras} which="instagram" />
       : p === "pagina-facebook" ? <OrganicSourcePage extras={sourceExtras} which="facebook" />
       : p === "conteudo" ? <OrganicSourcePage extras={sourceExtras} which="conteudo" />
+      // recursos do Avançado: o desenho próprio deles, com os números deste dashboard
+      : p === "criativos-ao-vivo" || p === "previsao" || p === "mmm" ? <SkinView skin={p} ctx={ctxFor(p)} name={spec.name} client={spec.client} pages={[p]} active={p} periodLabel={periodLabel} />
       : null;
     // na tela do painel, encaixa na altura (16:9, sem rolar a página), como a grade dos blocos
     return page && <FitFrame fit={fitScreen}>{page}</FitFrame>;

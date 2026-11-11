@@ -10,11 +10,11 @@
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check, LoaderCircle } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
-import { Modal, TextField } from "@/components/ui/kit";
+import { LockBadge, Modal, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
-import type { Tier } from "@/features/pricing/entitlements";
-import { composePages, type ObjectiveId } from "@/features/templates/dashboards/composed";
+import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements";
+import { composePages, FEATURES, featureFits, type FeatureId, type ObjectiveId } from "@/features/templates/dashboards/composed";
 import { anyDashboardTemplate } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
@@ -53,7 +53,7 @@ export function PlatformBadge({ id, size = 28 }: { id: PlatformId; size?: number
   );
 }
 
-const STEPS = ["Objetivo", "Visual", "Plataformas e contas", "Páginas", "Nome"];
+const STEPS = ["Objetivo", "Visual", "Plataformas", "Recursos", "Páginas", "Nome"];
 
 export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: { open: boolean; onClose: () => void; sources: SourceOption[]; tier: Tier; pagesTier: Tier }) {
   const [step, setStep] = useState(0);
@@ -62,6 +62,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
   const [platforms, setPlatforms] = useState<PlatformId[]>([]);
   const [accountIds, setAccountIds] = useState<string[]>([]);
   const [off, setOff] = useState<PageId[]>([]);
+  const [features, setFeatures] = useState<FeatureId[]>([]);
   const [name, setName] = useState("");
   const [client, setClient] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +77,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
 
   // plataformas com conta marcada definem as páginas (as escolhidas sem conta ainda não contam)
   const used = PLATFORM_ORDER.filter((p) => platforms.includes(p) && (byPlatform.get(p) ?? []).some((a) => accountIds.includes(a.id)));
-  const suggested = t ? allowedPages(t, pagesTier, composePages(used)) : [];
+  const suggested = t ? allowedPages(t, pagesTier, composePages(used, features)) : [];
   const pages = suggested.filter((p) => !off.includes(p));
 
   function reset() {
@@ -86,6 +87,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
     setPlatforms([]);
     setAccountIds([]);
     setOff([]);
+    setFeatures([]);
     setName("");
     setClient("");
     setError(null);
@@ -127,7 +129,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
     });
   }
 
-  const canNext = step === 3 ? pages.length > 0 : true;
+  const canNext = step === 4 ? pages.length > 0 : true;
 
   return (
     <Modal open={open} onClose={close} title="Novo dashboard" wide>
@@ -135,7 +137,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
         <BuildingDashboard />
       ) : (
         <div className="space-y-5">
-          <ol className="grid grid-cols-5 gap-2" aria-label="Passos">
+          <ol className="grid grid-cols-6 gap-2" aria-label="Passos">
             {STEPS.map((s, i) => (
               <li key={s} className="space-y-1.5">
                 <span className={`block h-1 rounded-full ${i <= step ? "bg-accent" : "bg-line"}`} />
@@ -258,6 +260,42 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
           {step === 3 && t && (
             <div className="space-y-3">
               <div>
+                <h3 className="title text-[16px] text-fg">Recursos do dashboard</h3>
+                <p className="text-[13.5px] text-fg-2">Cada recurso vira uma página. Os do Avançado aparecem travados nos outros planos.</p>
+              </div>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {FEATURES.map((f) => {
+                  const fits = featureFits(f, used.length ? used : platforms);
+                  const open = canUse(tier, f.tier);
+                  const on = features.includes(f.id);
+                  return (
+                    <li key={f.id}>
+                      <button
+                        type="button"
+                        aria-pressed={on}
+                        disabled={!open || !fits}
+                        onClick={() => setFeatures((cur) => (on ? cur.filter((x) => x !== f.id) : [...cur, f.id]))}
+                        className={`flex h-full w-full items-start gap-3 rounded-card border p-3 text-left transition-colors disabled:cursor-not-allowed ${on ? "border-accent bg-accent-soft/60" : "border-line bg-card hover:border-accent/60"} ${!open || !fits ? "opacity-60" : ""}`}
+                      >
+                        <span className={`mt-0.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full border ${on ? "border-accent bg-accent text-on-accent" : "border-line"}`}>{on && <Check size={12} aria-hidden />}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-2 font-medium text-fg">
+                            {f.label}
+                            {!open && <LockBadge label={availableIn(f.tier)} />}
+                          </span>
+                          <span className="mt-0.5 block text-[12.5px] text-fg-2">{fits ? f.hint : `Precisa de ${f.needs?.map((n) => PLATFORMS[n as PlatformId].name).join(" ou ")}.`}</span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {step === 4 && t && (
+            <div className="space-y-3">
+              <div>
                 <h3 className="title text-[16px] text-fg">Páginas do dashboard</h3>
                 <p className="text-[13.5px] text-fg-2">Montadas pelas plataformas que você escolheu. Desmarque o que não quiser.</p>
               </div>
@@ -288,7 +326,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
             </div>
           )}
 
-          {step === 4 && t && (
+          {step === 5 && t && (
             <div className="space-y-4">
               <h3 className="title text-[16px] text-fg">Quase pronto</h3>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -311,12 +349,12 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
             ) : (
               <span />
             )}
-            {step > 1 && step < 4 && (
+            {step > 1 && step < 5 && (
               <button type="button" className={btn.small} onClick={() => setStep(step + 1)} disabled={!canNext}>
                 Continuar <ArrowRight size={16} aria-hidden />
               </button>
             )}
-            {step === 4 && (
+            {step === 5 && (
               <button type="button" className={btn.small} onClick={create} disabled={pending || !pages.length}>
                 {pending && <LoaderCircle size={15} aria-hidden className="animate-spin motion-reduce:animate-none" />}
                 {pending ? "Criando…" : "Criar dashboard"}

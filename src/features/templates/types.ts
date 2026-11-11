@@ -52,7 +52,11 @@ export type PageId =
   | "site"
   | "canais-site"
   | "instagram"
-  | "pagina-facebook";
+  | "pagina-facebook"
+  // recursos do Avançado, escolhidos no novo dashboard (desenhados pelos visuais deles)
+  | "criativos-ao-vivo"
+  | "previsao"
+  | "mmm";
 
 export type BuildContext = { profile: Profile; sources: PlatformId[] };
 

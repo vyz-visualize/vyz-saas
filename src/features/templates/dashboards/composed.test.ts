@@ -19,6 +19,10 @@ describe("páginas pelas contas escolhidas", () => {
     expect(composePages(["meta", "instagram", "facebook"])).toEqual(["visao-geral", "meta-ads", "criativos", "publico", "instagram", "pagina-facebook", "conteudo", "funil"]);
     expect(composePages(["instagram"])).toEqual(["instagram", "conteudo"]);
   });
+  it("recursos escolhidos entram antes do funil, só se combinam com as plataformas", () => {
+    expect(composePages(["meta"], ["criativos-ao-vivo", "previsao"])).toEqual(["visao-geral", "criativos", "publico", "criativos-ao-vivo", "previsao", "funil"]);
+    expect(composePages(["ga4"], ["criativos-ao-vivo", "comparativo"])).toEqual(["site", "comparativo", "funil"]);
+  });
   it("sem conta: o básico de exemplo", () => {
     expect(composePages([])).toEqual(["visao-geral", "campanhas", "funil"]);
   });
