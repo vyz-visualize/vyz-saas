@@ -7,6 +7,7 @@
 
 import { useRef, type ReactNode } from "react";
 import { LineChart } from "@/components/charts/LineChart";
+import { FitChart } from "@/components/charts/FitChart";
 import { FIT_BOTTOM } from "./layout/GridCanvas";
 import { useFitHeight } from "./layout/useFitHeight";
 import type { DateRange, Kpi, LiveDashboardData } from "@/features/analytics/types";
@@ -88,8 +89,11 @@ export function SitePage({ extras, profile }: { extras: SourceExtras; profile: P
         ))}
       </div>
       <div className="grid min-h-0 flex-1 gap-3 @[1040px]:grid-cols-2">
-        <Panel title="Sessões por dia" subtitle={`${ddmm(extras.current.from)} a ${ddmm(extras.current.to)} · todas as propriedades ligadas`} className="min-h-0">
-          <LineChart height={200} values={cur.series} ago={ago} formatY={(v) => int(v)} summary={`Sessões por dia: ${int(cur.sessions)} no período.`} />
+        <Panel title="Sessões por dia" subtitle={`${ddmm(extras.current.from)} a ${ddmm(extras.current.to)} · todas as propriedades ligadas`} className="flex min-h-0 flex-col" bodyClassName="flex min-h-0 flex-1 flex-col">
+          {/* o gráfico ocupa a altura do quadro (sem sobra embaixo) */}
+          <FitChart className="flex-1" minHeight={180}>
+            {({ height }) => <LineChart height={height} values={cur.series} ago={ago} formatY={(v) => int(v)} summary={`Sessões por dia: ${int(cur.sessions)} no período.`} />}
+          </FitChart>
         </Panel>
         <div className="min-h-0 overflow-auto">
           <ChannelTable extras={extras} profile={profile} spendByChannel={{}} />

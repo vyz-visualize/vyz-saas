@@ -200,7 +200,7 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
               <h2 className="truncate text-[18px] font-bold tracking-tight">{name}</h2>
             </div>
           </div>
-          <nav className="order-last flex w-full flex-wrap gap-1 rounded-[22px] border border-line p-1 @[900px]:order-none @[900px]:ml-2 @[900px]:w-auto" style={{ background: "rgb(255 255 255 / 0.03)" }}>
+          <nav className="order-last flex w-full min-w-0 flex-nowrap gap-1 overflow-x-auto rounded-[22px] border border-line p-1 [scrollbar-width:none] @[900px]:order-none @[900px]:ml-2 @[900px]:w-auto @[900px]:flex-1 [&>*]:shrink-0 [&>*]:whitespace-nowrap" style={{ background: "rgb(255 255 255 / 0.03)" }}>
             {pages.map((p) => (
               <button
                 key={p}

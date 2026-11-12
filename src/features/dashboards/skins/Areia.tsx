@@ -192,7 +192,7 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
             </span>
             <p className="text-[13px] font-semibold tracking-tight">{client}</p>
           </div>
-          <nav className="order-last flex w-full flex-wrap gap-x-5 gap-y-1 @[900px]:order-none @[900px]:w-auto">
+          <nav className="order-last flex w-full min-w-0 flex-nowrap gap-x-5 overflow-x-auto [scrollbar-width:none] @[900px]:order-none @[900px]:w-auto @[900px]:flex-1 [&>*]:shrink-0 [&>*]:whitespace-nowrap">
             {pages.map((p) => (
               <button
                 key={p}
