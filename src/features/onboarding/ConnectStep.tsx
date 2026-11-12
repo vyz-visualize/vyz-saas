@@ -59,7 +59,7 @@ function ConnectLink({ href, provider, connected, canManage }: { href: string; p
   );
 }
 
-export function ConnectStep({ state, result, api, nav }: { state: ConnectState; result: ConnectResult | null; api: FlowApi; nav: StepNav }) {
+export function ConnectStep({ state, result, api, nav, showTestBadges }: { state: ConnectState; result: ConnectResult | null; api: FlowApi; nav: StepNav; showTestBadges: boolean }) {
   const [banner, setBanner] = useState(result);
   const action = useStepAction();
   const connected = CORE_PROVIDER_IDS.filter((p) => state.platforms[p].connected);
@@ -86,7 +86,8 @@ export function ConnectStep({ state, result, api, nav }: { state: ConnectState; 
                     ) : (
                       <span className="rounded-chip border border-line px-2 py-0.5 text-[12px] text-fg-2">Não conectado</span>
                     )}
-                    {state.mock && <PendingChip label="Modo de teste" detail={MOCK_NOTICE[p]} />}
+                    {/* só para a equipe (dev ou ONBOARDING_REPLAY_EMAILS): o cliente nunca vê */}
+                    {state.mock && showTestBadges && <PendingChip label="Modo de teste" detail={MOCK_NOTICE[p]} />}
                   </div>
                   <p className="mt-1 text-[13.5px] text-fg-2">{login ? `Login: ${login.userName ?? login.userEmail ?? "conectado"}` : `Entre com ${loginThe(p)}.`}</p>
                 </div>

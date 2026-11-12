@@ -14,7 +14,7 @@ import { signOut } from "@/server/auth/actions";
 import { realFlowApi, type FlowApi } from "./api";
 import { ConnectStep } from "./ConnectStep";
 import { BuildingView, ProjectStep, SetupStep, WelcomeStep } from "./FlowSteps";
-import { ONBOARDING_STEPS, progressOf, STEP_LABEL, stepIndex, type ActiveStep } from "./steps";
+import { ACTION_STEPS, actionNumber, ONBOARDING_STEPS, progressOf, STEP_LABEL, stepIndex, type ActiveStep } from "./steps";
 import type { OnboardingState } from "./types";
 import { useStepAction } from "./ui";
 
@@ -62,7 +62,7 @@ function FlowDialog({ step, building, children }: { step: ActiveStep; building: 
     const raf = requestAnimationFrame(() => (d?.querySelector<HTMLElement>("[data-autofocus]") ?? d?.querySelector<HTMLElement>("#passo-titulo"))?.focus());
     return () => cancelAnimationFrame(raf);
   }, [step, building]);
-  const at = stepIndex(step);
+  const number = actionNumber(step);
   const progress = Math.round(progressOf(building ? "building" : step) * 100);
   const wide = step === "setup" && !building;
   return (
@@ -79,10 +79,12 @@ function FlowDialog({ step, building, children }: { step: ActiveStep; building: 
           <p className="text-[13px] text-fg-2">
             {building ? (
               "Quase lá"
-            ) : (
+            ) : number ? (
               <>
-                Passo <span className="tnum font-semibold text-fg">{at + 1}</span> de {ONBOARDING_STEPS.length} · {STEP_LABEL[step]}
+                Passo <span className="tnum font-semibold text-fg">{number}</span> de {ACTION_STEPS.length} · {STEP_LABEL[step]}
               </>
+            ) : (
+              `${STEP_LABEL[step]} · ${ACTION_STEPS.length} passos`
             )}
           </p>
           <div role="progressbar" aria-label="Progresso do primeiro acesso" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
@@ -147,7 +149,7 @@ export function OnboardingFlow({ state, result, now, timeZone, api = realFlowApi
       ) : step === "project" ? (
         <ProjectStep project={state.project} businessTypeId={state.businessTypeId} api={api} nav={nav} />
       ) : step === "connect" && state.connect ? (
-        <ConnectStep state={state.connect} result={result} api={api} nav={nav} />
+        <ConnectStep state={state.connect} result={result} api={api} nav={nav} showTestBadges={state.showTestBadges} />
       ) : step === "setup" && state.connect ? (
         <SetupStep state={state.connect} businessTypeId={state.businessTypeId} tier={state.tier} now={now} timeZone={timeZone} api={api} nav={nav} onBuilt={onBuilt} />
       ) : null}

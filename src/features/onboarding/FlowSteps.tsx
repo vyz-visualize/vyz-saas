@@ -17,6 +17,7 @@ import { canBuildDashboard, layoutOptions } from "./steps";
 import { FlowFooter, STEP_BODY, StepTitle, useStepAction } from "./ui";
 
 const BODY = STEP_BODY;
+const NO_ACCOUNTS = "Ative pelo menos uma conta para montar o dashboard. Ou pule por agora: o passo fica pendente na Início.";
 
 export function WelcomeStep({ firstName, api, nav }: { firstName: string; api: FlowApi; nav: StepNav }) {
   const action = useStepAction();
@@ -118,23 +119,28 @@ export function SetupStep({ state, businessTypeId, tier, now, timeZone, api, nav
   const [selections, setSelections] = useState<Partial<Record<ProviderId, PickerSelection>>>({});
   const onSelection = useCallback((provider: ProviderId, s: PickerSelection) => setSelections((prev) => ({ ...prev, [provider]: s })), []);
   const action = useStepAction();
+  // "Ative pelo menos uma conta" só depois de tentar montar sem nenhuma, e some ao marcar uma
+  const [triedEmpty, setTriedEmpty] = useState(false);
   const enabled = providers.reduce((n, p) => {
     const sel = selections[p];
     return n + (sel?.dirty ? sel.count : state.platforms[p].enabledCount);
   }, 0);
+  const noAccounts = triedEmpty && !canBuildDashboard(enabled) ? NO_ACCOUNTS : null;
   const { AccountsPanel } = api;
 
   function build() {
     if (!chosen) return;
+    if (!canBuildDashboard(enabled)) {
+      setTriedEmpty(true);
+      return;
+    }
+    setTriedEmpty(false);
     action.run(async () => {
       for (const p of providers) {
         const sel = selections[p];
         if (sel?.dirty && !(await sel.save())) {
           return { ok: false, error: { code: "onboarding:accounts_not_saved", message: `Não deu para salvar as contas do ${PROVIDERS[p].name}. Confira o aviso acima.` } };
         }
-      }
-      if (!canBuildDashboard(enabled)) {
-        return { ok: false, error: { code: "onboarding:no_accounts", message: "Ative pelo menos uma conta para montar o dashboard. Ou pule por agora: o passo fica pendente na Início." } };
       }
       return api.build(chosen);
     }, (data) => data && onBuilt((data as { id: string }).id));
@@ -167,12 +173,12 @@ export function SetupStep({ state, businessTypeId, tier, now, timeZone, api, nav
       </div>
       <FlowFooter
         {...nav}
-        error={action.error ?? nav.error}
+        error={noAccounts ?? action.error ?? nav.error}
         primaryLabel="Montar dashboard"
         pendingLabel="Montando…"
         pending={action.pending}
         disabled={!chosen}
-        hint={enabled === 0 ? "Ative pelo menos uma conta acima para montar o dashboard." : `${enabled} ${enabled === 1 ? "conta ativa" : "contas ativas"} no dashboard.`}
+        hint={enabled === 0 ? "Marque as contas que entram no dashboard." : `${enabled} ${enabled === 1 ? "conta ativa" : "contas ativas"} no dashboard.`}
         onPrimary={build}
       />
     </>

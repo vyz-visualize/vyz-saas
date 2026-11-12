@@ -15,6 +15,8 @@ import {
   canContinueFromConnect,
   progressOf,
   STEP_TO_DB,
+  ACTION_STEPS,
+  actionNumber,
   parseDecimal,
   stepIndex,
   templatePages,
@@ -48,11 +50,10 @@ describe("passos do primeiro acesso", () => {
     expect(activeStepOf("done")).toBe("welcome");
   });
 
-  it("a barra de progresso anda a cada passo e completa ao montar o dashboard", () => {
-    const values = (["welcome", "project", "connect", "setup"] as const).map(progressOf);
-    expect(values).toEqual([...values].sort((x, y) => x - y));
-    expect(values[0]).toBeGreaterThan(0);
-    expect(values[3]).toBeLessThan(1);
+  it('a barra conta só os 3 passos de ação (as boas-vindas prometem "três passos") e completa ao montar', () => {
+    expect(ACTION_STEPS).toEqual(["project", "connect", "setup"]);
+    expect((["welcome", "project", "connect", "setup"] as const).map(actionNumber)).toEqual([null, 1, 2, 3]);
+    expect((["welcome", "project", "connect", "setup"] as const).map(progressOf)).toEqual([0, 0.25, 0.5, 0.75]);
     expect(progressOf("building")).toBe(1);
   });
 

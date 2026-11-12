@@ -195,6 +195,7 @@ function Flow() {
     canManage: true,
     project: mock.project,
     connect: late ? connectState(mock) : null,
+    showTestBadges: true,
   };
   const result = mock.step === "connect" ? connectResult(Object.fromEntries(params.entries())) : null;
   return (
@@ -226,21 +227,24 @@ function Inicio() {
     syncFailed: false,
     syncing: false,
   });
-  const cases: Record<string, Pick<HomeData, "connections" | "realDashboards" | "activeShareLinks">> = {
-    pulou: { connections: [con("meta", 0), con("google", 0)], realDashboards: 0, activeShareLinks: 0 },
-    meta: { connections: [con("meta", 1), con("google", 0)], realDashboards: 1, activeShareLinks: 0 },
-    pronto: { connections: [con("meta", 2), con("google", 1)], realDashboards: 1, activeShareLinks: 1 },
+  // pulou: quem pula o primeiro acesso não tem dashboard nenhum (pular não cria nada)
+  const dashboard = { kind: "dashboard" as const, id: "demo", title: "Loja da Ana · Visão geral", sub: "Dashboard · VYZ", href: `${BASE}?tela=dashboard`, updatedAt: NOW };
+  const cases: Record<string, Pick<HomeData, "connections" | "realDashboards" | "activeShareLinks" | "recent">> = {
+    pulou: { connections: [con("meta", 0), con("google", 0)], realDashboards: 0, activeShareLinks: 0, recent: [] },
+    meta: { connections: [con("meta", 1), con("google", 0)], realDashboards: 1, activeShareLinks: 0, recent: [dashboard] },
+    pronto: { connections: [con("meta", 2), con("google", 1)], realDashboards: 1, activeShareLinks: 1, recent: [dashboard] },
   };
+  const scenario = cases[caso] ?? cases.pulou;
+  const session: WorkspaceSession = { ...SESSION, usage: { ...SESSION.usage, dashboards: scenario.recent.length, enabledAdAccounts: scenario.connections.reduce((n, c) => n + c.enabledCount, 0) } };
   const data: HomeData = {
     now: NOW,
-    recent: [{ kind: "dashboard", id: "demo", title: "Loja da Ana · Visão geral", sub: "Dashboard · VYZ", href: `${BASE}?tela=dashboard`, updatedAt: NOW }],
-    ...(cases[caso] ?? cases.pulou),
+    ...scenario,
     firstRealDashboardHref: `${BASE}?tela=dashboard`,
     guides: GUIDES,
     tools: { reset: false, replay: true },
   };
   return (
-    <WorkspaceProvider session={SESSION}>
+    <WorkspaceProvider session={session}>
       <div className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6">
         <HomePage data={data} />
       </div>

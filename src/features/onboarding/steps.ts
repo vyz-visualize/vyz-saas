@@ -43,10 +43,22 @@ export function canGoBackTo(current: ActiveStep, target: unknown): target is Act
   return isActiveStep(target) && stepIndex(target) < stepIndex(current);
 }
 
-/** Barra de progresso: quanto já foi (0 a 1). "building" (montando o dashboard) completa a barra. */
+/**
+ * Os passos de ação, os que a barra conta ("Passo 1 de 3"): as boas-vindas só
+ * apresentam e prometem "três passos", então ficam fora da contagem.
+ */
+export const ACTION_STEPS = ["project", "connect", "setup"] as const satisfies readonly ActiveStep[];
+
+/** Número do passo de ação (1 a 3); as boas-vindas não têm número. */
+export function actionNumber(step: ActiveStep): number | null {
+  const i = (ACTION_STEPS as readonly string[]).indexOf(step);
+  return i < 0 ? null : i + 1;
+}
+
+/** Barra de progresso (0 a 1): vazia nas boas-vindas, um quarto por passo de ação e cheia ao montar o dashboard. */
 export function progressOf(step: ActiveStep | "building"): number {
   if (step === "building") return 1;
-  return (stepIndex(step) + 1) / (ONBOARDING_STEPS.length + 1);
+  return (actionNumber(step) ?? 0) / (ACTION_STEPS.length + 1);
 }
 
 /** Do conectar só segue com alguma plataforma conectada; sem nenhuma, a saída é "Pular por agora". */
