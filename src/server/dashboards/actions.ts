@@ -18,7 +18,7 @@ import { allowedPages, copyName, defaultPages, settingsToDb, type DashboardDetai
 import { createDashboardSchema, dashboardFieldsSchema, type CreateDashboardInput, type DashboardFields } from "@/features/dashboards/schema";
 import { canUse } from "@/features/pricing/entitlements";
 import type { Json } from "@/lib/supabase/database.types";
-import { anyDashboardTemplate, isLiveTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
+import { anyDashboardTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
 import type { DashboardTemplate } from "@/features/templates/types";
 import type { WorkspaceSession } from "@/features/workspace/session";
 import { dashboardTag } from "@/server/analytics/queries";
@@ -68,17 +68,14 @@ function pagesFor(t: DashboardTemplate, session: WorkspaceSession, asked: readon
 async function sourcesFor(db: DB, session: WorkspaceSession, t: DashboardTemplate, ids: readonly string[], keep: readonly string[] = []): Promise<string[]> {
   if (!usesAccounts(t)) return [];
   const unique = [...new Set(ids)];
-  // modelo comum: as contas são opcionais (sem conta, mostra a amostra)
-  if (unique.length === 0) {
-    if (!isLiveTemplate(t.id)) return [];
-    throw appError("validation", "Escolha pelo menos uma conta.", { accountIds: "Escolha pelo menos uma conta." });
-  }
+  // as contas são opcionais: sem conta, o dashboard mostra a amostra
+  if (unique.length === 0) return [];
   const rows = unwrap(await db.from("ad_accounts").select("id, name, platform_id, is_enabled").eq("workspace_id", session.workspace.id).in("id", unique)) ?? [];
   const byId = new Map(rows.map((r) => [r.id, r]));
   for (const id of unique) {
     const a = byId.get(id);
     if (!a || !t.sources.includes(a.platform_id as never)) throw appError("dashboard:source_platform");
-    if (!isLiveTemplate(t.id) && !(REAL_DATA_PLATFORMS as readonly string[]).includes(a.platform_id)) throw appError("dashboard:source_platform");
+    if (!(REAL_DATA_PLATFORMS as readonly string[]).includes(a.platform_id)) throw appError("dashboard:source_platform");
     if (!a.is_enabled && !keep.includes(id)) throw appError("dashboard:source_disabled", `Ative a conta “${a.name}” em Contas antes de usá-la num dashboard.`);
   }
   return unique;
@@ -247,7 +244,6 @@ export async function duplicateDashboard(dashboardId: string): Promise<ActionRes
     const pages = kept.length ? kept : defaultPages(t, pagesTier);
     if (pages.length === 0) throw appError("dashboard:no_pages");
     const accountIds = d.sources.filter((s) => s.isEnabled).map((s) => s.id);
-    if (isLiveTemplate(t.id) && accountIds.length === 0) throw appError("dashboard:source_disabled", "As contas deste dashboard estão desativadas. Ative uma conta em Contas para duplicar.");
 
     const db = await createServerSupabase();
     id = await insertDashboard(db, session, { templateId: t.id, name: copyName(d.name), client: d.client, pages, accountIds, settings: settingsToDb(d.settings, d.margin) });

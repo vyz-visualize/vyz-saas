@@ -12,7 +12,8 @@ import { btn } from "@/components/ui/styles";
 import { CreativesPage } from "@/features/analytics/creatives/CreativesPage";
 import { sampleCreatives } from "@/features/analytics/creatives/sample";
 import { DEFAULT_SETTINGS } from "@/features/dashboards/data";
-import { TemplatePreview } from "@/features/dashboards/TemplateGallery";
+import type { PageId } from "@/features/templates/types";
+import { TemplatePreview } from "@/features/dashboards/TemplatePreview";
 import { TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 
@@ -21,7 +22,7 @@ type Feature = { id: string; title: string; text: string; icon: ComponentType<{ 
 /** O comparativo de criativos de verdade (o mesmo da página Criativos), com anúncios de exemplo. */
 function CompareDemo() {
   const data = useMemo(() => {
-    const t = dashboardTemplate("ecommerce-completo");
+    const t = dashboardTemplate("vyz-ecommerce");
     if (!t) return null;
     const spec = { name: "Loja Verde", client: "Loja Verde", settings: DEFAULT_SETTINGS };
     const opts = { period: "30d" as const, customDays: 30 };
@@ -33,10 +34,10 @@ function CompareDemo() {
   return <CreativesPage data={data} />;
 }
 
-const templateDemo = (id: string) =>
+const templateDemo = (id: string, page?: PageId) =>
   function TemplateDemo() {
     const t = dashboardTemplate(id);
-    return t ? <TemplatePreview t={t} /> : null;
+    return t ? <TemplatePreview t={t} page={page} /> : null;
   };
 
 export const TIER_FEATURES: Partial<Record<Tier, Feature[]>> = {
@@ -48,9 +49,9 @@ export const TIER_FEATURES: Partial<Record<Tier, Feature[]>> = {
       icon: GitCompareArrows,
       demo: CompareDemo,
     },
-    { id: "criativos-ao-vivo", title: "Criativos ao vivo", text: "Ranking que se atualiza sozinho, duelo com a confiança estatística e alerta de fadiga.", icon: Activity, demo: templateDemo("criativos-ao-vivo") },
-    { id: "previsao-kpis", title: "Previsão de KPIs", text: "Fechamento do mês com faixa de confiança, chance de bater a meta e simulador de verba.", icon: LineChart, demo: templateDemo("previsao-kpis") },
-    { id: "mmm", title: "MMM · Mix de mídia", text: "Quanto cada canal gera de fato, curvas de saturação e a verba redistribuída que rende mais.", icon: BarChart3, demo: templateDemo("mmm-mix-midia") },
+    { id: "criativos-ao-vivo", title: "Criativos ao vivo", text: "Ranking que se atualiza sozinho, duelo com a confiança estatística e alerta de fadiga.", icon: Activity, demo: templateDemo("vyz-ecommerce", "criativos-ao-vivo") },
+    { id: "previsao-kpis", title: "Previsão de KPIs", text: "Fechamento do mês com faixa de confiança, chance de bater a meta e simulador de verba.", icon: LineChart, demo: templateDemo("vyz-ecommerce", "previsao") },
+    { id: "mmm", title: "MMM · Mix de mídia", text: "Quanto cada canal gera de fato, curvas de saturação e a verba redistribuída que rende mais.", icon: BarChart3, demo: templateDemo("vyz-ecommerce", "mmm") },
   ],
 };
 

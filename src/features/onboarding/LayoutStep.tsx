@@ -13,7 +13,7 @@ import { ScaledPreview } from "@/components/ui/ScaledPreview";
 import { btn } from "@/components/ui/styles";
 import { LiveDashboardPreview } from "@/features/analytics/LiveDashboardPreview";
 import { BUSINESS_TYPES, businessType, templateBusinessTypes } from "@/features/catalog/business-types";
-import { TemplatePreview } from "@/features/dashboards/TemplateGallery";
+import { TemplatePreview } from "@/features/dashboards/TemplatePreview";
 import { TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
 import { startingPrice } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";

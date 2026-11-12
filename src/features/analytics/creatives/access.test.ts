@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { creativesLevel, ENTITLEMENTS, LIMIT_ROWS, type Tier } from "@/features/pricing/entitlements";
 import { datasetFor, DEFAULT_SETTINGS } from "@/features/dashboards/data";
 import { byPlatform, currentTotals } from "@/features/metrics/compute";
-import { DASHBOARD_TEMPLATES, dashboardTemplate } from "@/features/templates/dashboards";
+import { dashboardTemplate } from "@/features/templates/dashboards";
+import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
 import { redactSpend } from "../aggregate";
 import { sampleDashboardData, sampleRows } from "../preview";
@@ -119,24 +120,24 @@ describe("amostras", () => {
   const spec = { name: "Teste", client: "Loja", settings: DEFAULT_SETTINGS };
 
   it("só nos modelos que usam a Meta", () => {
-    expect(usesCreativesPage(dashboardTemplate("criativos-meta")!, ["criativos"])).toBe(true);
-    expect(usesCreativesPage(dashboardTemplate("ecommerce-completo")!, ["criativos"])).toBe(true);
-    for (const id of ["tiktok-ads", "youtube-video", "google-pesquisa"]) expect([id, usesCreativesPage(dashboardTemplate(id)!, ["criativos"])]).toEqual([id, false]);
+    expect(usesCreativesPage(dashboardTemplate("vyz-ecommerce")!, ["criativos"])).toBe(true);
+    expect(usesCreativesPage(dashboardTemplate("lavanda-ecommerce")!, ["criativos"])).toBe(true);
+    for (const sources of [["tiktok"], ["youtube"], ["google"]] as const) expect([sources, usesCreativesPage({ sources: [...sources] }, ["criativos"])]).toEqual([sources, false]);
   });
 
   it("sem a página no dashboard, não gera nada", () => {
-    expect(sampleCreatives(dashboardTemplate("criativos-meta")!, spec, ["visao-geral"], { tier: "avancado" }, opts)).toBeUndefined();
+    expect(sampleCreatives(dashboardTemplate("vyz-ecommerce")!, spec, ["visao-geral"], { tier: "avancado" }, opts)).toBeUndefined();
   });
 
   it("passam pelo mesmo corte por plano", () => {
-    const t = dashboardTemplate("criativos-meta")!;
+    const t = dashboardTemplate("vyz-ecommerce")!;
     expect(sampleCreatives(t, spec, ["criativos"], { tier: "base", upsell: true }, opts)!.gallery).toEqual([]);
     expect(sampleCreatives(t, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, opts)!.compare.length).toBeGreaterThan(0);
     expect(sampleCreatives(t, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, { ...opts, hideSpend: true })!.compare[0].days[0].spend).toBeNull();
   });
 
   describe("a soma dos anúncios fecha com o modelo", () => {
-    const metaTemplates = DASHBOARD_TEMPLATES.filter((t) => t.sources.includes("meta"));
+    const metaTemplates = ALL_DASHBOARD_TEMPLATES.filter((t) => t.sources.includes("meta"));
     const s = { name: "Dashboard de teste", client: "Cliente", settings: DEFAULT_SETTINGS };
     const load = (id: string, days: number) => {
       const period = days === 7 ? ("7d" as const) : ("30d" as const);
@@ -146,30 +147,13 @@ describe("amostras", () => {
       const sum = (pick: (r: (typeof rows)[number]) => number | null | undefined) => rows.reduce((acc, r) => acc + Number(pick(r) ?? 0), 0);
       return { ds, c, sum, cur: currentTotals(ds), parts: byPlatform(ds) };
     };
-    const onlyMeta = metaTemplates.filter((t) => load(t.id, 30).parts.length === 1);
     const withOthers = metaTemplates.filter((t) => load(t.id, 30).parts.length > 1);
     const days = (list: typeof metaTemplates) => list.flatMap((t) => [7, 30].map((d) => [t.id, d] as const));
 
-    it("cobre os dois casos", () => {
-      expect(onlyMeta.length).toBeGreaterThanOrEqual(2);
-      expect(withOthers.length).toBeGreaterThan(5);
-      expect(onlyMeta.map((t) => t.id)).toContain("criativos-meta");
-      expect(withOthers.map((t) => t.id)).toContain("ecommerce-completo");
-    });
-
-    it.each(days(onlyMeta))("só Meta: %s em %i dias fecha com os cards", (id, d) => {
-      const { c, sum, cur } = load(id, d);
-      // investimento (em centavos, como o card), impressões e cliques: exatos
-      expect(Math.round(sum((r) => r.spend) * 100)).toBe(Math.round(cur.spend));
-      expect(sum((r) => r.impressions)).toBe(Math.round(cur.impressions));
-      expect(sum((r) => r.clicks)).toBe(Math.round(cur.clicks));
-      // resultados: a coluna da lista, que cada anúncio preenche pelo seu objetivo
-      expect(c.list.reduce((acc, r) => acc + (r.result.value ?? 0), 0)).toBe(Math.round(cur.conversions));
-      expect(Math.round(c.list.reduce((acc, r) => acc + (r.spend ?? 0), 0) * 100)).toBe(Math.round(cur.spend));
-      // as razões dos cards da aba Criativos saem iguais da soma
-      expect(sum((r) => r.clicks) / sum((r) => r.impressions)).toBeCloseTo(cur.ctr, 6);
-      expect((sum((r) => r.spend) * 100) / sum((r) => r.impressions)).toBeCloseTo(cur.cpm / 1000, 6);
-      expect(sum((r) => r.impressions) / sum((r) => r.reach)).toBeCloseTo(cur.frequency, 1);
+    // todo modelo novo lê Meta, Google, GA4 e orgânico: os anúncios somam a parte da Meta
+    it("cobre todos os modelos com Meta", () => {
+      expect(withOthers.length).toBe(metaTemplates.length);
+      expect(withOthers.map((t) => t.id)).toContain("lavanda-ecommerce");
     });
 
     it.each(days(withOthers))("Meta e outras: %s em %i dias fecha com a parte da Meta", (id, d) => {
@@ -188,14 +172,14 @@ describe("amostras", () => {
     });
 
     it("o card mostra a mesma parte que os anúncios somam", () => {
-      const { c, parts, ds } = load("ecommerce-completo", 30);
+      const { c, parts, ds } = load("lavanda-ecommerce", 30);
       const meta = parts.find((p) => p.id === "meta")!;
       expect(byPlatform(ds).find((p) => p.id === "meta")!.conv).toBe(meta.conv);
       expect(c.list.reduce((acc, r) => acc + (r.result.value ?? 0), 0)).toBe(meta.conv);
     });
 
     it("receita da parte da Meta: proporcional às compras atribuídas", () => {
-      const { ds, cur, parts, sum } = load("ecommerce-completo", 30);
+      const { ds, cur, parts, sum } = load("lavanda-ecommerce", 30);
       const meta = parts.find((p) => p.id === "meta")!;
       const attributed = parts.reduce((a, p) => a + p.conv, 0);
       expect(metaTotals(ds).revenue).toBeCloseTo((cur.revenue * meta.conv) / attributed, 6);
@@ -203,7 +187,7 @@ describe("amostras", () => {
     });
 
     it("alcance nunca passa de impressões e o cliques no link nunca passa de cliques", () => {
-      const c = sampleCreatives(dashboardTemplate("criativos-meta")!, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, opts)!;
+      const c = sampleCreatives(dashboardTemplate("vyz-ecommerce")!, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, opts)!;
       for (const r of c.compare.flatMap((a) => a.days)) {
         expect(r.reach ?? 0).toBeLessThanOrEqual(r.impressions);
         expect(r.linkClicks ?? 0).toBeLessThanOrEqual(r.clicks);
@@ -212,12 +196,12 @@ describe("amostras", () => {
 
     it("o gerador da Meta continua igual: só a amostra é escalada", () => {
       const before = sampleRows("meta", { today: "2026-10-30" }).adDaily.slice(0, 50);
-      sampleCreatives(dashboardTemplate("criativos-meta")!, spec, ["criativos"], { tier: "avancado" }, opts);
+      sampleCreatives(dashboardTemplate("vyz-ecommerce")!, spec, ["criativos"], { tier: "avancado" }, opts);
       expect(sampleRows("meta", { today: "2026-10-30" }).adDaily.slice(0, 50)).toEqual(before);
     });
 
     it("modelo sem receita: sem ROAS nem valor por anúncio", () => {
-      const t = dashboardTemplate("criativos-meta")!;
+      const t = dashboardTemplate("vyz-leads")!;
       expect(currentTotals(datasetFor({ templateId: t.id, ...spec }, 30)).revenue).toBe(0);
       const c = sampleCreatives(t, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, opts)!;
       expect(c.gallery.every((g) => g.roas == null)).toBe(true);
@@ -227,7 +211,7 @@ describe("amostras", () => {
     });
 
     it("sem investimento oculto escapando na amostra escalada", () => {
-      const c = sampleCreatives(dashboardTemplate("ecommerce-completo")!, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, { ...opts, hideSpend: true })!;
+      const c = sampleCreatives(dashboardTemplate("lavanda-ecommerce")!, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, { ...opts, hideSpend: true })!;
       expect(c.list.every((r) => r.spend == null)).toBe(true);
       expect(c.compare.flatMap((a) => a.days).every((d) => d.spend == null)).toBe(true);
     });

@@ -153,7 +153,7 @@ describe("os padrões não mudam", () => {
   });
 
   it("amostras: as novas entram desligadas", () => {
-    const t = dashboardTemplate("criativos-meta")!;
+    const t = dashboardTemplate("vyz-ecommerce")!;
     const defaults = ["conversions", "cpa"] as const;
     expect(visibleIds(sampleCatalog(t.profile, defaults, t.sources), "kpis", undefined).sort()).toEqual([...defaults].sort());
   });
@@ -297,7 +297,7 @@ describe("amostras", () => {
   it("TikTok, YouTube e sem plataforma de anúncios: nenhuma", () => {
     expect(sampleExtraCatalog(["tiktok"])).toEqual([]);
     expect(sampleExtraCatalog(["youtube"])).toEqual([]);
-    expect(sampleExtras(dashboardTemplate("tiktok-ads")!, spec, opts)).toEqual([]);
+    expect(sampleExtras({ ...dashboardTemplate("vyz-ecommerce")!, sources: ["tiktok"] }, spec, opts)).toEqual([]);
   });
 
   it("não duplica o que o modelo já tem", () => {
@@ -307,7 +307,7 @@ describe("amostras", () => {
   });
 
   it("valores nos dois períodos, com o rótulo do catálogo", () => {
-    const list = sampleExtras(dashboardTemplate("ecommerce-completo")!, spec, opts);
+    const list = sampleExtras(dashboardTemplate("lavanda-ecommerce")!, spec, opts);
     const reg = list.find((x) => x.id === "registrations")!;
     expect(reg.label).toBe("Cadastros · Meta");
     expect(reg.value).toBeGreaterThan(0);
@@ -315,7 +315,7 @@ describe("amostras", () => {
   });
 
   it("os custos fecham com a parte da Meta dos anúncios", () => {
-    const t = dashboardTemplate("criativos-meta")!;
+    const t = dashboardTemplate("vyz-ecommerce")!;
     const list = sampleExtras(t, spec, opts);
     const c = sampleCreatives(t, spec, ["criativos"], { tier: "avancado", tab: "comparativo" }, opts)!;
     const days = c.compare.flatMap((a) => a.days);
@@ -326,7 +326,7 @@ describe("amostras", () => {
   });
 
   it("investimento oculto: nenhum custo sai do servidor", () => {
-    const list = sampleExtras(dashboardTemplate("ecommerce-completo")!, spec, { ...opts, hideSpend: true });
+    const list = sampleExtras(dashboardTemplate("lavanda-ecommerce")!, spec, { ...opts, hideSpend: true });
     expect(list.length).toBeGreaterThan(5);
     for (const x of list) expect([x.id, x.format]).not.toEqual([x.id, "money"]);
   });

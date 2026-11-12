@@ -14,9 +14,9 @@ import { DEFAULT_SETTINGS } from "./data";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-// o dashboard Teste como está no banco: CPM oculto e salvo
+// o dashboard Teste como está no banco: CPM oculto e salvo (abre na aba Criativos: CTR, custo por resultado e frequência)
 const teste: DashboardSpec = {
-  templateId: "criativos-meta",
+  templateId: "vyz-ecommerce",
   name: "Teste",
   client: "Loja",
   pages: ["visao-geral", "publico", "criativos", "campanhas", "metas"],
@@ -79,8 +79,8 @@ afterEach(async () => {
 
 describe("prévia não salva", () => {
   it("cada métrica ligada aparece na hora e o contador acompanha, sem gravar nada", async () => {
-    await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save }));
-    expect(sampleCards()).toEqual(["conversions", "cpa", "ctr"]);
+    await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, initialPage: "criativos" }));
+    expect(sampleCards()).toEqual(["ctr", "cpa", "frequency"]);
     await openPanel();
     expect(counter()).toBe(3);
 
@@ -98,20 +98,20 @@ describe("prévia não salva", () => {
   });
 
   it("desligar um card da aba também bate, e fechar sem salvar volta ao que estava", async () => {
-    await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save }));
+    await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, initialPage: "criativos" }));
     await openPanel();
     await toggle("CTR");
-    expect(sampleCards()).toEqual(["conversions", "cpa"]);
+    expect(sampleCards()).toEqual(["cpa", "frequency"]);
     expect(counter()).toBe(2);
     await toggle("Investimento");
     expect(counter()).toBe(sampleCards().length);
     await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Cancelar"));
-    expect(sampleCards()).toEqual(["conversions", "cpa", "ctr"]);
+    expect(sampleCards()).toEqual(["ctr", "cpa", "frequency"]);
     expect(save).not.toHaveBeenCalled();
   });
 
   it("o contador acompanha a aba aberta", async () => {
-    await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save }));
+    await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, initialPage: "criativos" }));
     await click([...host.querySelectorAll('[role="tab"]')].find((t) => t.textContent === "Campanhas"));
     await openPanel();
     expect(sampleCards()).toContain("spend");
@@ -125,7 +125,7 @@ describe("prévia não salva", () => {
       { id: "registrations", label: "Cadastros", format: "int" as const, better: "up" as const, value: 42, previous: 30 },
       { id: "costPerRegistration", label: "Custo por cadastro", format: "money" as const, better: "down" as const, value: 12.5, previous: 15 },
     ];
-    await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, extraMetrics }));
+    await mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, extraMetrics, initialPage: "criativos" }));
     await openPanel();
     await toggle("Cadastros");
     expect(sampleCards()).toContain("registrations");

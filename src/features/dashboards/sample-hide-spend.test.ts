@@ -18,7 +18,7 @@ describe("dashboard de exemplo", () => {
   const costPages: PageId[] = ["visao-geral", "campanhas", "por-plataforma", "metas", "publico", "criativos"];
 
   it.each(costPages)("investimento oculto: %s não mostra custo nem ROAS", (page) => {
-    const t = dashboardTemplate("ecommerce-completo")!;
+    const t = dashboardTemplate("vyz-ecommerce")!;
     expect(t).toBeTruthy();
     const html = render(spec(t.id, page), { hideSpend: true });
     for (const term of ["ROAS", "CPM", "CPC", "Custo por"]) expect([page, term, html.includes(term)]).toEqual([page, term, false]);
@@ -26,7 +26,7 @@ describe("dashboard de exemplo", () => {
 
   it("escolhas salvas valem no link", () => {
     const prefs = { sample: { kpis: { hidden: ["roas"], shown: ["impressions"] }, columns: { hidden: [], shown: [] } } };
-    const html = render(spec("ecommerce-visao-geral", "visao-geral", prefs));
+    const html = render(spec("vyz-ecommerce", "visao-geral", prefs));
     expect(html).toContain("Impressões");
     expect(html).not.toContain(">ROAS<");
   });
@@ -34,59 +34,55 @@ describe("dashboard de exemplo", () => {
   it("coluna oculta some da tabela", () => {
     const prefs = { sample: { columns: { hidden: ["ctr"], shown: [] } } };
     const header = /<th scope="col"[^>]*>CTR</;
-    expect(render(spec("ecommerce-completo", "campanhas"))).toMatch(header);
-    expect(render(spec("ecommerce-completo", "campanhas", prefs))).not.toMatch(header);
+    expect(render(spec("vyz-ecommerce", "campanhas"))).toMatch(header);
+    expect(render(spec("vyz-ecommerce", "campanhas", prefs))).not.toMatch(header);
   });
 
   const save = async () => ({ ok: true as const });
   const count = (html: string, re: RegExp) => (html.match(re) ?? []).length;
-  const teste: DashboardSpec = { ...spec("criativos-meta", "visao-geral"), pages: ["visao-geral", "publico", "criativos", "campanhas", "metas"] };
+  // o dashboard Teste, aberto na aba Criativos: 4 cards do modelo (CTR, custo por resultado, frequência e CPM)
+  const teste: DashboardSpec = { ...spec("vyz-ecommerce", "visao-geral"), pages: ["visao-geral", "publico", "criativos", "campanhas", "metas"] };
+  const criativos = { initialPage: "criativos" as PageId };
 
-  it("o dashboard Teste desenha os 4 cards da Visão geral, sem Investimento", () => {
-    const html = render(teste);
+  it("o dashboard Teste desenha os 4 cards de Criativos, sem Investimento", () => {
+    const html = render(teste, criativos);
     expect(count(html, /data-vyz-metric=/g)).toBe(4);
     expect(html).not.toContain('data-vyz-metric="spend"');
   });
 
   it("aba Criativos com Meta e Google: os cards mostram a parte da Meta, a mesma dos anúncios", () => {
-    const misto: DashboardSpec = { ...spec("ecommerce-completo", "criativos"), pages: ["criativos"] };
+    const misto: DashboardSpec = { ...spec("vyz-ecommerce", "criativos"), pages: ["criativos"] };
     const ds = datasetFor(misto, periodDays(misto.settings));
     const cur = currentTotals(ds);
     const parte = platformPart(ds, "meta", "current");
     expect(parte.spend).toBeLessThan(cur.spend);
-    const creatives = sampleCreatives(dashboardTemplate("ecommerce-completo")!, { name: misto.name, client: misto.client, settings: misto.settings }, ["criativos"], { tier: "avancado" }, { period: misto.settings.period, customDays: misto.settings.customDays });
+    const creatives = sampleCreatives(dashboardTemplate("vyz-ecommerce")!, { name: misto.name, client: misto.client, settings: misto.settings }, ["criativos"], { tier: "avancado" }, { period: misto.settings.period, customDays: misto.settings.customDays });
     const comPagina = render(misto, { creatives, initialPage: "criativos" });
     const semPagina = render(misto, { initialPage: "criativos" });
-    // o CPM do card muda para o da Meta; sem a página por plano, continua o total
+    // o CPM do card é o da Meta; nos modelos novos a aba Criativos é da Meta (PAGE_PLATFORM), com ou sem os anúncios
     expect(comPagina).toContain(brl(parte.cpm));
-    expect(semPagina).toContain(brl(cur.cpm));
-  });
-
-  it("modelo só com Meta: a aba Criativos continua com os cards do modelo", () => {
-    const so: DashboardSpec = { ...spec("criativos-meta", "criativos"), pages: ["criativos"] };
-    const ds = datasetFor(so, periodDays(so.settings));
-    const creatives = sampleCreatives(dashboardTemplate("criativos-meta")!, { name: so.name, client: so.client, settings: so.settings }, ["criativos"], { tier: "avancado" }, { period: so.settings.period, customDays: so.settings.customDays });
-    expect(render(so, { creatives, initialPage: "criativos" })).toContain(brl(currentTotals(ds).cpm));
+    expect(semPagina).toContain(brl(parte.cpm));
+    expect(comPagina).not.toContain(brl(cur.cpm));
   });
 
   it("escolha salva vale no que a tela desenha, em qualquer aba", () => {
-    const html = render({ ...teste, metricPrefs: { sample: { kpis: { hidden: ["cpm"], shown: ["spend"] } } } });
+    const html = render({ ...teste, metricPrefs: { sample: { kpis: { hidden: ["cpm"], shown: ["spend"] } } } }, criativos);
     expect(count(html, /data-vyz-metric=/g)).toBe(4);
     expect(html).toContain('data-vyz-metric="spend"');
     expect(html).not.toContain('data-vyz-metric="cpm"');
   });
 
   it("atalhos nos cards só para quem pode editar", () => {
-    const edit = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save }));
+    const edit = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, ...criativos }));
     expect(count(edit, /aria-label="Ocultar /g)).toBe(4);
-    for (const html of [render(teste), render(teste, { hideSpend: true })]) expect(html).not.toContain("Ocultar ");
+    for (const html of [render(teste, criativos), render(teste, { hideSpend: true, ...criativos })]) expect(html).not.toContain("Ocultar ");
     expect(edit).not.toContain("Adicionar métrica");
   });
 
   it("quem edita e quem só visualiza têm a mesma grade de 4 colunas", () => {
     const grid = (html: string) => /<div class="(grid grid-cols-2[^"]*)"/.exec(html)?.[1];
-    const edit = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save }));
-    expect(grid(edit)).toBe(grid(render(teste)));
+    const edit = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, ...criativos }));
+    expect(grid(edit)).toBe(grid(render(teste, criativos)));
     expect(grid(edit)).toContain("grid-cols-4");
     expect(grid(edit)).not.toContain("grid-cols-5");
   });
@@ -100,7 +96,7 @@ describe("dashboard de exemplo", () => {
   });
 
   it("o botão Personalizar só aparece para quem pode editar", () => {
-    const s = spec("ecommerce-visao-geral", "visao-geral");
+    const s = spec("vyz-ecommerce", "visao-geral");
     expect(render(s)).not.toContain("Personalizar");
     expect(render(s, { customizeId: "d1" })).toContain("Personalizar");
   });

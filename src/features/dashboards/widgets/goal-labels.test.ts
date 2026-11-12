@@ -7,7 +7,7 @@ import { PAGES } from "@/features/templates/pages";
 
 describe('"alvo" nos textos do dashboard', () => {
   it("alerta do modelo", () => {
-    const ds = datasetFor({ templateId: "meta-essencial", name: "T", client: "C", settings: DEFAULT_SETTINGS }, 30);
+    const ds = datasetFor({ templateId: "vyz-leads", name: "T", client: "C", settings: DEFAULT_SETTINGS }, 30);
     expect(ds.alerts[0].title).toContain("acima do alvo");
     expect(ds.alerts[0].title).not.toContain("meta");
   });

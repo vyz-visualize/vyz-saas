@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 import { sampleRows } from "@/features/analytics/preview";
 import { datasetFromWarehouse } from "@/features/metrics/warehouse-dataset";
 import { generateAnalyticsData } from "@/features/sync/mock/analytics";
-import { ALL_DASHBOARD_TEMPLATES, isLiveTemplate, usesAccounts } from "@/features/templates/live";
+import { ALL_DASHBOARD_TEMPLATES, usesAccounts } from "@/features/templates/live";
 import { DashboardBody } from "./DashboardBody";
 import { DEFAULT_SETTINGS } from "./data";
 
@@ -22,7 +22,7 @@ const rows = { meta: sampleRows("meta", { period: "30d", today }), google: sampl
 const ga4 = generateAnalyticsData({ accountExternalId: "123", endDate: today, days: 70 }).daily.map((d) => ({ ...d }));
 
 describe("modelos comuns com dados reais", () => {
-  const templates = ALL_DASHBOARD_TEMPLATES.filter((t) => !isLiveTemplate(t.id) && usesAccounts(t));
+  const templates = ALL_DASHBOARD_TEMPLATES.filter((t) => usesAccounts(t));
   it("há modelos de Meta e Google para cobrir", () => expect(templates.length).toBeGreaterThan(5));
 
   for (const t of templates) {

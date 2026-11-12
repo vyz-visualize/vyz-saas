@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { sampleCreatives, sampleExtras } from "@/features/analytics/creatives/sample";
 import { NO_FILTERS, type DashFilters } from "@/features/analytics/filters";
 import { datasetFor, DEFAULT_SETTINGS } from "@/features/dashboards/data";
-import { DASHBOARD_TEMPLATES, dashboardTemplate } from "@/features/templates/dashboards";
+import { dashboardTemplate } from "@/features/templates/dashboards";
+import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 import { addDays } from "@/features/sync/dates";
 import { byPlatform, campaignFrequencies, combinedFrequency, currentTotals, platformPart, previousTotals } from "./compute";
 import { filterDataset } from "./filter-dataset";
@@ -15,7 +16,7 @@ const run = (ds: ReturnType<typeof load>, o: Partial<DashFilters>) => filterData
 const close = (a: number, b: number, digits = 4) => expect(a).toBeCloseTo(b, digits);
 
 describe("as campanhas fecham com o modelo", () => {
-  const all = DASHBOARD_TEMPLATES.flatMap((t) => [7, 30].map((d) => [t.id, d] as const));
+  const all = ALL_DASHBOARD_TEMPLATES.flatMap((t) => [7, 30].map((d) => [t.id, d] as const));
 
   it.each(all)("%s em %i dias", (id, days) => {
     const ds = load(id, days);
@@ -39,7 +40,7 @@ describe("as campanhas fecham com o modelo", () => {
 });
 
 describe("filtro nas amostras", () => {
-  const ds = load("ecommerce-completo");
+  const ds = load("lavanda-ecommerce");
   const base = currentTotals(ds);
   const one = ds.campaigns[0];
 
@@ -132,7 +133,7 @@ describe("filtro nas amostras", () => {
     });
 
     it("todos os modelos: as campanhas de cada plataforma fecham com o card", () => {
-      for (const t of DASHBOARD_TEMPLATES) {
+      for (const t of ALL_DASHBOARD_TEMPLATES) {
         const each = load(t.id);
         const f = campaignFrequencies(each);
         for (const id of new Set(each.campaigns.map((c) => c.platform))) {
@@ -145,7 +146,7 @@ describe("filtro nas amostras", () => {
 });
 
 describe("anúncios simulados ligados às campanhas do modelo", () => {
-  const metaTemplates = DASHBOARD_TEMPLATES.filter((t) => t.sources.includes("meta"));
+  const metaTemplates = ALL_DASHBOARD_TEMPLATES.filter((t) => t.sources.includes("meta"));
   const access = { tier: "avancado" as const, tab: "comparativo" as const };
   const load2 = (id: string, days: 7 | 30) => {
     const t = dashboardTemplate(id)!;
@@ -172,7 +173,7 @@ describe("anúncios simulados ligados às campanhas do modelo", () => {
   });
 
   it("clicar numa campanha filtra a galeria: só os anúncios dela", () => {
-    const { t, ds, opts } = load2("ecommerce-completo", 30);
+    const { t, ds, opts } = load2("lavanda-ecommerce", 30);
     const camp = ds.campaigns.find((c) => c.platform === "meta")!;
     const c = sampleCreatives(t, spec, ["criativos"], { tier: "avancado" }, { ...opts, filters: f({ campaigns: [camp.id] }) })!;
     expect(c.gallery.length).toBeGreaterThan(0);
@@ -181,7 +182,7 @@ describe("anúncios simulados ligados às campanhas do modelo", () => {
   });
 
   it("campanha de outra plataforma: nenhum anúncio da Meta, em vez de todos", () => {
-    const { t, ds, opts } = load2("ecommerce-completo", 30);
+    const { t, ds, opts } = load2("lavanda-ecommerce", 30);
     const other = ds.campaigns.find((c) => c.platform !== "meta")!;
     const c = sampleCreatives(t, spec, ["criativos"], { tier: "avancado" }, { ...opts, filters: f({ campaigns: [other.id] }) })!;
     expect(c.gallery).toEqual([]);
@@ -189,7 +190,7 @@ describe("anúncios simulados ligados às campanhas do modelo", () => {
   });
 
   it("anúncio: os cards fecham com os números dele; a galeria continua com todos, para destacar", () => {
-    const { t, ds, opts, c } = load2("criativos-meta", 30);
+    const { t, ds, opts, c } = load2("vyz-ecommerce", 30);
     const ad = c.list[0];
     const out = sampleCreatives(t, spec, ["criativos"], { tier: "avancado" }, { ...opts, filters: f({ ads: [ad.id] }) })!;
     expect(out.gallery.length).toBe(c.list.length);
@@ -200,17 +201,18 @@ describe("anúncios simulados ligados às campanhas do modelo", () => {
   });
 
   it("dias: a galeria fecha com o trecho dos cards, e o comparativo ignora", () => {
-    const { t, ds, opts, c } = load2("criativos-meta", 30);
+    const { t, ds, opts, c } = load2("vyz-ecommerce", 30);
     const n = ds.current.length;
     const days = { from: addDays(TODAY, -ds.current[n - 10].ago), to: addDays(TODAY, -ds.current[n - 6].ago) };
     const out = sampleCreatives(t, spec, ["criativos"], access, { ...opts, filters: f({ days }) })!;
-    const cards = currentTotals(filterDataset(ds, f({ days }), { today: TODAY }).ds);
+    // com Meta e Google, os anúncios fecham com a parte da Meta dos cards
+    const cards = platformPart(filterDataset(ds, f({ days }), { today: TODAY }).ds, "meta", "current");
     expect(Math.abs(out.list.reduce((a, l) => a + (l.spend ?? 0), 0) * 100 - cards.spend)).toBeLessThan(20);
     expect(out.compare).toEqual(c.compare);
   });
 
   it("métricas novas fecham com a galeria também com filtro", () => {
-    const { t, ds, opts } = load2("ecommerce-completo", 30);
+    const { t, ds, opts } = load2("lavanda-ecommerce", 30);
     const camp = ds.campaigns.find((c) => c.platform === "meta")!;
     const filters = f({ campaigns: [camp.id] });
     const all = sampleExtras(t, spec, opts).find((x) => x.id === "registrations")!;
@@ -226,15 +228,16 @@ describe("anúncios simulados ligados às campanhas do modelo", () => {
     };
 
     it("campanha", () => {
-      const { ds, c } = load2("criativos-meta", 30);
-      for (const camp of ds.campaigns) {
+      const { ds, c } = load2("vyz-ecommerce", 30);
+      // só as campanhas da Meta têm anúncios simulados
+      for (const camp of ds.campaigns.filter((x) => x.platform === "meta")) {
         const card = currentTotals(filterDataset(ds, f({ campaigns: [camp.id] }), { today: TODAY }).ds).frequency;
         expect(adsFrequency(c, [camp.name])).toBeCloseTo(card, 1);
       }
     });
 
     it("anúncio", () => {
-      const { t, ds, opts, c } = load2("criativos-meta", 30);
+      const { t, ds, opts, c } = load2("vyz-ecommerce", 30);
       const ad = c.compare[0];
       const out = sampleCreatives(t, spec, ["criativos"], access2, { ...opts, filters: f({ ads: [ad.id] }) })!;
       const card = currentTotals(filterDataset(ds, f({ ads: [ad.id] }), { today: TODAY, adSelection: out.selection }).ds).frequency;
@@ -242,7 +245,7 @@ describe("anúncios simulados ligados às campanhas do modelo", () => {
     });
 
     it("trecho de dias: muda a frequência, nos cards e na galeria", () => {
-      const { t, ds, opts } = load2("criativos-meta", 30);
+      const { t, ds, opts } = load2("vyz-ecommerce", 30);
       const n = ds.current.length;
       const days = { from: addDays(TODAY, -ds.current[n - 10].ago), to: addDays(TODAY, -ds.current[n - 6].ago) };
       const card = currentTotals(filterDataset(ds, f({ days }), { today: TODAY }).ds).frequency;
@@ -253,13 +256,13 @@ describe("anúncios simulados ligados às campanhas do modelo", () => {
   });
 
   it("recorte sem a Meta: as métricas dela ficam sem valor", () => {
-    const { t, ds, opts } = load2("ecommerce-completo", 30);
+    const { t, ds, opts } = load2("lavanda-ecommerce", 30);
     const other = ds.campaigns.find((c) => c.platform !== "meta")!;
     expect(sampleExtras(t, spec, { ...opts, filters: f({ campaigns: [other.id] }) }).every((x) => x.value == null)).toBe(true);
   });
 
   it("investimento oculto: a soma do anúncio não leva o valor", () => {
-    const { t, opts, c } = load2("criativos-meta", 30);
+    const { t, opts, c } = load2("vyz-ecommerce", 30);
     const out = sampleCreatives(t, spec, ["criativos"], { tier: "avancado" }, { ...opts, hideSpend: true, filters: f({ ads: [c.list[0].id] }) })!;
     expect(out.selection!.spend).toBe(0);
     expect(out.list.every((l) => l.spend == null)).toBe(true);

@@ -1,81 +1,47 @@
-# VYZ · Templates de dashboard e de landing page
+# VYZ · Modelos de dashboard e templates de landing page
 
-Padrão do projeto: **cada template é um arquivo**, e cada catálogo tem um índice que junta os arquivos na ordem dos planos. Template novo nunca entra no meio de uma lista grande; ele ganha o próprio arquivo.
+Padrão do projeto: **cada visual é um arquivo** e cada catálogo tem um índice que junta os arquivos na ordem dos planos.
 
 ## Onde fica cada coisa
 
 ```
 src/features/templates/
-  types.ts                         tipos dos dashboards (DashboardTemplate, PageId, WidgetSpec)
-  pages.ts                         biblioteca de páginas do dashboard (o que cada aba mostra)
-  live.ts                          templates com dados reais (Meta e Google · E-commerce) + catálogo completo
+  types.ts                         tipos (DashboardTemplate, PageId, WidgetSpec)
+  pages.ts                         biblioteca de páginas (o que cada aba mostra)
+  live.ts                          catálogo completo (ALL_DASHBOARD_TEMPLATES) e busca por id
   dashboards/
-    index.ts                       DASHBOARD_TEMPLATES (ordem: Básico, Padrão, Avançado), categorias, busca por id
-    catalog/<id>.ts                um template de dashboard com dados de exemplo
+    index.ts                       categorias e dashboardTemplate(id)
+    composed.ts                    objetivos, recursos, montagem das páginas e métricas de mercado
+    visuais/index.ts               os visuais na ordem da tela
+    visuais/<id>.ts                um visual (vyz, lavanda, pulso, noturno, areia)
   landing-pages/
-    index.ts                       LANDING_TEMPLATES (mesma ordem), landingTemplate, landingDefaults
-    types.ts                       LandingTemplate, LandingContent, seções do editor
-    shared.ts                      textos repetidos entre templates (COMMON_FAQ)
+    index.ts                       LANDING_TEMPLATES, landingTemplate, landingDefaults
     catalog/<id>.ts                um template de landing page
 ```
 
-Quem importa continua usando `@/features/templates/dashboards` e `@/features/templates/landing-pages` (o índice da pasta).
+## Como um dashboard é montado
 
-## Criar um template de dashboard
+Um dashboard é **visual × objetivo**, e as **páginas saem das contas** ligadas a ele:
 
-1. Crie `src/features/templates/dashboards/catalog/<id>.ts`. O `id` é o nome do arquivo, em minúsculas e com hífen, e **não muda depois de publicado** (dashboards criados apontam para ele).
+- **Visual** (`visuais/<id>.ts`): só a aparência. Básico: VYZ e Lavanda; Padrão: + Pulso; Avançado: todos.
+- **Objetivo** (`OBJECTIVES` em `composed.ts`): decide os números do topo e o funil (compra, lead, contato...).
+- **Modelo** = `${visual}-${objetivo}` (ex.: `noturno-ecommerce`). É o id gravado no banco e **não muda depois de publicado**.
+- **Páginas** (`composePages`): Visão geral quando há anúncio; uma página por plataforma (Meta Ads, Google Ads, Site GA4, Instagram, Página do Facebook), Força dos canais (GA4 com anúncios), Conteúdo (orgânico), os recursos escolhidos e o Funil.
+- **Recursos** (`FEATURES`): Metas e pacing, Comparativo de períodos (Padrão); Comparativo de criativos, Análise preditiva e MMM (Avançado).
+- **Métricas de mercado** (`composedLayout`): a Visão geral e as páginas da Meta e do Google trazem 8 números fixos por objetivo.
 
-   ```ts
-   import type { DashboardTemplate } from "../../types";
+## Criar um visual
 
-   export default {
-     id: "varejo-local",
-     name: "Varejo local · Visitas e rotas",
-     category: "Negócio local",            // uma de DASHBOARD_CATEGORIES
-     tier: "base",                          // base (Básico) | pro (Padrão) | avancado (Avançado)
-     profile: "local",                      // perfil de métricas (features/metrics/definitions.ts)
-     sources: ["meta", "google"],           // plataformas que o template lê
-     pages: ["visao-geral", "por-plataforma", "campanhas", "funil"],
-     description: "Uma frase sobre a decisão que este dashboard ajuda a tomar.",
-   } satisfies DashboardTemplate;
-   ```
+1. Crie `src/features/templates/dashboards/visuais/<id>.ts` (id em minúsculas, sem acento) e o desenho em `src/features/dashboards/skins/` (o visual VYZ não tem skin).
+2. Acrescente o arquivo em `visuais/index.ts`, na ordem da tela.
+3. `npm run db:catalog`: cadastra os modelos novos (visual × cada objetivo) e apaga do banco os que saíram do código e nenhum dashboard usa.
+4. `npm test`: o teste que desenha todas as páginas de todos os modelos confere que nada quebra.
 
-2. Acrescente o import e a linha no `dashboards/index.ts`, dentro do grupo do plano.
-3. Rode `npm run db:catalog` (o banco precisa do template para aceitar dashboards criados a partir dele).
-4. Rode `npm test`. Os testes conferem, entre outras coisas, que o template só usa plataformas do próprio plano.
+## Criar um objetivo ou um recurso
 
-**Regras**
-- As plataformas em `sources` precisam caber no plano do template (Básico: Meta, Google Ads e GA4).
-- As páginas acima do plano do template aparecem com cadeado para quem não tem o plano; prefira páginas do próprio plano. Planos das páginas: `pages.ts` (Básico: visão geral, por plataforma, campanhas, funil; Padrão: + criativos, metas, público, comparativo, carteira, termos; Avançado: todas).
-- Página nova (widget novo) entra em `pages.ts` e em `PageId` (`types.ts`), e depois no `db:catalog`.
-- A quantidade de templates por plano que aparece no site e no painel é **contada no catálogo** (`features/pricing/entitlements.ts`); não existe número escrito à mão.
+- Objetivo: acrescente em `OBJECTIVES` (e o nicho do onboarding em `OBJECTIVE_BY_BUSINESS`) e as métricas em `KPIS_BY_PROFILE`.
+- Recurso: acrescente em `FEATURES`, crie a página em `pages.ts` e o desenho dela em `DashboardBody` (sourcePage).
 
-### Templates com visual próprio (skin)
-
-Um template pode ter `skin` (`types.ts` → `SkinId`): a **primeira aba** dele é desenhada por um componente próprio em `src/features/dashboards/skins/<Nome>.tsx`, com paleta e composição fixas; as outras abas usam os widgets padrão. O visual lê os mesmos dados de exemplo (`WidgetContext`), respeita o investimento oculto e aparece também na galeria e no PDF.
-
-Hoje: `lavanda` (painel-lavanda), `pulso` (painel-pulso), `monocromo` (painel-monocromo), todos no Básico; `noturno` (painel-noturno, e-commerce em azul-noite e âmbar) e `areia` (painel-areia, leads com CRM em tons de areia e terracota), no Avançado, com todos os gráficos na Bklit UI; e as análises do Avançado, que seguem o tema do painel: `criativos-ao-vivo` (ranking em tempo real, duelo com teste de CTR, fadiga), `previsao` (regressão com sazonalidade da semana, faixa de 95%, chance de bater a meta, simulador de verba) e `mmm` (base + canais com adstock e saturação, ROI marginal e otimizador da mesma verba). Todos calculam sobre os dados de exemplo. Visual novo: crie o componente, registre em `skins/index.tsx` e no `SkinId`, e declare os blocos em `skins/blocks.ts`.
-
-Os visuais com moldura própria (`FRAMED_SKINS` em `skins/blocks.ts`: Lavanda, Pulso, Monocromo, Noturno e Areia) tomam a tela do dashboard inteira: o cabeçalho padrão (título, abas, período) não aparece. No painel eles vão de ponta a ponta, sem margem e sem a moldura de fora (prop `screen`, ligada pelo `backHref` do `DashboardBody`): a barra fina padrão e o botão de tema somem (regras `[data-skin-screen]` no `globals.css`) e a barra do topo entra no visual, nas cores dele (prop `bar`, `SkinBar`): "← Dashboards" à esquerda e as ações (editar, compartilhar, exportar) à direita. Na galeria, na miniatura, no PDF e no link público o visual continua como cartão. Os controles do dashboard (período, comparar, personalizar) entram pela prop `controls`, com a paleta dele: na tela do painel sobem para a barra do topo, ao lado do voltar (`SkinChrome` com `screen` deixa embaixo só o aviso de filtros); fora dela ficam logo abaixo do topo. As outras abas chegam como `children` e são desenhadas dentro da moldura, com os blocos padrão na paleta do visual (`SkinPage`); a navegação do visual troca de aba. A miniatura na lista de dashboards também é o próprio visual.
-
-**Tela 16:9, sem rolar a página.** No painel (prop `backHref`), cada aba se encaixa na altura do monitor: a grade (`GridCanvas` com `fit`) mede a altura livre (`useFitHeight`) e reparte entre as fileiras (`fitRows` em `layout/model.ts`). Fileiras só de cards (KPI, métrica e os blocos marcados `card` em `skins/blocks.ts`) ficam baixas e não crescem; o resto divide o que sobra. Se a tela for baixa demais (gráfico abaixo de `FIT_MIN_ROW`), a grade volta à altura padrão e a página rola; no celular e no Personalizar também. Conteúdo maior que o bloco (tabela, lista de criativos) rola dentro do próprio bloco. Para um bloco encolher junto em vez de rolar: raiz com `fit-fill` (ou `Panel fill`), miolo em `flex-1 min-h-0`, gráfico em `FitChart` (o mínimo dele cede no encaixe, `--fit-cap`). Cada bloco da grade é um `@container`: o conteúdo se arruma pela largura do bloco. As ações (editar, compartilhar, exportar) vão para a barra do topo da tela cheia por `FocusBarActions` (portal no `#focus-actions` do `FocusShell`). Os dashboards com dados reais (`LiveDashboardView`) ainda usam o layout corrido: o cabeçalho já é compacto e as ações já estão na barra, mas as páginas ainda rolam.
-
-Visual novo com a Bklit UI: use as peças de `skins/bklit-blocks.tsx` (`StatBlock`, `DailyChart`, `ShareRings`, `Gauge`, `StageFunnel`, `RankBars`, `Block`). O visual declara a paleta dele (`SkinPalette`) e põe `themeVars(paleta)` com `data-chart-theme` no contêiner: os tokens da VYZ (`--accent`, `--card`, `--fg`...) passam a valer a paleta ali dentro, então os gráficos, as classes do Tailwind (`bg-card`, `text-fg-2`) e os cartões que a pessoa solta na grade acompanham. Entra na lista `SPECIAL` da galeria (`TemplateGallery.tsx`) e ganha palavras em `TEMPLATE_WORDS` (`recommend.ts`).
-
-### Disposição e métricas por plataforma (modo Personalizar)
-
-Depois de criado, o dashboard de exemplo se arruma no próprio **Personalizar métricas**, que agora também edita a disposição:
-
-- Cada aba vira uma grade de 12 colunas (`features/dashboards/layout/model.ts`). Os blocos são os do template (cards de KPI = `kpis`, widgets = `w0`, `w1`…) e não aparecem blocos de fora: a pessoa move pelo cabeçalho, muda o tamanho pelo canto (com mínimo por tipo), esconde e traz de volta. Teclado: setas movem, Shift + setas mudam o tamanho, Delete esconde.
-- Na bandeja, a aba **Por plataforma** lista o que a API de cada fonte do template entrega (`layout/platform-metrics.ts`: campo na API e se a VYZ já sincroniza) e os blocos escondidos; arrastar para a grade cria o card `m:<plataforma>:<métrica>` (até 12 por aba).
-- **Plano:** mover e redimensionar é do Avançado (`canArrangeLayout`). Nos outros planos, o Personalizar só adiciona e oculta métricas; os cards de plataforma entram no próximo espaço livre e o servidor ignora qualquer posição mandada.
-- Salvar, Cancelar e Restaurar padrão valem para métricas e disposição juntos. O banco guarda só as abas mexidas em `dashboards.layout` (migração `20261106120000_dashboard_layout.sql`); o servidor valida tudo de novo (`saveDashboardLayout`).
-- Abas com visual próprio (skin) também entram na grade: a moldura do desenho (fundo, menu, topo) fica fixa e cada card ou painel é um bloco (`skins/blocks.ts`, ids `s-…`, com a disposição padrão de cada visual). A regra de cada aba (blocos aceitos e padrão) está em `layout/page-rules.ts`, usada pelo painel e pelo servidor. Visual novo: declare os blocos em `SKIN_BLOCKS` e desenhe com `<SkinGrid>`.
-- A página de Criativos com dados da Meta fica fora da grade. Telas estreitas mostram os blocos em uma coluna, na ordem da disposição.
-
-### Dashboards com dados reais
-
-Os templates de `live.ts` (`dataMode: "live"`) leem o que a sincronização grava das contas conectadas e têm layout próprio em `src/features/analytics/meta` e `src/features/analytics/google`. Um template live novo precisa do layout dele nessa pasta e do mapeamento em `features/analytics/preview.ts` (`TEMPLATE_PLATFORM`).
 
 ## Criar um template de landing page
 
@@ -130,14 +96,14 @@ Os templates de `live.ts` (`dataMode: "live"`) leem o que a sincronização grav
 
 | Plano | Dashboards | Landing pages |
 |---|---|---|
-| Básico | 5 (2 com dados reais, 3 com visual próprio) | 4 |
-| Padrão | 8 | 8 |
-| Avançado | 34 (2 com visual próprio na Bklit UI, 1 de planilha com dados reais) | 13 |
+| Básico | 2 visuais (VYZ, Lavanda) × 8 objetivos | 4 |
+| Padrão | 3 visuais (+ Pulso) | 8 |
+| Avançado | 5 visuais (+ Noturno, Areia) | 13 |
 
 ## Orgânico (Instagram e Página do Facebook)
 
 O login do Meta também traz as Páginas e o Instagram profissional ligado a cada uma (`listAccounts` em `server/integrations/providers/meta.ts`). Cada perfil vira uma conta própria em `ad_accounts` (plataformas `instagram` e `facebook`, tipo `social`, `oauth_provider = meta` no catálogo) e conta 1 conta do plano. A sincronização grava em `organic_daily` (por dia) e `organic_posts` (cada post com os números de vida inteira), pelo `fetchOrganicDataset` (real) ou `generateOrganicData` (simulado). Desde 2025 o Meta não dá mais impressões: o número principal é **visualizações** (Instagram `views`, Página `page_media_view`).
 
-No dashboard, o orgânico chega em `data.organic` (`aggregateOrganic`, `features/analytics/organic.ts`) para qualquer modelo com dados reais que tenha um Instagram ou uma Página ligados. As abas são `organico` (cards, série e tabela por perfil) e `conteudo` (ranking de posts, reels e stories), em `features/analytics/organic/OrganicPages.tsx`. Modelos: `meta-organico` (só orgânico), `meta-organico-pago` (orgânico + anúncios) e a aba Orgânico no `meta-ecommerce`. Sem perfil ligado, as abas do orgânico somem dos modelos que têm anúncios.
+No dashboard, o orgânico chega em `data.organic` (`aggregateOrganic`, `features/analytics/organic.ts`) para qualquer modelo com dados reais que tenha um Instagram ou uma Página ligados. As abas são `organico` (cards, série e tabela por perfil) e `conteudo` (ranking de posts, reels e stories), em `features/analytics/organic/OrganicPages.tsx`. Nos modelos, cada Instagram ligado vira a página `instagram`, cada Página a `pagina-facebook`, e os posts entram em `conteudo` (`composePages`).
 
 Antes de publicar uma mudança aqui: `npm run db:push` (migração `20261112090000_organic.sql`) e `npm run db:catalog` (plataformas, páginas e modelos novos).

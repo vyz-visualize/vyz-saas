@@ -12,7 +12,7 @@ import { canUse, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
 import { anyDashboardTemplate } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
-import { TemplatePreview } from "./TemplateGallery";
+import { TemplatePreview } from "./TemplatePreview";
 
 export function lockedPagesOf(templateId: string, pagesTier: Tier | null): PageId[] {
   const t = anyDashboardTemplate(templateId);

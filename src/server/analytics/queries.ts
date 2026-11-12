@@ -19,7 +19,6 @@ import { isOrganicPlatform } from "@/features/accounts/platforms";
 import { cutCreatives, type CreativesAccess } from "@/features/analytics/creatives/access";
 import { aggregateFiltered } from "@/features/analytics/filtered";
 import { NO_FILTERS, type DashFilters } from "@/features/analytics/filters";
-import { TEMPLATE_PLATFORM } from "@/features/analytics/preview";
 import { anyDashboardTemplate } from "@/features/templates/live";
 import { dashboardRanges, isPeriodId, maturingStart } from "@/features/analytics/ranges";
 import type {
@@ -75,8 +74,9 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
   if (!dashboard) throw appError("dashboard:not_found");
   // modelos novos e os de exemplo (app): a plataforma principal é a das contas ligadas (Meta, senão Google)
   if (!anyDashboardTemplate(dashboard.template_id)) throw appError("dashboard:not_live", "Este dashboard não lê dados das contas conectadas.");
-  let platform = TEMPLATE_PLATFORM[dashboard.template_id];
-  const composed = !platform;
+  // a plataforma principal é a das contas ligadas (Meta, senão Google)
+  let platform: LivePlatform | undefined;
+  const composed = true;
 
   const { data: sources, error: sErr } = await db
     .from("dashboard_sources")

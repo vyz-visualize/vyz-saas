@@ -11,7 +11,7 @@ import { btn } from "@/components/ui/styles";
 import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements";
 import { anyDashboardTemplate } from "@/features/templates/live";
 import { composedId, OBJECTIVES, VISUALS, type ObjectiveId } from "@/features/templates/dashboards/composed";
-import { TemplateThumb } from "./TemplateGallery";
+import { TemplateThumb } from "./TemplatePreview";
 
 export function ModelPicker({
   tier,

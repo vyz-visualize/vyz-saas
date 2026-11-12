@@ -6,19 +6,14 @@
 import type { PlatformId } from "@/features/accounts/platforms";
 import type { Profile } from "@/features/metrics/definitions";
 import type { Tier } from "@/features/pricing/entitlements";
+import { VISUAL_LIST } from "./visuais";
 import type { DashboardCategory, DashboardTemplate, PageId, PageLayout, SkinId } from "../types";
 
 export type VisualId = "vyz" | "lavanda" | "pulso" | "noturno" | "areia";
 export type Visual = { id: VisualId; name: string; skin?: SkinId; tier: Exclude<Tier, "personalizado">; description: string };
 
-/** Os visuais oferecidos. Básico: VYZ e Lavanda; Padrão: + Pulso; Avançado: todos. */
-export const VISUALS: Visual[] = [
-  { id: "vyz", name: "Padrão VYZ", tier: "base", description: "O visual da casa: claro ou escuro, números grandes e leitura rápida." },
-  { id: "lavanda", name: "Lavanda", skin: "lavanda", tier: "base", description: "Claro, em lilás: cards suaves e gráficos arredondados." },
-  { id: "pulso", name: "Pulso", skin: "pulso", tier: "pro", description: "Escuro, com destaque vibrante para o que importa." },
-  { id: "noturno", name: "Noturno", skin: "noturno", tier: "avancado", description: "Escuro em azul-noite e âmbar, com anéis e tendências." },
-  { id: "areia", name: "Areia", skin: "areia", tier: "avancado", description: "Claro, em tons de areia, editorial e calmo." },
-];
+/** Os visuais oferecidos (um arquivo cada, em ./visuais). */
+export const VISUALS: Visual[] = VISUAL_LIST;
 
 export type ObjectiveId = "ecommerce" | "leads" | "local" | "infoproduto" | "imob" | "saude" | "educacao" | "agencia";
 export type Objective = { id: ObjectiveId; label: string; hint: string; profile: Profile; category: DashboardCategory };

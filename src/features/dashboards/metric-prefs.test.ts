@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { sampleLayout } from "./DashboardBody";
 import { catalogForTemplate, pageLayout, sampleDefaultKpis } from "./data";
 import { GOOGLE_CATALOG, hideKpi, KPI_MAX, META_CATALOG, normalizeScope, normalizeSection, pageCatalog, pageKpiIds, parseMetricPrefs, pickColumns, sampleCatalog, sectionMax, toggleBlock, toggleMetric, visibleIds, withScope, type SectionPrefs } from "./metric-prefs";
-import { DASHBOARD_TEMPLATES, dashboardTemplate } from "@/features/templates/dashboards";
+import { dashboardTemplate } from "@/features/templates/dashboards";
 import type { PageId } from "@/features/templates/types";
-import { LIVE_TEMPLATES } from "@/features/templates/live";
+import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 
 const meta = (prefs?: Parameters<typeof visibleIds>[2]) => visibleIds(META_CATALOG, "kpis", prefs);
 
@@ -15,8 +15,8 @@ describe("padrão", () => {
   });
 
   it("o padrão do exemplo muda com o nicho", () => {
-    const ecommerce = dashboardTemplate("ecommerce-visao-geral")!;
-    const imob = dashboardTemplate("imobiliario-leads")!;
+    const ecommerce = dashboardTemplate("vyz-ecommerce")!;
+    const imob = dashboardTemplate("vyz-imob")!;
     const e = sampleDefaultKpis(ecommerce, ["visao-geral"]);
     const i = sampleDefaultKpis(imob, ["visao-geral"]);
     expect(e).toContain("roas");
@@ -26,11 +26,8 @@ describe("padrão", () => {
   });
 
   it("o catálogo certo para cada template", () => {
-    const m = LIVE_TEMPLATES.find((t) => t.id === "meta-ecommerce")!;
-    const g = LIVE_TEMPLATES.find((t) => t.id === "google-ecommerce")!;
-    expect(catalogForTemplate(m, m.pages).scope).toBe("meta");
-    expect(catalogForTemplate(g, g.pages).scope).toBe("google");
-    expect(catalogForTemplate(dashboardTemplate("ecommerce-visao-geral")!, ["visao-geral"]).scope).toBe("sample");
+    // todo modelo é de exemplo até ligar contas: o catálogo da amostra
+    expect(catalogForTemplate(dashboardTemplate("vyz-ecommerce")!, ["visao-geral"]).scope).toBe("sample");
   });
 
   it("todo mundo tem explicação e grupo", () => {
@@ -90,7 +87,7 @@ describe("mínimo e máximo", () => {
   });
 
   it("uma aba de exemplo com cards nunca fica sem nenhum", () => {
-    const t = dashboardTemplate("ecommerce-visao-geral")!;
+    const t = dashboardTemplate("vyz-ecommerce")!;
     const own = pageLayout(t, "visao-geral").kpis.map((k) => k.metric);
     const catalog = sampleCatalog(t.profile, own);
     const ids = pageKpiIds(catalog, own, { hidden: own, shown: [] });
@@ -100,8 +97,8 @@ describe("mínimo e máximo", () => {
 });
 
 describe("o contador e os cards sempre batem", () => {
-  // o dashboard Teste: 7 cards somando as abas, 4 na Visão geral
-  const teste = dashboardTemplate("criativos-meta")!;
+  // o dashboard Teste: 9 cards somando as abas, 4 em Criativos (sem Investimento)
+  const teste = dashboardTemplate("vyz-ecommerce")!;
   const testePages: PageId[] = ["visao-geral", "publico", "criativos", "campanhas", "metas"];
   const kpisOf = (t: typeof teste, p: PageId) => pageLayout(t, p).kpis.map((k) => k.metric as string);
   const catalogOf = (t: typeof teste, pages: readonly PageId[]) => sampleCatalog(t.profile, sampleDefaultKpis(t, pages));
@@ -113,19 +110,19 @@ describe("o contador e os cards sempre batem", () => {
     return { counter: visibleIds(pageCatalog(catalog, own), "kpis", prefs).length, cards: sampleLayout(pageLayout(t, page), pageKpiIds(catalog, own, prefs)).kpis.length };
   };
 
-  it("o caso do dashboard Teste: conta 4, não 7", () => {
-    expect(visibleIds(catalogOf(teste, testePages), "kpis", undefined)).toHaveLength(7);
-    expect(both(teste, testePages, "visao-geral")).toEqual({ counter: 4, cards: 4 });
-    const catalog = pageCatalog(catalogOf(teste, testePages), kpisOf(teste, "visao-geral"));
+  it("o caso do dashboard Teste: conta 4, não 9", () => {
+    expect(visibleIds(catalogOf(teste, testePages), "kpis", undefined)).toHaveLength(9);
+    expect(both(teste, testePages, "criativos")).toEqual({ counter: 4, cards: 4 });
+    const catalog = pageCatalog(catalogOf(teste, testePages), kpisOf(teste, "criativos"));
     expect(visibleIds(catalog, "kpis", undefined)).not.toContain("spend");
     const on = toggleMetric(catalog, "kpis", undefined, "spend");
-    expect(both(teste, testePages, "visao-geral", on)).toEqual({ counter: 5, cards: 5 });
-    expect(sampleLayout(pageLayout(teste, "visao-geral"), pageKpiIds(catalogOf(teste, testePages), kpisOf(teste, "visao-geral"), on)).kpis.map((k) => k.metric)).toContain("spend");
+    expect(both(teste, testePages, "criativos", on)).toEqual({ counter: 5, cards: 5 });
+    expect(sampleLayout(pageLayout(teste, "criativos"), pageKpiIds(catalogOf(teste, testePages), kpisOf(teste, "criativos"), on)).kpis.map((k) => k.metric)).toContain("spend");
   });
 
   it("em todo modelo, em toda aba com cards e com qualquer escolha", () => {
     let checked = 0;
-    for (const t of DASHBOARD_TEMPLATES) {
+    for (const t of ALL_DASHBOARD_TEMPLATES) {
       for (const page of t.pages) {
         const own = kpisOf(t, page);
         if (!own.length) continue;

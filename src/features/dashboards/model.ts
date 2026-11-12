@@ -4,7 +4,6 @@
 
 import type { PlatformId } from "@/features/accounts/platforms";
 import { canUse, type Tier } from "@/features/pricing/entitlements";
-import { isLiveTemplate } from "@/features/templates/live";
 import { PAGE_LIBRARY, PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { ATTRIBUTIONS, type Dashboard, type DashboardSettings, type PeriodId } from "@/features/workspace/types";
@@ -98,7 +97,7 @@ export function toDashboard(row: DashboardRow, pages: PageRow[], sources: Source
     brand: row.brand_color || row.hide_vyz_brand ? { color: row.brand_color ?? "", hideVyz: row.hide_vyz_brand } : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    live: isLiveTemplate(row.template_id),
+    live: false,
     sources: list,
     margin: row.margin == null ? null : settings.margin,
     metricPrefs: parseMetricPrefs(row.metric_prefs),
@@ -129,7 +128,7 @@ export type PageOption = { id: PageId; locked: boolean; tier: Tier; soon: boolea
  * locked = acima do plano (o banco recusa do mesmo jeito: plan:page).
  */
 export function pageOptions(t: DashboardTemplate, pagesTier: Tier): PageOption[] {
-  const ids = isLiveTemplate(t.id) ? t.pages : [...t.pages, ...PAGE_LIBRARY.filter((p) => !t.pages.includes(p) && !PAGES[p].templateOnly)];
+  const ids = [...t.pages, ...PAGE_LIBRARY.filter((p) => !t.pages.includes(p) && !PAGES[p].templateOnly)];
   return ids.map((id) => ({ id, tier: PAGES[id].tier, locked: !canUse(pagesTier, PAGES[id].tier), soon: !!PAGES[id].soon }));
 }
 

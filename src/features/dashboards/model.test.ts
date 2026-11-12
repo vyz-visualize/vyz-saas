@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { dashboardTemplate } from "@/features/templates/dashboards";
-import { LIVE_TEMPLATES } from "@/features/templates/live";
 import { allowedPages, copyName, defaultPages, pageOptions, periodFromQuery, periodQuery, settingsToDb, toDashboard, type DashboardRow } from "./model";
 import { createDashboardSchema } from "./schema";
 
 const row: DashboardRow = {
   id: "0f2b1c1e-5a0e-4a8e-9a55-2d6f3b1f0c01",
-  template_id: "meta-ecommerce",
+  template_id: "vyz-ecommerce",
   name: "Loja Verde · Meta",
   client_name: "Loja Verde",
   goal_cents: 6000,
@@ -21,8 +20,7 @@ const row: DashboardRow = {
   updated_at: "2026-10-30T11:00:00Z",
 };
 
-const meta = LIVE_TEMPLATES[0];
-const google = LIVE_TEMPLATES[1];
+const t = dashboardTemplate("vyz-ecommerce")!;
 
 describe("toDashboard", () => {
   it("mapeia colunas, ordena páginas e contas", () => {
@@ -43,7 +41,8 @@ describe("toDashboard", () => {
     expect(d.accounts).toEqual({ meta: "a" });
     expect(d.settings).toEqual({ goal: 6000, margin: 0.4, budget: 0, period: "7d", customDays: 21, attribution: "7c", currency: "BRL" });
     expect(d.margin).toBe(0.4);
-    expect(d.live).toBe(true);
+    // não há mais modelos "live": todo dashboard lê as contas ligadas ou a amostra
+    expect(d.live).toBe(false);
     expect(d.brand).toBeUndefined();
   });
 
@@ -72,25 +71,20 @@ describe("settingsToDb", () => {
 });
 
 describe("páginas pelo plano", () => {
-  it("live: só as páginas do template; acima do plano fica trancada", () => {
-    const opts = pageOptions(google, "pro");
-    expect(opts.map((o) => o.id)).toEqual(google.pages);
-    expect(opts.find((o) => o.id === "produtos")?.locked).toBe(true);
+  it("as páginas do modelo primeiro; acima do plano fica trancada", () => {
+    const opts = pageOptions(t, "pro");
+    expect(opts.map((o) => o.id).slice(0, t.pages.length)).toEqual(t.pages);
+    expect(opts.find((o) => o.id === "previsao")?.locked).toBe(true);
     expect(opts.find((o) => o.id === "termos")?.locked).toBe(false);
-    expect(defaultPages(google, "pro")).toEqual(["visao-geral", "campanhas", "termos"]);
-    expect(defaultPages(meta, "base")).toEqual(["visao-geral", "campanhas", "funil", "criativos", "organico"]);
-  });
-
-  it("exemplo: biblioteca sem as páginas exclusivas de outros templates", () => {
-    const t = dashboardTemplate("ecommerce-visao-geral") ?? dashboardTemplate(LIVE_TEMPLATES[0].id)!;
-    const ids = pageOptions(t, "avancado").map((o) => o.id);
-    expect(ids).not.toContain("termos");
-    expect(ids.slice(0, t.pages.length)).toEqual(t.pages);
+    expect(defaultPages(t, "base")).not.toContain("termos");
+    expect(defaultPages(t, "pro")).toContain("termos");
+    expect(defaultPages(t, "pro")).not.toContain("previsao");
+    expect(defaultPages(t, "avancado")).toEqual(t.pages);
   });
 
   it("allowedPages filtra, tira repetidas e mantém a ordem pedida", () => {
-    expect(allowedPages(meta, "base", ["funil", "publico", "funil", "xyz", "visao-geral"])).toEqual(["funil", "visao-geral"]);
-    expect(allowedPages(meta, "pro", ["publico", "criativos"])).toEqual(["publico", "criativos"]);
+    expect(allowedPages(t, "base", ["funil", "publico", "funil", "xyz", "visao-geral"])).toEqual(["funil", "visao-geral"]);
+    expect(allowedPages(t, "pro", ["publico", "criativos"])).toEqual(["publico", "criativos"]);
   });
 });
 
@@ -120,7 +114,7 @@ describe("copyName", () => {
 });
 
 describe("createDashboardSchema", () => {
-  const base = { templateId: "meta-ecommerce", name: " Loja ", client: "", goal: 0, budget: 0, margin: null, period: "30d", customDays: 14, attribution: "7c1v", pages: ["visao-geral"], accountIds: [], brandColor: null, hideVyz: false };
+  const base = { templateId: "vyz-ecommerce", name: " Loja ", client: "", goal: 0, budget: 0, margin: null, period: "30d", customDays: 14, attribution: "7c1v", pages: ["visao-geral"], accountIds: [], brandColor: null, hideVyz: false };
   it("aceita o mínimo e apara o nome", () => {
     const r = createDashboardSchema.safeParse(base);
     expect(r.success && r.data.name).toBe("Loja");

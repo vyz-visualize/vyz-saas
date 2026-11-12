@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LIVE_TEMPLATES } from "@/features/templates/live";
+import { dashboardTemplate } from "@/features/templates/dashboards";
+import type { DashboardTemplate } from "@/features/templates/types";
 import {
   allowedPages,
   canGoBackTo,
@@ -13,8 +14,9 @@ import {
   templatePages,
 } from "./steps";
 
-const meta = LIVE_TEMPLATES.find((t) => t.id === "meta-ecommerce")!;
-const google = LIVE_TEMPLATES.find((t) => t.id === "google-ecommerce")!;
+const vyz = dashboardTemplate("vyz-ecommerce")!;
+const meta: DashboardTemplate = { ...vyz, sources: ["meta", "instagram", "facebook"] };
+const google: DashboardTemplate = { ...vyz, sources: ["google", "ga4"] };
 
 describe("passos", () => {
   it("nicho → layout → conectar, e só volta para trás", () => {
@@ -52,6 +54,7 @@ describe("layouts", () => {
   });
 
   it("conectar mostra só Meta e Google que o layout usa", () => {
+    expect(layoutProviders(vyz)).toEqual(["meta", "google"]);
     expect(layoutProviders(meta)).toEqual(["meta"]);
     expect(layoutProviders(google)).toEqual(["google"]);
   });
@@ -59,12 +62,13 @@ describe("layouts", () => {
 
 describe("templates e páginas", () => {
   it("passa só as páginas do plano", () => {
-    expect(allowedPages(meta, "base")).toEqual(["visao-geral", "campanhas", "funil", "criativos", "organico"]);
-    expect(allowedPages(meta, "pro")).toEqual(meta.pages);
-    expect(allowedPages(google, "pro")).toEqual(["visao-geral", "campanhas", "termos"]);
-    expect(allowedPages(google, "avancado")).toEqual(google.pages);
-    expect(allowedPages(google, null)).toEqual([]);
-    expect(templatePages(google, "base").find((p) => p.id === "produtos")?.lockLabel).toBe("Disponível no Avançado");
+    const base = allowedPages(vyz, "base");
+    expect(base).toEqual(vyz.pages.filter((p) => !["publico", "termos", "criativos-ao-vivo", "previsao", "mmm", "metas", "comparativo"].includes(p)));
+    expect(allowedPages(vyz, "pro")).toEqual(vyz.pages.filter((p) => !["criativos-ao-vivo", "previsao", "mmm"].includes(p)));
+    expect(allowedPages(vyz, "avancado")).toEqual(vyz.pages);
+    expect(allowedPages(vyz, null)).toEqual([]);
+    expect(templatePages(vyz, "base").find((p) => p.id === "previsao")?.lockLabel).toBe("Disponível no Avançado");
+    expect(templatePages(vyz, "base").find((p) => p.id === "metas")?.lockLabel).toBe("Disponível no Padrão");
   });
 });
 

@@ -22,7 +22,7 @@ import { createDashboard } from "@/server/dashboards/actions";
 import { allowedPages, type SourceOption } from "./model";
 import { ModelPicker } from "./ModelPicker";
 import { PlatformIcon } from "@/components/brand/PlatformIcon";
-import { TemplateThumb } from "./TemplateGallery";
+import { TemplateThumb } from "./TemplatePreview";
 import { ColorField } from "@/components/ui/ColorField";
 import { FileInput } from "@/components/ui/FileInput";
 import { removeBrandLogo, updateWorkspace, uploadBrandLogo } from "@/server/workspace/actions";

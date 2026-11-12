@@ -71,7 +71,7 @@ export function ConnectArt() {
 
 // ---- passo 2: os modelos se alternando ---------------------------------------------------
 
-const MODELS = ["ecommerce-visao-geral", "leads-visao-geral", "imobiliario-leads", "agencia-carteira", "local-whatsapp", "meta-essencial"]
+const MODELS = ["vyz-ecommerce", "lavanda-leads", "pulso-imob", "noturno-agencia", "areia-local", "vyz-infoproduto"]
   .map((id) => dashboardTemplate(id))
   .filter((t): t is NonNullable<typeof t> => !!t);
 

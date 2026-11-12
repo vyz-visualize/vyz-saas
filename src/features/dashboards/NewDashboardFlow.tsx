@@ -13,7 +13,7 @@ import { Checkbox, LockBadge, PendingChip, SelectField, TextField } from "@/comp
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { availableIn, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
-import { anyDashboardTemplate, isLiveTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
+import { anyDashboardTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
 import { composePages } from "@/features/templates/dashboards/composed";
 import { PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
@@ -143,7 +143,8 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
   const [pending, start] = useTransition();
 
   const t = draft.templateId ? anyDashboardTemplate(draft.templateId) : undefined;
-  const live = !!t && isLiveTemplate(t.id);
+  // não há mais modelo "ao vivo" separado: todo modelo lê as contas marcadas
+  const live = false;
   // modelo comum de Meta ou Google: escolhe as contas também (sem conta, fica a amostra)
   const pickAccounts = !!t && usesAccounts(t);
   const save = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
@@ -503,7 +504,7 @@ function withTemplate(d: Draft, t: DashboardTemplate, pagesTier: Tier, sources: 
     ...d,
     templateId: t.id,
     pages: defaultPages(t, pagesTier),
-    accountIds: usesAccounts(t) ? sources.filter((s) => s.isEnabled && t.sources.includes(s.platformId) && (isLiveTemplate(t.id) || (REAL_DATA_PLATFORMS as readonly string[]).includes(s.platformId))).map((s) => s.id) : [],
+    accountIds: usesAccounts(t) ? sources.filter((s) => s.isEnabled && t.sources.includes(s.platformId) && (REAL_DATA_PLATFORMS as readonly string[]).includes(s.platformId)).map((s) => s.id) : [],
   };
 }
 

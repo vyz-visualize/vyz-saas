@@ -181,7 +181,7 @@ describe("dados reais: a URL manda e o servidor refaz a conta", () => {
 });
 
 describe("amostras: a conta é no navegador", () => {
-  const spec: DashboardSpec = { templateId: "ecommerce-completo", name: "Teste", client: "Loja", pages: ["visao-geral", "campanhas"], settings: DEFAULT_SETTINGS };
+  const spec: DashboardSpec = { templateId: "vyz-ecommerce", name: "Teste", client: "Loja", pages: ["visao-geral", "campanhas"], settings: DEFAULT_SETTINGS };
   const sample = (extra = {}) => mount(createElement(DashboardBody, { spec, initialPage: "campanhas", ...extra }));
   const item = (id: string) => host.querySelector(`[data-filter-item="${id}"]`);
 
@@ -204,7 +204,8 @@ describe("amostras: a conta é no navegador", () => {
   });
 
   it("a plataforma filtra pela fonte, no topo", async () => {
-    await sample();
+    // nos modelos novos, o topo mostra as plataformas das contas ligadas
+    await sample({ linkedPlatforms: ["meta", "google"] });
     await click(item("meta"));
     expect(window.location.search).toBe("?plataforma=meta");
     expect(chips()[0]).toContain("Plataforma: Meta");
@@ -216,7 +217,7 @@ describe("amostras: a conta é no navegador", () => {
   });
 
   it("o card de Frequência filtra sem selo, e o valor muda", async () => {
-    const criativos: DashboardSpec = { ...spec, templateId: "criativos-meta", pages: ["visao-geral", "criativos"] };
+    const criativos: DashboardSpec = { ...spec, templateId: "vyz-ecommerce", pages: ["visao-geral", "criativos"] };
     const card = () => host.querySelector('[data-vyz-metric="frequency"]');
     await mount(createElement(DashboardBody, { spec: criativos, initialPage: "criativos" }));
     const before = card()?.textContent;

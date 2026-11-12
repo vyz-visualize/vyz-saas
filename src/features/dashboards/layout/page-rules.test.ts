@@ -5,7 +5,7 @@ import { canArrangeLayout, normalizeGrid, overlaps, withMetricCards } from "./mo
 import { pageRules } from "./page-rules";
 
 describe("disposição nas abas com visual próprio", () => {
-  const t = dashboardTemplate("painel-lavanda")!;
+  const t = dashboardTemplate("lavanda-ecommerce")!;
 
   it("a primeira aba aceita os blocos do visual e cards de plataforma das fontes", () => {
     const r = pageRules(t, t.pages[0]);

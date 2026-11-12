@@ -8,7 +8,7 @@ vi.mock("@/server/analytics/queries", () => ({ dashboardTag: (id: string) => id 
 
 const ID = "11111111-1111-4111-8111-111111111111";
 const updates: unknown[] = [];
-const current = { templateId: "meta-ecommerce", pages: ["visao-geral"], metricPrefs: { google: { kpis: { hidden: ["cpc"], shown: [] } } } as object };
+const current = { templateId: "vyz-ecommerce", pages: ["visao-geral"], metricPrefs: { google: { kpis: { hidden: ["cpc"], shown: [] } } } as object };
 
 vi.mock("@/server/auth/workspace", () => ({ authorize: vi.fn(async () => ({ workspace: { id: "ws" }, user: { id: "user" } })) }));
 vi.mock("./queries", () => ({ getDashboard: vi.fn(async () => current) }));
@@ -30,32 +30,34 @@ describe("salvar métricas", () => {
     updates.length = 0;
   });
 
-  it("grava só a diferença da plataforma e mantém as outras abas", async () => {
+  // os modelos novos guardam as escolhas em "sample"; o que já estava em outra chave fica
+  it("grava só a diferença e mantém as outras chaves", async () => {
     const { saveDashboardMetricPrefs } = await load();
-    const r = await saveDashboardMetricPrefs(ID, "meta", { kpis: { hidden: ["cpm", "inventada"], shown: ["reach"] } });
+    const r = await saveDashboardMetricPrefs(ID, "sample", { kpis: { hidden: ["cpm", "inventada"], shown: ["frequency"] } });
     expect(r.ok).toBe(true);
-    expect(updates).toEqual([{ metric_prefs: { google: current.metricPrefs && { kpis: { hidden: ["cpc"], shown: [] } }, meta: { kpis: { hidden: ["cpm"], shown: ["reach"] } } } }]);
+    expect(updates).toEqual([{ metric_prefs: { google: { kpis: { hidden: ["cpc"], shown: [] } }, sample: { kpis: { hidden: ["cpm"], shown: ["frequency"] } } } }]);
   });
 
-  it("restaurar tira a plataforma", async () => {
+  it("restaurar tira a chave", async () => {
     const { saveDashboardMetricPrefs } = await load();
-    await saveDashboardMetricPrefs(ID, "meta", {});
+    await saveDashboardMetricPrefs(ID, "sample", {});
     expect(updates[0]).toEqual({ metric_prefs: { google: { kpis: { hidden: ["cpc"], shown: [] } } } });
   });
 
   it("no exemplo, salvar numa aba não perde o que vale em outra", async () => {
     const before = { templateId: current.templateId, pages: current.pages };
-    Object.assign(current, { templateId: "criativos-meta", pages: ["visao-geral", "criativos", "campanhas"] });
+    Object.assign(current, { templateId: "vyz-ecommerce", pages: ["visao-geral", "criativos", "campanhas"] });
     const { saveDashboardMetricPrefs } = await load();
-    // frequency é card de Criativos; spend é card de Campanhas e foi adicionado à Visão geral
+    // frequency é card de Criativos; spend é card da Visão geral e foi adicionado a Criativos
     await saveDashboardMetricPrefs(ID, "sample", { kpis: { hidden: ["frequency"], shown: ["spend"] } });
     Object.assign(current, before);
     expect(updates[0]).toMatchObject({ metric_prefs: { sample: { kpis: { hidden: ["frequency"], shown: ["spend"] } } } });
   });
 
-  it("recusa plataforma que não é a do dashboard", async () => {
+  it("recusa chave que não é a do dashboard", async () => {
     const { saveDashboardMetricPrefs } = await load();
     expect((await saveDashboardMetricPrefs(ID, "google", {})).ok).toBe(false);
+    expect((await saveDashboardMetricPrefs(ID, "meta", {})).ok).toBe(false);
     expect(updates).toHaveLength(0);
   });
 

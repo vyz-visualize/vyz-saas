@@ -5,8 +5,7 @@ import { PAGES } from "@/features/templates/pages";
 import { composedLayout } from "@/features/templates/dashboards/composed";
 import type { DashboardTemplate, PageId, PageLayout } from "@/features/templates/types";
 import type { DashboardSettings } from "@/features/workspace/types";
-import { TEMPLATE_PLATFORM } from "@/features/analytics/preview";
-import { GOOGLE_CATALOG, IMPORT_CATALOG, META_CATALOG, sampleCatalog, type CatalogMetric, type MetricScope } from "./metric-prefs";
+import { sampleCatalog, type CatalogMetric, type MetricScope } from "./metric-prefs";
 
 export const DEFAULT_SETTINGS: DashboardSettings = {
   goal: 0,
@@ -51,10 +50,5 @@ export function sampleDefaultKpis(t: DashboardTemplate, pages: readonly PageId[]
 
 /** Catálogo e chave de um dashboard: plataforma nos templates com dados reais, "sample" nos de exemplo. */
 export function catalogForTemplate(t: DashboardTemplate, pages: readonly PageId[]): { scope: MetricScope; metrics: CatalogMetric[]; pageKpis?: MetricId[][] } {
-  if (t.dataMode === "live") {
-    const platform = TEMPLATE_PLATFORM[t.id];
-    if (platform === "import") return { scope: "import", metrics: IMPORT_CATALOG };
-    return t.sources.includes("google") ? { scope: "google", metrics: GOOGLE_CATALOG } : { scope: "meta", metrics: META_CATALOG };
-  }
   return { scope: "sample", metrics: sampleCatalog(t.profile, sampleDefaultKpis(t, pages), t.sources), pageKpis: pages.map((p) => pageLayout(t, p).kpis.map((k) => k.metric)) };
 }

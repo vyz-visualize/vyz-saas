@@ -187,6 +187,10 @@ async function main() {
         profile = excluded.profile, min_plan_id = excluded.min_plan_id, data_mode = excluded.data_mode, sort = excluded.sort, is_active = true`;
     const templateIds = templates.map((t) => t.id);
     await tx`update public.dashboard_templates set is_active = false where id <> all(${templateIds})`;
+    // modelos que saíram do código e que nenhum dashboard usa: saem do banco (os filhos saem em cascata)
+    const gone = await tx`delete from public.dashboard_templates t where t.id <> all(${templateIds})
+      and not exists (select 1 from public.dashboards d where d.template_id = t.id) returning t.id`;
+    counts.dashboard_templates_removed = gone.length;
     await tx`delete from public.dashboard_template_platforms where template_id = any(${templateIds})`;
     await tx`delete from public.dashboard_template_pages where template_id = any(${templateIds})`;
     await tx`delete from public.dashboard_template_business_types where template_id = any(${templateIds})`;

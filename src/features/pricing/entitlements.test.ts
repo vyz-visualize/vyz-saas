@@ -1,7 +1,7 @@
 import { VISUALS } from "@/features/templates/dashboards/composed";
 import { describe, expect, it } from "vitest";
 import { PLATFORMS } from "@/features/accounts/platforms";
-import { DASHBOARD_TEMPLATES } from "@/features/templates/dashboards";
+import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { PAGES } from "@/features/templates/pages";
 import { canUse, ENTITLEMENTS, templateCountsLabel, TIERS } from "./entitlements";
@@ -42,6 +42,6 @@ describe("limites por plano", () => {
   });
 
   it("todo template usa só plataformas do próprio plano", () => {
-    for (const t of DASHBOARD_TEMPLATES) for (const s of t.sources) expect(canUse(t.tier, PLATFORMS[s].tier)).toBe(true);
+    for (const t of ALL_DASHBOARD_TEMPLATES) for (const s of t.sources) expect(canUse(t.tier, PLATFORMS[s].tier)).toBe(true);
   });
 });

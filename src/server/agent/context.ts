@@ -21,8 +21,6 @@ import { currentTotals, previousTotals, totals, type Totals } from "@/features/m
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
 import { localDate } from "@/features/sync/dates";
 import { dashboardTemplate } from "@/features/templates/dashboards";
-import { TEMPLATE_PLATFORM } from "@/features/analytics/preview";
-import { LIVE_TEMPLATES } from "@/features/templates/live";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { periodDays, type PeriodId } from "@/features/workspace/types";
 import { loadLiveDashboard } from "@/server/analytics/queries";
@@ -81,7 +79,8 @@ export async function loadAgentContext(now = new Date(), focus?: AgentFocus, dep
         .limit(50),
     ) ?? [];
 
-  const live = dashboards.filter((d) => LIVE_TEMPLATES.some((t) => t.id === d.template_id));
+  // todos os dashboards: os que têm conta de anúncio ligada respondem com os números reais
+  const live = dashboards;
   const today = localDate(now, session.workspace.timezone);
   const ranges = monthToDate(today);
 
@@ -90,7 +89,7 @@ export async function loadAgentContext(now = new Date(), focus?: AgentFocus, dep
     ? (unwrap(
         await supabase
           .from("dashboard_sources")
-          .select("dashboard_id, account:ad_accounts!dashboard_sources_workspace_id_ad_account_id_fkey(id, is_enabled)")
+          .select("dashboard_id, account:ad_accounts!dashboard_sources_workspace_id_ad_account_id_fkey(id, is_enabled, platform_id)")
           .in(
             "dashboard_id",
             live.map((d) => d.id),
@@ -98,7 +97,12 @@ export async function loadAgentContext(now = new Date(), focus?: AgentFocus, dep
       ) ?? [])
     : [];
   const accountsOf = new Map<string, string[]>();
-  for (const s of sources) if (s.account?.is_enabled) accountsOf.set(s.dashboard_id, [...(accountsOf.get(s.dashboard_id) ?? []), s.account.id]);
+  const platformOf = new Map<string, "meta" | "google" | "import">();
+  for (const s of sources) {
+    if (!s.account?.is_enabled || ["ga4", "instagram", "facebook"].includes(s.account.platform_id)) continue;
+    accountsOf.set(s.dashboard_id, [...(accountsOf.get(s.dashboard_id) ?? []), s.account.id]);
+    if (!platformOf.has(s.dashboard_id) || s.account.platform_id === "meta") platformOf.set(s.dashboard_id, s.account.platform_id === "meta" ? "meta" : s.account.platform_id === "google" ? "google" : "import");
+  }
   const accountIds = [...new Set([...accountsOf.values()].flat())];
   const rows = new Map<string, WarehouseDay[]>();
   for (let page = 0; accountIds.length > 0; page++) {
@@ -123,14 +127,13 @@ export async function loadAgentContext(now = new Date(), focus?: AgentFocus, dep
   const days = Math.max(1, Number(today.slice(8, 10)));
   const clients: ClientData[] = dashboards.flatMap((d): ClientData[] => {
     const client = d.client_name || d.name;
-    if (live.includes(d)) {
-      const ids = accountsOf.get(d.id) ?? [];
-      if (!ids.length) return [];
+    const ids = accountsOf.get(d.id) ?? [];
+    if (ids.length) {
       const { cur, prev } = periodTotals(
         ids.flatMap((id) => rows.get(id) ?? []),
         ranges,
       );
-      const platform = TEMPLATE_PLATFORM[d.template_id] ?? "meta";
+      const platform = platformOf.get(d.id) ?? "meta";
       // o assistente responde sobre qualquer métrica; só o "Mostrar no painel" precisa do card visível
       const shown = visibleIds(platform === "google" ? GOOGLE_CATALOG : platform === "import" ? IMPORT_CATALOG : META_CATALOG, "kpis", parseMetricPrefs(d.metric_prefs)[platform]?.kpis);
       const kpis = shown.map((id) => kpiMetric(platform, id)).filter((m): m is MetricId => !!m);

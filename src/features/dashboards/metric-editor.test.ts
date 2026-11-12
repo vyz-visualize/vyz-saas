@@ -12,7 +12,8 @@ import { DEFAULT_SETTINGS } from "./data";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const teste: DashboardSpec = { templateId: "criativos-meta", name: "Teste", client: "Loja", pages: ["visao-geral", "publico", "criativos", "campanhas"], settings: DEFAULT_SETTINGS, metricPrefs: { sample: { kpis: { hidden: ["cpm"], shown: [] } } } };
+// o modo abre na aba Criativos: 4 cards do modelo (CTR, custo por resultado, frequência e CPM), sem Investimento
+const teste: DashboardSpec = { templateId: "vyz-ecommerce", name: "Teste", client: "Loja", pages: ["visao-geral", "publico", "criativos", "campanhas"], settings: DEFAULT_SETTINGS, metricPrefs: { sample: { kpis: { hidden: ["cpm"], shown: [] } } } };
 const save = vi.fn(async () => ({ ok: true as const }));
 let root: Root;
 let host: HTMLElement;
@@ -27,7 +28,7 @@ const click = async (el: Element | null | undefined) => {
   expect(el).toBeTruthy();
   await act(async () => (el as HTMLElement).click());
 };
-const sample = (extra = {}) => mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, ...extra }));
+const sample = (extra = {}) => mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, initialPage: "criativos", ...extra }));
 const live = (extra = {}) => mount(createElement(LiveDashboardView, { data: sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!, initialPage: "visao-geral", canCustomize: true, saveMetrics: save, ...extra }));
 const button = (text: string) => [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === text || b.textContent?.includes(text));
 const enter = () => click(button("Personalizar métricas"));
@@ -284,7 +285,7 @@ describe("rascunho", () => {
     await remove("CTR");
     await click(button("Cancelar"));
     expect(tray()).toBeNull();
-    expect(cards()).toEqual(["conversions", "cpa", "ctr"]);
+    expect(cards()).toEqual(["ctr", "cpa", "frequency"]);
     expect(save).not.toHaveBeenCalled();
   });
 
@@ -294,7 +295,7 @@ describe("rascunho", () => {
     await add("Investimento");
     await act(async () => void document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     expect(tray()).toBeNull();
-    expect(cards()).toEqual(["conversions", "cpa", "ctr"]);
+    expect(cards()).toEqual(["ctr", "cpa", "frequency"]);
     expect(save).not.toHaveBeenCalled();
   });
 
@@ -313,7 +314,7 @@ describe("rascunho", () => {
     await sample();
     await enter();
     await click(button("Restaurar padrão"));
-    expect(cards()).toEqual(["conversions", "cpa", "ctr", "cpm"]);
+    expect(cards()).toEqual(["ctr", "cpa", "frequency", "cpm"]);
     expect(save).not.toHaveBeenCalled();
   });
 
@@ -322,7 +323,7 @@ describe("rascunho", () => {
     await enter();
     await add("Investimento");
     await click([...host.querySelectorAll('[role="tab"]')].find((t) => t.textContent === "Campanhas"));
-    await click([...host.querySelectorAll('[role="tab"]')].find((t) => t.textContent === "Visão geral"));
+    await click([...host.querySelectorAll('[role="tab"]')].find((t) => t.textContent === "Criativos"));
     expect(cards()).toContain("spend");
   });
 
@@ -413,7 +414,7 @@ describe("arrastar", () => {
 describe("sair com mudança não salva", () => {
   const withLink = (extra = {}) =>
     mount(
-      createElement("div", null, createElement("a", { href: "/painel/contas", id: "fora" }, "Contas"), createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, ...extra })),
+      createElement("div", null, createElement("a", { href: "/painel/contas", id: "fora" }, "Contas"), createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, initialPage: "criativos", ...extra })),
     );
   const link = () => document.getElementById("fora")!;
 
@@ -472,17 +473,14 @@ describe("sair com mudança não salva", () => {
 });
 
 describe("Meta e Google na aba Criativos", () => {
-  it('os cards levam "· Meta" no nome; só Meta, não', async () => {
+  // todo modelo novo lê Meta e Google: a aba Criativos mostra a parte da Meta
+  it('os cards levam "· Meta" no nome', async () => {
     const { sampleCreatives } = await import("@/features/analytics/creatives/sample");
     const { dashboardTemplate } = await import("@/features/templates/dashboards");
     const load = (id: string) => sampleCreatives(dashboardTemplate(id)!, { name: "T", client: "C", settings: DEFAULT_SETTINGS }, ["criativos"], { tier: "pro" }, { period: "30d", customDays: 30 });
-    await mount(createElement(DashboardBody, { spec: { ...teste, templateId: "ecommerce-completo", pages: ["criativos"], metricPrefs: undefined }, creatives: load("ecommerce-completo"), initialPage: "criativos" }));
+    await mount(createElement(DashboardBody, { spec: { ...teste, pages: ["criativos"], metricPrefs: undefined }, creatives: load("vyz-ecommerce"), initialPage: "criativos" }));
     const labels = () => [...host.querySelectorAll("[data-edit-metric] p:first-child")].map((p) => p.textContent);
     expect(labels().length).toBe(4);
     for (const l of labels()) expect(l).toMatch(/ · Meta$/);
-    await act(async () => root.unmount());
-    document.body.innerHTML = "";
-    await mount(createElement(DashboardBody, { spec: { ...teste, pages: ["criativos"], metricPrefs: undefined }, creatives: load("criativos-meta"), initialPage: "criativos" }));
-    for (const l of labels()) expect(l).not.toContain("· Meta");
   });
 });
