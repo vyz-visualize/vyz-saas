@@ -1,6 +1,7 @@
 // Entrar: e-mail e senha, Google e Apple (botão nativo no iPhone).
 
 import * as AppleAuthentication from "expo-apple-authentication";
+import { GoogleIcon } from "@/ui/GoogleIcon";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from "react-native";
 import { useAuth } from "@/lib/auth";
@@ -40,7 +41,7 @@ export default function Entrar() {
         <Notice text={error} />
         <Button label="Entrar" busy={busy === "password"} onPress={() => run("password", () => auth.signInWithPassword(email, password))} />
         <View style={{ height: 8 }} />
-        <Button tone="secondary" label="Continuar com Google" busy={busy === "google"} onPress={() => run("google", auth.signInWithGoogle)} />
+        <Button tone="secondary" label="Continuar com Google" icon={<GoogleIcon />} busy={busy === "google"} onPress={() => run("google", auth.signInWithGoogle)} />
         {Platform.OS === "android" && <Button tone="secondary" label="Continuar com Apple" busy={busy === "apple"} onPress={() => run("apple", auth.signInWithApple)} />}
         {Platform.OS === "ios" && (
           <AppleAuthentication.AppleAuthenticationButton

@@ -83,9 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const idToken = res.data.idToken;
         if (!idToken) return GENERIC;
         const { error } = await supabase.auth.signInWithIdToken({ provider: "google", token: idToken });
-        return error ? GENERIC : null;
-      } catch {
-        return GENERIC;
+        // o motivo curto vai junto (sem token): sem ele, um erro de configuração vira adivinhação
+        return error ? `${GENERIC} (Google: ${error.message.slice(0, 80)})` : null;
+      } catch (err) {
+        const e = err as { code?: string | number; message?: string };
+        return `${GENERIC} (Google: ${String(e.code ?? e.message ?? "erro").slice(0, 60)})`;
       }
     },
     async signInWithApple() {

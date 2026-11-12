@@ -10,7 +10,7 @@ export const tap = () => {
   if (Platform.OS !== "web") void Haptics.selectionAsync();
 };
 
-export function Button({ label, onPress, busy, tone = "primary" }: { label: string; onPress: () => void; busy?: boolean; tone?: "primary" | "secondary" | "danger" }) {
+export function Button({ label, onPress, busy, tone = "primary", icon }: { label: string; onPress: () => void; busy?: boolean; tone?: "primary" | "secondary" | "danger"; /** Ícone à esquerda do texto (ex.: o G do Google). */ icon?: ReactNode }) {
   const t = useTheme();
   const bg = tone === "primary" ? t.accent : "transparent";
   const fg = tone === "primary" ? t.accentFg : tone === "danger" ? t.danger : t.fg;
@@ -21,7 +21,14 @@ export function Button({ label, onPress, busy, tone = "primary" }: { label: stri
       onPress={onPress}
       style={({ pressed }) => [s.button, { backgroundColor: bg, borderColor: tone === "primary" ? bg : t.line, opacity: busy ? 0.7 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
     >
-      {busy ? <ActivityIndicator color={fg} /> : <Text style={[s.buttonText, { color: fg }]}>{label}</Text>}
+      {busy ? (
+        <ActivityIndicator color={fg} />
+      ) : (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          {icon}
+          <Text style={[s.buttonText, { color: fg }]}>{label}</Text>
+        </View>
+      )}
     </Pressable>
   );
 }
