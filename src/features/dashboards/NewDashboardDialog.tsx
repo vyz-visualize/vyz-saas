@@ -13,6 +13,7 @@ import { useMemo, useState, useTransition } from "react";
 import { LockBadge, Modal, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
+import { isImportPlatform } from "@/features/accounts/connection-modes";
 import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements";
 import { composePages, FEATURES, featureFits, type FeatureId, type ObjectiveId } from "@/features/templates/dashboards/composed";
 import { anyDashboardTemplate } from "@/features/templates/live";
@@ -29,7 +30,7 @@ import { removeBrandLogo, updateWorkspace, uploadBrandLogo } from "@/server/work
 import { BuildingDashboard } from "./BuildingDashboard";
 
 /** Plataformas que os modelos novos leem, na ordem em que aparecem. */
-const PLATFORM_ORDER: PlatformId[] = ["meta", "google", "ga4", "instagram", "facebook"];
+const BASE_ORDER: PlatformId[] = ["meta", "google", "ga4", "instagram", "facebook"];
 const HINT: Partial<Record<PlatformId, string>> = {
   meta: "Campanhas, criativos e público",
   google: "Campanhas e termos de pesquisa",
@@ -86,11 +87,13 @@ export function NewDashboardDialog({
 
   const byPlatform = useMemo(() => {
     const m = new Map<PlatformId, SourceOption[]>();
-    for (const s of sources) if (PLATFORM_ORDER.includes(s.platformId)) m.set(s.platformId, [...(m.get(s.platformId) ?? []), s]);
+    for (const s of sources) if (BASE_ORDER.includes(s.platformId) || isImportPlatform(s.platformId)) m.set(s.platformId, [...(m.get(s.platformId) ?? []), s]);
     return m;
   }, [sources]);
 
   // plataformas com conta marcada definem as páginas (as escolhidas sem conta ainda não contam)
+  // as de sempre e, quando houver, as que entram por planilha (TikTok, LinkedIn...)
+  const PLATFORM_ORDER = [...BASE_ORDER, ...[...byPlatform.keys()].filter((p) => !BASE_ORDER.includes(p))];
   const used = PLATFORM_ORDER.filter((p) => platforms.includes(p) && (byPlatform.get(p) ?? []).some((a) => accountIds.includes(a.id)));
   const suggested = t ? allowedPages(t, pagesTier, composePages(used, features)) : [];
   const pages = suggested.filter((p) => !off.includes(p));
@@ -230,7 +233,7 @@ export function NewDashboardDialog({
                       <span className="min-w-0 flex-1">
                         <span className="block font-medium text-fg">{PLATFORMS[p].name}</span>
                         <span className="block text-[12.5px] text-fg-2">
-                          {HINT[p]} · {accounts.length} {accounts.length === 1 ? "conta" : "contas"}
+                          {HINT[p] ?? "Planilha (CSV ou Google Sheets)"} · {accounts.length} {accounts.length === 1 ? "conta" : "contas"}
                         </span>
                       </span>
                       <span className={`inline-flex size-5 items-center justify-center rounded-full border ${on ? "border-accent bg-accent text-on-accent" : "border-line"}`}>

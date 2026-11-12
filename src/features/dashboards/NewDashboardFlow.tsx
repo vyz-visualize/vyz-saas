@@ -12,6 +12,7 @@ import { FileInput, readImage } from "@/components/ui/FileInput";
 import { Checkbox, LockBadge, PendingChip, SelectField, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS } from "@/features/accounts/platforms";
+import { isImportPlatform } from "@/features/accounts/connection-modes";
 import { availableIn, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
 import { anyDashboardTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
 import { composePages } from "@/features/templates/dashboards/composed";
@@ -149,7 +150,7 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
   const pickAccounts = !!t && usesAccounts(t);
   const save = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
   const atLimit = !editing && used >= limit;
-  const platformSources = t ? sources.filter((s) => t.sources.includes(s.platformId) && (live || (REAL_DATA_PLATFORMS as readonly string[]).includes(s.platformId))) : [];
+  const platformSources = t ? sources.filter((s) => (t.sources.includes(s.platformId) || isImportPlatform(s.platformId)) && (live || REAL_DATA_PLATFORMS.includes(s.platformId))) : [];
   // modelo novo: só as páginas das plataformas com conta marcada (e as que o dashboard já tem)
   const fitting = t?.composed ? new Set<string>([...composePages([...new Set(sources.filter((s) => draft.accountIds.includes(s.id)).map((s) => s.platformId))]), ...draft.pages]) : null;
   const options = t ? pageOptions(t, pagesTier).filter((o) => !fitting || fitting.has(o.id)) : [];

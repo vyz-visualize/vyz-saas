@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { COMPOSED_PAGES, COMPOSED_TEMPLATES, composePages, objectiveForBusiness, VISUALS } from "./composed";
 import { BUSINESS_TYPES } from "@/features/catalog/business-types";
+import { IMPORT_PLATFORMS } from "@/features/accounts/connection-modes";
 
 describe("páginas pelas contas escolhidas", () => {
   it("só Meta: a visão geral é dela, com criativos, público e funil", () => {
@@ -22,6 +23,11 @@ describe("páginas pelas contas escolhidas", () => {
   it("recursos escolhidos entram antes do funil, só se combinam com as plataformas", () => {
     expect(composePages(["meta"], ["criativos-ao-vivo", "previsao"])).toEqual(["visao-geral", "criativos", "publico", "criativos-ao-vivo", "previsao", "funil"]);
     expect(composePages(["ga4"], ["criativos-ao-vivo", "comparativo"])).toEqual(["site", "comparativo", "funil"]);
+  });
+  it("planilha: soma na Visão geral e ganha a página de campanhas", () => {
+    const sheet = IMPORT_PLATFORMS[0];
+    expect(composePages([sheet])).toEqual(["visao-geral", "campanhas", "funil"]);
+    expect(composePages(["meta", sheet])).toEqual(["visao-geral", "meta-ads", "criativos", "publico", "campanhas", "funil"]);
   });
   it("sem conta: o básico de exemplo", () => {
     expect(composePages([])).toEqual(["visao-geral", "campanhas", "funil"]);

@@ -16,6 +16,7 @@ import { ENTITLEMENTS, TIER_LABEL, TIERS } from "@/features/pricing/entitlements
 import { LP_PLAN_PAGES, PLAN, PLAN_LABEL, lpMonthly, planDbId, type Period, type PlanId } from "@/features/pricing/pricing";
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
+import { LINKABLE_SOURCES } from "@/features/templates/dashboards/composed";
 import { PAGES } from "@/features/templates/pages";
 
 process.loadEnvFile?.(".env.local");
@@ -194,7 +195,7 @@ async function main() {
     await tx`delete from public.dashboard_template_platforms where template_id = any(${templateIds})`;
     await tx`delete from public.dashboard_template_pages where template_id = any(${templateIds})`;
     await tx`delete from public.dashboard_template_business_types where template_id = any(${templateIds})`;
-    const tPlatforms = ALL_DASHBOARD_TEMPLATES.flatMap((t) => t.sources.map((platform_id) => ({ template_id: t.id, platform_id })));
+    const tPlatforms = ALL_DASHBOARD_TEMPLATES.flatMap((t) => (t.composed ? LINKABLE_SOURCES : t.sources).map((platform_id) => ({ template_id: t.id, platform_id })));
     const tPages = ALL_DASHBOARD_TEMPLATES.flatMap((t) => t.pages.map((page_type_id, position) => ({ template_id: t.id, page_type_id, position })));
     const tBusiness = ALL_DASHBOARD_TEMPLATES.flatMap((t) => templateBusinessTypes(t.profile).map((business_type_id) => ({ template_id: t.id, business_type_id })));
     await tx`insert into public.dashboard_template_platforms ${tx(tPlatforms)}`;
