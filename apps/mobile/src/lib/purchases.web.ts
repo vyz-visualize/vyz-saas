@@ -34,3 +34,6 @@ export async function buyPlan(_product: PurchasesStoreProduct): Promise<boolean>
 }
 
 export async function manageSubscription() {}
+export async function restorePurchases(): Promise<boolean> {
+  return false;
+}

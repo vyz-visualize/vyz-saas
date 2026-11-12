@@ -73,6 +73,16 @@ export async function buyPlan(product: PurchasesStoreProduct): Promise<boolean> 
   }
 }
 
+/**
+ * Restaurar compras (exigido pela Apple): reaplica na conta da loja o que já foi
+ * comprado. true = havia assinatura ativa; o backend sincroniza pelo webhook.
+ */
+export async function restorePurchases(): Promise<boolean> {
+  if (!configure()) return false;
+  const info = await Purchases.restorePurchases();
+  return Object.keys(info.entitlements.active).length > 0 || info.activeSubscriptions.length > 0;
+}
+
 /** Cancelar ou ver a assinatura: tela da própria loja. */
 export async function manageSubscription() {
   if (configure()) await Purchases.showManageSubscriptions();

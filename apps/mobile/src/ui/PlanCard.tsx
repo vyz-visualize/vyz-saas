@@ -5,10 +5,11 @@
 
 import { STORE_PLAN_HIGHLIGHTS, STORE_PLAN_PERIODS, STORE_PLAN_TIERS, storePlan, type MeResponse, type StorePlan, type StorePlanPeriod, type StorePlanTier } from "@vyz/shared";
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Linking, Platform, Pressable, Text, View } from "react-native";
 import type { PurchasesStoreProduct } from "react-native-purchases";
 import { api, ApiFailure } from "@/lib/api";
-import { buyPlan, manageSubscription, planProduct } from "@/lib/purchases";
+import { buyPlan, manageSubscription, planProduct, restorePurchases } from "@/lib/purchases";
+import { ENV } from "@/lib/env";
 import { Button, Card, Notice } from "./kit";
 import { useTheme } from "./theme";
 
@@ -105,6 +106,21 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
     }
   };
 
+  const restore = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const found = await restorePurchases();
+      if (found) await api("/store/sync", { method: "POST" }).catch(() => {});
+      setMessage(found ? "Compras restauradas." : "Nenhuma assinatura encontrada nesta conta da loja.");
+      if (found) onChanged();
+    } catch {
+      setMessage("Não foi possível restaurar agora. Tente de novo.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Card>
       {header}
@@ -120,6 +136,21 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
       <Text style={{ color: t.fg, fontSize: 17, fontWeight: "600" }}>{product ? `${product.priceString} por ${plan.period === "anual" ? "ano" : "mês"}` : "Carregando preço…"}</Text>
       {same ? null : <Button label={current ? "Trocar plano" : "Assinar"} busy={busy} onPress={purchase} />}
       {current ? <Button tone="secondary" label="Gerenciar assinatura" onPress={() => void manageSubscription()} /> : null}
+      <Button tone="secondary" label="Restaurar compras" busy={busy} onPress={() => void restore()} />
+      {/* o que a Apple e o Google pedem junto da compra: renovação automática, cancelamento e os documentos */}
+      <Text style={{ color: t.fg3, fontSize: 12, lineHeight: 17 }}>
+        Assinatura com renovação automática. A cobrança é feita na sua conta {Platform.OS === "ios" ? "Apple" : "Google Play"} ao confirmar a compra e se repete a cada{" "}
+        {plan.period === "anual" ? "ano" : "mês"} pelo mesmo valor, a menos que a renovação seja desligada até 24 horas antes do fim do período. Gerencie ou cancele nos ajustes da
+        sua conta da loja.
+      </Text>
+      <View style={{ flexDirection: "row", gap: 16 }}>
+        <Text accessibilityRole="link" style={{ color: t.accent, fontSize: 12.5, fontWeight: "600" }} onPress={() => void Linking.openURL(`${ENV.apiUrl}/termos`)}>
+          Termos de Uso
+        </Text>
+        <Text accessibilityRole="link" style={{ color: t.accent, fontSize: 12.5, fontWeight: "600" }} onPress={() => void Linking.openURL(`${ENV.apiUrl}/privacidade`)}>
+          Política de Privacidade
+        </Text>
+      </View>
       <Notice text={message} tone="info" />
     </Card>
   );
