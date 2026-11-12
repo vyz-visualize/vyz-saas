@@ -8,6 +8,7 @@ import type { Profile } from "@/features/metrics/definitions";
 import type { Tier } from "@/features/pricing/entitlements";
 import { VISUAL_LIST } from "./visuais";
 import { IMPORT_PLATFORMS, isImportPlatform } from "@/features/accounts/connection-modes";
+import { CRM_PLATFORMS } from "@/features/sync/crm";
 import type { DashboardCategory, DashboardTemplate, PageId, PageLayout, SkinId } from "../types";
 
 export type VisualId = "vyz" | "lavanda" | "pulso" | "noturno" | "areia";
@@ -38,11 +39,11 @@ export const objectiveForBusiness = (businessTypeId: string | null | undefined):
 /** Plataformas que um modelo novo aceita (as que têm dados reais no VYZ). */
 export const COMPOSED_SOURCES: PlatformId[] = ["meta", "google", "ga4", "instagram", "facebook"];
 
-/** Também podem ser ligadas: as plataformas que entram por planilha (CSV ou Google Sheets). Não entram na amostra. */
-export const LINKABLE_SOURCES: PlatformId[] = [...COMPOSED_SOURCES, ...IMPORT_PLATFORMS];
+/** Também podem ser ligadas: as plataformas que entram por planilha (CSV ou Google Sheets) e os CRMs. Não entram na amostra. */
+export const LINKABLE_SOURCES: PlatformId[] = [...COMPOSED_SOURCES, ...IMPORT_PLATFORMS, ...CRM_PLATFORMS];
 
 /** Todas as páginas que um modelo novo pode ter (o banco aceita só estas). */
-export const COMPOSED_PAGES: PageId[] = ["visao-geral", "meta-ads", "criativos", "publico", "google-ads", "termos", "site", "canais-site", "instagram", "pagina-facebook", "conteudo", "criativos-ao-vivo", "previsao", "mmm", "metas", "comparativo", "funil", "campanhas"];
+export const COMPOSED_PAGES: PageId[] = ["visao-geral", "meta-ads", "criativos", "publico", "google-ads", "termos", "site", "canais-site", "crm", "instagram", "pagina-facebook", "conteudo", "criativos-ao-vivo", "previsao", "mmm", "metas", "comparativo", "funil", "campanhas"];
 
 export type FeatureId = "metas" | "comparativo" | "criativos-ao-vivo" | "previsao" | "mmm";
 export type Feature = { id: FeatureId; label: string; hint: string; tier: Exclude<Tier, "personalizado">; /** Plataformas que o recurso precisa (alguma delas). */ needs?: string[] };
@@ -87,6 +88,7 @@ export const PAGE_PLATFORM: Partial<Record<PageId, PlatformId>> = { "meta-ads": 
  *   - Meta: página da Meta (com mais fontes), Criativos e Público;
  *   - Google Ads: página do Google (com mais fontes) e Termos de pesquisa;
  *   - GA4: Site e, com anúncios, a Força dos canais;
+ *   - CRM (RD Station, HubSpot, Pipedrive, Kommo): a página do CRM, cruzada com a mídia;
  *   - Instagram e Página do Facebook: uma página cada, e Conteúdo (os posts);
  *   - Recursos escolhidos (metas, comparativos, preditiva, MMM) antes do funil;
  *   - Funil do objetivo no fim.
@@ -98,7 +100,8 @@ export function composePages(platforms: readonly string[], features: readonly Fe
   // planilha: mídia de outras plataformas (TikTok, LinkedIn...) com os mesmos números de anúncio
   const sheets = platforms.filter((p) => isImportPlatform(p));
   const organic = ["instagram", "facebook"].filter(has);
-  const sources = ads.length + sheets.length + (has("ga4") ? 1 : 0) + organic.length;
+  const crm = CRM_PLATFORMS.some(has);
+  const sources = ads.length + sheets.length + (has("ga4") ? 1 : 0) + (crm ? 1 : 0) + organic.length;
   if (sources === 0) return ["visao-geral", "campanhas", "funil"];
   const many = sources > 1;
   // a Visão geral é de anúncios: sem Meta nem Google, o dashboard começa pelo site ou pelo orgânico
@@ -106,6 +109,7 @@ export function composePages(platforms: readonly string[], features: readonly Fe
   if (has("meta")) out.push(...(many ? (["meta-ads"] as PageId[]) : []), "criativos", "publico");
   if (has("google")) out.push(...(many ? (["google-ads"] as PageId[]) : []), "termos");
   if (has("ga4")) out.push("site", ...(ads.length ? (["canais-site"] as PageId[]) : []));
+  if (crm) out.push("crm");
   if (has("instagram")) out.push("instagram");
   if (has("facebook")) out.push("pagina-facebook");
   if (organic.length) out.push("conteudo");

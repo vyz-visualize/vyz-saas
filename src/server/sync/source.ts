@@ -10,9 +10,12 @@ import { generateOrganicData } from "@/features/sync/mock/organic";
 import type { OrganicDataset, OrganicPlatform } from "@/features/sync/organic";
 import type { AnalyticsDataset, AnalyticsPlatform } from "@/features/sync/analytics";
 import { generateAnalyticsData } from "@/features/sync/mock/analytics";
+import type { CrmDataset, CrmPlatform } from "@/features/sync/crm";
+import { generateCrmData } from "@/features/sync/mock/crm";
 import { addDays, localDate, type SyncRange } from "@/features/sync/dates";
 import { generateAccountData } from "@/features/sync/mock-generator";
 import { appError } from "@/server/supabase/errors";
+import { fetchCrmDataset } from "./live/crm";
 import { fetchGa4Dataset } from "./live/ga4";
 import { fetchGoogleDataset } from "./live/google";
 import { fetchMetaDataset } from "./live/meta";
@@ -22,7 +25,7 @@ export type SyncAccount = {
   id: string;
   workspaceId: string;
   connectionId: string;
-  platform: SyncPlatform | OrganicPlatform | AnalyticsPlatform;
+  platform: SyncPlatform | OrganicPlatform | AnalyticsPlatform | CrmPlatform;
   externalId: string;
   name: string;
   currency: string;
@@ -40,6 +43,8 @@ export interface SyncSource {
   fetchOrganic(account: SyncAccount & { platform: OrganicPlatform }, range: SyncRange): Promise<OrganicDataset>;
   /** Site (GA4): sessões, eventos-chave e receita por dia e canal. */
   fetchAnalytics(account: SyncAccount & { platform: AnalyticsPlatform }, range: SyncRange): Promise<AnalyticsDataset>;
+  /** CRM (RD Station, HubSpot, Pipedrive, Kommo): leads, negócios por etapa e ganhos por dia. */
+  fetchCrm(account: SyncAccount & { platform: CrmPlatform }, range: SyncRange): Promise<CrmDataset>;
 }
 
 /**
@@ -68,6 +73,9 @@ export const mockSource: SyncSource = {
   async fetchAnalytics(account, range) {
     return generateAnalyticsData({ accountExternalId: account.externalId, endDate: range.to, days: range.days });
   },
+  async fetchCrm(account, range) {
+    return generateCrmData({ platform: account.platform, accountExternalId: account.externalId, endDate: range.to, days: range.days });
+  },
 };
 
 // Fonte real: Meta (Insights por campanha, anúncio e conta) e Google Ads (GAQL
@@ -86,6 +94,9 @@ export const liveSource: SyncSource = {
   },
   async fetchAnalytics(account, range) {
     return fetchGa4Dataset(account, range);
+  },
+  async fetchCrm(account, range) {
+    return fetchCrmDataset(account, range);
   },
 };
 

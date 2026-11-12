@@ -33,11 +33,12 @@ import type { Brand } from "@/features/workspace/workspace";
 import { ddmmyyyy } from "@/lib/format";
 import { brandVars } from "./brand";
 import { datasetFor, pageLayout, sampleDefaultKpis } from "./data";
-import { ChannelsPage, FitFrame, OrganicSourcePage, SitePage, type SourceExtras } from "./SourcePages";
+import { ChannelsPage, CrmPage, FitFrame, OrganicSourcePage, SitePage, type SourceExtras } from "./SourcePages";
 import { PAGE_PLATFORM } from "@/features/templates/dashboards/composed";
 import { dashboardRanges } from "@/features/analytics/ranges";
 import { sampleOrganic } from "@/features/analytics/preview";
 import { generateAnalyticsData } from "@/features/sync/mock/analytics";
+import { generateCrmData } from "@/features/sync/mock/crm";
 import { diffDays } from "@/features/sync/dates";
 
 import { isSampleMetric, pageCatalog, pageKpiIds, sampleCatalog, type MetricPrefs } from "./metric-prefs";
@@ -218,11 +219,13 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   const sourceExtras = useMemo<SourceExtras | null>(() => {
     if (!t?.composed) return null;
     if (realExtras) return realExtras;
+    // amostra: GA4, CRM e orgânico de exemplo (o mesmo desenho das contas reais)
     const { current, previous } = dashboardRanges(period, customDays, today);
     const days = diffDays(previous.from, current.to) + 1;
     const analytics = generateAnalyticsData({ accountExternalId: `${spec.name}|${spec.client}`, endDate: current.to, days }).daily;
+    const crm = generateCrmData({ accountExternalId: `${spec.name}|${spec.client}`, endDate: current.to, days }).daily;
     const organic = sampleOrganic(current, previous);
-    return { current, previous, currency: "BRL", analytics, organic: { instagram: organic, facebook: organic, all: organic } };
+    return { current, previous, currency: "BRL", analytics, crm, organic: { instagram: organic, facebook: organic, all: organic } };
   }, [t, realExtras, period, customDays, today, spec.name, spec.client]);
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
   const ctxOptions = { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns, today };
@@ -246,6 +249,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     const page =
       p === "site" ? <SitePage extras={sourceExtras} profile={t.profile} />
       : p === "canais-site" ? <ChannelsPage extras={sourceExtras} profile={t.profile} ds={ds} />
+      : p === "crm" ? <CrmPage extras={sourceExtras} ds={ds} hideSpend={hideSpend} />
       : p === "instagram" ? <OrganicSourcePage extras={sourceExtras} which="instagram" />
       : p === "pagina-facebook" ? <OrganicSourcePage extras={sourceExtras} which="facebook" />
       : p === "conteudo" ? <OrganicSourcePage extras={sourceExtras} which="conteudo" />

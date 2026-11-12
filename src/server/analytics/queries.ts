@@ -38,6 +38,8 @@ import type {
 } from "@/features/analytics/types";
 import { DEFAULT_TIME_ZONE, localDate } from "@/features/sync/dates";
 import type { AnalyticsRow } from "@/features/metrics/warehouse-dataset";
+import type { CrmRow } from "@/features/metrics/crm";
+import { isCrmSyncPlatform } from "@/features/sync/crm";
 import { insightsTag } from "@/features/sync/tags";
 import type { PeriodId } from "@/features/workspace/types";
 import { createAdminSupabase } from "@/server/supabase/admin";
@@ -172,6 +174,8 @@ export type TemplateWarehouse = {
   sets: WarehouseRows[];
   /** GA4 (analytics_daily) das propriedades ligadas, nos dois períodos. */
   analytics: AnalyticsRow[];
+  /** CRM (crm_daily) das contas de CRM ligadas, nos dois períodos. */
+  crm: CrmRow[];
   /** Orgânico das contas ligadas: por plataforma e todos juntos (Conteúdo). */
   organic: { instagram?: OrganicView; facebook?: OrganicView; all?: OrganicView };
   current: DateRange;
@@ -194,7 +198,7 @@ export async function loadTemplateWarehouse(dashboardId: string, opts: { platfor
   if (error) throw fromPostgrest(error);
   const linked = (sources ?? [])
     .map((s) => s.account)
-    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (["meta", "google", "ga4", "instagram", "facebook"].includes(a.platform_id) || isImportPlatform(a.platform_id)) && opts.platforms.includes(a.platform_id))
+    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (["meta", "google", "ga4", "instagram", "facebook"].includes(a.platform_id) || isImportPlatform(a.platform_id) || isCrmSyncPlatform(a.platform_id)) && opts.platforms.includes(a.platform_id))
     .sort((a, b) => a.id.localeCompare(b.id));
   if (!linked.length) return null;
   const timeZone = linked[0].timezone || DEFAULT_TIME_ZONE;
@@ -204,12 +208,14 @@ export async function loadTemplateWarehouse(dashboardId: string, opts: { platfor
   const byPlatform = new Map<LivePlatform, string[]>();
   for (const a of linked) if (a.platform_id === "meta" || a.platform_id === "google") byPlatform.set(a.platform_id as LivePlatform, [...(byPlatform.get(a.platform_id as LivePlatform) ?? []), a.id]);
   const ga4 = linked.filter((a) => a.platform_id === "ga4").map((a) => a.id);
+  const crmIds = linked.filter((a) => isCrmSyncPlatform(a.platform_id)).map((a) => a.id);
+  const from = previous.from < current.from ? previous.from : current.from;
   const profilesOf = (platform?: string) =>
     linked
       .filter((a) => (platform ? a.platform_id === platform : isOrganicPlatform(a.platform_id)))
       .map((a) => ({ id: a.id, name: a.name, platform: a.platform_id as OrganicProfile["platform"] }));
   const organicFor = (profiles: OrganicProfile[]) => (profiles.length ? readOrganic({ dashboardId, profiles, current, previous }) : Promise.resolve(undefined));
-  const [sets, analytics, instagram, facebook, all] = await Promise.all([
+  const [sets, analytics, crm, instagram, facebook, all] = await Promise.all([
     Promise.all([
       ...[...byPlatform].map(([platform, accountIds]) => readRows({ dashboardId, platform, accountIds, current, previous, breakEvenRoas: null })),
       // planilha: as linhas de cada plataforma importada, com o nome dela (TikTok, LinkedIn...) para somar por plataforma
@@ -217,12 +223,13 @@ export async function loadTemplateWarehouse(dashboardId: string, opts: { platfor
         readRows({ dashboardId, platform: "import", accountIds: linked.filter((a) => a.platform_id === pid).map((a) => a.id), current, previous, breakEvenRoas: null }).then((r) => ({ ...r, platform: pid as LivePlatform })),
       ),
     ]),
-    ga4.length ? readAnalytics({ dashboardId, accountIds: ga4, from: previous.from < current.from ? previous.from : current.from, to: current.to }) : Promise.resolve([] as AnalyticsRow[]),
+    ga4.length ? readAnalytics({ dashboardId, accountIds: ga4, from, to: current.to }) : Promise.resolve([] as AnalyticsRow[]),
+    crmIds.length ? readCrm({ dashboardId, accountIds: crmIds, from, to: current.to }) : Promise.resolve([] as CrmRow[]),
     organicFor(profilesOf("instagram")),
     organicFor(profilesOf("facebook")),
     organicFor(profilesOf()),
   ]);
-  return { sets, analytics, organic: { instagram, facebook, all }, current, previous, accounts: linked.map((a) => ({ id: a.id, name: a.name, platform: a.platform_id, lastSyncedAt: a.last_synced_at })), today };
+  return { sets, analytics, crm, organic: { instagram, facebook, all }, current, previous, accounts: linked.map((a) => ({ id: a.id, name: a.name, platform: a.platform_id, lastSyncedAt: a.last_synced_at })), today };
 }
 
 /** GA4 do intervalo, em cache como o armazém (a sincronização invalida pela propriedade). */
@@ -248,6 +255,28 @@ async function readAnalytics(q: { dashboardId: string; accountIds: string[]; fro
   return rows.map((r) => ({ date: r.date, channel: r.channel, sessions: num(r.sessions), users: num(r.users), engagedSessions: num(r.engaged_sessions), keyEvents: num(r.key_events), transactions: num(r.transactions), revenue: num(r.revenue) }));
 }
 
+/** CRM do intervalo, em cache como o armazém (a sincronização invalida pela conta). */
+async function readCrm(q: { dashboardId: string; accountIds: string[]; from: string; to: string }): Promise<CrmRow[]> {
+  "use cache";
+  if (process.env.NEXT_RUNTIME) {
+    cacheTag(dashboardTag(q.dashboardId), ...q.accountIds.map(insightsTag));
+    cacheLife("hours");
+  }
+  const db = createAdminSupabase();
+  const rows = await fetchAll((a, b) =>
+    db
+      .from("crm_daily")
+      .select("date, stage, stage_order, deals, value, won, won_value, lost, leads")
+      .in("ad_account_id", q.accountIds)
+      .gte("date", q.from)
+      .lte("date", q.to)
+      .order("ad_account_id")
+      .order("date")
+      .order("stage")
+      .range(a, b),
+  );
+  return rows.map((r) => ({ date: r.date, stage: r.stage, stageOrder: num(r.stage_order), deals: num(r.deals), value: num(r.value), won: num(r.won), wonValue: num(r.won_value), lost: num(r.lost), leads: num(r.leads) }));
+}
 
 /** Linhas de mais de uma plataforma num conjunto só (a principal dá o vocabulário dos números). */
 function mergeRows(sets: WarehouseRows[], platform: LivePlatform): WarehouseRows {

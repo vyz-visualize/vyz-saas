@@ -1,13 +1,15 @@
 "use client";
 
 // Páginas das fontes que não são de anúncio, nos modelos novos (visual + objetivo +
-// contas): Site (GA4), Força dos canais (GA4 × investimento das plataformas),
-// Instagram, Página do Facebook e Conteúdo. Com as contas ligadas, os números são os
+// contas): Site (GA4), Força dos canais (GA4 × investimento das plataformas), CRM
+// (leads, etapas e vendas, cruzado com a mídia), Instagram, Página do Facebook e
+// Conteúdo. Com as contas ligadas, os números são os
 // reais; sem elas, a amostra (o mesmo desenho).
 
 import { useRef, type ReactNode } from "react";
 import { LineChart } from "@/components/charts/LineChart";
 import { FitChart } from "@/components/charts/FitChart";
+import { StageFunnel } from "@/components/charts/StageFunnel";
 import { FIT_BOTTOM } from "./layout/GridCanvas";
 import { useFitHeight } from "./layout/useFitHeight";
 import type { DateRange, Kpi, LiveDashboardData } from "@/features/analytics/types";
@@ -18,14 +20,17 @@ import { DataTable, InlineBar, KpiCard, NoData, Panel } from "@/features/analyti
 import type { Profile } from "@/features/metrics/definitions";
 import type { AnalyticsRow } from "@/features/metrics/warehouse-dataset";
 import type { Dataset } from "@/features/metrics/source";
+import { crmStagesForDataset, crmTotals, type CrmRow } from "@/features/metrics/crm";
 import { addDays, diffDays } from "@/features/sync/dates";
-import { brl, int, pct } from "@/lib/format";
+import { brl, brlCompact, int, pct } from "@/lib/format";
 
 export type SourceExtras = {
   current: DateRange;
   previous: DateRange;
   currency: string;
   analytics: AnalyticsRow[];
+  /** CRM (crm_daily) das contas de CRM ligadas. */
+  crm?: CrmRow[];
   organic: { instagram?: OrganicView; facebook?: OrganicView; all?: OrganicView };
 };
 
@@ -163,6 +168,67 @@ function ChannelTable({ extras, profile, spendByChannel }: { extras: SourceExtra
         ]}
       />
     </Panel>
+  );
+}
+
+/**
+ * CRM: leads, negócios, vendas ganhas e receita, o funil pelas etapas e os leads por dia.
+ * Com anúncios no dashboard, cruza com o investimento: custo por lead do CRM e CAC
+ * (investimento ÷ vendas ganhas), que a plataforma de anúncio sozinha não mostra.
+ */
+export function CrmPage({ extras, ds, hideSpend = false }: { extras: SourceExtras; ds: Dataset; hideSpend?: boolean }) {
+  const rows = extras.crm ?? [];
+  const cur = crmTotals(rows, extras.current);
+  const prev = crmTotals(rows, extras.previous);
+  if (!cur.leads && !cur.deals && !cur.won && !prev.leads && !prev.deals) return <NoData text="Sem dados do CRM no período. Confira se a conta do CRM está ligada em Contas e já sincronizou." />;
+  // investimento (centavos no Dataset) dos dois períodos
+  const spendCur = ds.current.reduce((a, d) => a + d.spend, 0) / 100;
+  const spendPrev = ds.previous.reduce((a, d) => a + d.spend, 0) / 100;
+  const cross = !hideSpend && spendCur > 0;
+  const ratio = (a: number, b: number) => (b > 0 ? a / b : 0);
+  const kpis = [
+    kpi("crm-leads", "Leads", cur.leads, prev.leads, "int", cur.leadsSeries),
+    kpi("crm-deals", "Negócios", cur.deals, prev.deals, "int", []),
+    kpi("crm-won", "Vendas ganhas", cur.won, prev.won, "int", cur.wonSeries),
+    kpi("crm-revenue", "Receita ganha", cur.wonValue, prev.wonValue, "money", []),
+    kpi("crm-rate", "Conversão lead → venda", ratio(cur.won, cur.leads), ratio(prev.won, prev.leads), "pct", []),
+    kpi("crm-ticket", "Ticket médio", ratio(cur.wonValue, cur.won), ratio(prev.wonValue, prev.won), "money", []),
+    ...(cross
+      ? [
+          kpi("crm-cpl", "Custo por lead do CRM", ratio(spendCur, cur.leads), ratio(spendPrev, prev.leads), "money", [], "down"),
+          kpi("crm-cac", "CAC (custo por venda)", ratio(spendCur, cur.won), ratio(spendPrev, prev.won), "money", [], "down"),
+        ]
+      : []),
+  ];
+  const stages = crmStagesForDataset(rows, extras.current);
+  const today = addDays(extras.current.to, 1);
+  const ago = cur.leadsSeries.map((_, i) => diffDays(addDays(extras.current.from, i), today));
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <div className={`grid shrink-0 grid-cols-2 gap-2.5 @[640px]:grid-cols-4 ${cross ? "@[1040px]:grid-cols-8" : "@[1040px]:grid-cols-6"}`}>
+        {kpis.map((k) => (
+          <KpiCard key={k.id} kpi={k} currency={extras.currency} maturing={0} hideSpend={hideSpend} featured={k.id === (cross ? "crm-cac" : "crm-won")} />
+        ))}
+      </div>
+      <div className="grid min-h-0 flex-1 gap-3 @[1040px]:grid-cols-2">
+        <Panel title="Leads por dia" subtitle={`${ddmm(extras.current.from)} a ${ddmm(extras.current.to)} · contatos novos no CRM`} className="flex min-h-0 flex-col" bodyClassName="flex min-h-0 flex-1 flex-col">
+          <FitChart className="flex-1" minHeight={180}>
+            {({ height }) => <LineChart height={height} values={cur.leadsSeries} ago={ago} formatY={(v) => int(v)} summary={`Leads por dia: ${int(cur.leads)} no período.`} />}
+          </FitChart>
+        </Panel>
+        <Panel title="Funil do CRM" subtitle="Leads, negócios abertos em cada etapa e vendas ganhas no período." className="flex min-h-0 flex-col" bodyClassName="flex min-h-0 flex-1 flex-col">
+          <div data-chart-theme className="flex min-h-[170px] flex-1 flex-col">
+            <StageFunnel
+              className="flex-1"
+              orientation="horizontal"
+              color="var(--chart-line-primary)"
+              steps={stages.map((st) => ({ label: st.stage, value: st.count, display: int(st.count), note: st.value && !hideSpend ? brlCompact(st.value) : undefined }))}
+              summary={`Funil do CRM: ${stages.map((st) => `${st.stage} ${int(st.count)}`).join(", ")}.`}
+            />
+          </div>
+        </Panel>
+      </div>
+    </div>
   );
 }
 

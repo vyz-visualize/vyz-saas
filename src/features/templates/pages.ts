@@ -218,6 +218,14 @@ export const PAGES: Record<PageId, PageDef> = {
     description: "Cada canal do GA4 com o investimento das plataformas: quem traz conversão e a que custo.",
     build: () => ({ kpis: [], widgets: [] }),
   },
+  crm: {
+    id: "crm",
+    name: "CRM",
+    tier: "base",
+    templateOnly: true,
+    description: "Leads, negócios por etapa, vendas ganhas e receita do CRM, cruzados com o investimento em mídia.",
+    build: () => ({ kpis: [], widgets: [] }),
+  },
   instagram: {
     id: "instagram",
     name: "Instagram",

@@ -18,6 +18,7 @@ import { PLATFORMS } from "@/features/accounts/platforms";
 import { isSyncPlatform } from "@/features/sync/dataset";
 import { isOrganicSyncPlatform } from "@/features/sync/organic";
 import { isAnalyticsSyncPlatform } from "@/features/sync/analytics";
+import { isCrmSyncPlatform } from "@/features/sync/crm";
 import { syncRange, type SyncRange, type SyncTrigger } from "@/features/sync/dates";
 import { insightsTag } from "@/features/sync/tags";
 import { logActivity } from "@/server/history/log";
@@ -26,7 +27,7 @@ import { createAdminSupabase } from "@/server/supabase/admin";
 import { AppError, appError } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
 import { sourceFor, type SyncAccount } from "./source";
-import { rollupAccount, writeAnalytics, writeDataset, writeOrganic } from "./write";
+import { rollupAccount, writeAnalytics, writeCrm, writeDataset, writeOrganic } from "./write";
 
 export type { SyncTrigger } from "@/features/sync/dates";
 
@@ -83,7 +84,7 @@ async function loadAccount(db: DB, adAccountId: string): Promise<SyncAccount> {
     .maybeSingle();
   if (error) throw error;
   if (!data) throw syncError("sync:not_found");
-  if (!isSyncPlatform(data.platform_id) && !isOrganicSyncPlatform(data.platform_id) && !isAnalyticsSyncPlatform(data.platform_id)) throw syncError("sync:unsupported_platform");
+  if (!isSyncPlatform(data.platform_id) && !isOrganicSyncPlatform(data.platform_id) && !isAnalyticsSyncPlatform(data.platform_id) && !isCrmSyncPlatform(data.platform_id)) throw syncError("sync:unsupported_platform");
   if (!data.is_enabled) throw syncError("sync:account_disabled");
   const connection = data.connection;
   if (!data.connection_id || !connection || connection.status !== "active") {
@@ -202,14 +203,20 @@ export async function syncAdAccount(adAccountId: string, trigger: SyncTrigger, o
 
   try {
     account = await loadAccount(db, adAccountId);
-    range = syncRange(trigger, { timeZone: account.timezone });
+    // CRM: os negócios mudam de etapa e fecham depois de criados, então relê sempre os 90 dias
+    range = syncRange(isCrmSyncPlatform(account.platform) ? "initial" : trigger, { timeZone: account.timezone });
     run = await startRun(db, account, trigger, range);
 
     const source = sourceFor(account);
     let rowsWritten: number;
     let byTable: Record<string, number>;
     const current = account;
-    if (isAnalyticsSyncPlatform(current.platform)) {
+    if (isCrmSyncPlatform(current.platform)) {
+      // CRM: tabela própria, por dia e etapa
+      const crm = await source.fetchCrm({ ...current, platform: current.platform }, range);
+      rowsWritten = await writeCrm(db, current, crm, run.createdAt);
+      byTable = { crm_daily: rowsWritten };
+    } else if (isAnalyticsSyncPlatform(current.platform)) {
       // site (GA4): tabela própria, por dia e canal
       const analytics = await source.fetchAnalytics({ ...current, platform: current.platform }, range);
       rowsWritten = await writeAnalytics(db, current, analytics, run.createdAt);
@@ -221,7 +228,7 @@ export async function syncAdAccount(adAccountId: string, trigger: SyncTrigger, o
       rowsWritten = written.days + written.posts;
       byTable = { organic_daily: written.days, organic_posts: written.posts };
     } else {
-      const ads = { ...current, platform: current.platform as Exclude<typeof current.platform, "instagram" | "facebook" | "ga4"> };
+      const ads = { ...current, platform: current.platform as Exclude<typeof current.platform, "instagram" | "facebook" | "ga4" | "rdstation" | "hubspot" | "pipedrive" | "kommo"> };
       const dataset = await source.fetch(ads, range);
       const written = await writeDataset(db, current, dataset, run.createdAt);
       const days = await rollupAccount(db, current, dataset, range, run.createdAt);

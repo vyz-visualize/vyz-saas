@@ -25,6 +25,8 @@ import { requireWorkspace } from "@/server/auth/workspace";
 import { getDashboard } from "@/server/dashboards/queries";
 import { loadTemplateWarehouse } from "@/server/analytics/queries";
 import { datasetFromWarehouse } from "@/features/metrics/warehouse-dataset";
+import { LINKABLE_SOURCES } from "@/features/templates/dashboards/composed";
+import { isCrmSyncPlatform } from "@/features/sync/crm";
 import { isSamePageNavigation } from "@/server/http/request";
 import { logActivity } from "@/server/history/log";
 
@@ -111,13 +113,15 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
 
   const template = anyDashboardTemplate(d.templateId);
   // contas da Meta e do Google ligadas: o modelo desenha com os dados reais delas
-  const warehouse = template ? await loadTemplateWarehouse(d.id, { platforms: template.sources, period, customDays }) : null;
+  // modelos novos: também as planilhas e os CRMs (LINKABLE_SOURCES), que não entram na amostra
+  const warehouse = template ? await loadTemplateWarehouse(d.id, { platforms: template.composed ? LINKABLE_SOURCES : template.sources, period, customDays }) : null;
   const realData =
     warehouse && template
       ? datasetFromWarehouse(
           warehouse.sets,
           { profile: template.profile, today: warehouse.today, current: warehouse.current, previous: warehouse.previous, goal: d.settings.goal || undefined, margin: d.settings.margin || undefined, budget: d.settings.budget || undefined },
           warehouse.analytics,
+          warehouse.crm,
         )
       : undefined;
   return (
@@ -126,8 +130,8 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
         realData={realData}
         linkedPlatforms={warehouse ? ([...new Set(warehouse.accounts.map((a) => a.platform))] as PlatformId[]) : undefined}
         sourceExtras={
-          warehouse && template?.composed && (warehouse.analytics.length || warehouse.organic.all)
-            ? { current: warehouse.current, previous: warehouse.previous, currency: "BRL", analytics: warehouse.analytics, organic: warehouse.organic }
+          warehouse && template?.composed && (warehouse.analytics.length || warehouse.crm.length || warehouse.accounts.some((a) => isCrmSyncPlatform(a.platform)) || warehouse.organic.all)
+            ? { current: warehouse.current, previous: warehouse.previous, currency: "BRL", analytics: warehouse.analytics, crm: warehouse.crm, organic: warehouse.organic }
             : undefined
         }
         dashboard={{

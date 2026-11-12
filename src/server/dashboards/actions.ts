@@ -19,6 +19,7 @@ import { createDashboardSchema, dashboardFieldsSchema, type CreateDashboardInput
 import { canUse } from "@/features/pricing/entitlements";
 import type { Json } from "@/lib/supabase/database.types";
 import { isImportPlatform } from "@/features/accounts/connection-modes";
+import { isCrmSyncPlatform } from "@/features/sync/crm";
 import { anyDashboardTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
 import type { DashboardTemplate } from "@/features/templates/types";
 import type { WorkspaceSession } from "@/features/workspace/session";
@@ -75,7 +76,7 @@ async function sourcesFor(db: DB, session: WorkspaceSession, t: DashboardTemplat
   const byId = new Map(rows.map((r) => [r.id, r]));
   for (const id of unique) {
     const a = byId.get(id);
-    if (!a || !(t.sources.includes(a.platform_id as never) || isImportPlatform(a.platform_id))) throw appError("dashboard:source_platform");
+    if (!a || !(t.sources.includes(a.platform_id as never) || isImportPlatform(a.platform_id) || isCrmSyncPlatform(a.platform_id))) throw appError("dashboard:source_platform");
     if (!(REAL_DATA_PLATFORMS as readonly string[]).includes(a.platform_id)) throw appError("dashboard:source_platform");
     if (!a.is_enabled && !keep.includes(id)) throw appError("dashboard:source_disabled", `Ative a conta “${a.name}” em Contas antes de usá-la num dashboard.`);
   }

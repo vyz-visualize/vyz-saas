@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COMPOSED_PAGES, COMPOSED_TEMPLATES, composePages, objectiveForBusiness, VISUALS } from "./composed";
+import { COMPOSED_PAGES, COMPOSED_SOURCES, COMPOSED_TEMPLATES, composePages, LINKABLE_SOURCES, objectiveForBusiness, VISUALS } from "./composed";
 import { BUSINESS_TYPES } from "@/features/catalog/business-types";
 import { IMPORT_PLATFORMS } from "@/features/accounts/connection-modes";
 
@@ -29,11 +29,22 @@ describe("páginas pelas contas escolhidas", () => {
     expect(composePages([sheet])).toEqual(["visao-geral", "campanhas", "funil"]);
     expect(composePages(["meta", sheet])).toEqual(["visao-geral", "meta-ads", "criativos", "publico", "campanhas", "funil"]);
   });
+  it("CRM: página própria, cruzada com a mídia quando há anúncios", () => {
+    expect(composePages(["meta", "hubspot"])).toEqual(["visao-geral", "meta-ads", "criativos", "publico", "crm", "funil"]);
+    expect(composePages(["pipedrive"])).toEqual(["crm"]);
+    expect(composePages(["ga4", "kommo", "rdstation"])).toEqual(["site", "crm", "funil"]);
+  });
+  it("CRMs podem ser ligados, mas não entram na amostra", () => {
+    for (const p of ["rdstation", "hubspot", "pipedrive", "kommo"] as const) {
+      expect(LINKABLE_SOURCES).toContain(p);
+      expect(COMPOSED_SOURCES).not.toContain(p);
+    }
+  });
   it("sem conta: o básico de exemplo", () => {
     expect(composePages([])).toEqual(["visao-geral", "campanhas", "funil"]);
   });
   it("toda página montada está no modelo (o banco confere)", () => {
-    for (const combo of [["meta"], ["meta", "google", "ga4", "instagram", "facebook"], [], ["ga4"]]) for (const p of composePages(combo)) expect(COMPOSED_PAGES).toContain(p);
+    for (const combo of [["meta"], ["meta", "google", "ga4", "instagram", "facebook", "hubspot"], [], ["ga4"], ["kommo"]]) for (const p of composePages(combo)) expect(COMPOSED_PAGES).toContain(p);
   });
 });
 

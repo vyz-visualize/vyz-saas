@@ -1,12 +1,14 @@
 // Dados reais em qualquer modelo: as linhas do armazém (Meta e Google, já sincronizadas)
 // viram o mesmo Dataset que a amostra gera, e os widgets de todos os modelos desenham
 // sem saber de onde veio. Valores do armazém em reais; o Dataset trabalha em centavos.
-// O que as contas não trazem (CRM, carteira de clientes, projetos) fica vazio.
+// O CRM vem das contas de CRM ligadas (crm_daily); o que as contas não trazem
+// (carteira de clientes, projetos) fica vazio.
 
 import type { PlatformId } from "@/features/accounts/platforms";
 import type { WarehouseRows } from "@/features/analytics/types";
 import { parseAgeGender } from "@/features/sync/breakdowns";
 import type { Profile } from "./definitions";
+import { crmStagesForDataset, type CrmRow } from "./crm";
 import type { AudienceRow, Campaign, Creative, Dataset, DayRow, Product } from "./source";
 
 export type WarehouseDatasetSpec = {
@@ -187,7 +189,7 @@ function siteFunnel(current: readonly DayRow[], analytics: readonly AnalyticsRow
 }
 
 /** Linhas do armazém de cada plataforma ligada → Dataset dos widgets. */
-export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: WarehouseDatasetSpec, analytics: readonly AnalyticsRow[] = []): Dataset {
+export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: WarehouseDatasetSpec, analytics: readonly AnalyticsRow[] = [], crm: readonly CrmRow[] = []): Dataset {
   const first = sets[0];
   const maturingDays = spec.maturingDays ?? 3;
   const curRange = first?.current ?? spec.current;
@@ -243,7 +245,7 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
     audience,
     gender,
     products: productsOf(sets),
-    crm: [],
+    crm: crmStagesForDataset(crm, curRange),
     clients: [],
     alerts: [],
     budget: { monthly: spec.budget ?? 0, spent: spentMonth, day, daysInMonth },

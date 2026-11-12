@@ -14,6 +14,7 @@ import { LockBadge, Modal, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { isImportPlatform } from "@/features/accounts/connection-modes";
+import { isCrmSyncPlatform } from "@/features/sync/crm";
 import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements";
 import { composePages, FEATURES, featureFits, type FeatureId, type ObjectiveId } from "@/features/templates/dashboards/composed";
 import { anyDashboardTemplate } from "@/features/templates/live";
@@ -37,6 +38,10 @@ const HINT: Partial<Record<PlatformId, string>> = {
   ga4: "Site: sessões, conversões e canais",
   instagram: "Seguidores, alcance e posts",
   facebook: "Seguidores, alcance e posts da Página",
+  rdstation: "CRM: leads, negócios e vendas ganhas",
+  hubspot: "CRM: leads, negócios e vendas ganhas",
+  pipedrive: "CRM: leads, negócios e vendas ganhas",
+  kommo: "CRM: leads, negócios e vendas ganhas",
 };
 
 const STEPS = ["Objetivo", "Visual", "Plataformas", "Recursos", "Páginas", "Marca e nome"];
@@ -87,12 +92,12 @@ export function NewDashboardDialog({
 
   const byPlatform = useMemo(() => {
     const m = new Map<PlatformId, SourceOption[]>();
-    for (const s of sources) if (BASE_ORDER.includes(s.platformId) || isImportPlatform(s.platformId)) m.set(s.platformId, [...(m.get(s.platformId) ?? []), s]);
+    for (const s of sources) if (BASE_ORDER.includes(s.platformId) || isImportPlatform(s.platformId) || isCrmSyncPlatform(s.platformId)) m.set(s.platformId, [...(m.get(s.platformId) ?? []), s]);
     return m;
   }, [sources]);
 
   // plataformas com conta marcada definem as páginas (as escolhidas sem conta ainda não contam)
-  // as de sempre e, quando houver, as que entram por planilha (TikTok, LinkedIn...)
+  // as de sempre e, quando houver, as que entram por planilha (TikTok, LinkedIn...) e os CRMs
   const PLATFORM_ORDER = [...BASE_ORDER, ...[...byPlatform.keys()].filter((p) => !BASE_ORDER.includes(p))];
   const used = PLATFORM_ORDER.filter((p) => platforms.includes(p) && (byPlatform.get(p) ?? []).some((a) => accountIds.includes(a.id)));
   const suggested = t ? allowedPages(t, pagesTier, composePages(used, features)) : [];

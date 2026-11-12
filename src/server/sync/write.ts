@@ -14,6 +14,7 @@ import type { AccountDataset } from "@/features/sync/dataset";
 import { organicDayRow, organicPostRow, type OrganicDataset } from "@/features/sync/organic";
 import { closeDataset } from "@/features/sync/close-dataset";
 import { analyticsDayRow, type AnalyticsDataset } from "@/features/sync/analytics";
+import { crmDayRow, type CrmDataset } from "@/features/sync/crm";
 import { accountReachRows, adRows, campaignRows, FACT_KEYS, FACT_TABLES, factRows, idLookup, productRows, type FactTable } from "@/features/sync/rows";
 import { AppError } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
@@ -179,3 +180,23 @@ export async function writeAnalytics(db: DB, account: SyncAccount, dataset: Anal
   return rows.length;
 }
 
+/** CRM: troca os dias do intervalo pelos novos (etapas que sumiram no intervalo saem). */
+export async function writeCrm(db: DB, account: SyncAccount, dataset: CrmDataset, syncedAt: string): Promise<number> {
+  const scope = { workspace_id: account.workspaceId, ad_account_id: account.id, synced_at: syncedAt };
+  // a chave do banco é (conta, dia, etapa): nomes que viram o mesmo depois de cortados somam
+  const merged = new Map<string, ReturnType<typeof crmDayRow>>();
+  for (const d of dataset.daily) {
+    const row = crmDayRow(d);
+    const key = `${row.date}|${row.stage}`;
+    const cur = merged.get(key);
+    if (!cur) merged.set(key, row);
+    else for (const k of ["deals", "value", "won", "won_value", "lost", "leads"] as const) cur[k] = Math.round((cur[k] + row[k]) * 100) / 100;
+  }
+  const rows = [...merged.values()].map((r) => ({ ...scope, ...r }));
+  await runLimited(
+    chunk<object>(rows, BATCH_SIZE).map((part) => () => request((signal) => db.from("crm_daily").upsert(part as never[], { onConflict: "ad_account_id,date,stage" }).abortSignal(signal))),
+    CONCURRENCY,
+  );
+  await request((signal) => db.from("crm_daily").delete().eq("ad_account_id", account.id).gte("date", dataset.range.from).lte("date", dataset.range.to).lt("synced_at", syncedAt).abortSignal(signal));
+  return rows.length;
+}

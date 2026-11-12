@@ -53,6 +53,7 @@ export type PageId =
   | "canais-site"
   | "instagram"
   | "pagina-facebook"
+  | "crm"
   // recursos do Avançado, escolhidos no novo dashboard (desenhados pelos visuais deles)
   | "criativos-ao-vivo"
   | "previsao"
