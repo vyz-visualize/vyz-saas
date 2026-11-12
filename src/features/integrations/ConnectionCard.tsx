@@ -28,9 +28,11 @@ type ConnectionCardProps = {
   /** Para onde a reconexão volta. */
   next?: string;
   timeZone?: string;
+  /** Selo "Modo de teste" na conexão simulada: só em desenvolvimento ou para ONBOARDING_REPLAY_EMAILS. */
+  showTestBadge?: boolean;
 };
 
-export function ConnectionCard({ connection: c, canManage, next, timeZone }: ConnectionCardProps) {
+export function ConnectionCard({ connection: c, canManage, next, timeZone, showTestBadge = false }: ConnectionCardProps) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -53,7 +55,7 @@ export function ConnectionCard({ connection: c, canManage, next, timeZone }: Con
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-chip px-2.5 py-0.5 text-[12px] font-medium ${status.className}`}>{status.label}</span>
-            {c.isMock && <PendingChip label="Modo de teste" detail={MOCK_NOTICE[c.provider]} />}
+            {c.isMock && showTestBadge && <PendingChip label="Modo de teste" detail={MOCK_NOTICE[c.provider]} />}
           </div>
           <p className="font-semibold break-words">{login}</p>
           <p className="text-[13px] text-fg-2">

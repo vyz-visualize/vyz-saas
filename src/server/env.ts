@@ -160,6 +160,14 @@ export function canReplayOnboarding(email: string | null | undefined): boolean {
   return list.includes(email.trim().toLowerCase());
 }
 
+/**
+ * Selo "Modo de teste" (login e dados simulados) no primeiro acesso e em Contas:
+ * só em desenvolvimento ou para os e-mails de ONBOARDING_REPLAY_EMAILS. O cliente nunca vê.
+ */
+export function canSeeTestBadges(email: string | null | undefined): boolean {
+  return process.env.NODE_ENV !== "production" || canReplayOnboarding(email);
+}
+
 export const CHECKOUT_CLOSED_MESSAGE = "O pagamento online abre em breve. Fale com um especialista no WhatsApp para assinar agora.";
 /** WhatsApp sem número ou token: as mensagens são registradas como "simulado" e nada sai. */
 export const isMockWhatsapp = () => !serverEnv().WHATSAPP_PHONE_NUMBER_ID || !serverEnv().WHATSAPP_ACCESS_TOKEN;

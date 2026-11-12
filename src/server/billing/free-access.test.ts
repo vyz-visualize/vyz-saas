@@ -46,4 +46,13 @@ describe("acesso de teste com pagamento simulado", () => {
     // diferente da conta de teste, fora de produção a lista vazia também é ninguém
     expect(empty.canReplayOnboarding("qualquer@vyz.dev")).toBe(false);
   });
+
+  it('selo "Modo de teste": em produção só para a lista do primeiro acesso; fora de produção, todos', async () => {
+    const prod = await load({ ...base, NODE_ENV: "production", ONBOARDING_REPLAY_EMAILS: "pedro@vyz.dev" });
+    expect(prod.canSeeTestBadges("pedro@vyz.dev")).toBe(true);
+    expect(prod.canSeeTestBadges("cliente@loja.com")).toBe(false);
+    expect(prod.canSeeTestBadges(null)).toBe(false);
+    const dev = await load({ ...base, NODE_ENV: "development", ONBOARDING_REPLAY_EMAILS: "" });
+    expect(dev.canSeeTestBadges("cliente@loja.com")).toBe(true);
+  });
 });

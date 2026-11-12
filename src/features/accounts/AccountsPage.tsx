@@ -57,6 +57,8 @@ type AccountsPageProps = {
   /** Horário da renderização no servidor. */
   now: string;
   timeZone: string;
+  /** Selo "Modo de teste": só em desenvolvimento ou para ONBOARDING_REPLAY_EMAILS (o cliente nunca vê). */
+  showTestBadges: boolean;
 };
 
 function ResultBanner({ result, onClose }: { result: ConnectResult; onClose: () => void }) {
@@ -85,12 +87,14 @@ function ProviderSection({
   now,
   timeZone,
   onRemove,
+  showTestBadges,
 }: {
   provider: ProviderId;
   state: ConnectState;
   now: string;
   timeZone: string;
   onRemove: (a: AdAccountDTO) => void;
+  showTestBadges: boolean;
 }) {
   const info = PROVIDERS[provider];
   const platform = state.platforms[provider];
@@ -120,7 +124,7 @@ function ProviderSection({
           </ul>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <ConnectButton provider={provider} next={RETURN_PATH} canManage={state.canManage} />
-            {state.mock && <PendingChip label="Modo de teste" detail={MOCK_NOTICE[provider]} />}
+            {state.mock && showTestBadges && <PendingChip label="Modo de teste" detail={MOCK_NOTICE[provider]} />}
           </div>
         </div>
       ) : (
@@ -130,7 +134,7 @@ function ProviderSection({
             <ConnectButton provider={provider} next={RETURN_PATH} variant="secondary" label="Conectar outro login" canManage={state.canManage} />
           </div>
           {platform.connections.map((c) => (
-            <ConnectionCard key={c.id} connection={c} canManage={state.canManage} next={RETURN_PATH} timeZone={timeZone} />
+            <ConnectionCard key={c.id} connection={c} canManage={state.canManage} next={RETURN_PATH} timeZone={timeZone} showTestBadge={showTestBadges} />
           ))}
         </div>
       )}
@@ -225,7 +229,7 @@ const TOOL_TEXT: Record<string, string> = {
   crm: "Leads, negócios e vendas.",
 };
 
-export function AccountsPage({ state, manual, imported, result, now, timeZone }: AccountsPageProps) {
+export function AccountsPage({ state, manual, imported, result, now, timeZone, showTestBadges }: AccountsPageProps) {
   const [banner, setBanner] = useState(result);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<AdAccountDTO | null>(null);
@@ -273,7 +277,7 @@ export function AccountsPage({ state, manual, imported, result, now, timeZone }:
             Mudar o plano
           </Link>
         </p>
-        {state.mock && <PendingChip label="Modo de teste" detail="Login e dados simulados: nenhuma conta real é acessada." />}
+        {state.mock && showTestBadges && <PendingChip label="Modo de teste" detail="Login e dados simulados: nenhuma conta real é acessada." />}
       </div>
 
       {PROVIDER_CATEGORIES.map((cat) => {
@@ -354,7 +358,7 @@ export function AccountsPage({ state, manual, imported, result, now, timeZone }:
               <PlatformIcon id={openProvider} size={36} />
               <p className="text-[13.5px] text-fg-2">Ligue as contas que entram no VYZ. Cada toque já salva.</p>
             </div>
-            <ProviderSection provider={openProvider} state={state} now={now} timeZone={timeZone} onRemove={askRemove} />
+            <ProviderSection provider={openProvider} state={state} now={now} timeZone={timeZone} onRemove={askRemove} showTestBadges={showTestBadges} />
           </div>
         )}
       </Modal>

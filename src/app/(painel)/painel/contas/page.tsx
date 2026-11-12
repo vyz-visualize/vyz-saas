@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AccountsPage } from "@/features/accounts/AccountsPage";
 import { connectResult } from "@/features/integrations/results";
 import { requireWorkspace } from "@/server/auth/workspace";
+import { canSeeTestBadges } from "@/server/env";
 import { getConnectState, listAdAccounts } from "@/server/integrations/queries";
 
 export const metadata: Metadata = { title: "Contas" };
@@ -23,7 +24,17 @@ async function Contas({ searchParams }: { searchParams: PageProps<"/painel/conta
   await connection();
   const session = await requireWorkspace({ next: "/painel/contas" });
   const [state, manual, imported, query] = await Promise.all([getConnectState(), listAdAccounts({ manual: true }), listAdAccounts({ imported: true }), searchParams]);
-  return <AccountsPage state={state} manual={manual} imported={imported} result={connectResult(query)} now={new Date().toISOString()} timeZone={session.workspace.timezone} />;
+  return (
+    <AccountsPage
+      state={state}
+      manual={manual}
+      imported={imported}
+      result={connectResult(query)}
+      now={new Date().toISOString()}
+      timeZone={session.workspace.timezone}
+      showTestBadges={canSeeTestBadges(session.user.email)}
+    />
+  );
 }
 
 function AccountsSkeleton() {

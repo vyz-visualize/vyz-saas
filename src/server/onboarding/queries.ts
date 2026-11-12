@@ -7,7 +7,7 @@ import "server-only";
 import { activeStepOf } from "@/features/onboarding/steps";
 import type { OnboardingState } from "@/features/onboarding/types";
 import { hasRole, type WorkspaceSession } from "@/features/workspace/session";
-import { canReplayOnboarding } from "@/server/env";
+import { canSeeTestBadges } from "@/server/env";
 import { getConnectState } from "@/server/integrations/queries";
 import { unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
@@ -33,6 +33,6 @@ export async function getOnboardingState(session: WorkspaceSession): Promise<Onb
     canManage: hasRole(session.role, "admin"),
     project,
     connect,
-    showTestBadges: process.env.NODE_ENV !== "production" || canReplayOnboarding(session.user.email),
+    showTestBadges: canSeeTestBadges(session.user.email),
   };
 }
