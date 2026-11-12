@@ -15,7 +15,8 @@ import { MOCK_NOTICE } from "@/features/integrations/mock-data";
 import { loginThe, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import type { ConnectResult } from "@/features/integrations/results";
 import type { ConnectState } from "@/features/integrations/types";
-import { finishOnboarding } from "@/server/onboarding/actions";
+import { useRouter } from "next/navigation";
+import { FINISH_QUERY, FINISH_VALUE } from "./steps";
 import { StepFooter, StepHeader, useStepAction } from "./ui";
 
 const RETURN_PATH = "/comecar";
@@ -117,6 +118,7 @@ function PlatformPanel({ provider, state, now, timeZone, onSelection }: PanelPro
 
 export function ConnectStep({ platforms, layoutName, state, result, now, timeZone }: ConnectStepProps) {
   const [banner, setBanner] = useState(result);
+  const router = useRouter();
   const { pending, error, run } = useStepAction();
   const skip = useStepAction();
   // Escolha de cada seletor, com o que ainda não foi salvo.
@@ -136,7 +138,9 @@ export function ConnectStep({ platforms, layoutName, state, result, now, timeZon
           return { ok: false, error: { code: "onboarding:accounts_not_saved", message: `Não deu para salvar as contas do ${PROVIDERS[p].name}. Confira o aviso acima.` } };
         }
       }
-      return finishOnboarding();
+      // recursos e marca: o último passo (a URL guarda o passo; recarregar continua nele)
+      router.push(`/comecar?${FINISH_QUERY}=${FINISH_VALUE}`);
+      return { ok: true, data: undefined };
     });
   }
   const anyConnected = platforms.some((p) => state.platforms[p].connected);
@@ -144,7 +148,7 @@ export function ConnectStep({ platforms, layoutName, state, result, now, timeZon
   return (
     <section aria-labelledby="passo-titulo">
       <StepHeader
-        eyebrow="Passo 3 · Conectar"
+        eyebrow="Passo 3 de 4 · Conectar"
         title="Conecte as contas de anúncio"
         text={
           <>
@@ -177,8 +181,8 @@ export function ConnectStep({ platforms, layoutName, state, result, now, timeZon
         pending={pending}
         error={error ?? skip.error}
         disabled={skip.pending}
-        continueLabel={enabled > 0 ? "Entrar no dashboard" : "Entrar na plataforma"}
-        pendingLabel={pendingSave ? "Ativando e importando…" : "Abrindo o dashboard…"}
+        continueLabel="Continuar"
+        pendingLabel={pendingSave ? "Ativando e importando…" : "Abrindo…"}
         onContinue={onContinue}
         aside={
           enabled === 0 && platforms.length > 0 ? (

@@ -3,7 +3,7 @@
 import type { ProviderId } from "@/features/integrations/providers";
 import type { ConnectState } from "@/features/integrations/types";
 import type { Tier } from "@/features/pricing/entitlements";
-import type { ActiveStep } from "./steps";
+import type { ActiveStep, FeatureOption } from "./steps";
 
 export type OnboardingState = {
   step: ActiveStep;
@@ -17,4 +17,8 @@ export type OnboardingState = {
   canManage: boolean;
   /** Só no passo de conectar. */
   connect: ConnectState | null;
+  /** Só no passo de recursos e marca: os recursos que combinam com as contas conectadas. */
+  features: FeatureOption[] | null;
+  /** Logo e cor da empresa (workspace). */
+  brand: { color: string; logoUrl: string | null };
 };

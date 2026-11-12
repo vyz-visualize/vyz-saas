@@ -17,7 +17,7 @@ export function BusinessStep({ initial, firstName }: { initial: string | null; f
   return (
     <section aria-labelledby="passo-titulo">
       <StepHeader
-        eyebrow="Passo 1 · Nicho"
+        eyebrow="Passo 1 de 4 · Segmento"
         title={firstName ? `${firstName}, qual é o negócio do seu cliente?` : "Qual é o negócio do seu cliente?"}
         text="O VYZ usa as métricas e o vocabulário do nicho e mostra primeiro os layouts feitos para ele."
       />

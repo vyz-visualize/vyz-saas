@@ -233,13 +233,15 @@ export function PulsoSkin({
         <div className={`flex gap-5 p-4 @[700px]:p-5 ${screen ? "pb-[var(--screen-pb,7rem)] @[700px]:pb-[var(--screen-pb,7rem)]" : ""}`}>
           {/* barra lateral */}
           <aside
-            className="hidden w-[76px] shrink-0 flex-col items-center gap-3 rounded-[26px] py-5 text-white @[700px]:flex"
+            className="sticky top-4 hidden max-h-[calc(100dvh-2rem)] w-[76px] shrink-0 flex-col items-center gap-3 self-start rounded-[26px] py-5 text-white @[700px]:flex"
             style={{ background: C.side }}
           >
             <span className="grid size-11 place-items-center rounded-[14px] border border-white/30">
               <Bell size={18} />
             </span>
-            <span className="h-px w-10 bg-white/20" />
+            <span className="h-px w-10 shrink-0 bg-white/20" />
+            {/* uma aba por página: com muitas, a lista rola dentro da barra (que nunca passa da altura da tela) */}
+            <nav aria-label="Páginas" className="flex min-h-0 w-full flex-1 flex-col items-center gap-3 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {pages.map((p, i) => {
               const Icon = ICONS[i % ICONS.length];
               return (
@@ -249,7 +251,8 @@ export function PulsoSkin({
                   title={PAGES[p].name}
                   aria-label={PAGES[p].name}
                   onClick={() => onPage?.(p)}
-                  className="grid size-11 place-items-center rounded-[14px] transition-colors"
+                  aria-current={p === active ? "page" : undefined}
+                  className="grid size-11 shrink-0 place-items-center rounded-[14px] transition-colors"
                   style={
                     p === active
                       ? {
@@ -263,7 +266,8 @@ export function PulsoSkin({
                 </button>
               );
             })}
-            <span className="mt-auto grid size-11 place-items-center rounded-[14px]">
+            </nav>
+            <span className="mt-auto grid size-11 shrink-0 place-items-center rounded-[14px]">
               <LogOut size={19} />
             </span>
           </aside>

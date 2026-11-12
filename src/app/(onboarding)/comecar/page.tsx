@@ -7,6 +7,7 @@ import { TestReset } from "@/features/checkout/TestReset";
 import { AskAdmin, OnboardingFlow, OnboardingSkeleton } from "@/features/onboarding/OnboardingFlow";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { isTestAccount } from "@/server/env";
+import { FINISH_QUERY } from "@/features/onboarding/steps";
 import { getOnboardingState } from "@/server/onboarding/queries";
 
 export const metadata: Metadata = { title: "Começar" };
@@ -26,7 +27,8 @@ async function Comecar({ searchParams }: { searchParams: PageProps<"/comecar">["
   const session = await requireWorkspace({ onboarding: false, next: "/comecar" });
   if (session.workspace.onboardingStep === "done") redirect("/painel");
 
-  const [state, query] = await Promise.all([getOnboardingState(session), searchParams]);
+  const query = await searchParams;
+  const state = await getOnboardingState(session, query[FINISH_QUERY]);
   if (!state.canManage) return <AskAdmin workspaceName={state.workspaceName} />;
 
   return (

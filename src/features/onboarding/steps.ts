@@ -1,9 +1,10 @@
-// Regras do onboarding (/comecar): nicho → layout → conectar. Ordem dos
+// Regras do onboarding (/comecar): segmento → visual → conectar → recursos e
+// marca. Ordem dos
 // passos, layouts de cada nicho (com o que o plano libera), plataformas que o
 // layout usa e as páginas liberadas. Puro: o servidor (actions) e a tela usam
 // as mesmas funções.
 
-import { composedId, objectiveForBusiness, VISUALS } from "@/features/templates/dashboards/composed";
+import { composedId, FEATURES, featureFits, objectiveForBusiness, VISUALS, type Feature, type FeatureId } from "@/features/templates/dashboards/composed";
 import { CORE_PROVIDER_IDS, type ProviderId } from "@/features/integrations/providers";
 import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
@@ -14,28 +15,44 @@ import type { OnboardingStep } from "@/features/workspace/session";
 /**
  * Passos em ordem ("done" fica de fora: é o fim). No banco o passo do layout
  * se chama "platforms" (enum antigo); "dashboard" antigo vale como "connect".
+ * "finish" (recursos e marca) não vai para o banco: é o fim do "connect",
+ * aberto por ?etapa=recursos (recarregar continua nele).
  */
-export const ONBOARDING_STEPS = ["business", "platforms", "connect"] as const satisfies readonly OnboardingStep[];
+export const ONBOARDING_STEPS = ["business", "platforms", "connect", "finish"] as const;
 export type ActiveStep = (typeof ONBOARDING_STEPS)[number];
+/** Passos que o banco grava. */
+export type SavedStep = Exclude<ActiveStep, "finish">;
 
 export const STEP_LABEL: Record<ActiveStep, string> = {
-  business: "Nicho",
-  platforms: "Layout",
+  business: "Segmento",
+  platforms: "Visual",
   connect: "Conectar",
+  finish: "Recursos e marca",
 };
 
-/** Passo do banco → passo da tela. */
-export const activeStepOf = (raw: OnboardingStep): ActiveStep => (raw === "dashboard" ? "connect" : isActiveStep(raw) ? raw : "business");
+/** Query string que abre o passo de recursos e marca. */
+export const FINISH_QUERY = "etapa";
+export const FINISH_VALUE = "recursos";
 
-export const isActiveStep = (v: unknown): v is ActiveStep => typeof v === "string" && (ONBOARDING_STEPS as readonly string[]).includes(v);
+/** Passo da tela: o do banco, ou recursos e marca no fim do conectar. */
+export function screenStep(raw: OnboardingStep, etapa: unknown): ActiveStep {
+  const step = activeStepOf(raw);
+  return step === "connect" && etapa === FINISH_VALUE ? "finish" : step;
+}
+
+/** Passo do banco → passo da tela. */
+export const activeStepOf = (raw: OnboardingStep): SavedStep => (raw === "dashboard" ? "connect" : isActiveStep(raw) ? raw : "business");
+
+export const isActiveStep = (v: unknown): v is SavedStep => v !== "finish" && typeof v === "string" && (ONBOARDING_STEPS as readonly string[]).includes(v);
 
 /** Posição do passo (done = depois do último). */
-export function stepIndex(step: OnboardingStep): number {
+export function stepIndex(step: OnboardingStep | "finish"): number {
+  if (step === "finish") return ONBOARDING_STEPS.indexOf("finish");
   return step === "done" ? ONBOARDING_STEPS.length : ONBOARDING_STEPS.indexOf(activeStepOf(step));
 }
 
 /** Só dá para voltar a um passo anterior ao atual. */
-export function canGoBackTo(current: OnboardingStep, target: OnboardingStep): boolean {
+export function canGoBackTo(current: OnboardingStep, target: OnboardingStep | "finish"): boolean {
   return isActiveStep(target) && current !== "done" && stepIndex(target) < stepIndex(current);
 }
 
@@ -97,6 +114,29 @@ export function allowedPages(t: DashboardTemplate, pagesTier: Tier | null): Page
   return templatePages(t, pagesTier)
     .filter((p) => p.allowed)
     .map((p) => p.id);
+}
+
+export type FeatureOption = Feature & {
+  /** Combina com as plataformas conectadas. */
+  fits: boolean;
+  /** O plano libera. */
+  allowed: boolean;
+  lockLabel: string | null;
+};
+
+/** Recursos do passo final: só os que combinam com as plataformas, com o que o plano libera. */
+export function featureOptions(platforms: readonly string[], tier: Tier | null): FeatureOption[] {
+  return FEATURES.filter((f) => featureFits(f, platforms)).map((f) => {
+    const allowed = !!tier && canUse(tier, f.tier);
+    return { ...f, fits: true, allowed, lockLabel: allowed ? null : availableIn(f.tier) };
+  });
+}
+
+/** Recursos pedidos que o plano libera e combinam com as plataformas (o que o servidor aceita). */
+export function allowedFeatures(requested: readonly string[], platforms: readonly string[], tier: Tier | null): FeatureId[] {
+  return featureOptions(platforms, tier)
+    .filter((f) => f.allowed && requested.includes(f.id))
+    .map((f) => f.id);
 }
 
 /** "12,5" ou "12.5" → 12.5; "1.500" → 1500; vazio → null; inválido → NaN. */

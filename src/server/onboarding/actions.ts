@@ -5,10 +5,10 @@
 // para /comecar, que lê o passo do banco: recarregar continua de onde parou.
 
 import { redirect, unstable_rethrow } from "next/navigation";
-import { composePages } from "@/features/templates/dashboards/composed";
+import { composePages, type FeatureId } from "@/features/templates/dashboards/composed";
 import { z } from "zod";
 import { businessType } from "@/features/catalog/business-types";
-import { allowedPages, canGoBackTo, layoutProviders, stepIndex, type ActiveStep } from "@/features/onboarding/steps";
+import { allowedFeatures, allowedPages, canGoBackTo, layoutProviders, stepIndex, type SavedStep } from "@/features/onboarding/steps";
 import { canUse, TIER_LABEL } from "@/features/pricing/entitlements";
 import { anyDashboardTemplate } from "@/features/templates/live";
 import type { OnboardingStep, WorkspaceSession } from "@/features/workspace/session";
@@ -20,7 +20,7 @@ import { createServerSupabase } from "@/server/supabase/server";
 const HOME = "/comecar";
 
 /** Admin com plano ativo e onboarding em andamento, já no passo `from` (ou depois). */
-async function onboardingSession(from: ActiveStep = "business"): Promise<WorkspaceSession> {
+async function onboardingSession(from: SavedStep = "business"): Promise<WorkspaceSession> {
   const session = await authorize("admin");
   if (session.workspace.onboardingStep === "done") redirect("/painel");
   if (stepIndex(session.workspace.onboardingStep) < stepIndex(from)) throw appError("onboarding:step", "Este passo ainda não chegou. Recarregue a página.");
@@ -123,19 +123,23 @@ export async function goToStep(step: string): Promise<ActionResult> {
 }
 
 /**
- * Passo 3 → fim: liga ao dashboard do layout as contas ativas das plataformas
- * dele (pode não haver nenhuma: conectar fica para depois), conclui o
- * onboarding e abre o dashboard.
+ * Passo 4 (recursos e marca) → fim: liga ao dashboard do layout as contas
+ * ativas das plataformas dele (pode não haver nenhuma: conectar fica para
+ * depois), monta as páginas com as plataformas e os recursos escolhidos,
+ * conclui o onboarding e abre o dashboard.
  */
-export async function finishOnboarding(): Promise<ActionResult> {
+export async function finishOnboarding(features: string[] = []): Promise<ActionResult> {
   let target = "/painel";
   try {
+    const requested = z.array(z.string().max(40)).max(20).safeParse(features);
+    if (!requested.success) throw appError("validation");
     const session = await onboardingSession("connect");
     const workspaceId = session.workspace.id;
     const supabase = await createServerSupabase();
     const [dashboard] =
       unwrap(await supabase.from("dashboards").select("id, template_id").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(1)) ?? [];
     let linked = 0;
+    let chosen: FeatureId[] = [];
     if (dashboard) {
       const template = anyDashboardTemplate(dashboard.template_id);
       const platforms = (template?.sources ?? []) as string[];
@@ -158,17 +162,22 @@ export async function finishOnboarding(): Promise<ActionResult> {
       for (const a of add) unwrap(await supabase.from("dashboard_sources").insert({ workspace_id: workspaceId, dashboard_id: dashboard.id, ad_account_id: a.id }));
       linked = add.length + existing.length;
       // modelo novo: as páginas saem das plataformas das contas ligadas (Meta, Google, GA4, Instagram...)
-      if (template?.composed && linked) {
+      // e dos recursos escolhidos; sem conta, das plataformas do visual (dados de exemplo), como no novo dashboard
+      if (template?.composed) {
         const ids = [...existing.map((e) => e.ad_account_id), ...add.map((a) => a.id)];
-        const used = [...new Set(accounts.filter((a) => ids.includes(a.id)).map((a) => a.platform_id))];
-        const open = allowedPages(template, session.access.entitlements?.pages ?? null);
-        const pages = composePages(used).filter((p) => open.includes(p));
-        if (pages.length) unwrap(await supabase.rpc("set_dashboard_pages", { p_dashboard_id: dashboard.id, p_page_type_ids: pages }));
+        const fromAccounts = [...new Set(accounts.filter((a) => ids.includes(a.id)).map((a) => a.platform_id as string))];
+        const used = fromAccounts.length ? fromAccounts : platforms;
+        chosen = allowedFeatures(requested.data, used, session.access.tier);
+        if (linked || chosen.length) {
+          const open = allowedPages(template, session.access.entitlements?.pages ?? null);
+          const pages = composePages(used, chosen).filter((p) => open.includes(p));
+          if (pages.length) unwrap(await supabase.rpc("set_dashboard_pages", { p_dashboard_id: dashboard.id, p_page_type_ids: pages }));
+        }
       }
       target = `/painel/dashboards/${dashboard.id}?novo=1`;
     }
     await saveStep(workspaceId, "done");
-    await logActivity({ workspaceId, actorId: session.user.id, event: "onboarding.completed", metadata: { dashboards: dashboard ? 1 : 0, accounts: linked } });
+    await logActivity({ workspaceId, actorId: session.user.id, event: "onboarding.completed", metadata: { dashboards: dashboard ? 1 : 0, accounts: linked, features: chosen } });
   } catch (err) {
     unstable_rethrow(err);
     return toActionError(err);

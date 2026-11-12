@@ -204,7 +204,7 @@ export function LayoutStep({ businessTypeId, tier }: { businessTypeId: string | 
   return (
     <section aria-labelledby="passo-titulo">
       <StepHeader
-        eyebrow="Passo 2 · Visual"
+        eyebrow="Passo 2 de 4 · Visual"
         title="Escolha o visual do seu dashboard"
         text={
           <>

@@ -4,6 +4,7 @@
 // que chama a Server Action do passo (ela grava e volta para /comecar).
 
 import { ArrowLeft, ArrowRight, CircleAlert, LoaderCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import { btn } from "@/components/ui/styles";
 import type { ActionResult } from "@/server/supabase/errors";
@@ -22,6 +23,18 @@ export function useStepAction() {
     });
   }
   return { pending, error, setError, run };
+}
+
+/** Ir a um passo anterior: os do banco pelo servidor; o conectar (antes de recursos e marca) só pela URL. */
+export function useGoBack() {
+  const router = useRouter();
+  const nav = useStepAction();
+  const [routing, start] = useTransition();
+  function go(step: ActiveStep) {
+    if (step === "connect" || step === "finish") start(() => router.push("/comecar"));
+    else nav.run(() => goToStep(step));
+  }
+  return { pending: nav.pending || routing, error: nav.error, go };
 }
 
 export function StepHeader({ eyebrow, title, text }: { eyebrow: string; title: ReactNode; text?: ReactNode }) {
@@ -64,14 +77,14 @@ type StepFooterProps = {
 
 /** Rodapé fixo no celular (o botão principal fica sempre à mão). */
 export function StepFooter({ back, onContinue, continueLabel = "Continuar", pendingLabel = "Salvando…", disabled, pending, error, aside }: StepFooterProps) {
-  const nav = useStepAction();
+  const nav = useGoBack();
   const busy = pending || nav.pending;
   return (
     <div className="sticky bottom-0 z-10 -mx-4 mt-8 border-t border-line bg-bg/95 px-4 py-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:backdrop-blur-none">
       <ErrorLine message={error ?? nav.error} />
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         {back ? (
-          <button type="button" onClick={() => nav.run(() => goToStep(back))} disabled={busy} className={btn.ghost}>
+          <button type="button" onClick={() => nav.go(back)} disabled={busy} className={btn.ghost}>
             {nav.pending ? <LoaderCircle size={16} aria-hidden className="animate-spin motion-reduce:animate-none" /> : <ArrowLeft size={16} aria-hidden />}
             Voltar
           </button>

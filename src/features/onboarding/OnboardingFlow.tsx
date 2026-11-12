@@ -8,6 +8,7 @@ import type { ConnectResult } from "@/features/integrations/results";
 import { signOut } from "@/server/auth/actions";
 import { BusinessStep } from "./BusinessStep";
 import { ConnectStep } from "./ConnectStep";
+import { FinishStep } from "./FinishStep";
 import { LayoutStep } from "./LayoutStep";
 import { StepNav } from "./StepNav";
 import type { OnboardingState } from "./types";
@@ -33,6 +34,7 @@ export function OnboardingFlow({ state, firstName, result, now, timeZone }: Onbo
         {step === "business" && <BusinessStep initial={state.businessTypeId} firstName={firstName} />}
         {step === "platforms" && <LayoutStep businessTypeId={state.businessTypeId} tier={state.tier} />}
         {step === "connect" && connect && <ConnectStep platforms={state.platforms} layoutName={state.layoutName} state={connect} result={result} now={now} timeZone={timeZone} />}
+        {step === "finish" && <FinishStep features={state.features ?? []} brand={state.brand} layoutName={state.layoutName} />}
       </div>
     </div>
   );
@@ -49,7 +51,7 @@ export function AskAdmin({ workspaceName }: { workspaceName: string }) {
         Peça ao administrador para concluir
       </h1>
       <p className="mt-2 text-[15px] leading-relaxed text-fg-2">
-        O workspace <strong className="font-semibold text-fg">{workspaceName}</strong> ainda está sendo configurado. Quem é administrador escolhe o nicho e o layout e conecta as contas. Assim que terminar, o painel abre para você.
+        O workspace <strong className="font-semibold text-fg">{workspaceName}</strong> ainda está sendo configurado. Quem é administrador escolhe o segmento e o visual, conecta as contas e escolhe os recursos. Assim que terminar, o painel abre para você.
       </p>
       <form action={signOut} className="mt-6">
         <button type="submit" className="inline-flex h-10 items-center gap-2 rounded-control border border-line px-4 text-[14px] font-semibold text-fg hover:border-accent hover:text-accent">
@@ -64,8 +66,8 @@ export function OnboardingSkeleton() {
   const block = "animate-pulse rounded-control bg-card motion-reduce:animate-none";
   return (
     <div className={FRAME} aria-busy="true" aria-label="Carregando">
-      <div className="grid grid-cols-3 gap-3">
-        {[0, 1, 2].map((i) => (
+      <div className="grid grid-cols-4 gap-3">
+        {[0, 1, 2, 3].map((i) => (
           <div key={i} className={`h-1 ${block}`} />
         ))}
       </div>

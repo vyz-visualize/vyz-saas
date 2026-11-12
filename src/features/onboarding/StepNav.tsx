@@ -4,19 +4,18 @@
 // voltam (o servidor grava o passo); os seguintes ficam travados.
 
 import { Check } from "lucide-react";
-import { goToStep } from "@/server/onboarding/actions";
 import { ONBOARDING_STEPS, STEP_LABEL, stepIndex, type ActiveStep } from "./steps";
-import { useStepAction } from "./ui";
+import { useGoBack } from "./ui";
 
 export function StepNav({ current }: { current: ActiveStep }) {
-  const { pending, run } = useStepAction();
+  const { pending, go } = useGoBack();
   const at = stepIndex(current);
   return (
     <nav aria-label="Etapas do começo">
       <p className="mb-3 text-[13px] text-fg-2 sm:hidden">
         Passo <span className="tnum font-semibold text-fg">{at + 1}</span> de {ONBOARDING_STEPS.length} · {STEP_LABEL[current]}
       </p>
-      <ol className="grid grid-cols-3 gap-1.5 sm:gap-3">
+      <ol className="grid grid-cols-4 gap-1.5 sm:gap-3">
         {ONBOARDING_STEPS.map((step, i) => {
           const done = i < at;
           const active = i === at;
@@ -44,7 +43,7 @@ export function StepNav({ current }: { current: ActiveStep }) {
                 <button
                   type="button"
                   disabled={pending}
-                  onClick={() => run(() => goToStep(step))}
+                  onClick={() => go(step)}
                   className="block w-full rounded-control text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
                 >
                   {content}

@@ -7,7 +7,10 @@ import {
   centsFromReais,
   marginFromPercent,
   activeStepOf,
+  allowedFeatures,
+  featureOptions,
   layoutOptions,
+  screenStep,
   layoutProviders,
   parseDecimal,
   stepIndex,
@@ -19,10 +22,13 @@ const meta: DashboardTemplate = { ...vyz, sources: ["meta", "instagram", "facebo
 const google: DashboardTemplate = { ...vyz, sources: ["google", "ga4"] };
 
 describe("passos", () => {
-  it("nicho → layout → conectar, e só volta para trás", () => {
+  it("segmento → visual → conectar → recursos e marca, e só volta para trás", () => {
     expect(stepIndex("business")).toBe(0);
     expect(stepIndex("platforms")).toBe(1);
-    expect(stepIndex("done")).toBe(3);
+    expect(stepIndex("connect")).toBe(2);
+    expect(stepIndex("finish")).toBe(3);
+    expect(stepIndex("done")).toBe(4);
+    expect(canGoBackTo("connect", "finish")).toBe(false);
     expect(canGoBackTo("connect", "business")).toBe(true);
     expect(canGoBackTo("connect", "platforms")).toBe(true);
     expect(canGoBackTo("connect", "connect")).toBe(false);
@@ -32,6 +38,30 @@ describe("passos", () => {
   it("o passo antigo de dashboard vale como conectar", () => {
     expect(activeStepOf("dashboard")).toBe("connect");
     expect(stepIndex("dashboard")).toBe(2);
+  });
+});
+
+describe("recursos e marca", () => {
+  it("abre pela URL só no fim do conectar (recarregar continua nele)", () => {
+    expect(screenStep("connect", "recursos")).toBe("finish");
+    expect(screenStep("dashboard", "recursos")).toBe("finish");
+    expect(screenStep("connect", undefined)).toBe("connect");
+    expect(screenStep("platforms", "recursos")).toBe("platforms");
+  });
+
+  it("só os recursos que combinam com as plataformas, com o plano de cada um", () => {
+    const meta = featureOptions(["meta"], "pro");
+    expect(meta.map((f) => f.id)).toEqual(["metas", "comparativo", "criativos-ao-vivo", "previsao", "mmm"]);
+    expect(meta.filter((f) => f.allowed).map((f) => f.id)).toEqual(["metas", "comparativo"]);
+    expect(meta.find((f) => f.id === "mmm")?.lockLabel).toBe("Disponível no Avançado");
+    expect(featureOptions(["ga4"], "avancado").map((f) => f.id)).toEqual(["comparativo"]);
+  });
+
+  it("o servidor aceita só o que o plano libera e combina", () => {
+    expect(allowedFeatures(["metas", "mmm", "xyz"], ["meta"], "pro")).toEqual(["metas"]);
+    expect(allowedFeatures(["metas", "mmm"], ["meta"], "avancado")).toEqual(["metas", "mmm"]);
+    expect(allowedFeatures(["metas"], ["instagram"], "avancado")).toEqual([]);
+    expect(allowedFeatures(["metas"], ["meta"], null)).toEqual([]);
   });
 });
 

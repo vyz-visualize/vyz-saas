@@ -192,7 +192,7 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
             </span>
             <p className="text-[13px] font-semibold tracking-tight">{client}</p>
           </div>
-          <nav className="order-last flex w-full min-w-0 flex-nowrap gap-x-5 overflow-x-auto [scrollbar-width:none] @[900px]:order-none @[900px]:w-auto @[900px]:flex-1 [&>*]:shrink-0 [&>*]:whitespace-nowrap">
+          <nav className="order-last flex w-full min-w-0 flex-nowrap gap-x-5 overflow-x-auto [scrollbar-width:none] @[900px]:order-none @[900px]:w-auto @[900px]:flex-1 @[900px]:basis-0 [&>*]:shrink-0 [&>*]:whitespace-nowrap">
             {pages.map((p) => (
               <button
                 key={p}
@@ -213,7 +213,7 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
           )}
           {/* na tela do dashboard, o título divide a linha com as abas: sobra altura para os blocos */}
           {screen && (
-            <p className="ml-auto hidden max-w-[46%] truncate text-[20px] leading-tight font-bold tracking-tight @[1100px]:block">{headline}</p>
+            <p className="ml-auto hidden max-w-[34%] min-w-0 shrink truncate text-[17px] leading-tight font-bold tracking-tight @[1100px]:block @[1500px]:max-w-[40%] @[1500px]:text-[20px]">{headline}</p>
           )}
         </div>
 
