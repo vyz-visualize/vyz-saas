@@ -143,6 +143,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
           settings: { ...d.settings, period, customDays },
           metricPrefs: d.metricPrefs,
           layout: d.layout,
+          metricGoals: d.metricGoals,
         }}
         brand={brand}
         canEdit={canEdit}

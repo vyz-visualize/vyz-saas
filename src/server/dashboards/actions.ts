@@ -28,6 +28,7 @@ import { authorize } from "@/server/auth/workspace";
 import { logActivity } from "@/server/history/log";
 import { appError, toActionError, unwrap, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase, type DB } from "@/server/supabase/server";
+import { parseMetricGoals } from "@/features/dashboards/goals";
 import { getDashboard } from "./queries";
 
 const Id = z.uuid();
@@ -155,10 +156,12 @@ export async function updateDashboard(dashboardId: string, input: DashboardField
     // Marca: só muda o que mudou (o gatilho do plano olha a marca nova)
     const brandChanged = (data.brandColor ?? null) !== (current.brand?.color || null) || data.hideVyz !== !!current.brand?.hideVyz;
     const brand = brandChanged ? brandFor(session, data) : {};
+    // metas por métrica: só quando o editor manda (uma por métrica)
+    const goals = data.metricGoals ? { metric_goals: parseMetricGoals(data.metricGoals) as Json } : {};
     unwrap(
       await db
         .from("dashboards")
-        .update({ name: data.name, client_name: data.client, ...settingsToDb(data, data.margin), ...brand })
+        .update({ name: data.name, client_name: data.client, ...settingsToDb(data, data.margin), ...brand, ...goals })
         .eq("id", dashboardId),
     );
     // Páginas e contas são trocas atômicas em funções próprias (cada uma numa transação)
@@ -169,7 +172,7 @@ export async function updateDashboard(dashboardId: string, input: DashboardField
     }
     // margem e contas mudam o que o dashboard lê: o próximo acesso já vem novo
     updateTag(dashboardTag(dashboardId));
-    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "dashboard.updated", entityType: "dashboard", entityId: dashboardId, metadata: { pages_changed: !samePages, brand_changed: brandChanged, accounts: accountIds.length } });
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "dashboard.updated", entityType: "dashboard", entityId: dashboardId, metadata: { pages_changed: !samePages, brand_changed: brandChanged, accounts: accountIds.length, goals: data.metricGoals?.length ?? null } });
   } catch (err) {
     unstable_rethrow(err);
     return toActionError(err);

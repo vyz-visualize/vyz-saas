@@ -3,6 +3,8 @@
 // conferidos de novo no servidor e no banco.
 
 import { z } from "zod";
+import type { MetricId } from "@/features/metrics/definitions";
+import { GOAL_METRICS, MAX_GOALS } from "./goals";
 import { ATTRIBUTION_IDS, CUSTOM_DAYS_MAX, CUSTOM_DAYS_MIN, NAME_MAX } from "./model";
 
 const text = (max: number) => z.string().trim().max(max, `Use até ${max} caracteres.`);
@@ -27,6 +29,23 @@ export const dashboardFieldsSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/, "Use uma cor no formato #RRGGBB.")
     .nullable(),
   hideVyz: z.boolean(),
+  /** Metas por métrica (editor). Sem o campo, as metas ficam como estão. */
+  metricGoals: z
+    .array(
+      z.object({
+        metric: z.enum(GOAL_METRICS as [MetricId, ...MetricId[]]),
+        value: z.number().min(0).max(1e13),
+        direction: z.enum(["max", "min"]),
+        period: z.union([
+          z.object({ kind: z.literal("month") }),
+          z.object({ kind: z.literal("firstWeek") }),
+          z.object({ kind: z.literal("custom"), from: z.iso.date(), to: z.iso.date() }).refine((p) => p.from <= p.to, "O fim vem depois do início."),
+        ]),
+        text: z.string().trim().max(200).optional(),
+      }),
+    )
+    .max(MAX_GOALS)
+    .optional(),
 });
 
 export const createDashboardSchema = dashboardFieldsSchema.extend({ templateId: z.string().min(1).max(60) });

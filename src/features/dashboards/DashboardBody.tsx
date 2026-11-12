@@ -55,8 +55,9 @@ import { SkinView } from "./skins";
 import { isFramedSkin } from "./skins/blocks";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
+import type { MetricGoal } from "./goals";
 
-export type DashboardSpec = { templateId: string; name: string; client: string; pages: PageId[]; settings: DashboardSettings; brand?: Brand; metricPrefs?: MetricPrefs; layout?: DashboardLayout };
+export type DashboardSpec = { templateId: string; name: string; client: string; pages: PageId[]; settings: DashboardSettings; brand?: Brand; metricPrefs?: MetricPrefs; layout?: DashboardLayout; metricGoals?: readonly MetricGoal[] };
 
 /** Variáveis de cor da marca própria (Personalizado), iguais nos dois modos. */
 export function brandStyle(brand?: Brand): CSSProperties | undefined {
@@ -228,7 +229,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     return { current, previous, currency: "BRL", analytics, crm, organic: { instagram: organic, facebook: organic, all: organic } };
   }, [t, realExtras, period, customDays, today, spec.name, spec.client]);
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
-  const ctxOptions = { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns, today };
+  const ctxOptions = { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns, today, goals: spec.metricGoals };
   const baseCtx = makeContext(ds, ctxOptions);
   const ctx = filtered.active ? makeContext(filtered.ds, { ...ctxOptions, base: baseCtx, chart: filtered.chart, platformsDs: filtered.platforms }) : baseCtx;
   const chips = chipsOf(filterState.filters, filterState.labels, compare ? filterState.compared : null);

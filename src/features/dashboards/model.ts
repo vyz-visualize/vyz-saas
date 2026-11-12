@@ -9,6 +9,7 @@ import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import { ATTRIBUTIONS, type Dashboard, type DashboardSettings, type PeriodId } from "@/features/workspace/types";
 import { parseLayout, type DashboardLayout } from "./layout/model";
 import { parseMetricPrefs, type MetricPrefs } from "./metric-prefs";
+import { parseMetricGoals, type MetricGoal } from "./goals";
 
 export const PERIOD_IDS: PeriodId[] = ["7d", "30d", "mes", "custom"];
 export const isPeriodId = (v: unknown): v is PeriodId => typeof v === "string" && (PERIOD_IDS as string[]).includes(v);
@@ -35,6 +36,7 @@ export type DashboardRow = {
   brand_color: string | null;
   hide_vyz_brand: boolean;
   metric_prefs?: unknown;
+  metric_goals?: unknown;
   layout?: unknown;
   created_at: string;
   updated_at: string;
@@ -57,6 +59,8 @@ export type DashboardDetail = Dashboard & {
   metricPrefs: MetricPrefs;
   /** Disposição por aba (Editar disposição). {} = a do template. */
   layout: DashboardLayout;
+  /** Metas por métrica (qualquer KPI). [] = nenhuma. */
+  metricGoals: MetricGoal[];
 };
 
 /** Conta que pode alimentar um dashboard com dados reais (escolha das fontes). */
@@ -102,6 +106,7 @@ export function toDashboard(row: DashboardRow, pages: PageRow[], sources: Source
     margin: row.margin == null ? null : settings.margin,
     metricPrefs: parseMetricPrefs(row.metric_prefs),
     layout: parseLayout(row.layout),
+    metricGoals: parseMetricGoals(row.metric_goals),
   };
 }
 

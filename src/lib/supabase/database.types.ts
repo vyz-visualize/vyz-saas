@@ -1277,6 +1277,7 @@ export type Database = {
           created_at: string
           updated_at: string
           metric_prefs: Json
+          metric_goals: Json
           project_id: string | null
           layout: Json
         }
@@ -1300,6 +1301,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           metric_prefs?: Json
+          metric_goals?: Json
           project_id?: string | null
           layout?: Json
         }
@@ -1323,6 +1325,7 @@ export type Database = {
           created_at?: string
           updated_at?: string
           metric_prefs?: Json
+          metric_goals?: Json
           project_id?: string | null
           layout?: Json
         }

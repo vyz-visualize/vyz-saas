@@ -22,6 +22,7 @@ import { sampleRowDate } from "@/features/metrics/filter-dataset";
 import { HideMetricButton } from "../MetricActions";
 import { RemoveColumnButton, RemoveMetricButton, useMetricEditor } from "../metric-edit-context";
 import { isSampleSpendDerived } from "../metric-prefs";
+import { goalStatus, periodLabel, type MetricGoal } from "../goals";
 
 export type WidgetContext = {
   ds: Dataset;
@@ -50,6 +51,8 @@ export type WidgetContext = {
   platformsDs?: Dataset;
   /** Dia de hoje (YYYY-MM-DD): dá a data de cada ponto do gráfico. */
   today?: string;
+  /** Metas por métrica do dashboard: o card mostra se está no alvo. */
+  goals?: readonly MetricGoal[];
 };
 
 export function makeContext(ds: Dataset, opts: Partial<WidgetContext> = {}): WidgetContext {
@@ -104,6 +107,7 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
   const filters = useDashFilters();
   const filtered = !!ctx.base;
 
+  const goal = ctx.goals?.find((g) => g.metric === spec.metric);
   let sub: ReactNode = null;
   switch (spec.sub) {
     case "delta":
@@ -142,8 +146,27 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
         <Odometer value={value} />
       </p>
       <p className={`mt-1.5 leading-tight ${lg ? "text-[12px]" : "text-[10px]"} ${strong ? "[&_span]:text-inherit" : "text-fg-2"}`}>{sub}</p>
+      {goal && !hidden && <GoalLine goal={goal} value={cur[spec.metric]} profile={profile} strong={!!strong} lg={lg} />}
       {onHide && <HideMetricButton label={label} onClick={onHide} />}
       {onRemove && <RemoveMetricButton label={label} onClick={onRemove} />}
+    </div>
+  );
+}
+
+/** Meta da métrica no card: no alvo ou fora, com a barra do quanto já foi. */
+export function GoalLine({ goal, value, profile, strong = false, lg = false }: { goal: MetricGoal; value: number; profile: Profile; strong?: boolean; lg?: boolean }) {
+  const s = goalStatus(goal, value, profile);
+  if (!s) return null;
+  const tone = strong ? "" : s.on ? "text-accent" : "text-error-fg";
+  return (
+    <div data-goal={s.on ? "on" : "off"} className={`mt-1.5 ${lg ? "text-[11.5px]" : "text-[9.5px]"} leading-tight`} title={goal.text ? `Meta: ${goal.text}` : undefined}>
+      <div className={`h-1 overflow-hidden rounded-full ${strong ? "bg-on-accent/25" : "bg-line"}`} aria-hidden>
+        <div className={`h-full rounded-full ${strong ? "bg-on-accent" : s.on ? "bg-accent" : "bg-error-fg"}`} style={{ width: `${Math.round(s.progress * 100)}%` }} />
+      </div>
+      <p className={`mt-1 font-semibold ${tone}`}>
+        {s.text}
+        <span className={`font-normal ${strong ? "" : "text-fg-2"}`}> · {periodLabel(goal.period)}</span>
+      </p>
     </div>
   );
 }

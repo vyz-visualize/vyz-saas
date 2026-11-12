@@ -12,7 +12,7 @@ import { appError, unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 
 const DASHBOARD_COLUMNS =
-  "id, template_id, name, client_name, goal_cents, margin, monthly_budget_cents, period, custom_days, attribution, brand_color, hide_vyz_brand, metric_prefs, layout, created_at, updated_at";
+  "id, template_id, name, client_name, goal_cents, margin, monthly_budget_cents, period, custom_days, attribution, brand_color, hide_vyz_brand, metric_prefs, metric_goals, layout, created_at, updated_at";
 
 // Páginas e contas embutidas: uma ida ao banco por lista.
 export const DASHBOARD_SELECT = `${DASHBOARD_COLUMNS},
