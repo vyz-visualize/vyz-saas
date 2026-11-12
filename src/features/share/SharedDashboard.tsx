@@ -38,6 +38,8 @@ const MESSAGES = {
   revoked: { title: "Link desativado", text: "Quem compartilhou desativou este link. Peça um novo, se precisar." },
   unavailable: { title: "Dashboard indisponível", text: "Este dashboard não está disponível agora. Tente mais tarde ou fale com quem compartilhou." },
   rate_limited: { title: "Muitos acessos seguidos", text: "Espere um minuto e abra o link de novo." },
+  // sem conta ligada o dashboard só teria dados de exemplo: o link não mostra número nenhum
+  sample: { title: "Dashboard ainda sem contas", text: "Os números aparecem aqui assim que quem compartilhou ligar as contas de anúncio a este dashboard." },
 } as const;
 
 export type ShareProblem = keyof typeof MESSAGES;

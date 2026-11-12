@@ -4,12 +4,13 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { parseCreativesQuery } from "@/features/analytics/creatives/query";
 import { parseFilters } from "@/features/analytics/filters";
-import { sampleCreatives, sampleExtras } from "@/features/analytics/creatives/sample";
 import { LiveDashboard, LiveDashboardSkeleton } from "@/features/analytics/LiveDashboard";
 import { periodFromQuery } from "@/features/dashboards/model";
 import { PeriodNav } from "@/features/dashboards/PeriodNav";
 import { SampleDashboard } from "@/features/dashboards/SampleDashboard";
+import { showsSampleData } from "@/features/dashboards/sample-gate";
 import { anyDashboardTemplate } from "@/features/templates/live";
+import { loadDashboardData } from "@/server/dashboards/real-data";
 import { PublicShell, ShareMessage } from "@/features/share/SharedDashboard";
 import { openSharedDashboard } from "@/server/share/public";
 
@@ -36,7 +37,7 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
   const filters = parseFilters(query);
   // o link mostra o que o plano do dono cobre, sem oferta de plano para o cliente final
   const access = { tier: shared.tier, tab: q.tab, ads: q.ads, upsell: false };
-  const note = d.live ? "Somente leitura · dados das contas conectadas" : "Somente leitura · dados de exemplo";
+  const note = "Somente leitura · dados das contas conectadas";
 
   if (d.live) {
     return (
@@ -60,7 +61,11 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
     );
   }
 
+  // os números reais das contas ligadas (lidos com a chave de serviço do link, só leitura);
+  // sem conta ligada, nada de amostra para o cliente: só a mensagem
   const template = anyDashboardTemplate(d.templateId);
+  const { realData, linkedPlatforms, sourceExtras } = showsSampleData(d) ? {} : await loadDashboardData(d, template, { period, customDays, db: shared.db });
+  if (!realData) return <ShareMessage kind="sample" />;
   return (
     <PublicShell brand={shared.brand} note={note}>
       <SampleDashboard
@@ -69,8 +74,9 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
         hideSpend={shared.hideSpend}
         initialPage={q.page}
         initialFilters={filters}
-        creatives={template ? sampleCreatives(template, { name: d.name, client: d.client, settings: d.settings }, d.pages, access, { period, customDays, hideSpend: shared.hideSpend, filters }) : undefined}
-        extraMetrics={template ? sampleExtras(template, { name: d.name, client: d.client, settings: d.settings }, { period, customDays, hideSpend: shared.hideSpend, filters }) : undefined}
+        realData={realData}
+        linkedPlatforms={linkedPlatforms}
+        sourceExtras={sourceExtras}
       />
     </PublicShell>
   );
