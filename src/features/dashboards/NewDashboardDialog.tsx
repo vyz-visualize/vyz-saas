@@ -21,17 +21,15 @@ import type { PageId } from "@/features/templates/types";
 import { createDashboard } from "@/server/dashboards/actions";
 import { allowedPages, type SourceOption } from "./model";
 import { ModelPicker } from "./ModelPicker";
+import { PlatformIcon } from "@/components/brand/PlatformIcon";
+import { TemplateThumb } from "./TemplateGallery";
+import { ColorField } from "@/components/ui/ColorField";
+import { FileInput } from "@/components/ui/FileInput";
+import { removeBrandLogo, updateWorkspace, uploadBrandLogo } from "@/server/workspace/actions";
 import { BuildingDashboard } from "./BuildingDashboard";
 
 /** Plataformas que os modelos novos leem, na ordem em que aparecem. */
 const PLATFORM_ORDER: PlatformId[] = ["meta", "google", "ga4", "instagram", "facebook"];
-const BADGE: Partial<Record<PlatformId, { bg: string; label: string }>> = {
-  meta: { bg: "#0866FF", label: "M" },
-  google: { bg: "#34A853", label: "G" },
-  ga4: { bg: "#E37400", label: "GA" },
-  instagram: { bg: "#D62976", label: "IG" },
-  facebook: { bg: "#1877F2", label: "f" },
-};
 const HINT: Partial<Record<PlatformId, string>> = {
   meta: "Campanhas, criativos e público",
   google: "Campanhas e termos de pesquisa",
@@ -40,22 +38,38 @@ const HINT: Partial<Record<PlatformId, string>> = {
   facebook: "Seguidores, alcance e posts da Página",
 };
 
-export function PlatformBadge({ id, size = 28 }: { id: PlatformId; size?: number }) {
-  const b = BADGE[id];
-  return (
-    <span
-      aria-hidden
-      className="inline-flex shrink-0 items-center justify-center rounded-[8px] font-bold text-white"
-      style={{ width: size, height: size, background: b?.bg ?? "var(--muted)", fontSize: size * 0.4 }}
-    >
-      {b?.label ?? PLATFORMS[id].short.slice(0, 2)}
-    </span>
-  );
-}
+const STEPS = ["Objetivo", "Visual", "Plataformas", "Recursos", "Páginas", "Marca e nome"];
 
-const STEPS = ["Objetivo", "Visual", "Plataformas", "Recursos", "Páginas", "Nome"];
-
-export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: { open: boolean; onClose: () => void; sources: SourceOption[]; tier: Tier; pagesTier: Tier }) {
+export function NewDashboardDialog({
+  open,
+  onClose,
+  sources,
+  tier,
+  pagesTier,
+  brand,
+}: {
+  open: boolean;
+  onClose: () => void;
+  sources: SourceOption[];
+  tier: Tier;
+  pagesTier: Tier;
+  /** Logo e cor da empresa (workspace): o dashboard se veste com elas. */
+  brand: { color: string; logoUrl: string | null; canEdit: boolean };
+}) {
+  const [color, setColor] = useState(brand.color);
+  const [logo, setLogo] = useState<string | null>(brand.logoUrl);
+  const [brandError, setBrandError] = useState<string | null>(null);
+  const [brandBusy, startBrand] = useTransition();
+  function sendLogo(file: File) {
+    setBrandError(null);
+    const fd = new FormData();
+    fd.set("logo", file);
+    startBrand(async () => {
+      const r = await uploadBrandLogo(fd);
+      if (r.ok) setLogo(r.data.url);
+      else setBrandError(r.error.message);
+    });
+  }
   const [step, setStep] = useState(0);
   const [objective, setObjective] = useState<ObjectiveId | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
@@ -63,6 +77,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
   const [accountIds, setAccountIds] = useState<string[]>([]);
   const [off, setOff] = useState<PageId[]>([]);
   const [features, setFeatures] = useState<FeatureId[]>([]);
+  const [hovered, setHovered] = useState<FeatureId | null>(null);
   const [name, setName] = useState("");
   const [client, setClient] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +124,11 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
     if (!t) return;
     setError(null);
     start(async () => {
+      // a cor da empresa vai para o workspace (vale para este e os próximos dashboards)
+      if (brand.canEdit && color.toLowerCase() !== brand.color.toLowerCase()) {
+        const b = await updateWorkspace({ brandColor: color });
+        if (!b.ok) return setError(b.error.message);
+      }
       const r = await createDashboard({
         templateId: t.id,
         name: name.trim() || t.name,
@@ -188,7 +208,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
                   if (!accounts.length)
                     return (
                       <div key={p} className="flex items-center gap-3 rounded-card border border-dashed border-line p-3 opacity-75">
-                        <PlatformBadge id={p} />
+                        <PlatformIcon id={p} size={36} />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-fg">{PLATFORMS[p].name}</p>
                           <p className="text-[12.5px] text-fg-2">Nenhuma conta conectada</p>
@@ -206,7 +226,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
                       onClick={() => togglePlatform(p)}
                       className={`flex items-center gap-3 rounded-card border p-3 text-left transition-colors ${on ? "border-accent bg-accent-soft/60" : "border-line bg-card hover:border-accent/60"}`}
                     >
-                      <PlatformBadge id={p} />
+                      <PlatformIcon id={p} size={36} />
                       <span className="min-w-0 flex-1">
                         <span className="block font-medium text-fg">{PLATFORMS[p].name}</span>
                         <span className="block text-[12.5px] text-fg-2">
@@ -224,7 +244,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
               {PLATFORM_ORDER.filter((p) => platforms.includes(p)).map((p) => (
                 <section key={p} className="rounded-card border border-line">
                   <header className="flex items-center gap-2 border-b border-line px-3 py-2">
-                    <PlatformBadge id={p} size={22} />
+                    <PlatformIcon id={p} size={22} />
                     <h4 className="text-[14px] font-semibold text-fg">Contas do {PLATFORMS[p].name}</h4>
                   </header>
                   <ul className="max-h-56 divide-y divide-line overflow-y-auto">
@@ -269,7 +289,14 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
                   const open = canUse(tier, f.tier);
                   const on = features.includes(f.id);
                   return (
-                    <li key={f.id}>
+                    <li key={f.id} className="relative" onMouseEnter={() => setHovered(f.id)} onMouseLeave={() => setHovered((h) => (h === f.id ? null : h))}>
+                      {/* passar o mouse: a prévia da página do recurso, com dados de exemplo */}
+                      {hovered === f.id && t && (
+                        <div className="pointer-events-none absolute bottom-full left-0 z-20 mb-2 hidden w-[360px] overflow-hidden rounded-card border border-line bg-card shadow-xl md:block">
+                          <TemplateThumb t={t} page={f.id} height={200} />
+                          <p className="border-t border-line px-3 py-2 text-[12px] text-fg-2">Prévia com dados de exemplo</p>
+                        </div>
+                      )}
                       <button
                         type="button"
                         aria-pressed={on}
@@ -281,6 +308,7 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-2 font-medium text-fg">
                             {f.label}
+                            <span className={`rounded-chip px-2 py-0.5 text-[10.5px] font-semibold tracking-wide uppercase ${f.tier === "avancado" ? "bg-accent text-on-accent" : "border border-line text-fg-2"}`}>{f.tier === "avancado" ? "Avançado" : "Padrão"}</span>
                             {!open && <LockBadge label={availableIn(f.tier)} />}
                           </span>
                           <span className="mt-0.5 block text-[12.5px] text-fg-2">{fits ? f.hint : `Precisa de ${f.needs?.map((n) => PLATFORMS[n as PlatformId].name).join(" ou ")}.`}</span>
@@ -329,6 +357,34 @@ export function NewDashboardDialog({ open, onClose, sources, tier, pagesTier }: 
           {step === 5 && t && (
             <div className="space-y-4">
               <h3 className="title text-[16px] text-fg">Quase pronto</h3>
+            {brand.canEdit && (
+              <div className="grid gap-4 rounded-card border border-line p-4 sm:grid-cols-[auto_1fr] sm:items-center">
+                <div className="flex size-20 items-center justify-center overflow-hidden rounded-card border border-dashed border-line bg-bg" style={{ outline: `3px solid ${color}`, outlineOffset: 2 }}>
+                  {logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- logo do próprio workspace
+                    <img src={logo} alt="Logo da empresa" className="max-h-16 max-w-16 object-contain" />
+                  ) : (
+                    <span className="text-[11px] text-fg-2">sua logo</span>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <p className="text-[13.5px] text-fg-2">A logo e a cor da sua empresa vestem o dashboard (e os próximos). Dá para trocar depois em Configurações.</p>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <FileInput label="Logo (PNG, JPG ou SVG)" accept="image/png,image/jpeg,image/svg+xml,image/webp" onFile={sendLogo} compact />
+                    {logo && (
+                      <button type="button" className="text-[12.5px] text-fg-2 underline-offset-2 hover:underline" onClick={() => startBrand(async () => { const r = await removeBrandLogo(); if (r.ok) setLogo(null); })}>
+                        Tirar logo
+                      </button>
+                    )}
+                    <div className="w-44">
+                      <ColorField label="Cor da marca" value={color} onChange={setColor} />
+                    </div>
+                  </div>
+                  {brandBusy && <p className="text-[12px] text-fg-2">Enviando…</p>}
+                  {brandError && <p className="text-[12.5px] text-error">{brandError}</p>}
+                </div>
+              </div>
+            )}
               <div className="grid gap-3 sm:grid-cols-2">
                 <TextField label="Nome do dashboard" value={name} onChange={setName} placeholder={t.name} />
                 <TextField label="Cliente (opcional)" value={client} onChange={setClient} placeholder="Ex.: Loja Verde" />

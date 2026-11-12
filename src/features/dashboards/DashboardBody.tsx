@@ -250,7 +250,12 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       : p === "pagina-facebook" ? <OrganicSourcePage extras={sourceExtras} which="facebook" />
       : p === "conteudo" ? <OrganicSourcePage extras={sourceExtras} which="conteudo" />
       // recursos do Avançado: o desenho próprio deles, com os números deste dashboard
-      : p === "criativos-ao-vivo" || p === "previsao" || p === "mmm" ? <SkinView skin={p} ctx={ctxFor(p)} name={spec.name} client={spec.client} pages={[p]} active={p} periodLabel={periodLabel} />
+      : p === "criativos-ao-vivo" || p === "previsao" || p === "mmm" ? (
+        // o desenho do recurso ocupa a altura toda (sem sobrar faixa escura embaixo) e rola por dentro
+        <div className="h-full min-h-0 overflow-auto rounded-card [&>*]:min-h-full">
+          <SkinView skin={p} ctx={ctxFor(p)} name={spec.name} client={spec.client} pages={[p]} active={p} periodLabel={periodLabel} />
+        </div>
+      )
       : null;
     // na tela do painel, encaixa na altura (16:9, sem rolar a página), como a grade dos blocos
     return page && <FitFrame fit={fitScreen}>{page}</FitFrame>;

@@ -33,6 +33,7 @@ async function Lista({ searchParams }: Pick<PageProps<"/painel/dashboards">, "se
       tier={tier}
       pagesTier={session.access.entitlements?.pages ?? "base"}
       openNew={query.novo === "1"}
+      brand={{ color: session.workspace.brandColor, logoUrl: session.workspace.brandLogoUrl ?? null, canEdit: hasRole(session.role, "admin") }}
     />
   );
 }

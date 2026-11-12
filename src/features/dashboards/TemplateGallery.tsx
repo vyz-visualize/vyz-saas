@@ -42,6 +42,10 @@ export function TemplatePreview({ t, page, variant = "full" }: { t: DashboardTem
   if (t.skin && p === t.pages[0]) {
     return <SkinView skin={t.skin} ctx={makeContext(ds)} name={t.name} client={client} pages={tabs} active={p} periodLabel="Últimos 30 dias" />;
   }
+  // recursos do Avançado têm desenho próprio (prévia do passo Recursos)
+  if (p === "previsao" || p === "mmm" || p === "criativos-ao-vivo") {
+    return <SkinView skin={p} ctx={makeContext(ds)} name={t.name} client={client} pages={[p]} active={p} periodLabel="Últimos 30 dias" />;
+  }
   return (
     <div className="bg-bg p-3">
       <p className="mb-2 text-[14px] font-bold tracking-[-0.02em]">
@@ -53,7 +57,7 @@ export function TemplatePreview({ t, page, variant = "full" }: { t: DashboardTem
 }
 
 /** Miniatura real do modelo (primeira aba), escalada para caber. */
-export function TemplateThumb({ t, height = 168 }: { t: DashboardTemplate; height?: number }) {
+export function TemplateThumb({ t, height = 168, page }: { t: DashboardTemplate; height?: number; page?: PageId }) {
   const live = t.dataMode === "live";
   return (
     <ScaledPreview height={height} width={live || t.skin ? 1100 : 760}>
@@ -63,7 +67,7 @@ export function TemplateThumb({ t, height = 168 }: { t: DashboardTemplate; heigh
             <LiveDashboardPreview templateId={t.id} pageIds={["visao-geral"]} />
           </div>
         ) : (
-          <TemplatePreview t={t} variant="compact" />
+          <TemplatePreview t={t} page={page} variant="compact" />
         )}
       </div>
     </ScaledPreview>
