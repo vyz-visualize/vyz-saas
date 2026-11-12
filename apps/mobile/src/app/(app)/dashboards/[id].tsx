@@ -574,6 +574,7 @@ export default function DashboardScreen() {
             />
             <Campaigns data={data} selected={campaign} onSelect={toggleCampaign} />
             <Funnel data={data} />
+            <Site data={data} />
             <Creatives data={data} />
             <Audience data={data} />
             <Slices title="Posicionamentos" caption="Feed, Stories, Reels…" items={data.view.placements} currency={data.currency} />
@@ -589,5 +590,44 @@ export default function DashboardScreen() {
         )}
       </ScrollView>
     </View>
+  );
+}
+
+/** Site (GA4) das propriedades ligadas: sessões, conversões e receita, e os canais. */
+function Site({ data }: { data: Data }) {
+  const t = useTheme();
+  const site = data.site;
+  if (!site || (!site.sessions && !site.previousSessions)) return null;
+  const delta = (cur: number, prev: number) => (prev > 0 ? (cur - prev) / prev : null);
+  const top = site.channels[0]?.sessions || 1;
+  const stats = [
+    { label: "Sessões", value: int(site.sessions), d: delta(site.sessions, site.previousSessions) },
+    { label: "Conversões", value: int(site.conversions), d: delta(site.conversions, site.previousConversions) },
+    { label: "Receita", value: money(site.revenue, data.currency), d: null },
+  ];
+  return (
+    <>
+      <SectionHeader title="Site (GA4)" caption="Sessões e conversões do site, por canal" />
+      <Card style={{ gap: 14 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          {stats.map((x) => (
+            <View key={x.label} style={{ gap: 2 }}>
+              <Text style={{ color: t.fg2, fontSize: 12.5 }}>{x.label}</Text>
+              <Text style={{ color: t.fg, fontSize: 18, fontWeight: "800", fontVariant: ["tabular-nums"] }}>{x.value}</Text>
+              {x.d !== null && <Text style={{ color: x.d >= 0 ? t.good : t.danger, fontSize: 12 }}>{`${x.d >= 0 ? "+" : ""}${pct(x.d)}`}</Text>}
+            </View>
+          ))}
+        </View>
+        {site.channels.map((c) => (
+          <View key={c.channel} style={{ gap: 5 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={{ color: t.fg, fontSize: 14 }}>{c.channel}</Text>
+              <Text style={{ color: t.fg2, fontSize: 13, fontVariant: ["tabular-nums"] }}>{`${int(c.sessions)} sessões · ${int(c.conversions)} conv.`}</Text>
+            </View>
+            <ShareBar share={c.sessions / top} color={t.accent} />
+          </View>
+        ))}
+      </Card>
+    </>
   );
 }

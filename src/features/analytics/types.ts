@@ -363,6 +363,18 @@ export type LiveDashboardData = {
   view: DashboardView;
   /** Orgânico (Instagram e Página do Facebook) dos perfis ligados ao dashboard. */
   organic?: OrganicView;
+  /** Site (GA4) das propriedades ligadas, para o app. */
+  site?: SiteSummary;
   /** Modelos novos com Meta e Google: as duas (o app mostra "Tudo · Meta · Google"). */
   platforms?: ("meta" | "google")[];
+};
+
+/** Resumo do GA4 para o app: sessões, conversões e receita nos dois períodos e os canais. */
+export type SiteSummary = {
+  sessions: number;
+  previousSessions: number;
+  conversions: number;
+  previousConversions: number;
+  revenue: number;
+  channels: { channel: string; sessions: number; conversions: number }[];
 };

@@ -34,6 +34,7 @@ import type {
   ProductDayRow,
   SearchTermDayRow,
   WarehouseRows,
+  SiteSummary,
 } from "@/features/analytics/types";
 import { DEFAULT_TIME_ZONE, localDate } from "@/features/sync/dates";
 import type { AnalyticsRow } from "@/features/metrics/warehouse-dataset";
@@ -89,12 +90,13 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && isOrganicPlatform(a.platform_id))
     .map((a) => ({ id: a.id, name: a.name, platform: a.platform_id as OrganicProfile["platform"] }))
     .sort((a, b) => a.id.localeCompare(b.id));
-  if (!platform) platform = (sources ?? []).some((s) => s.account?.is_enabled && s.account.platform_id === "meta") ? "meta" : "google";
+  const enabledIds = (sources ?? []).filter((s) => s.account?.is_enabled).map((s) => s.account!.platform_id);
+  if (!platform) platform = enabledIds.includes("meta") ? "meta" : enabledIds.includes("google") || !enabledIds.some(isImportPlatform) ? "google" : "import";
   const livePlatform: LivePlatform = platform;
   const accounts: (LiveAccount & { platformId: string })[] = (sources ?? [])
     .map((s) => s.account)
     // planilha: qualquer plataforma que entra por importação; modelo novo: Meta e Google juntos; os outros, só a do template
-    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (livePlatform === "import" ? isImportPlatform(a.platform_id) : composed ? a.platform_id === "meta" || a.platform_id === "google" : a.platform_id === livePlatform))
+    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (livePlatform === "import" ? isImportPlatform(a.platform_id) : composed ? a.platform_id === "meta" || a.platform_id === "google" || isImportPlatform(a.platform_id) : a.platform_id === livePlatform))
     .map((a) => ({ id: a.id, name: a.name, currency: a.currency, timeZone: a.timezone || DEFAULT_TIME_ZONE, lastSyncedAt: a.last_synced_at, platformId: a.platform_id }))
     .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -123,9 +125,10 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
         aggregateFiltered(
           mergeRows(
             await Promise.all(
-              (["meta", "google"] as const)
-                .map((p) => accounts.filter((a) => a.platformId === p).map((a) => a.id))
-                .map((ids, i) => (ids.length ? readRows({ dashboardId, platform: i === 0 ? "meta" : "google", accountIds: ids, current, previous, breakEvenRoas }) : null)),
+              (["meta", "google", "import"] as const)
+                .map((p) => [p, accounts.filter((a) => (p === "import" ? isImportPlatform(a.platformId) : a.platformId === p)).map((a) => a.id)] as const)
+                // planilha entra somada (as plataformas importadas têm as mesmas colunas de anúncio)
+                .map(([p, ids]) => (ids.length ? readRows({ dashboardId, platform: p, accountIds: ids, current, previous, breakEvenRoas }) : null)),
             ).then((sets) => sets.filter((x): x is WarehouseRows => !!x)),
             shown,
           ),
@@ -135,6 +138,9 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
       : await readWarehouse({ dashboardId, platform: shown, accountIds: accounts.map((a) => a.id), current, previous, breakEvenRoas }, filters);
   if (opts.hideSpend) view = redactSpend(view);
   const organic = organicProfiles.length ? await readOrganic({ dashboardId, profiles: organicProfiles, current, previous }) : undefined;
+  // site (GA4) das propriedades ligadas: o app mostra sessões, conversões, receita e os canais
+  const ga4Ids = (sources ?? []).filter((s) => s.account?.is_enabled && s.account.platform_id === "ga4").map((s) => s.account!.id);
+  const site = ga4Ids.length ? siteSummary(await readAnalytics({ dashboardId, accountIds: ga4Ids, from: previous.from < current.from ? previous.from : current.from, to: current.to }), current, previous) : undefined;
   const currency = accounts[0]?.currency ?? "BRL";
   const cut = cutCreatives(view, opts.creatives ?? {}, { hideSpend: !!opts.hideSpend, currency });
 
@@ -155,6 +161,7 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     view: cut.view,
     creatives: cut.creatives,
     ...(organic ? { organic } : {}),
+    ...(site ? { site } : {}),
   };
 }
 
@@ -259,6 +266,31 @@ function mergeRows(sets: WarehouseRows[], platform: LivePlatform): WarehouseRows
     searchTermDaily: cat("searchTermDaily"),
     products: cat("products"),
     productDaily: cat("productDaily"),
+  };
+}
+
+/** Totais do GA4 nos dois períodos e os canais do período atual (para o app). */
+function siteSummary(rows: AnalyticsRow[], current: DateRange, previous: DateRange): SiteSummary {
+  const sum = (r: DateRange) => {
+    const list = rows.filter((x) => x.date >= r.from && x.date <= r.to);
+    return { sessions: list.reduce((a, x) => a + x.sessions, 0), conversions: list.reduce((a, x) => a + x.keyEvents, 0), revenue: list.reduce((a, x) => a + x.revenue, 0), list };
+  };
+  const cur = sum(current);
+  const prev = sum(previous);
+  const byChannel = new Map<string, { channel: string; sessions: number; conversions: number }>();
+  for (const x of cur.list) {
+    const c = byChannel.get(x.channel) ?? { channel: x.channel, sessions: 0, conversions: 0 };
+    c.sessions += x.sessions;
+    c.conversions += x.keyEvents;
+    byChannel.set(x.channel, c);
+  }
+  return {
+    sessions: cur.sessions,
+    previousSessions: prev.sessions,
+    conversions: Math.round(cur.conversions),
+    previousConversions: Math.round(prev.conversions),
+    revenue: Math.round(cur.revenue * 100) / 100,
+    channels: [...byChannel.values()].sort((a, b) => b.sessions - a.sessions).slice(0, 6).map((c) => ({ ...c, conversions: Math.round(c.conversions) })),
   };
 }
 
