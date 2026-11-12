@@ -23,6 +23,7 @@ import type { PageId } from "@/features/templates/types";
 import { createDashboard } from "@/server/dashboards/actions";
 import { allowedPages, type SourceOption } from "./model";
 import { ModelPicker } from "./ModelPicker";
+import { FirstProject } from "@/features/projects/FirstProject";
 import { PlatformIcon } from "@/components/brand/PlatformIcon";
 import { TemplateThumb } from "./TemplatePreview";
 import { ColorField } from "@/components/ui/ColorField";
@@ -53,6 +54,7 @@ export function NewDashboardDialog({
   tier,
   pagesTier,
   brand,
+  hasProject,
 }: {
   open: boolean;
   onClose: () => void;
@@ -61,7 +63,10 @@ export function NewDashboardDialog({
   pagesTier: Tier;
   /** Logo e cor da empresa (workspace): o dashboard se veste com elas. */
   brand: { color: string; logoUrl: string | null; canEdit: boolean };
+  /** O workspace já tem projeto? Sem ele, o último passo pede o nome do primeiro. */
+  hasProject: boolean;
 }) {
+  const [projectReady, setProjectReady] = useState(hasProject);
   const [color, setColor] = useState(brand.color);
   const [logo, setLogo] = useState<string | null>(brand.logoUrl);
   const [brandError, setBrandError] = useState<string | null>(null);
@@ -365,6 +370,7 @@ export function NewDashboardDialog({
           {step === 5 && t && (
             <div className="space-y-4">
               <h3 className="title text-[16px] text-fg">Quase pronto</h3>
+            {!projectReady && <FirstProject compact onCreated={() => setProjectReady(true)} />}
             {brand.canEdit && (
               <div className="grid gap-4 rounded-card border border-line p-4 sm:grid-cols-[auto_1fr] sm:items-center">
                 <div className="flex size-20 items-center justify-center overflow-hidden rounded-card border border-dashed border-line bg-bg" style={{ outline: `3px solid ${color}`, outlineOffset: 2 }}>
@@ -419,7 +425,7 @@ export function NewDashboardDialog({
               </button>
             )}
             {step === 5 && (
-              <button type="button" className={btn.small} onClick={create} disabled={pending || !pages.length}>
+              <button type="button" className={btn.small} onClick={create} disabled={pending || !pages.length || !projectReady}>
                 {pending && <LoaderCircle size={15} aria-hidden className="animate-spin motion-reduce:animate-none" />}
                 {pending ? "Criando…" : "Criar dashboard"}
               </button>

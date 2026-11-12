@@ -76,9 +76,10 @@ type Props = {
   /** Abre o popup já ao carregar (?novo=1). */
   openNew?: boolean;
   brand: { color: string; logoUrl: string | null; canEdit: boolean };
+  hasProject: boolean;
 };
 
-export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier, pagesTier, openNew = false, brand }: Props) {
+export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier, pagesTier, openNew = false, brand, hasProject }: Props) {
   const [creating, setCreating] = useState(openNew && canEdit);
   const [removing, setRemoving] = useState<DashboardListItem | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -162,7 +163,7 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
           })}
         </ul>
       )}
-      {canEdit && <NewDashboardDialog open={creating} onClose={() => setCreating(false)} sources={sources} tier={tier} pagesTier={pagesTier} brand={brand} />}
+      {canEdit && <NewDashboardDialog open={creating} onClose={() => setCreating(false)} sources={sources} tier={tier} pagesTier={pagesTier} brand={brand} hasProject={hasProject} />}
       <DeleteDashboardModal dashboard={removing} pending={pending} error={error} onConfirm={remove} onClose={() => setRemoving(null)} />
     </div>
   );

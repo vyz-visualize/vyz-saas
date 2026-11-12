@@ -6,6 +6,7 @@ import { TIER_LABEL } from "@/features/pricing/entitlements";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { listDashboards, listSourceOptions } from "@/server/dashboards/queries";
+import { listProjects } from "@/server/projects/queries";
 
 export const metadata: Metadata = { title: "Dashboards" };
 
@@ -21,7 +22,7 @@ export default function Page({ searchParams }: PageProps<"/painel/dashboards">) 
 async function Lista({ searchParams }: Pick<PageProps<"/painel/dashboards">, "searchParams">) {
   await connection();
   const session = await requireWorkspace({ next: "/painel/dashboards" });
-  const [items, sources, query] = await Promise.all([listDashboards(), listSourceOptions(), searchParams]);
+  const [items, sources, query, projects] = await Promise.all([listDashboards(), listSourceOptions(), searchParams, listProjects()]);
   const tier = session.access.tier ?? "base";
   return (
     <DashboardsList
@@ -33,6 +34,7 @@ async function Lista({ searchParams }: Pick<PageProps<"/painel/dashboards">, "se
       tier={tier}
       pagesTier={session.access.entitlements?.pages ?? "base"}
       openNew={query.novo === "1"}
+      hasProject={projects.length > 0}
       brand={{ color: session.workspace.brandColor, logoUrl: session.workspace.brandLogoUrl ?? null, canEdit: hasRole(session.role, "admin") }}
     />
   );

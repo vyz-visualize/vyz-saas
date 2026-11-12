@@ -17,6 +17,7 @@ import { fitsProject, type BillableRef } from "./limits";
 import { PROVIDERS, type ProviderId } from "./providers";
 import { accountStatusLabel, syncSummary, type SyncSummary } from "./sync-label";
 import { SyncProgress, useRefreshWhile } from "./SyncProgress";
+import { FirstProject } from "@/features/projects/FirstProject";
 import type { AdAccountDTO } from "./types";
 import { btnSmallOutline } from "./ui";
 
@@ -212,6 +213,16 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
         setMessage({ tone: "ok", text: res.data.syncing ? `${a.name}: sincronização começou.` : `${a.name}: dados dos últimos 7 dias atualizados.` });
       }
     });
+  }
+
+  // sem projeto ainda: a pessoa cria e nomeia o primeiro antes de ligar contas
+  if (canManage && projects.length === 0 && !accounts.some((a) => a.isEnabled)) {
+    return (
+      <div className="space-y-3">
+        <FirstProject />
+        <p className="text-[12.5px] text-fg-2">Depois de criar o projeto, as contas aparecem aqui para você ligar.</p>
+      </div>
+    );
   }
 
   return (
