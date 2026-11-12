@@ -366,59 +366,6 @@ export type Database = {
           },
         ]
       }
-      crm_daily: {
-        Row: {
-          workspace_id: string
-          ad_account_id: string
-          date: string
-          stage: string
-          stage_order: number
-          deals: number
-          value: number
-          won: number
-          won_value: number
-          lost: number
-          leads: number
-          synced_at: string
-        }
-        Insert: {
-          workspace_id: string
-          ad_account_id: string
-          date: string
-          stage: string
-          stage_order?: number
-          deals?: number
-          value?: number
-          won?: number
-          won_value?: number
-          lost?: number
-          leads?: number
-          synced_at?: string
-        }
-        Update: {
-          workspace_id?: string
-          ad_account_id?: string
-          date?: string
-          stage?: string
-          stage_order?: number
-          deals?: number
-          value?: number
-          won?: number
-          won_value?: number
-          lost?: number
-          leads?: number
-          synced_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "crm_daily_workspace_id_ad_account_id_fkey"
-            columns: ["workspace_id","ad_account_id"]
-            isOneToOne: false
-            referencedRelation: "ad_accounts"
-            referencedColumns: ["workspace_id","id"]
-          },
-        ]
-      }
       audit_events: {
         Row: {
           id: number
@@ -946,6 +893,59 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_daily: {
+        Row: {
+          workspace_id: string
+          ad_account_id: string
+          date: string
+          stage: string
+          stage_order: number
+          deals: number
+          value: number
+          won: number
+          won_value: number
+          lost: number
+          leads: number
+          synced_at: string
+        }
+        Insert: {
+          workspace_id: string
+          ad_account_id: string
+          date: string
+          stage: string
+          stage_order?: number
+          deals?: number
+          value?: number
+          won?: number
+          won_value?: number
+          lost?: number
+          leads?: number
+          synced_at?: string
+        }
+        Update: {
+          workspace_id?: string
+          ad_account_id?: string
+          date?: string
+          stage?: string
+          stage_order?: number
+          deals?: number
+          value?: number
+          won?: number
+          won_value?: number
+          lost?: number
+          leads?: number
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_daily_workspace_id_ad_account_id_fkey"
+            columns: ["workspace_id","ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["workspace_id","id"]
+          },
+        ]
+      }
       dashboard_exports: {
         Row: {
           id: string
@@ -1277,9 +1277,9 @@ export type Database = {
           created_at: string
           updated_at: string
           metric_prefs: Json
-          metric_goals: Json
           project_id: string | null
           layout: Json
+          metric_goals: Json
         }
         Insert: {
           id?: string
@@ -1301,9 +1301,9 @@ export type Database = {
           created_at?: string
           updated_at?: string
           metric_prefs?: Json
-          metric_goals?: Json
           project_id?: string | null
           layout?: Json
+          metric_goals?: Json
         }
         Update: {
           id?: string
@@ -1325,9 +1325,9 @@ export type Database = {
           created_at?: string
           updated_at?: string
           metric_prefs?: Json
-          metric_goals?: Json
           project_id?: string | null
           layout?: Json
+          metric_goals?: Json
         }
         Relationships: [
           {
