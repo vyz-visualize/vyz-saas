@@ -1,6 +1,7 @@
 // Formato que o servidor entrega às telas do painel (Início e Configurações).
 // Só tipos: pode ser importado no navegador.
 
+import type { GuidesState } from "@/features/onboarding/guides";
 import type { ProviderId } from "@/features/integrations/providers";
 import type { HistoryTone } from "./history";
 import type { MemberRole } from "./session";
@@ -26,6 +27,14 @@ export type HomeData = {
   connections: HomeConnection[];
   /** Links de compartilhamento ativos (para o passo "Compartilhar"). */
   activeShareLinks: number;
+  /** Dashboards com pelo menos uma conta ativa ligada (os de exemplo não contam no checklist). */
+  realDashboards: number;
+  /** Primeiro dashboard com conta ligada (o passo "Compartilhar" abre nele). */
+  firstRealDashboardHref: string | null;
+  /** Tour e lembretes da pessoa (user_guides). */
+  guides: GuidesState;
+  /** Ferramentas de teste no rodapé: recomeçar a conta de teste e refazer o primeiro acesso. */
+  tools: { reset: boolean; replay: boolean };
 };
 
 export type TeamMember = { userId: string; name: string; email: string; role: MemberRole; joinedAt: string; isYou: boolean };

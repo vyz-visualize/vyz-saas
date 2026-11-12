@@ -20,6 +20,8 @@ import { periodQuery } from "./model";
 
 type Props = {
   dashboard: DashboardSpec & { id: string };
+  /** Só dados de exemplo (sem conta ligada): compartilhar, PDF e relatório ficam bloqueados. */
+  sampleOnly?: boolean;
   brand?: Brand;
   /** Botões do painel (member+). Sem isso, só leitura (link público, viewer). */
   canEdit?: boolean;
@@ -44,7 +46,7 @@ type Props = {
   linkedPlatforms?: PlatformId[];
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms, sampleOnly = false }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -96,7 +98,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       canArrange={canEdit && canArrange}
       actions={
         canEdit ? (
-          <DashboardActions dashboard={{ id: dashboard.id, name: dashboard.name, live: false }} period={dashboard.settings.period} pages={dashboard.pages.length} onExport={() => setPrinting(true)} />
+          <DashboardActions dashboard={{ id: dashboard.id, name: dashboard.name, live: false }} period={dashboard.settings.period} pages={dashboard.pages.length} onExport={() => setPrinting(true)} sampleOnly={sampleOnly} />
         ) : undefined
       }
     />

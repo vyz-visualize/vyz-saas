@@ -34,4 +34,16 @@ describe("acesso de teste com pagamento simulado", () => {
     const real = await load({ ...base, NODE_ENV: "production", BILLING_PROVIDER: "stripe", BILLING_FREE_EMAILS: "a@vyz.dev", STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec_x", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_x" });
     expect(real.isTestAccount("a@vyz.dev")).toBe(false);
   });
+
+  it("Refazer primeiro acesso: só a lista própria, com cobrança real ou simulada; vazia = ninguém", async () => {
+    const sim = await load({ ...base, NODE_ENV: "production", ONBOARDING_REPLAY_EMAILS: "pedro@vyz.dev" });
+    expect(sim.canReplayOnboarding("Pedro@vyz.dev")).toBe(true);
+    expect(sim.canReplayOnboarding("outra@vyz.dev")).toBe(false);
+    expect(sim.canReplayOnboarding(null)).toBe(false);
+    const real = await load({ ...base, NODE_ENV: "production", BILLING_PROVIDER: "stripe", ONBOARDING_REPLAY_EMAILS: "pedro@vyz.dev", STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec_x", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_x" });
+    expect(real.canReplayOnboarding("pedro@vyz.dev")).toBe(true);
+    const empty = await load({ ...base, NODE_ENV: "development", ONBOARDING_REPLAY_EMAILS: "" });
+    // diferente da conta de teste, fora de produção a lista vazia também é ninguém
+    expect(empty.canReplayOnboarding("qualquer@vyz.dev")).toBe(false);
+  });
 });

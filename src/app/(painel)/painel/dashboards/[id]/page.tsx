@@ -18,15 +18,16 @@ import { PeriodNav } from "@/features/dashboards/PeriodNav";
 import { SampleDashboard } from "@/features/dashboards/SampleDashboard";
 import { DashboardSkeleton } from "@/features/dashboards/BuildingDashboard";
 import { anyDashboardTemplate } from "@/features/templates/live";
-import type { PlatformId } from "@/features/accounts/platforms";
 import { FocusBarActions } from "@/features/workspace/FocusBarActions";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { getDashboard } from "@/server/dashboards/queries";
-import { loadTemplateWarehouse } from "@/server/analytics/queries";
-import { datasetFromWarehouse } from "@/features/metrics/warehouse-dataset";
-import { LINKABLE_SOURCES } from "@/features/templates/dashboards/composed";
-import { isCrmSyncPlatform } from "@/features/sync/crm";
+import { loadDashboardData } from "@/server/dashboards/real-data";
+import { getMyGuides } from "@/server/guides/queries";
+import { createServerSupabase } from "@/server/supabase/server";
+import { tourPending } from "@/features/onboarding/guides";
+import { DashboardTour } from "@/features/onboarding/DashboardTour";
+import { SampleNotice } from "@/features/dashboards/SampleNotice";
 import { isSamePageNavigation } from "@/server/http/request";
 import { logActivity } from "@/server/history/log";
 
@@ -74,6 +75,8 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
     });
   }
   const canEdit = hasRole(session.role, "member");
+  // tour do primeiro dashboard: uma vez por pessoa (user_guides); sem a tabela no banco, não aparece
+  const tour = tourPending(await getMyGuides(session.user.id));
   const ws = session.workspace;
   const whiteLabel = !!session.access.entitlements?.whiteLabel;
   // logo e cor da empresa em todos os planos; cor própria por dashboard e "ocultar VYZ" só no Personalizado
@@ -107,33 +110,25 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
           />
         </Suspense>
         {upsell}
+        {tour && <DashboardTour />}
       </div>
     );
   }
 
   const template = anyDashboardTemplate(d.templateId);
-  // contas da Meta e do Google ligadas: o modelo desenha com os dados reais delas
-  // modelos novos: também as planilhas e os CRMs (LINKABLE_SOURCES), que não entram na amostra
-  const warehouse = template ? await loadTemplateWarehouse(d.id, { platforms: template.composed ? LINKABLE_SOURCES : template.sources, period, customDays }) : null;
-  const realData =
-    warehouse && template
-      ? datasetFromWarehouse(
-          warehouse.sets,
-          { profile: template.profile, today: warehouse.today, current: warehouse.current, previous: warehouse.previous, goal: d.settings.goal || undefined, margin: d.settings.margin || undefined, budget: d.settings.budget || undefined },
-          warehouse.analytics,
-          warehouse.crm,
-        )
-      : undefined;
+  // contas ligadas: o modelo desenha com os dados reais delas; sem nenhuma, a amostra (com o aviso fixo)
+  const { realData, linkedPlatforms, sourceExtras } = await loadDashboardData(d, template, { period, customDays });
+  const sample = !realData;
+  // "Conectar" no aviso: com conta ativa no workspace, liga ao dashboard (editar); sem nenhuma, conecta em Contas
+  const hasEnabledAccounts = sample ? await workspaceHasEnabledAccounts(session.workspace.id) : false;
   return (
     <>
+      {sample && <SampleNotice connectHref={hasEnabledAccounts ? `/painel/dashboards/${d.id}/editar` : "/painel/contas"} canConnect={canEdit} />}
       <SampleDashboard
         realData={realData}
-        linkedPlatforms={warehouse ? ([...new Set(warehouse.accounts.map((a) => a.platform))] as PlatformId[]) : undefined}
-        sourceExtras={
-          warehouse && template?.composed && (warehouse.analytics.length || warehouse.crm.length || warehouse.accounts.some((a) => isCrmSyncPlatform(a.platform)) || warehouse.organic.all)
-            ? { current: warehouse.current, previous: warehouse.previous, currency: "BRL", analytics: warehouse.analytics, crm: warehouse.crm, organic: warehouse.organic }
-            : undefined
-        }
+        sampleOnly={sample}
+        linkedPlatforms={linkedPlatforms}
+        sourceExtras={sourceExtras}
         dashboard={{
           id: d.id,
           templateId: d.templateId,
@@ -159,6 +154,14 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
       />
       {/* no modelo que toma a tela toda, a vitrine ganha de volta o respiro da página (globals.css) */}
       <div className="focus-extra">{upsell}</div>
+      {tour && <DashboardTour />}
     </>
   );
+}
+
+/** O workspace tem alguma conta ativa (só para o destino do "Conectar" do aviso de dados de exemplo). */
+async function workspaceHasEnabledAccounts(workspaceId: string): Promise<boolean> {
+  const db = await createServerSupabase();
+  const { count } = await db.from("ad_accounts").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).eq("is_enabled", true).not("connection_id", "is", null);
+  return (count ?? 0) > 0;
 }

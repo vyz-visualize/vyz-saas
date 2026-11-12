@@ -43,7 +43,8 @@ export function PeriodPicker({ period, range, customDays, onChange, maxDays = 90
   const text =
     period === "custom" ? (range ? `${ddmm(range.from)} – ${ddmm(range.to)} · ${rangeDays(range)} dias` : `Últimos ${customDays} dias`) : SHORTCUTS.find((s) => s.value === period)?.label;
   return (
-    <div className="space-y-1">
+    // data-tour: o tour do primeiro dashboard aponta para cá
+    <div className="space-y-1" data-tour="periodo">
       {!labelHidden && <p className="text-[13px] font-medium text-fg">{label}</p>}
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger

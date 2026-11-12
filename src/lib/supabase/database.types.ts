@@ -3706,6 +3706,41 @@ export type Database = {
           },
         ]
       }
+      user_guides: {
+        Row: {
+          user_id: string
+          guide: string
+          status: string
+          snoozed_until: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          guide: string
+          status: string
+          snoozed_until?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          guide?: string
+          status?: string
+          snoozed_until?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_guides_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_messages: {
         Row: {
           id: string

@@ -1,21 +1,11 @@
-// Medição do site: uma camada só, no dataLayer. Sem GTM instalado, os eventos ficam
-// na fila e nada sai do navegador; com o GTM, ele lê a mesma fila.
+// Medição do site: a função e os eventos ficam em lib/track (o painel usa a mesma);
+// aqui, o que é só do site (elementos marcados com data-track e o GTM).
 
-export type SiteEvent = "hero_cta" | "demo_interacao" | "plano_assinar" | "whatsapp_click" | "faq_abrir" | "cta_final" | "video_inicio" | "video_som" | "video_fim";
+import { track, type SiteEvent } from "@/lib/track";
+
+export { track, type SiteEvent };
 
 type Params = Record<string, string | number | boolean | undefined>;
-
-declare global {
-  interface Window {
-    dataLayer?: unknown[];
-  }
-}
-
-export function track(event: SiteEvent, params: Params = {}) {
-  if (typeof window === "undefined") return;
-  window.dataLayer = window.dataLayer ?? [];
-  window.dataLayer.push({ event, ...params });
-}
 
 /** Os parâmetros de um elemento marcado: data-track="evento" e data-track-<nome>="valor". */
 export function trackedParams(el: HTMLElement): { event: SiteEvent; params: Params } | null {

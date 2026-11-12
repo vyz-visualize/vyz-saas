@@ -47,3 +47,6 @@ secrets/
 
 # vídeos de demonstração (verificação OAuth) ficam fora do git
 *.mp4
+
+# prints de conferência do primeiro acesso (locais, não vão para o repositório)
+.prints-onboarding/

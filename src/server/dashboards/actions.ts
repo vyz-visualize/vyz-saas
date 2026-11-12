@@ -6,6 +6,7 @@
 // plan:template, plan:white_label, dashboard:source_disabled). Tudo com a
 // sessão de quem pede; nada aqui precisa da chave de serviço.
 
+import { showsSampleData } from "@/features/dashboards/sample-gate";
 import { refresh, updateTag } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
@@ -300,6 +301,8 @@ export async function recordExport(input: { dashboardId: string; period: string;
     const session = await authorize("member");
     const d = await getDashboard(data.dashboardId);
     if (!d) throw appError("dashboard:not_found");
+    // PDF com dados de exemplo não sai: primeiro uma conta ligada
+    if (showsSampleData(d)) throw appError("dashboard:sample_only");
     const db = await createServerSupabase();
     unwrap(
       await db.from("dashboard_exports").insert({ workspace_id: session.workspace.id, dashboard_id: d.id, dashboard_name: d.name, kind: "pdf", created_by: session.user.id }),

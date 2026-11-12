@@ -11,6 +11,7 @@ import { z } from "zod";
 import { EXPIRY_VALUES, expiresAtFrom, type ExpiryOption } from "@/features/share/links";
 import { nextRunAt, parseRecipients, type ReportFormat, type ReportFrequency } from "@/features/share/schedule";
 import { authorize } from "@/server/auth/workspace";
+import { showsSampleData } from "@/features/dashboards/sample-gate";
 import { getDashboard } from "@/server/dashboards/queries";
 import { logActivity } from "@/server/history/log";
 import { appOrigin } from "@/server/http/request";
@@ -32,6 +33,8 @@ export async function createShareLink(input: { dashboardId: string; expires: Exp
     const session = await authorize("member");
     const d = await getDashboard(parsed.data.dashboardId);
     if (!d) throw appError("dashboard:not_found");
+    // dados de exemplo não saem para o cliente: primeiro uma conta ligada
+    if (showsSampleData(d)) throw appError("dashboard:sample_only");
 
     const { token, hash, hint } = newShareToken();
     const expiresAt = expiresAtFrom(parsed.data.expires, new Date());
@@ -101,6 +104,8 @@ export async function createScheduledReport(input: {
     const session = await authorize("member");
     const d = await getDashboard(r.dashboardId);
     if (!d) throw appError("dashboard:not_found");
+    // dados de exemplo não saem para o cliente: primeiro uma conta ligada
+    if (showsSampleData(d)) throw appError("dashboard:sample_only");
 
     const timezone = session.workspace.timezone || "America/Sao_Paulo";
     const weekday = r.frequency === "weekly" ? r.day : null;

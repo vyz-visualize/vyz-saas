@@ -30,7 +30,9 @@ const EXEMPT: Record<string, string> = {
   "landing-pages/actions.ts:uploadLandingLogo": "auditoria de landing_pages",
   "landing-pages/actions.ts:removeLandingLogo": "auditoria de landing_pages",
   "landing-pages/actions.ts:submitLandingForm": "visitante sem login: landing_page_submissions",
-  "onboarding/actions.ts:chooseLayout": "registra dashboard.created",
+  // tour e lembretes: estado da interface de cada pessoa (user_guides), não dado do workspace
+  "guides/actions.ts:finishTour": "estado de interface da pessoa (user_guides)",
+  "guides/actions.ts:snoozeNudge": "estado de interface da pessoa (user_guides)",
   "billing/test-reset.ts:resetTestAccount": "só ambiente de teste",
   // painel Interno: a simulação só lê; a exclusão total apaga o histórico da pessoa junto (e o servidor loga)
   "admin/user-actions.ts:previewDeletionAction": "só consulta",

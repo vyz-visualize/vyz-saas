@@ -24,6 +24,7 @@ import { AgentBar, AgentFab } from "@/features/agent/AgentEntry";
 import { AgentProvider } from "@/features/agent/AgentProvider";
 import { Caption } from "@/features/agent/Caption";
 import { TIER_LABEL } from "@/features/pricing/entitlements";
+import { planBadge } from "./home-steps";
 import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
 import type { Product } from "@/features/pricing/pricing";
@@ -158,20 +159,20 @@ const initials = (name: string) =>
     .map((w) => w[0]?.toUpperCase())
     .join("") || "V";
 
-/** "Padrão · 3 projetos" ou "Sem plano ativo". */
-function planLine(access: ReturnType<typeof useWorkspaceSession>["access"], product: Product) {
+/** "Avançado · 1 de 2 projetos" (o limite do plano, com o que já está em uso) ou "Sem plano ativo". */
+function planLine(session: Pick<ReturnType<typeof useWorkspaceSession>, "access" | "usage">, product: Product) {
+  const { access, usage } = session;
   if (!access.hasAccess || !access.tier) return "Sem plano ativo";
   if (product === "lp") return `${TIER_LABEL[access.tier]} · Landing pages`;
-  const n = access.accountsQuantity;
-  return `${TIER_LABEL[access.tier]} · ${n} ${n === 1 ? "projeto" : "projetos"}`;
+  return planBadge(TIER_LABEL[access.tier], usage.projects, access.accountsQuantity);
 }
 
 /** Cartão do workspace com o próprio menu (trocar de workspace, Configurações e Sair). Recolhido, vira avatar. */
 function WorkspaceMenu({ collapsed }: { collapsed: boolean }) {
-  const { workspace: ws, access, memberships } = useWorkspaceSession();
+  const { workspace: ws, access, usage, memberships } = useWorkspaceSession();
   const router = useRouter();
   const [switching, startSwitch] = useTransition();
-  const sub = switching ? "Abrindo…" : planLine(access, ws.product);
+  const sub = switching ? "Abrindo…" : planLine({ access, usage }, ws.product);
   return (
     <DropMenu>
       <Tooltip content={ws.name} disabled={!collapsed}>
@@ -337,7 +338,7 @@ function MobileWorkspaces() {
 
 /** Plano da sessão no topo (link para Plano) e o selo do pagamento simulado. */
 function PlanBadge({ simulatedBilling }: { simulatedBilling: boolean }) {
-  const { access, workspace } = useWorkspaceSession();
+  const { access, usage, workspace } = useWorkspaceSession();
   return (
     <div className="flex min-w-0 items-center gap-2">
       <Link
@@ -345,7 +346,7 @@ function PlanBadge({ simulatedBilling }: { simulatedBilling: boolean }) {
         className="inline-flex min-w-0 items-center gap-1.5 rounded-chip bg-accent-soft px-2.5 py-1 text-[12px] font-medium whitespace-nowrap text-fg outline-none hover:bg-[color-mix(in_srgb,var(--accent-soft)_80%,var(--accent))] focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span className={`size-1.5 shrink-0 rounded-full ${access.hasAccess ? "bg-accent" : "bg-error"}`} aria-hidden />
-        <span className="truncate">{planLine(access, workspace.product)}</span>
+        <span className="truncate">{planLine({ access, usage }, workspace.product)}</span>
       </Link>
       {simulatedBilling && (
         <PendingChip

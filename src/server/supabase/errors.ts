@@ -92,6 +92,8 @@ const MESSAGES: Record<string, string> = {
   "onboarding:business_unavailable": "Este tipo de negócio ainda não está disponível. Por enquanto, o VYZ atende e-commerce.",
   "onboarding:no_platforms": "Escolha pelo menos uma plataforma disponível no seu plano.",
   "onboarding:no_accounts": "Conecte uma plataforma e ative pelo menos uma conta para continuar.",
+  "onboarding:no_connection": "Conecte o Meta Ads ou o Google Ads para seguir. Ou pule por agora: o passo fica pendente na Início.",
+  "dashboard:sample_only": "Este dashboard ainda mostra dados de exemplo. Ligue uma conta do Meta Ads ou do Google Ads a ele antes de compartilhar: o cliente veria números que não são dele.",
   unknown: "Algo deu errado. Tente de novo em instantes.",
 };
 

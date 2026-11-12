@@ -12,6 +12,8 @@ import type { AccessEvent, ActivityItem, HomeConnection, HomeData, SettingsData,
 import { activityLabel, activityTone, auditLabel, authEventLabel, deviceLabel } from "@/features/workspace/history";
 import { hasRole, type MemberRole } from "@/features/workspace/session";
 import { getWorkspaceSession } from "@/server/auth/workspace";
+import { canReplayOnboarding, isTestAccount } from "@/server/env";
+import { getMyGuides } from "@/server/guides/queries";
 import { getConnectState } from "@/server/integrations/queries";
 import { appError } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
@@ -31,13 +33,25 @@ export async function getHomeData(): Promise<HomeData> {
   const session = await currentSession();
   const ws = session.workspace.id;
   const supabase = await createServerSupabase();
-  const [dashboards, pages, links, connect] = await Promise.all([
+  const [dashboards, pages, links, connect, sources, guides] = await Promise.all([
     supabase.from("dashboards").select("id, name, client_name, template_id, updated_at").eq("workspace_id", ws).order("updated_at", { ascending: false }).limit(5),
     supabase.from("landing_pages").select("id, name, template_id, status, updated_at").eq("workspace_id", ws).neq("status", "archived").order("updated_at", { ascending: false }).limit(5),
     supabase.from("share_links").select("id", { count: "exact", head: true }).eq("workspace_id", ws).is("revoked_at", null),
     getConnectState(),
+    // dashboards com conta ativa ligada: só eles contam como "primeiro dashboard"
+    supabase
+      .from("dashboard_sources")
+      .select("dashboard_id, account:ad_accounts!dashboard_sources_workspace_id_ad_account_id_fkey(is_enabled)")
+      .eq("workspace_id", ws),
+    getMyGuides(session.user.id),
   ]);
-  for (const r of [dashboards, pages, links]) if (r.error) console.error("[vyz] início", r.error);
+  for (const r of [dashboards, pages, links, sources]) if (r.error) console.error("[vyz] início", r.error);
+  const real = [...new Set((sources.data ?? []).filter((s) => (s.account as { is_enabled: boolean } | null)?.is_enabled).map((s) => s.dashboard_id))];
+  const firstReal = real.length
+    ? ((
+        await supabase.from("dashboards").select("id").eq("workspace_id", ws).in("id", real).order("created_at").limit(1)
+      ).data?.[0]?.id ?? null)
+    : null;
 
   const recent: HomeData["recent"] = [
     ...(dashboards.data ?? []).map((d) => ({
@@ -76,7 +90,16 @@ export async function getHomeData(): Promise<HomeData> {
     };
   });
 
-  return { now: new Date().toISOString(), recent, connections, activeShareLinks: links.count ?? 0 };
+  return {
+    now: new Date().toISOString(),
+    recent,
+    connections,
+    activeShareLinks: links.count ?? 0,
+    realDashboards: real.length,
+    firstRealDashboardHref: firstReal ? `/painel/dashboards/${firstReal}` : null,
+    guides,
+    tools: { reset: isTestAccount(session.user.email), replay: canReplayOnboarding(session.user.email) && hasRole(session.role, "admin") },
+  };
 }
 
 // ---- Configurações ---------------------------------------------------------------

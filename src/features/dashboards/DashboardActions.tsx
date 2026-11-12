@@ -14,6 +14,7 @@ import { ReportModal } from "@/features/share/ReportModal";
 import { ShareModal } from "@/features/share/ShareModal";
 import { deleteDashboard, duplicateDashboard, recordExport } from "@/server/dashboards/actions";
 import { DeleteDashboardModal } from "./DashboardsList";
+import { SampleBlockedModal } from "./SampleBlockedModal";
 
 const action =
   "inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-[13.5px] font-medium outline-none hover:border-accent focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent disabled:opacity-50 shrink-0 whitespace-nowrap";
@@ -28,6 +29,8 @@ type Props = {
   pages: number;
   /** Exportação própria (dashboards de exemplo imprimem todas as páginas); padrão: imprime a tela. */
   onExport?: () => void;
+  /** Só dados de exemplo (sem conta ligada): compartilhar, PDF e relatório explicam o bloqueio. */
+  sampleOnly?: boolean;
 };
 
 /** Registra a exportação no servidor e abre a impressão (Salvar como PDF). */
@@ -45,14 +48,21 @@ export function useExport(input: { dashboardId: string; period: string; pages: n
   return { run, pending, error };
 }
 
-export function DashboardActions({ dashboard, period, pages, onExport }: Props) {
+export function DashboardActions({ dashboard, period, pages, onExport, sampleOnly = false }: Props) {
   const router = useRouter();
-  const [share, setShare] = useState(false);
-  const [report, setReport] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [shareOpen, setShare] = useState(false);
+  const [reportOpen, setReport] = useState(false);
+  // sem conta ligada, nada sai para o cliente: o modal explica por quê
+  const share = shareOpen && !sampleOnly;
+  const report = reportOpen && !sampleOnly;
+  const openShare = () => (sampleOnly ? setBlocked(true) : setShare(true));
+  const openReport = () => (sampleOnly ? setBlocked(true) : setReport(true));
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const exporter = useExport({ dashboardId: dashboard.id, period, pages }, onExport ?? (() => window.print()));
+  const exportRun = sampleOnly ? () => setBlocked(true) : exporter.run;
 
   // a mensagem de erro some sozinha
   useEffect(() => {
@@ -99,10 +109,10 @@ export function DashboardActions({ dashboard, period, pages, onExport }: Props) 
       <Link ref={itemRef(0)} href={editHref} className={`${action} ${show(0)}`}>
         <Pencil size={15} aria-hidden /> Editar
       </Link>
-      <button ref={itemRef(1)} type="button" onClick={() => setShare(true)} className={`${action} ${show(1)}`}>
+      <button ref={itemRef(1)} type="button" data-tour="compartilhar" onClick={openShare} className={`${action} ${show(1)}`}>
         <Share2 size={15} aria-hidden /> Compartilhar
       </button>
-      <button ref={itemRef(2)} type="button" onClick={exporter.run} disabled={exporter.pending} className={`${action} ${show(2)}`}>
+      <button ref={itemRef(2)} type="button" onClick={exportRun} disabled={exporter.pending} className={`${action} ${show(2)}`}>
         <FileDown size={15} aria-hidden /> {exportLabel}
       </button>
       <Menu modal={false}>
@@ -116,12 +126,12 @@ export function DashboardActions({ dashboard, period, pages, onExport }: Props) 
             </MenuItem>
           )}
           {!visible.includes(1) && (
-            <MenuItem icon={<Share2 size={15} />} onSelect={() => setShare(true)}>
+            <MenuItem icon={<Share2 size={15} />} onSelect={openShare}>
               Compartilhar
             </MenuItem>
           )}
           {!visible.includes(2) && (
-            <MenuItem icon={<FileDown size={15} />} disabled={exporter.pending} onSelect={exporter.run}>
+            <MenuItem icon={<FileDown size={15} />} disabled={exporter.pending} onSelect={exportRun}>
               {exportLabel}
             </MenuItem>
           )}
@@ -129,7 +139,7 @@ export function DashboardActions({ dashboard, period, pages, onExport }: Props) 
           <MenuItem icon={<Copy size={15} />} disabled={pending} onSelect={duplicate}>
             {pending && !removing ? "Duplicando…" : "Duplicar"}
           </MenuItem>
-          <MenuItem icon={<CalendarClock size={15} />} onSelect={() => setReport(true)}>
+          <MenuItem icon={<CalendarClock size={15} />} onSelect={openReport}>
             Agendar relatório
           </MenuItem>
           <MenuItem icon={<Trash2 size={15} />} className="text-error-fg" onSelect={() => setRemoving(true)}>
@@ -142,6 +152,7 @@ export function DashboardActions({ dashboard, period, pages, onExport }: Props) 
           {shown}
         </p>
       )}
+      <SampleBlockedModal open={blocked} onClose={() => setBlocked(false)} />
       <ShareModal open={share} onClose={() => setShare(false)} dashboard={dashboard} />
       <ReportModal open={report} onClose={() => setReport(false)} dashboard={dashboard} />
       <DeleteDashboardModal dashboard={removing ? dashboard : null} pending={pending} error={removing ? error : null} onConfirm={remove} onClose={() => setRemoving(false)} />

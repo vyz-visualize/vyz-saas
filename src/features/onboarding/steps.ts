@@ -1,8 +1,7 @@
-// Regras do onboarding (/comecar): segmento → visual → conectar → recursos e
-// marca. Ordem dos
-// passos, layouts de cada nicho (com o que o plano libera), plataformas que o
-// layout usa e as páginas liberadas. Puro: o servidor (actions) e a tela usam
-// as mesmas funções.
+// Regras do primeiro acesso (/comecar): boas-vindas → projeto → conectar →
+// contas e modelo → "Montando seu dashboard…" → o dashboard abre com o tour.
+// Um passo por vez, em modal, e "Pular por agora" em todos (nada bloqueia).
+// Puro: o servidor (actions) e a tela usam as mesmas funções.
 
 import { composedId, FEATURES, featureFits, objectiveForBusiness, VISUALS, type Feature, type FeatureId } from "@/features/templates/dashboards/composed";
 import { CORE_PROVIDER_IDS, type ProviderId } from "@/features/integrations/providers";
@@ -12,49 +11,49 @@ import { PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import type { OnboardingStep } from "@/features/workspace/session";
 
-/**
- * Passos em ordem ("done" fica de fora: é o fim). No banco o passo do layout
- * se chama "platforms" (enum antigo); "dashboard" antigo vale como "connect".
- * "finish" (recursos e marca) não vai para o banco: é o fim do "connect",
- * aberto por ?etapa=recursos (recarregar continua nele).
- */
-export const ONBOARDING_STEPS = ["business", "platforms", "connect", "finish"] as const;
+/** Passos em ordem ("done" fica de fora: é o fim). O 5º, "montando", é só a transição para o dashboard. */
+export const ONBOARDING_STEPS = ["welcome", "project", "connect", "setup"] as const;
 export type ActiveStep = (typeof ONBOARDING_STEPS)[number];
-/** Passos que o banco grava. */
-export type SavedStep = Exclude<ActiveStep, "finish">;
+/** Passos que o banco grava (o enum antigo, sem migration). */
+export type SavedStep = Exclude<OnboardingStep, "done">;
+
+/** Passo da tela → valor gravado em workspaces.onboarding_step. */
+export const STEP_TO_DB: Record<ActiveStep, SavedStep> = { welcome: "business", project: "platforms", connect: "connect", setup: "dashboard" };
+const DB_TO_STEP: Record<SavedStep, ActiveStep> = { business: "welcome", platforms: "project", connect: "connect", dashboard: "setup" };
 
 export const STEP_LABEL: Record<ActiveStep, string> = {
-  business: "Segmento",
-  platforms: "Visual",
+  welcome: "Boas-vindas",
+  project: "Projeto",
   connect: "Conectar",
-  finish: "Recursos e marca",
+  setup: "Contas e modelo",
 };
 
-/** Query string que abre o passo de recursos e marca. */
-export const FINISH_QUERY = "etapa";
-export const FINISH_VALUE = "recursos";
+/** Passo do banco → passo da tela (valor desconhecido: o começo). */
+export const activeStepOf = (raw: OnboardingStep): ActiveStep => (raw !== "done" && raw in DB_TO_STEP ? DB_TO_STEP[raw] : "welcome");
 
-/** Passo da tela: o do banco, ou recursos e marca no fim do conectar. */
-export function screenStep(raw: OnboardingStep, etapa: unknown): ActiveStep {
-  const step = activeStepOf(raw);
-  return step === "connect" && etapa === FINISH_VALUE ? "finish" : step;
-}
-
-/** Passo do banco → passo da tela. */
-export const activeStepOf = (raw: OnboardingStep): SavedStep => (raw === "dashboard" ? "connect" : isActiveStep(raw) ? raw : "business");
-
-export const isActiveStep = (v: unknown): v is SavedStep => v !== "finish" && typeof v === "string" && (ONBOARDING_STEPS as readonly string[]).includes(v);
+export const isActiveStep = (v: unknown): v is ActiveStep => typeof v === "string" && (ONBOARDING_STEPS as readonly string[]).includes(v);
 
 /** Posição do passo (done = depois do último). */
-export function stepIndex(step: OnboardingStep | "finish"): number {
-  if (step === "finish") return ONBOARDING_STEPS.indexOf("finish");
-  return step === "done" ? ONBOARDING_STEPS.length : ONBOARDING_STEPS.indexOf(activeStepOf(step));
+export function stepIndex(step: ActiveStep | "done"): number {
+  return step === "done" ? ONBOARDING_STEPS.length : ONBOARDING_STEPS.indexOf(step);
 }
 
 /** Só dá para voltar a um passo anterior ao atual. */
-export function canGoBackTo(current: OnboardingStep, target: OnboardingStep | "finish"): boolean {
-  return isActiveStep(target) && current !== "done" && stepIndex(target) < stepIndex(current);
+export function canGoBackTo(current: ActiveStep, target: unknown): target is ActiveStep {
+  return isActiveStep(target) && stepIndex(target) < stepIndex(current);
 }
+
+/** Barra de progresso: quanto já foi (0 a 1). "building" (montando o dashboard) completa a barra. */
+export function progressOf(step: ActiveStep | "building"): number {
+  if (step === "building") return 1;
+  return (stepIndex(step) + 1) / (ONBOARDING_STEPS.length + 1);
+}
+
+/** Do conectar só segue com alguma plataforma conectada; sem nenhuma, a saída é "Pular por agora". */
+export const canContinueFromConnect = (connected: readonly ProviderId[]) => connected.length > 0;
+
+/** O dashboard só é montado com conta ativa: sem nenhuma, nada é criado (o passo fica pendente na Início). */
+export const canBuildDashboard = (enabledAccounts: number) => enabledAccounts > 0;
 
 /** Plataformas que conectam por login agora (as outras aparecem como "em breve"). */
 export const CONNECTABLE: readonly ProviderId[] = CORE_PROVIDER_IDS;

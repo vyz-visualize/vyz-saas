@@ -51,6 +51,9 @@ const videoDir = join(process.cwd(), "public", "video");
 const videoFiles = existsSync(videoDir) ? readdirSync(videoDir).filter((f) => /^vyz-por-dentro(-celular)?\.(mp4|webm|webp|jpg)$/.test(f)) : [];
 
 const nextConfig: NextConfig = {
+  // Páginas *.dev.tsx (bancadas de teste, como /dev/primeiro-acesso) só existem no `next dev`:
+  // no build de produção a extensão não é reconhecida e o arquivo nem vira rota.
+  pageExtensions: isDev ? ["dev.tsx", "tsx", "ts", "jsx", "js"] : ["tsx", "ts", "jsx", "js"],
   env: {
     NEXT_PUBLIC_DEMO_VIDEO_FILES: videoFiles.join(","),
   },

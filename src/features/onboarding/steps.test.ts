@@ -10,8 +10,11 @@ import {
   allowedFeatures,
   featureOptions,
   layoutOptions,
-  screenStep,
   layoutProviders,
+  canBuildDashboard,
+  canContinueFromConnect,
+  progressOf,
+  STEP_TO_DB,
   parseDecimal,
   stepIndex,
   templatePages,
@@ -21,34 +24,47 @@ const vyz = dashboardTemplate("vyz-ecommerce")!;
 const meta: DashboardTemplate = { ...vyz, sources: ["meta", "instagram", "facebook"] };
 const google: DashboardTemplate = { ...vyz, sources: ["google", "ga4"] };
 
-describe("passos", () => {
-  it("segmento → visual → conectar → recursos e marca, e só volta para trás", () => {
-    expect(stepIndex("business")).toBe(0);
-    expect(stepIndex("platforms")).toBe(1);
+describe("passos do primeiro acesso", () => {
+  it("boas-vindas → projeto → conectar → contas e modelo, e só volta para trás", () => {
+    expect(stepIndex("welcome")).toBe(0);
+    expect(stepIndex("project")).toBe(1);
     expect(stepIndex("connect")).toBe(2);
-    expect(stepIndex("finish")).toBe(3);
+    expect(stepIndex("setup")).toBe(3);
     expect(stepIndex("done")).toBe(4);
-    expect(canGoBackTo("connect", "finish")).toBe(false);
-    expect(canGoBackTo("connect", "business")).toBe(true);
-    expect(canGoBackTo("connect", "platforms")).toBe(true);
+    expect(canGoBackTo("connect", "welcome")).toBe(true);
+    expect(canGoBackTo("connect", "project")).toBe(true);
     expect(canGoBackTo("connect", "connect")).toBe(false);
-    expect(canGoBackTo("done", "business")).toBe(false);
+    expect(canGoBackTo("connect", "setup")).toBe(false);
+    expect(canGoBackTo("setup", "qualquer")).toBe(false);
   });
 
-  it("o passo antigo de dashboard vale como conectar", () => {
-    expect(activeStepOf("dashboard")).toBe("connect");
-    expect(stepIndex("dashboard")).toBe(2);
+  it("grava no enum antigo do banco, sem migration, e lê de volta", () => {
+    expect(STEP_TO_DB).toEqual({ welcome: "business", project: "platforms", connect: "connect", setup: "dashboard" });
+    expect(activeStepOf("business")).toBe("welcome");
+    expect(activeStepOf("platforms")).toBe("project");
+    expect(activeStepOf("connect")).toBe("connect");
+    expect(activeStepOf("dashboard")).toBe("setup");
+    // concluído (ou valor estranho) nunca abre um passo no meio
+    expect(activeStepOf("done")).toBe("welcome");
+  });
+
+  it("a barra de progresso anda a cada passo e completa ao montar o dashboard", () => {
+    const values = (["welcome", "project", "connect", "setup"] as const).map(progressOf);
+    expect(values).toEqual([...values].sort((x, y) => x - y));
+    expect(values[0]).toBeGreaterThan(0);
+    expect(values[3]).toBeLessThan(1);
+    expect(progressOf("building")).toBe(1);
+  });
+
+  it("do conectar só segue com plataforma conectada; sem conta ativa, o dashboard não é criado", () => {
+    expect(canContinueFromConnect([])).toBe(false);
+    expect(canContinueFromConnect(["meta"])).toBe(true);
+    expect(canBuildDashboard(0)).toBe(false);
+    expect(canBuildDashboard(1)).toBe(true);
   });
 });
 
-describe("recursos e marca", () => {
-  it("abre pela URL só no fim do conectar (recarregar continua nele)", () => {
-    expect(screenStep("connect", "recursos")).toBe("finish");
-    expect(screenStep("dashboard", "recursos")).toBe("finish");
-    expect(screenStep("connect", undefined)).toBe("connect");
-    expect(screenStep("platforms", "recursos")).toBe("platforms");
-  });
-
+describe("recursos", () => {
   it("só os recursos que combinam com as plataformas, com o plano de cada um", () => {
     const meta = featureOptions(["meta"], "pro");
     expect(meta.map((f) => f.id)).toEqual(["metas", "comparativo", "criativos-ao-vivo", "previsao", "mmm"]);

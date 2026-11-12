@@ -46,6 +46,13 @@ export function authEventLabel(event: string, method: string | null, metadata: R
 
 const ACTIVITY_LABEL: Record<string, string> = {
   "billing.checkout_completed": "Assinatura paga",
+  "onboarding.started": "Começou o primeiro acesso",
+  "onboarding.business_chosen": "Primeiro projeto e segmento escolhidos",
+  "onboarding.connected": "Primeiro acesso: contas conectadas",
+  "onboarding.completed": "Primeiro acesso concluído",
+  "onboarding.skipped": "Primeiro acesso pulado (passos pendentes na Início)",
+  "onboarding.replayed": "Primeiro acesso refeito",
+  "onboarding.step_back": "Voltou um passo no primeiro acesso",
   "billing.plan_changed": "Plano alterado",
   "billing.cancel_scheduled": "Cancelamento agendado",
   "billing.cancel_reverted": "Cancelamento desfeito",

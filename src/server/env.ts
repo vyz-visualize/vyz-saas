@@ -27,6 +27,7 @@ const Schema = z
      * assinam sem pagar. Vazio = ninguém. Fora de produção, todos.
      */
     BILLING_FREE_EMAILS: z.string().default(""),
+    ONBOARDING_REPLAY_EMAILS: z.string().default(""),
     /** Bearer da sincronização agendada (/api/cron/sync). */
     CRON_SECRET: z
       .string()
@@ -145,6 +146,17 @@ export function isTestAccount(email: string | null | undefined): boolean {
   if (env.BILLING_PROVIDER !== "mock" || !email) return false;
   const list = env.BILLING_FREE_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
   if (list.length === 0) return env.NODE_ENV !== "production";
+  return list.includes(email.trim().toLowerCase());
+}
+
+/**
+ * "Refazer primeiro acesso": só os e-mails de ONBOARDING_REPLAY_EMAILS (vírgula;
+ * vazia = ninguém). Volta o onboarding do workspace aberto ao começo, sem apagar
+ * nada; vale com cobrança real ou simulada.
+ */
+export function canReplayOnboarding(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const list = serverEnv().ONBOARDING_REPLAY_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
   return list.includes(email.trim().toLowerCase());
 }
 

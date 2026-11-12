@@ -1,50 +1,39 @@
 "use client";
 
-// Peças comuns dos passos: título, rodapé com Voltar/Continuar, erro e o hook
-// que chama a Server Action do passo (ela grava e volta para /comecar).
+// Peças comuns do primeiro acesso: o hook que chama a ação do passo, a linha de
+// erro, o cartão de escolha e o título de cada passo dentro do modal.
 
 import { ArrowLeft, ArrowRight, CircleAlert, LoaderCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
 import { btn } from "@/components/ui/styles";
+import { useState, useTransition, type ReactNode } from "react";
 import type { ActionResult } from "@/server/supabase/errors";
-import { goToStep } from "@/server/onboarding/actions";
-import type { ActiveStep } from "./steps";
 
-/** Roda a action do passo; sucesso vira redirect no servidor, erro fica na tela. */
+/** Corpo de um passo: rola dentro do modal; o rodapé (Pular, Voltar e o botão principal) fica sempre à vista. */
+export const STEP_BODY = "min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-6 sm:px-7";
+
+/** Roda a ação do passo; sucesso vira redirect no servidor (ou a tela segue), erro fica na tela. */
 export function useStepAction() {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  function run(action: () => Promise<ActionResult>) {
+  function run<T>(action: () => Promise<ActionResult<T>>, onOk?: (data: T) => void) {
     setError(null);
     start(async () => {
       const res = await action();
       if (res && !res.ok) setError(res.error.message);
+      else if (res && res.ok) onOk?.(res.data);
     });
   }
   return { pending, error, setError, run };
 }
 
-/** Ir a um passo anterior: os do banco pelo servidor; o conectar (antes de recursos e marca) só pela URL. */
-export function useGoBack() {
-  const router = useRouter();
-  const nav = useStepAction();
-  const [routing, start] = useTransition();
-  function go(step: ActiveStep) {
-    if (step === "connect" || step === "finish") start(() => router.push("/comecar"));
-    else nav.run(() => goToStep(step));
-  }
-  return { pending: nav.pending || routing, error: nav.error, go };
-}
-
-export function StepHeader({ eyebrow, title, text }: { eyebrow: string; title: ReactNode; text?: ReactNode }) {
+export function StepTitle({ title, text }: { title: ReactNode; text?: ReactNode }) {
   return (
-    <header className="max-w-2xl">
-      <p className="label-caps text-fg-2">{eyebrow}</p>
-      <h1 id="passo-titulo" className="display mt-2 text-[clamp(1.75rem,4vw,2.6rem)] text-fg">
+    <header>
+      {/* o modal leva o foco ao título de cada passo (leitor de tela anuncia o passo) */}
+      <h2 id="passo-titulo" tabIndex={-1} className="display text-[clamp(1.5rem,3.4vw,2.1rem)] text-fg outline-none">
         {title}
-      </h1>
-      {text && <p className="mt-3 text-[15px] leading-relaxed text-fg-2">{text}</p>}
+      </h2>
+      {text && <p className="mt-2 text-[15px] leading-relaxed text-fg-2">{text}</p>}
     </header>
   );
 }
@@ -62,49 +51,7 @@ export function ErrorLine({ message }: { message: string | null }) {
   );
 }
 
-type StepFooterProps = {
-  /** Passo para onde "Voltar" leva (sem = sem botão). */
-  back?: ActiveStep;
-  onContinue: () => void;
-  continueLabel?: string;
-  pendingLabel?: string;
-  disabled?: boolean;
-  pending: boolean;
-  error: string | null;
-  /** Ação secundária ao lado (ex.: "Pular por agora"). */
-  aside?: ReactNode;
-};
-
-/** Rodapé fixo no celular (o botão principal fica sempre à mão). */
-export function StepFooter({ back, onContinue, continueLabel = "Continuar", pendingLabel = "Salvando…", disabled, pending, error, aside }: StepFooterProps) {
-  const nav = useGoBack();
-  const busy = pending || nav.pending;
-  return (
-    <div className="sticky bottom-0 z-10 -mx-4 mt-8 border-t border-line bg-bg/95 px-4 py-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:backdrop-blur-none">
-      <ErrorLine message={error ?? nav.error} />
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-        {back ? (
-          <button type="button" onClick={() => nav.go(back)} disabled={busy} className={btn.ghost}>
-            {nav.pending ? <LoaderCircle size={16} aria-hidden className="animate-spin motion-reduce:animate-none" /> : <ArrowLeft size={16} aria-hidden />}
-            Voltar
-          </button>
-        ) : (
-          <span />
-        )}
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {aside}
-          <button type="button" onClick={onContinue} disabled={busy || disabled} aria-busy={pending} className={btn.primary}>
-            {pending && <LoaderCircle size={18} aria-hidden className="animate-spin motion-reduce:animate-none" />}
-            {pending ? pendingLabel : continueLabel}
-            {!pending && <ArrowRight size={18} aria-hidden />}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Cartão de escolha (negócio, plataforma, template): a área toda é clicável. */
+/** Cartão de escolha (segmento): a área toda é clicável. */
 export function ChoiceCard({
   selected,
   disabled,
@@ -127,7 +74,7 @@ export function ChoiceCard({
       aria-checked={selected}
       aria-disabled={disabled || undefined}
       onClick={() => !disabled && onToggle()}
-      className={`group relative flex h-full w-full flex-col items-start gap-3 rounded-card border p-4 text-left transition-[border-color,background-color,transform] duration-200 ease-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:p-5 ${
+      className={`group relative flex h-full w-full flex-col items-start gap-3 rounded-card border p-4 text-left transition-[border-color,background-color,transform] duration-200 ease-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
         disabled
           ? "cursor-not-allowed border-dashed border-line opacity-60"
           : selected
@@ -138,5 +85,51 @@ export function ChoiceCard({
       {badge && <span className="absolute top-3 right-3">{badge}</span>}
       {children}
     </button>
+  );
+}
+
+type FlowFooterProps = {
+  /** "Pular por agora": conclui o primeiro acesso sem criar nada. */
+  onSkip: () => void;
+  skipping: boolean;
+  onBack?: () => void;
+  backing?: boolean;
+  primaryLabel: string;
+  pendingLabel?: string;
+  onPrimary: () => void;
+  pending: boolean;
+  disabled?: boolean;
+  error: string | null;
+  /** Dica curta ao lado do botão (ex.: por que ele está desligado). */
+  hint?: ReactNode;
+};
+
+/** Rodapé do modal: "Pular por agora" à esquerda; Voltar e o botão principal à direita. */
+export function FlowFooter({ onSkip, skipping, onBack, backing, primaryLabel, pendingLabel = "Salvando…", onPrimary, pending, disabled, error, hint }: FlowFooterProps) {
+  const busy = pending || skipping || !!backing;
+  return (
+    <footer className="border-t border-line bg-bg px-5 py-4 sm:px-7">
+      <ErrorLine message={error} />
+      {hint && !error && <p className="text-[13px] text-fg-2">{hint}</p>}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <button type="button" onClick={onSkip} disabled={busy} data-skip className="inline-flex h-10 items-center gap-1.5 rounded-control px-2 text-[14px] font-medium text-fg-2 underline-offset-4 outline-none hover:text-fg hover:underline focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50">
+          {skipping && <LoaderCircle size={15} aria-hidden className="animate-spin motion-reduce:animate-none" />}
+          Pular por agora
+        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {onBack && (
+            <button type="button" onClick={onBack} disabled={busy} className={btn.ghost}>
+              {backing ? <LoaderCircle size={16} aria-hidden className="animate-spin motion-reduce:animate-none" /> : <ArrowLeft size={16} aria-hidden />}
+              Voltar
+            </button>
+          )}
+          <button type="button" onClick={onPrimary} disabled={busy || disabled} aria-busy={pending} className={btn.primary}>
+            {pending && <LoaderCircle size={18} aria-hidden className="animate-spin motion-reduce:animate-none" />}
+            {pending ? pendingLabel : primaryLabel}
+            {!pending && <ArrowRight size={18} aria-hidden />}
+          </button>
+        </div>
+      </div>
+    </footer>
   );
 }
