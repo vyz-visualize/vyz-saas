@@ -1,19 +1,22 @@
 "use client";
 
-// Visual "Noturno" (e-commerce): painel azul-noite com a receita em âmbar e o
-// investimento em azul. Faixa de números com minilinha, receita e investimento por
-// dia, anéis por canal, funil de compra, produtos e campanhas. Gráficos da Bklit UI.
+// Visual "Noturno": painel azul-noite com a receita em âmbar e o investimento em azul.
+// Faixa de números com minilinha, receita e investimento por dia, anéis por canal, funil
+// de compra, produtos e campanhas. Fora dos objetivos de venda, o resultado do objetivo
+// (leads, agendamentos...) toma o lugar da receita e a taxa de conversão o do ROAS.
+// Gráficos da Bklit UI.
 
 import { funnelRows, funnelSummary } from "@/features/metrics/funnel";
 import { breakEvenOf, GOAL_INVITE, hasGoal, hasMargin, MARGIN_INVITE } from "@/features/metrics/targets";
 import { CalendarDays, CircleDollarSign, Percent, ShoppingBag, Target, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import { biggestDrop, platformPart } from "@/features/metrics/compute";
+import { metric } from "@/features/metrics/definitions";
 import { PAGES } from "@/features/templates/pages";
 import { brlCompact } from "@/lib/format";
 import { Block, SkinBar, SkinChrome, SkinPage, DailyChart, dayDates, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
-import { brl, change, chrono, daily, dayLabel, decimal, HIDDEN, initials, int, label, money, platformName, platformShort, value, type SkinProps } from "./shared";
+import { brl, change, chrono, daily, dayLabel, decimal, goalOf, HIDDEN, initials, int, label, money, platformName, platformShort, value, type SkinProps } from "./shared";
 
 const P: SkinPalette = {
   scheme: "dark",
@@ -41,48 +44,57 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
   const hide = !!ctx.hideSpend;
   const current = ctx.ds.current;
   const days = useMemo(() => chrono(current), [current]);
+  // objetivo de venda: receita, ROAS e funil de compra; nos outros, o resultado do objetivo
+  // (leads, agendamentos...), a taxa de conversão e o custo por resultado
+  // memorizado: o compilador do React sabe que não muda depois (as listas abaixo dependem dele)
+  const g = useMemo(() => goalOf(ctx.profile, ctx.cur.leads), [ctx.profile, ctx.cur.leads]);
+  const valueKey = g.value;
+  const resultName = metric(g.conv, ctx.profile).label;
+  const showValue = (v: number) => (g.sales ? brlCompact(v) : int(v));
 
-  // receita e investimento por dia (ou somados por semana)
+  // receita e investimento por dia (ou somados por semana); fora de venda, só o resultado (outra escala)
   const chart = useMemo(() => {
     const byWeek = mode === "semana";
-    const revenue = byWeek ? weekly(days.map((d) => d.revenue)) : days.map((d) => d.revenue);
+    const revenue = byWeek ? weekly(days.map((d) => d[valueKey])) : days.map((d) => d[valueKey]);
     const spend = byWeek ? weekly(days.map((d) => d.spend)) : days.map((d) => d.spend);
     const first = byWeek ? weekStarts(days) : days;
     return {
-      points: revenue.map((r, i): Record<string, number> => (hide ? { revenue: r } : { revenue: r, spend: spend[i] })),
+      points: revenue.map((r, i): Record<string, number> => (hide || valueKey !== "revenue" ? { revenue: r } : { revenue: r, spend: spend[i] })),
       dates: dayDates(first.map((d) => d.ago), ctx.today),
       labels: first.map((d) => dayLabel(d.ago, ctx.today)),
     };
-  }, [ctx.today, days, hide, mode]);
+  }, [ctx.today, days, hide, mode, valueKey]);
   const series: DailySeries[] = [
-    ...(hide ? [] : [{ key: "spend", label: label(ctx, "spend"), color: BLUE, kind: "bar" as const }]),
-    { key: "revenue", label: label(ctx, "revenue"), color: P.accent, kind: "area" as const },
+    ...(hide || !g.sales ? [] : [{ key: "spend", label: label(ctx, "spend"), color: BLUE, kind: "bar" as const }]),
+    { key: "revenue", label: label(ctx, valueKey), color: P.accent, kind: "area" as const },
   ];
 
   const channels = useMemo(
     () =>
       ctx.ds.adPlatforms
         .map((id) => ({ id, t: platformPart(ctx.ds, id, "current") }))
-        .sort((a, b) => b.t.revenue - a.t.revenue)
+        .sort((a, b) => b.t[valueKey] - a.t[valueKey])
         .map((c, i) => ({ ...c, color: CHANNEL[i % CHANNEL.length] })),
-    [ctx.ds],
+    [ctx.ds, valueKey],
   );
-  const totalRevenue = channels.reduce((a, c) => a + c.t.revenue, 0);
+  const totalRevenue = channels.reduce((a, c) => a + c.t[valueKey], 0);
 
   const funnel = ctx.ds.funnel;
   const drop = funnel.length > 1 ? biggestDrop(funnel) : 0;
   const products = useMemo(() => [...ctx.ds.products].sort((a, b) => b.revenue - a.revenue).slice(0, 5), [ctx.ds.products]);
-  const campaigns = useMemo(() => [...ctx.ds.campaigns].sort((a, b) => b.revenue - a.revenue).slice(0, 5), [ctx.ds.campaigns]);
+  const campaigns = useMemo(() => [...ctx.ds.campaigns].sort((a, b) => (g.sales ? b.revenue - a.revenue : b.conversions - a.conversions)).slice(0, 5), [ctx.ds.campaigns, g.sales]);
   const breakEven = ctx.ds.breakEven;
 
   const nodes = {
-    "s-receita": <StatBlock title={label(ctx, "revenue")} v={value(ctx, "revenue")} delta={change(ctx, "revenue")} note="contra o período anterior" values={daily(ctx, "revenue")} icon={CircleDollarSign} solid={HERO} />,
-    "s-invest": <StatBlock title={label(ctx, "spend")} v={value(ctx, "spend")} delta={hide ? undefined : change(ctx, "spend")} note={hide ? "oculto neste link" : `${int(ctx.cur.conversions)} vendas`} values={hide ? undefined : daily(ctx, "spend")} color={BLUE} icon={Wallet} />,
-    "s-roas": <StatBlock title={label(ctx, "roas")} v={value(ctx, "roas")} delta={hide ? undefined : change(ctx, "roas")} note={hide ? undefined : `equilíbrio em ${decimal(breakEvenOf(ctx.ds), 1)}${hasMargin(ctx.ds) ? "" : ` · ${MARGIN_INVITE}`}`} values={hide ? undefined : daily(ctx, "roas")} color={P.accent} icon={Percent} />,
-    "s-cpa": <StatBlock title={label(ctx, "cpa")} v={value(ctx, "cpa")} delta={hide ? undefined : change(ctx, "cpa")} note={hide ? undefined : hasGoal(ctx.ds) ? `alvo ${brl(ctx.ds.goal, { decimals: false })}` : GOAL_INVITE} values={hide ? undefined : daily(ctx, "cpa")} color={VIOLET} icon={Target} />,
+    "s-receita": <StatBlock title={label(ctx, valueKey)} v={value(ctx, valueKey)} delta={change(ctx, valueKey)} note="contra o período anterior" values={daily(ctx, valueKey)} icon={g.sales ? CircleDollarSign : Target} solid={HERO} />,
+    "s-invest": <StatBlock title={label(ctx, "spend")} v={value(ctx, "spend")} delta={hide ? undefined : change(ctx, "spend")} note={hide ? "oculto neste link" : `${int(ctx.cur[g.conv])} ${resultName.toLowerCase()}`} values={hide ? undefined : daily(ctx, "spend")} color={BLUE} icon={Wallet} />,
+    "s-roas": !g.sales ? (
+      <StatBlock title={label(ctx, "convRate")} v={value(ctx, "convRate")} delta={change(ctx, "convRate")} note={`${resultName.toLowerCase()} ÷ visitas da página`} values={daily(ctx, "convRate")} color={P.accent} icon={Percent} />
+    ) : <StatBlock title={label(ctx, "roas")} v={value(ctx, "roas")} delta={hide ? undefined : change(ctx, "roas")} note={hide ? undefined : `equilíbrio em ${decimal(breakEvenOf(ctx.ds), 1)}${hasMargin(ctx.ds) ? "" : ` · ${MARGIN_INVITE}`}`} values={hide ? undefined : daily(ctx, "roas")} color={P.accent} icon={Percent} />,
+    "s-cpa": <StatBlock title={label(ctx, g.cost)} v={value(ctx, g.cost)} delta={hide ? undefined : change(ctx, g.cost)} note={hide ? undefined : hasGoal(ctx.ds) ? `alvo ${brl(ctx.ds.goal, { decimals: false })}` : GOAL_INVITE} values={hide ? undefined : daily(ctx, g.cost)} color={VIOLET} icon={Target} />,
     "s-vendas": (
       <Block
-        title={hide ? "Receita por dia" : "Receita e investimento"}
+        title={!g.sales ? `${resultName} por dia` : hide ? "Receita por dia" : "Receita e investimento"}
         aside={
           <div className="flex flex-wrap items-center gap-3">
             <LegendDots items={series.map((s) => ({ label: s.label, color: s.color })).reverse()} />
@@ -103,41 +115,41 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
           dates={chart.dates}
           labels={chart.labels}
           series={series}
-          format={(_, v) => brl(v, { decimals: false })}
-          formatY={brlCompact}
-          summary={`${label(ctx, "revenue")} por ${mode}: total de ${value(ctx, "revenue")} no período.`}
+          format={(_, v) => (g.sales ? brl(v, { decimals: false }) : int(v))}
+          formatY={g.sales ? brlCompact : int}
+          summary={`${label(ctx, valueKey)} por ${mode}: total de ${value(ctx, valueKey)} no período.`}
         />
       </Block>
     ),
     "s-canais": (
-      <Block title="Receita por canal">
+      <Block title={`${label(ctx, valueKey)} por canal`}>
         <ShareRings
           className="flex-1"
-          items={channels.map((c) => ({ label: platformName(c.id), value: Math.round(c.t.revenue / 100), color: c.color }))}
-          centerLabel="Receita"
-          format={{ style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 }}
-          summary={`Receita por canal: ${channels.map((c) => `${platformName(c.id)} ${brlCompact(c.t.revenue)}`).join(", ")}.`}
+          items={channels.map((c) => ({ label: platformName(c.id), value: Math.round(g.sales ? c.t.revenue / 100 : c.t[valueKey]), color: c.color }))}
+          centerLabel={label(ctx, valueKey)}
+          format={g.sales ? { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 } : { maximumFractionDigits: 0 }}
+          summary={`${label(ctx, valueKey)} por canal: ${channels.map((c) => `${platformName(c.id)} ${showValue(c.t[valueKey])}`).join(", ")}.`}
         />
         <ul className="mt-3 space-y-1.5 text-[12px]">
           {channels.map((c) => (
             <li key={c.id} className="flex items-center gap-2">
               <span className="size-2 shrink-0 rounded-full" style={{ background: c.color }} aria-hidden />
               <span className="min-w-0 flex-1 truncate">{platformName(c.id)}</span>
-              <span className="text-fg-2 tnum">{totalRevenue > 0 ? `${Math.round((c.t.revenue / totalRevenue) * 100)}%` : "—"}</span>
-              <span className="w-[74px] text-right font-semibold tnum">{brlCompact(c.t.revenue)}</span>
+              <span className="text-fg-2 tnum">{totalRevenue > 0 ? `${Math.round((c.t[valueKey] / totalRevenue) * 100)}%` : "—"}</span>
+              <span className="w-[74px] text-right font-semibold tnum">{showValue(c.t[valueKey])}</span>
             </li>
           ))}
         </ul>
       </Block>
     ),
     "s-funil": (
-      <Block title="Funil de compra" aside={funnel.length > 1 ? <span className="text-[11px] text-error-fg">maior queda: {funnel[drop - 1]?.label} → {funnel[drop].label}</span> : undefined}>
+      <Block title={g.sales ? "Funil de compra" : "Funil"} aside={funnel.length > 1 ? <span className="text-[11px] text-error-fg">maior queda: {funnel[drop - 1]?.label} → {funnel[drop].label}</span> : undefined}>
         <StageFunnel
           className="flex-1"
           orientation="horizontal"
           color={P.accent}
           steps={funnelRows(funnel, "entrada").map((r, i) => ({ ...r, color: i === drop && funnel.length > 1 ? P.error : undefined }))}
-          summary={funnelSummary("Funil de compra", funnel)}
+          summary={funnelSummary(g.sales ? "Funil de compra" : "Funil", funnel)}
         />
       </Block>
     ),
@@ -156,7 +168,9 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
         <ul className="-my-1 min-h-0 flex-1 divide-y divide-line overflow-hidden">
           {campaigns.map((c) => {
             const roas = c.spend > 0 ? c.revenue / c.spend : 0;
-            const ok = roas >= breakEven;
+            // fora de venda: o custo por resultado, sem julgar (não há equilíbrio de ROAS)
+            const ok: boolean | null = g.sales ? roas >= breakEven : null;
+            const tone = hide || ok === null ? "var(--fg-2)" : ok ? "var(--good)" : "var(--error-fg)";
             return (
               <li key={c.id} className="flex items-center gap-2.5 py-[7px]">
                 <span className="grid size-[30px] shrink-0 place-items-center rounded-[10px] text-[10.5px] font-bold" style={{ background: "color-mix(in srgb, var(--fg) 8%, transparent)" }}>
@@ -165,11 +179,11 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[12.5px] leading-tight font-medium">{c.name}</span>
                   <span className="mt-0.5 block truncate text-[11px] leading-tight text-fg-2">
-                    {platformShort(c.platform)} · {money(ctx, c.revenue, true)}
+                    {platformShort(c.platform)} · {g.sales ? money(ctx, c.revenue, true) : `${int(c.conversions)} ${resultName.toLowerCase()}`}
                   </span>
                 </span>
-                <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tnum" style={{ color: hide ? "var(--fg-2)" : ok ? "var(--good)" : "var(--error-fg)", background: `color-mix(in srgb, ${hide ? "var(--fg-2)" : ok ? "var(--good)" : "var(--error-fg)"} 14%, transparent)` }}>
-                  {hide ? HIDDEN : `${decimal(roas, 1)}×`}
+                <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tnum" style={{ color: tone, background: `color-mix(in srgb, ${tone} 14%, transparent)` }}>
+                  {hide ? HIDDEN : g.sales ? `${decimal(roas, 1)}×` : c.conversions > 0 ? money(ctx, c.spend / c.conversions, true) : "—"}
                 </span>
               </li>
             );
@@ -189,7 +203,7 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-[13px]" style={{ background: HERO, color: P.onAccent }}>
-              <ShoppingBag size={18} strokeWidth={2.2} />
+              {g.sales ? <ShoppingBag size={18} strokeWidth={2.2} /> : <Target size={18} strokeWidth={2.2} />}
             </span>
             <div className="min-w-0 leading-tight">
               <p className="truncate text-[11px] font-medium tracking-[0.08em] text-fg-2 uppercase">{client}</p>

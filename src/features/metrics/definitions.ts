@@ -49,6 +49,10 @@ export type Format = "brl" | "brlCompact" | "int" | "pct" | "decimal";
 export type MetricDef = { id: MetricId; label: string; format: Format; better: "up" | "down" | "neutral"; help?: string };
 
 /** Vocabulário de conversão por perfil. */
+/** Objetivos de venda: o resultado é a venda, e receita e ROAS fazem sentido. Nos outros, o resultado do objetivo (lead, agendamento...). */
+export const SALES_PROFILES: readonly Profile[] = ["ecommerce", "marketplace", "executivo", "site", "infoproduto"];
+export const isSalesProfile = (profile: Profile) => SALES_PROFILES.includes(profile);
+
 export const VOCAB: Record<Profile, { conv: string; one: string; cpa: string }> = {
   ecommerce: { conv: "Vendas confirmadas", one: "venda", cpa: "Custo por venda" },
   marketplace: { conv: "Vendas", one: "venda", cpa: "Custo por venda" },

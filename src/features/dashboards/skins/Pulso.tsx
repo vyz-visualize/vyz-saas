@@ -24,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useMemo, useState, type ComponentType } from "react";
+import type { DayRow } from "@/features/metrics/source";
 import { PAGES } from "@/features/templates/pages";
 import { ChartTheme, dayDates, FlowLines, SkinBar, SkinChrome, SkinPage, Spark, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
@@ -32,6 +33,7 @@ import {
   chrono,
   dayLabel,
   decimal,
+  goalOf,
   initials,
   int,
   label,
@@ -93,12 +95,15 @@ export function PulsoSkin({
   bar,
 }: SkinProps) {
   const days = chrono(ctx.ds.current);
+  // vendas, leads, agendamentos...: pelo objetivo do modelo
+  const { sales, conv, cost } = goalOf(ctx.profile, ctx.cur.leads);
+  const result = (d: DayRow) => d[conv];
   const [mode, setMode] = useState<"dia" | "semana">("semana");
   const points =
     mode === "dia"
-      ? days.slice(-10).map((d) => d.leads || d.conversions)
+      ? days.slice(-10).map(result)
       : buckets(
-          days.map((d) => d.leads || d.conversions),
+          days.map(result),
           10,
         );
   const labels =
@@ -109,9 +114,9 @@ export function PulsoSkin({
   const before = chrono(ctx.ds.previous);
   const prevPoints =
     mode === "dia"
-      ? before.slice(-10).map((d) => d.leads || d.conversions)
+      ? before.slice(-10).map(result)
       : buckets(
-          before.map((d) => d.leads || d.conversions),
+          before.map(result),
           10,
         );
   const size = Math.max(1, Math.ceil(days.length / 10));
@@ -120,8 +125,6 @@ export function PulsoSkin({
   const peak = points.indexOf(Math.max(...points));
   const [hover, setHover] = useState<number | null>(null);
   const mark = hover ?? peak;
-  const conv = ctx.cur.leads > 0 ? "leads" : "conversions";
-  const cost = ctx.cur.leads > 0 ? "cpl" : "cpa";
   const campaigns = useMemo(
     () => [...ctx.ds.campaigns].sort((a, b) => b.conversions - a.conversions),
     [ctx.ds.campaigns],
@@ -148,7 +151,7 @@ export function PulsoSkin({
       Math.max(
         1,
         buckets(
-          days.map((d) => d.leads || d.conversions),
+          days.map(result),
           8,
         )[i],
       ),
@@ -380,15 +383,28 @@ export function PulsoSkin({
                             {days.length} dias
                           </p>
                         </div>
-                        <div className="pb-5">
-                          <p className="text-[10.5px] text-white/70">Alvo</p>
-                          <p className="text-[22px] leading-tight font-semibold tnum">
-                            {int(target)}
-                          </p>
-                          <p className="text-[11px] text-white/70">
-                            +8% do atual
-                          </p>
-                        </div>
+                        {sales ? (
+                          // objetivo de venda: a receita e o ROAS no lugar do alvo
+                          <div className="pb-5">
+                            <p className="text-[10.5px] text-white/70">{label(ctx, "revenue")}</p>
+                            <p className="text-[22px] leading-tight font-semibold tnum">
+                              {value(ctx, "revenue")}
+                            </p>
+                            <p className="text-[11px] text-white/70">
+                              {label(ctx, "roas")} {value(ctx, "roas")}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="pb-5">
+                            <p className="text-[10.5px] text-white/70">Alvo</p>
+                            <p className="text-[22px] leading-tight font-semibold tnum">
+                              {int(target)}
+                            </p>
+                            <p className="text-[11px] text-white/70">
+                              +8% do atual
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </section>
                   ),

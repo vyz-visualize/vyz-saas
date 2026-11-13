@@ -6,14 +6,15 @@
 // Gráficos da Bklit UI.
 
 import { BUDGET_INVITE, GOAL_INVITE, hasBudget, hasGoal } from "@/features/metrics/targets";
-import { BadgeCheck, CalendarDays, Handshake, Target, Users } from "lucide-react";
+import { BadgeCheck, CalendarDays, CircleDollarSign, Handshake, Percent, Target, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { platformPart } from "@/features/metrics/compute";
+import { metric } from "@/features/metrics/definitions";
 import { PAGES } from "@/features/templates/pages";
 import { brlCompact } from "@/lib/format";
 import { Block, SkinBar, SkinChrome, SkinPage, DailyChart, dayDates, Gauge, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
-import { brl, change, chrono, daily, dayLabel, HIDDEN, initials, int, label, money, pct, platformName, value, type SkinProps } from "./shared";
+import { brl, change, chrono, daily, dayLabel, goalOf, HIDDEN, initials, int, label, money, pct, platformName, value, type SkinProps } from "./shared";
 
 const P: SkinPalette = {
   scheme: "light",
@@ -41,15 +42,17 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
   const hide = !!ctx.hideSpend;
   const current = ctx.ds.current;
   const days = useMemo(() => chrono(current), [current]);
-  // perfil sem lead separado da conversão: a conversão é o lead
-  const leadKey = ctx.cur.leads > 0 ? "leads" : "conversions";
-  const costKey = ctx.cur.leads > 0 ? "cpl" : "cpa";
+  // o resultado do objetivo do modelo (leads, vendas, agendamentos...), nunca o que os números sugerem
+  // memorizado: o compilador do React sabe que não muda depois (as listas abaixo dependem dele)
+  const { sales: salesGoal, conv: leadKey, cost: costKey } = useMemo(() => goalOf(ctx.profile, ctx.cur.leads), [ctx.profile, ctx.cur.leads]);
+  const resultName = metric(leadKey, ctx.profile).label;
+  const resultLower = resultName.toLowerCase();
   const leads = ctx.cur[leadKey];
   const qualified = ctx.cur.qualified;
 
   const chart = useMemo(() => {
     const byWeek = mode === "semana";
-    const perDay = days.map((d) => d.leads || d.conversions);
+    const perDay = days.map((d) => d[leadKey]);
     const l = byWeek ? weekly(perDay) : perDay;
     const q = byWeek ? weekly(days.map((d) => d.qualified)) : days.map((d) => d.qualified);
     const first = byWeek ? weekStarts(days) : days;
@@ -58,9 +61,9 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
       dates: dayDates(first.map((d) => d.ago), ctx.today),
       labels: first.map((d) => dayLabel(d.ago, ctx.today)),
     };
-  }, [ctx.today, days, mode]);
+  }, [ctx.today, days, mode, leadKey]);
   const series: DailySeries[] = [
-    { key: "leads", label: "Leads", color: P.accent, kind: "bar" },
+    { key: "leads", label: resultName, color: P.accent, kind: "bar" },
     ...(qualified > 0 ? [{ key: "qualified", label: "Qualificados", color: TEAL, kind: "line" as const }] : []),
   ];
 
@@ -88,11 +91,21 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
   const nodes = {
     "s-leads": <StatBlock title={label(ctx, leadKey)} v={value(ctx, leadKey)} delta={change(ctx, leadKey)} note="contra o período anterior" values={daily(ctx, leadKey)} icon={Users} solid={HERO} />,
     "s-cpl": <StatBlock title={label(ctx, costKey)} v={value(ctx, costKey)} delta={hide ? undefined : change(ctx, costKey)} note={hide ? "oculto neste link" : hasGoal(ctx.ds) ? `alvo ${brl(ctx.ds.goal, { decimals: false })}` : GOAL_INVITE} values={hide ? undefined : daily(ctx, costKey)} color={OCHRE} icon={Target} />,
-    "s-qualificados": <StatBlock title="Leads qualificados" v={int(qualified)} delta={change(ctx, "qualified")} note={leads > 0 ? `${pct(qualified / leads, 0)} dos leads` : undefined} values={daily(ctx, "qualified")} color={TEAL} icon={BadgeCheck} />,
-    "s-vendas": <StatBlock title="Vendas no CRM" v={sales ? int(sales.count) : "—"} note={sales && leads > 0 ? `${pct(sales.count / leads, 1)} dos leads · ${brlCompact(sales.value)}` : undefined} bars={crm.map((s) => s.count)} color={PLUM} icon={Handshake} />,
+    // objetivo de venda: receita e ROAS no lugar dos leads qualificados e (sem CRM) das vendas do CRM
+    "s-qualificados": salesGoal ? (
+      <StatBlock title={label(ctx, "revenue")} v={value(ctx, "revenue")} delta={change(ctx, "revenue")} note="contra o período anterior" values={daily(ctx, "revenue")} color={TEAL} icon={CircleDollarSign} />
+    ) : (
+      <StatBlock title="Leads qualificados" v={int(qualified)} delta={change(ctx, "qualified")} note={leads > 0 ? `${pct(qualified / leads, 0)} dos leads` : undefined} values={daily(ctx, "qualified")} color={TEAL} icon={BadgeCheck} />
+    ),
+    "s-vendas":
+      salesGoal && !sales ? (
+        <StatBlock title={label(ctx, "roas")} v={value(ctx, "roas")} delta={hide ? undefined : change(ctx, "roas")} note="receita ÷ investimento" values={hide ? undefined : daily(ctx, "roas")} color={PLUM} icon={Percent} />
+      ) : (
+        <StatBlock title="Vendas no CRM" v={sales ? int(sales.count) : "—"} note={sales && leads > 0 ? `${pct(sales.count / leads, 1)} ${salesGoal ? "das vendas" : "dos leads"} · ${brlCompact(sales.value)}` : undefined} bars={crm.map((s) => s.count)} color={PLUM} icon={Handshake} />
+      ),
     "s-diario": (
       <Block
-        title="Leads por dia"
+        title={`${resultName} por dia`}
         aside={
           <div className="flex flex-wrap items-center gap-3">
             <LegendDots items={series.map((s) => ({ label: s.label, color: s.color }))} />
@@ -108,7 +121,7 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
           </div>
         }
       >
-        <DailyChart points={chart.points} dates={chart.dates} labels={chart.labels} series={series} format={(_, v) => int(v)} formatY={int} summary={`Leads por ${mode}: ${int(leads)} no período, ${int(qualified)} qualificados.`} />
+        <DailyChart points={chart.points} dates={chart.dates} labels={chart.labels} series={series} format={(_, v) => int(v)} formatY={int} summary={`${resultName} por ${mode}: ${int(leads)} no período${qualified > 0 ? `, ${int(qualified)} qualificados` : ""}.`} />
       </Block>
     ),
     "s-crm": (
@@ -117,8 +130,8 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
       </Block>
     ),
     "s-origem": (
-      <Block title="De onde vêm os leads">
-        <ShareRings className="flex-1" items={origins.map((o) => ({ label: platformName(o.id), value: Math.round(o.leads), color: o.color }))} centerLabel="Leads" summary={`Leads por plataforma: ${origins.map((o) => `${platformName(o.id)} ${int(o.leads)}`).join(", ")}.`} />
+      <Block title={`${resultName} por plataforma`}>
+        <ShareRings className="flex-1" items={origins.map((o) => ({ label: platformName(o.id), value: Math.round(o.leads), color: o.color }))} centerLabel={resultName} summary={`${resultName} por plataforma: ${origins.map((o) => `${platformName(o.id)} ${int(o.leads)}`).join(", ")}.`} />
         <ul className="mt-3 space-y-1.5 text-[12px]">
           {origins.map((o) => (
             <li key={o.id} className="flex items-center gap-2">
@@ -163,7 +176,7 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
       </Block>
     ),
     "s-campanhas": (
-      <Block title={hide ? "Leads por campanha" : `${label(ctx, costKey)} por campanha`} aside={hide ? undefined : <span className="text-[11px] text-fg-2">do mais barato ao mais caro</span>}>
+      <Block title={hide ? `${resultName} por campanha` : `${label(ctx, costKey)} por campanha`} aside={hide ? undefined : <span className="text-[11px] text-fg-2">do mais barato ao mais caro</span>}>
         <RankBars
           className="flex-1"
           color={TEAL}
@@ -179,8 +192,10 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
     PAGES[active].name
   ) : (
     <>
-      <span style={{ color: P.accent }}>{int(leads)} leads</span>
-      {sales ? ` e ${int(sales.count)} vendas fechadas` : " no período"}
+      <span style={{ color: P.accent }}>
+        {int(leads)} {resultLower}
+      </span>
+      {sales && !salesGoal ? ` e ${int(sales.count)} vendas fechadas` : " no período"}
     </>
   );
 

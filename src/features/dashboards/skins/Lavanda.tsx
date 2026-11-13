@@ -30,6 +30,7 @@ import {
   chrono,
   dayLabel,
   decimal,
+  goalOf,
   initials,
   int,
   label,
@@ -86,30 +87,29 @@ export function LavandaSkin({
   const [picked, setPicked] = useState<string | null>(null);
   const sel = list.find((c) => c.id === picked) ?? list[0];
   const days = chrono(ctx.ds.current);
+  // objetivo de venda: receita e ROAS; nos outros, o resultado do objetivo e a taxa de conversão
+  const g = goalOf(ctx.profile, ctx.cur.leads);
   const revenueBars = buckets(
-    days.map((d) => d.revenue),
+    days.map((d) => d[g.value]),
     6,
   );
-  const roasLine = buckets(
-    days.map((d) => d.revenue),
+  const top = buckets(
+    days.map((d) => (g.sales ? d.revenue : d.conversions)),
     9,
-  ).map(
-    (r, i) =>
-      r /
-      Math.max(
-        1,
-        buckets(
-          days.map((d) => d.spend),
-          9,
-        )[i],
-      ),
   );
+  const base = buckets(
+    days.map((d) => (g.sales ? d.spend : d.sessions)),
+    9,
+  );
+  const roasLine = top.map((r, i) => r / Math.max(1, base[i]));
+  const showValue = (v: number, compact = false) => (g.sales ? money(ctx, v, compact) : int(v));
+  const showEfficiency = (v: number) => (ctx.hideSpend && g.sales ? "•••" : g.sales ? decimal(v, 1) : `${decimal(v * 100, 1)}%`);
   // o primeiro dia de cada parte do ROAS (título do tooltip)
   const roasStep = Math.max(1, Math.ceil(days.length / 9));
   const roasDates = dayDates(days.filter((_, i) => i % roasStep === 0).map((d) => d.ago), ctx.today);
   const cpa = change(ctx, "cpa");
-  const rev = change(ctx, "revenue");
-  const roas = change(ctx, "roas");
+  const rev = change(ctx, g.value);
+  const roas = change(ctx, g.efficiency);
   const byPlat = platforms.map((p) => ({
     id: p,
     spend: campaigns
@@ -218,7 +218,7 @@ export function LavandaSkin({
               {name}
             </h2>
             <p className={`text-[13px] ${screen ? "mt-1 min-w-0 truncate @[1000px]:mt-0" : "mt-1"}`} style={{ color: C.fg2 }}>
-              Acompanhe receita, investimento e campanhas num lugar só ·{" "}
+              Acompanhe {g.sales ? "receita" : label(ctx, g.conv).toLowerCase()}, investimento e campanhas num lugar só ·{" "}
               {periodLabel}
             </p>
           </div>
@@ -232,7 +232,7 @@ export function LavandaSkin({
             className={`flex items-center gap-2 rounded-[14px] text-[13px] font-semibold text-white ${screen ? "h-9 px-4" : "h-11 px-5"}`}
             style={{ background: C.accent }}
           >
-            <Plus size={16} /> {label(ctx, "revenue")}: {value(ctx, "revenue")}
+            <Plus size={16} /> {label(ctx, g.value)}: {value(ctx, g.value)}
           </span>
         </div>
 
@@ -268,7 +268,7 @@ export function LavandaSkin({
                 style={{ borderColor: C.line, background: C.card }}
               >
                 <header className="flex shrink-0 items-center justify-between text-[13px] font-semibold">
-                  {label(ctx, "revenue")}
+                  {label(ctx, g.value)}
                   <span
                     className="grid size-7 place-items-center rounded-full"
                     style={{ background: "#eeedfd", color: C.accent }}
@@ -277,7 +277,7 @@ export function LavandaSkin({
                   </span>
                 </header>
                 <p className="mt-3 shrink-0 text-[28px] leading-tight font-bold tracking-tight tnum">
-                  {money(ctx, ctx.cur.revenue)}
+                  {value(ctx, g.value)}
                 </p>
                 <Trend c={rev} />
                 <ChartTheme palette={CHART} className="mt-2 flex min-h-[min(92px,var(--fit-cap,92px))] flex-1 flex-col">
@@ -287,9 +287,9 @@ export function LavandaSkin({
                     labels={revenueBars.map((_, i) => `S${i + 1}`)}
                     color={C.accent}
                     soft={C.accentSoft}
-                    what={label(ctx, "revenue")}
-                    format={(v) => money(ctx, v, true)}
-                    summary={`${label(ctx, "revenue")} em ${revenueBars.length} partes do período: total de ${money(ctx, ctx.cur.revenue)}.`}
+                    what={label(ctx, g.value)}
+                    format={(v) => showValue(v, true)}
+                    summary={`${label(ctx, g.value)} em ${revenueBars.length} partes do período: total de ${value(ctx, g.value)}.`}
                   />
                 </ChartTheme>
               </section>
@@ -300,11 +300,11 @@ export function LavandaSkin({
                 style={{ borderColor: C.line, background: C.card }}
               >
                 <header className="flex shrink-0 items-center justify-between text-[13px] font-semibold">
-                  {label(ctx, "roas")} médio
+                  {g.sales ? `${label(ctx, "roas")} médio` : label(ctx, g.efficiency)}
                   <Clock size={16} style={{ color: "#3b9bdc" }} />
                 </header>
                 <p className="mt-3 shrink-0 text-[28px] leading-tight font-bold tracking-tight tnum">
-                  {value(ctx, "roas")}
+                  {value(ctx, g.efficiency)}
                 </p>
                 <Trend c={roas} />
                 <ChartTheme palette={CHART} className="mt-2 flex min-h-[min(92px,var(--fit-cap,92px))] flex-1 flex-col">
@@ -312,9 +312,9 @@ export function LavandaSkin({
                     className="-mx-4 -mb-4 flex-1 overflow-hidden rounded-b-[20px]"
                     points={roasLine.map((v) => ({ roas: v }))}
                     dates={roasDates}
-                    series={[{ key: "roas", label: label(ctx, "roas"), color: C.accent, width: 2.2, area: 0.26 }]}
-                    format={(_, v) => (ctx.hideSpend ? "•••" : decimal(v, 1))}
-                    summary={`${label(ctx, "roas")} ao longo do período: média de ${value(ctx, "roas")}.`}
+                    series={[{ key: "roas", label: label(ctx, g.efficiency), color: C.accent, width: 2.2, area: 0.26 }]}
+                    format={(_, v) => showEfficiency(v)}
+                    summary={`${label(ctx, g.efficiency)} ao longo do período: ${g.sales ? "média de " : ""}${value(ctx, g.efficiency)}.`}
                   />
                 </ChartTheme>
               </section>
@@ -558,10 +558,19 @@ export function LavandaSkin({
                       <div className="mt-4 grid min-h-[60px] flex-[1_1_96px] grid-cols-2 gap-2.5 @[700px]:grid-cols-4">
                         {[
                           { v: money(ctx, sel.spend), l: "Investimento" },
-                          {
-                            v: money(ctx, sel.revenue),
-                            l: label(ctx, "revenue"),
-                          },
+                          ...(g.sales
+                            ? [
+                                {
+                                  v: money(ctx, sel.revenue),
+                                  l: label(ctx, "revenue"),
+                                },
+                              ]
+                            : [
+                                {
+                                  v: int(sel.clicks),
+                                  l: "Cliques",
+                                },
+                              ]),
                           {
                             v: int(sel.conversions),
                             l: label(ctx, "conversions"),
@@ -611,15 +620,19 @@ export function LavandaSkin({
                                   sel.spend / Math.max(1, sel.conversions),
                                 ),
                           },
-                          {
-                            l: label(ctx, "roas"),
-                            v: ctx.hideSpend
-                              ? "•••"
-                              : decimal(
-                                  sel.revenue / Math.max(1, sel.spend),
-                                  2,
-                                ),
-                          },
+                          ...(g.sales
+                            ? [
+                                {
+                                  l: label(ctx, "roas"),
+                                  v: ctx.hideSpend
+                                    ? "•••"
+                                    : decimal(
+                                        sel.revenue / Math.max(1, sel.spend),
+                                        2,
+                                      ),
+                                },
+                              ]
+                            : []),
                           {
                             l: "CTR",
                             v: `${decimal((sel.clicks / Math.max(1, sel.impressions)) * 100, 2)}%`,

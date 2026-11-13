@@ -5,8 +5,10 @@ import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { delta, series } from "@/features/metrics/compute";
 import {
   formatValue,
+  isSalesProfile,
   metric,
   type MetricId,
+  type Profile,
 } from "@/features/metrics/definitions";
 import type { DayRow } from "@/features/metrics/source";
 import type { PageId } from "@/features/templates/types";
@@ -84,6 +86,18 @@ export function change(
     up: d >= 0,
     good,
   };
+}
+
+/**
+ * O que o visual mostra vem do objetivo do modelo, nunca dos números (com dados reais, toda
+ * conversão também conta como lead). Vendas: vendas, custo por venda, receita e ROAS. Outros
+ * objetivos: o resultado deles com o rótulo do objetivo ("Leads" e "Custo por lead",
+ * "Agendamentos"...); no imobiliário, todos os leads (os qualificados vêm à parte).
+ */
+export function goalOf(profile: Profile, leads: number): { sales: boolean; conv: "conversions" | "leads"; cost: "cpa" | "cpl"; value: "revenue" | "conversions"; efficiency: "roas" | "convRate" } {
+  const sales = isSalesProfile(profile);
+  const allLeads = profile === "imob" && leads > 0;
+  return { sales, conv: allLeads ? "leads" : "conversions", cost: allLeads ? "cpl" : "cpa", value: sales ? "revenue" : "conversions", efficiency: sales ? "roas" : "convRate" };
 }
 
 /** Dias do mais antigo para o mais recente. */

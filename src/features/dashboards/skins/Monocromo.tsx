@@ -34,6 +34,7 @@ import {
   chrono,
   dayLabel,
   decimal,
+  goalOf,
   initials,
   int,
   label,
@@ -402,8 +403,9 @@ export function MonocromoSkin({
                       {(
                         [
                           "spend",
-                          ctx.cur.revenue > 0 ? "revenue" : "ctr",
-                          "cpa",
+                          // receita só nos objetivos de venda (pelo objetivo do modelo, não pelos números)
+                          goalOf(ctx.profile, ctx.cur.leads).sales ? "revenue" : "ctr",
+                          goalOf(ctx.profile, ctx.cur.leads).cost,
                         ] as const
                       ).map((id) => (
                         <li

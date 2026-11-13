@@ -1,5 +1,5 @@
 // Bancada com dados reais, só no `next dev` e só leitura: um dashboard de modelo de verdade
-// (?id=), lido pelo mesmo caminho do painel. ?capa=1 troca a miniatura gravada pela capa
+// (?id=), lido pelo mesmo caminho do painel; ?visual= e ?objetivo= trocam o modelo. ?capa=1 troca a miniatura gravada pela capa
 // grande que o próximo sync grava (busca na Meta só com GET; nada é escrito no banco).
 
 import { notFound } from "next/navigation";
@@ -32,8 +32,9 @@ async function Real({ searchParams }: { searchParams: Promise<Record<string, str
   if (!q.id) return <p className="p-6">Passe ?id= de um dashboard de modelo.</p>;
   const admin = createAdminSupabase();
   const { data: d } = await admin.from("dashboards").select("id, template_id, name").eq("id", q.id).maybeSingle();
-  // ?visual=pulso: o mesmo dashboard com outro visual do mesmo objetivo
-  const templateId = d && q.visual ? d.template_id.replace(/^[a-z]+-/, `${q.visual}-`) : d?.template_id;
+  // ?visual=pulso e ?objetivo=leads: o mesmo dashboard com outro visual ou outro objetivo
+  const [visual, ...rest] = (d?.template_id ?? "").split("-");
+  const templateId = d ? `${q.visual ?? visual}-${q.objetivo ?? rest.join("-")}` : undefined;
   const template = templateId ? anyDashboardTemplate(templateId) : undefined;
   if (!d || !template) return <p className="p-6">Dashboard não encontrado.</p>;
   const warehouse = await loadTemplateWarehouse(d.id, { platforms: template.composed ? LINKABLE_SOURCES : template.sources, period: "30d", db: admin });
