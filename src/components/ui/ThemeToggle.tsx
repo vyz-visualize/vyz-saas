@@ -62,9 +62,14 @@ function switchTheme(next: Theme) {
   vt.finished.finally(() => band?.remove());
 }
 
-export function ThemeToggle({ className = "" }: { className?: string }) {
-  const theme = useSyncExternalStore(subscribe, readTheme, () => "dark" as Theme);
-  const isDark = theme === "dark";
+/** Tema atual (acompanha a troca feita em qualquer lugar da tela). */
+export function useTheme(): Theme {
+  return useSyncExternalStore(subscribe, readTheme, () => "dark" as Theme);
+}
+
+/** ghost = sem borda, para barras de ferramenta (painel). */
+export function ThemeToggle({ className = "", ghost = false }: { className?: string; ghost?: boolean }) {
+  const isDark = useTheme() === "dark";
   return (
     <button
       type="button"
@@ -72,7 +77,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       aria-pressed={isDark}
       aria-label="Modo escuro"
       title={isDark ? "Mudar para o modo claro" : "Mudar para o modo escuro"}
-      className={`inline-flex size-10 items-center justify-center rounded-control border border-line text-fg transition-colors duration-150 hover:border-accent hover:text-accent ${className}`}
+      className={`inline-flex size-10 items-center justify-center rounded-control transition-colors duration-150 ${ghost ? "text-fg-2 hover:bg-surface-2 hover:text-fg" : "border border-line text-fg hover:border-accent hover:text-accent"} ${className}`}
     >
       {isDark ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
     </button>

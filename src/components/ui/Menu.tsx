@@ -18,7 +18,7 @@ export function MenuContent({ children, className = "", sideOffset = 4, ...rest 
       <DropdownMenu.Content
         sideOffset={sideOffset}
         collisionPadding={8}
-        className={`pop z-[80] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[12rem] overflow-y-auto rounded-card border border-line bg-card p-1 text-fg outline-none ${className}`}
+        className={`pop z-[80] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[12rem] overflow-y-auto rounded-card border border-line bg-card p-1 text-fg shadow-pop outline-none ${className}`}
         {...rest}
       >
         {children}

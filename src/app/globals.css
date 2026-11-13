@@ -6,8 +6,11 @@
 /* Sidebar do painel recolhida: atributo no <html>, aplicado antes da primeira pintura. */
 @custom-variant sb-closed (&:where([data-sidebar="closed"] *));
 
-/* Tokens de interface · Brand Showcase 2026, página 5 */
-:root {
+/* Tokens de interface · Brand Showcase 2026, página 5.
+   .tokens-brand repete os mesmos valores dentro do painel (que tem tokens próprios, mais
+   abaixo): é onde o dashboard do cliente e as miniaturas dele mantêm o visual da marca. */
+:root,
+.tokens-brand {
   color-scheme: light;
   --bg: #e8ece1;
   --card: #f3f5ee;
@@ -37,9 +40,17 @@
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* espessura do corte nos elementos de interface */
   --cut: 3px;
+  /* raios: 8 controles, 12 cards (o painel usa 10 e 16) */
+  --r-control: 8px;
+  --r-card: 12px;
+  /* preenchimento discreto (chips, hover) e elevação: a marca é plana, o painel usa de leve */
+  --surface-2: color-mix(in srgb, var(--fg) 6%, transparent);
+  --elev-card: 0 0 #0000;
+  --elev-pop: 0 0 #0000;
 }
 
-[data-theme="dark"] {
+[data-theme="dark"],
+[data-theme="dark"] .tokens-brand {
   color-scheme: dark;
   --bg: #1e1e1e;
   --card: #2a2b27;
@@ -62,6 +73,67 @@
   --seq-b: #6e7c3a;
   --seq-c: #4b5320;
   --seq-d: #3a4228;
+}
+
+/* ---- Painel (área logada): tokens próprios ----------------------------- */
+/* A moldura do painel marca [data-ui="app"]; os tokens sobem para a raiz para valer também
+   nos menus, selects e tooltips, que o Radix desenha fora da moldura (no <body>).
+   Mesma paleta do app nativo (apps/mobile/src/ui/theme.ts): fundo neutro, cartão branco,
+   linha fina e o oliva só como destaque. */
+:root:has([data-ui="app"]) {
+  --bg: #f2f3ee;
+  --card: #ffffff;
+  --fg: #161714;
+  --fg-2: #5e6157;
+  --line: #e0e2d9;
+  --accent: #4b5320;
+  --accent-soft: #e8ecd9;
+  --on-accent: #fbfcf7;
+  --field: #ffffff;
+  --muted: #c3c6b9;
+  --error-soft: #fbe9e6;
+  --error-fg: #b42318;
+  --nav-bg: rgb(242 243 238 / 0.82);
+  --panel: #f2f3ee;
+  /* chips escuros (tooltip, legenda do assistente) */
+  --sidebar: #1d1f1a;
+  --sidebar-fg: #f2f3ee;
+  --sidebar-muted: #a7aa9f;
+  --surface-2: #ebede5;
+  --r-control: 10px;
+  --r-card: 16px;
+  --elev-card: 0 1px 2px rgb(22 23 20 / 0.05);
+  --elev-pop: 0 18px 40px -16px rgb(22 23 20 / 0.28), 0 2px 8px rgb(22 23 20 / 0.06);
+}
+[data-theme="dark"]:has([data-ui="app"]) {
+  --bg: #0e0f0d;
+  --card: #171915;
+  --fg: #f2f3ee;
+  --fg-2: #a7aa9f;
+  --line: #272a24;
+  --accent: #b5c477;
+  --accent-soft: #272b1c;
+  --on-accent: #12130f;
+  --field: #111210;
+  --muted: #4b4e45;
+  --error-soft: #361b17;
+  --error-fg: #f97066;
+  --nav-bg: rgb(14 15 13 / 0.8);
+  --panel: #0e0f0d;
+  --sidebar: #2a2d25;
+  --sidebar-fg: #f2f3ee;
+  --sidebar-muted: #a7aa9f;
+  --surface-2: #20231d;
+  --elev-card: 0 0 #0000;
+  --elev-pop: 0 20px 48px -16px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.03);
+}
+/* dentro do painel, o que é da marca (dashboard do cliente) volta aos raios da marca */
+.tokens-brand {
+  --r-control: 8px;
+  --r-card: 12px;
+  --surface-2: color-mix(in srgb, var(--fg) 6%, transparent);
+  --elev-card: 0 0 #0000;
+  --elev-pop: 0 0 #0000;
 }
 
 @theme inline {
@@ -95,10 +167,15 @@
   --color-info: #3e6f9e;
   --color-success: #4b5320;
 
-  /* Raios: 8 controles, 12 cards, 999 chips */
-  --radius-control: 8px;
-  --radius-card: 12px;
+  /* Raios: 8 controles, 12 cards, 999 chips (no painel: 10 e 16, pelos tokens --r-*) */
+  --radius-control: var(--r-control);
+  --radius-card: var(--r-card);
   --radius-chip: 999px;
+  --radius-pill: 999px;
+
+  --color-surface-2: var(--surface-2);
+  --shadow-card: var(--elev-card);
+  --shadow-pop: var(--elev-pop);
 
   --ease-brand: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -1083,23 +1160,59 @@ details.lines summary::-webkit-details-marker {
   transition: opacity 180ms ease;
 }
 
-/* ---- Sidebar do painel: aba ativa com cantos côncavos ------------------- */
-.side-tab::before,
-.side-tab::after {
-  content: "";
-  position: absolute;
-  right: 0;
-  width: 20px;
-  height: 20px;
-  pointer-events: none;
+/* ---- Painel: cartões com elevação e modal que vira folha ----------------- */
+/* Os cartões do painel são escritos como "rounded-card border border-line bg-card" em dezenas
+   de telas; a elevação entra por aqui, pelo token (zero fora do painel e nos dashboards). */
+[data-ui="app"] .rounded-card.border.bg-card,
+.modal .rounded-card.border.bg-card {
+  box-shadow: var(--elev-card);
 }
-.side-tab::before {
-  top: -20px;
-  background: radial-gradient(circle at 0 0, transparent 20px, var(--panel) 20.5px);
+.tokens-brand .rounded-card.border.bg-card {
+  box-shadow: none;
 }
-.side-tab::after {
-  bottom: -20px;
-  background: radial-gradient(circle at 0 100%, transparent 20px, var(--panel) 20.5px);
+/* utilitário para telas novas: cartão do painel numa classe só */
+@utility surface {
+  border-radius: var(--r-card);
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: var(--elev-card);
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+.modal[open] {
+  animation: modal-in 220ms var(--ease);
+}
+.modal[open]::backdrop {
+  animation: backdrop-in 220ms ease-out;
+}
+@media (max-width: 639.98px) {
+  .modal[open] {
+    animation: sheet-in 320ms var(--ease);
+  }
+}
+/* entrada das páginas do painel: sobe 6 px e aparece (uma vez, ao trocar de seção) */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+[data-ui="app"] #conteudo:not(.focus-main) > * {
+  animation: page-in 320ms var(--ease) backwards;
 }
 
 /* ---- Assistente VYZ: mascote (esfera com o rosto do logo), destaque, drawer -- */

@@ -46,7 +46,7 @@ export function Select({ value, onChange, options, ariaLabel, id, placeholder, s
           position="popper"
           sideOffset={4}
           collisionPadding={8}
-          className="pop z-[90] max-h-[min(320px,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-card border border-line bg-card text-fg"
+          className="pop z-[90] max-h-[min(320px,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-card border border-line bg-card text-fg shadow-pop"
         >
           <S.Viewport className="p-1">
             {options.map((o) => (

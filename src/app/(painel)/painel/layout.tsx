@@ -38,12 +38,13 @@ async function PainelSession({ children }: { children: React.ReactNode }) {
 
 function ShellFallback() {
   return (
-    <div className="min-h-dvh bg-[var(--sidebar)] md:flex md:h-dvh md:overflow-hidden" aria-busy="true">
-      <div className="hidden h-dvh w-[260px] shrink-0 md:block" />
-      <div className="min-h-dvh flex-1 bg-[var(--panel)] md:my-3 md:mr-3 md:h-[calc(100dvh-24px)] md:min-h-0 md:rounded-[24px]">
-        <div className="mx-auto max-w-[1280px] space-y-4 px-4 pt-20 sm:px-6">
-          <div className="h-8 w-56 animate-pulse rounded-control bg-card" />
-          <div className="h-40 animate-pulse rounded-card bg-card" />
+    <div data-ui="app" className="min-h-dvh bg-bg md:flex md:h-dvh md:overflow-hidden" aria-busy="true">
+      <div className="hidden h-dvh w-[264px] shrink-0 border-r border-line sb-closed:w-[76px] md:block" />
+      <div className="min-h-dvh flex-1">
+        <div className="h-14 border-b border-line" />
+        <div className="mx-auto max-w-[1280px] space-y-4 px-4 pt-6 sm:px-6 lg:px-10 lg:pt-9">
+          <div className="h-8 w-56 animate-pulse rounded-control bg-surface-2 motion-reduce:animate-none" />
+          <div className="h-40 animate-pulse rounded-card bg-surface-2 motion-reduce:animate-none" />
         </div>
       </div>
     </div>
