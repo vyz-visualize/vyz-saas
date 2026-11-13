@@ -19,7 +19,7 @@ describe("limites por plano", () => {
   it("rótulo dos cartões da LP", () => {
     expect(templateCountsLabel("base")).toBe("2 visuais de dashboard · 4 de landing page");
     expect(templateCountsLabel("pro")).toBe("3 visuais de dashboard · 8 de landing page");
-    expect(templateCountsLabel("avancado")).toBe("5 visuais de dashboard · 13 de landing page");
+    expect(templateCountsLabel("avancado")).toBe("6 visuais de dashboard · 13 de landing page");
   });
 
   it("Base só usa Meta (com Instagram e Página, que vêm pelo mesmo login), Google Ads e GA4", () => {

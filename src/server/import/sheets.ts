@@ -10,7 +10,7 @@ import { appError } from "@/server/supabase/errors";
 
 const TIMEOUT_MS = 15_000;
 const MAX_REDIRECTS = 4;
-const NOT_SHARED = 'Não consegui abrir a planilha. No Google Sheets, clique em Compartilhar e deixe "Qualquer pessoa com o link" como leitor.';
+const NOT_SHARED = 'Não consegui abrir a planilha: ela não está aberta para leitura. No Google Sheets, clique em Compartilhar, em "Acesso geral" escolha "Qualquer pessoa com o link" como Leitor e tente de novo.';
 
 /** Para onde a exportação pode redirecionar: o próprio Google Docs e o servidor de arquivos dele. */
 export function isSheetsHost(hostname: string): boolean {

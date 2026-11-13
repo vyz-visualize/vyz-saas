@@ -49,8 +49,8 @@ describe("páginas pelas contas escolhidas", () => {
 });
 
 describe("catálogo dos modelos novos", () => {
-  it("5 visuais × cada objetivo, com o plano do visual", () => {
-    expect(VISUALS.map((v) => `${v.id}:${v.tier}`)).toEqual(["vyz:base", "lavanda:base", "pulso:pro", "noturno:avancado", "areia:avancado"]);
+  it("6 visuais × cada objetivo, com o plano do visual", () => {
+    expect(VISUALS.map((v) => `${v.id}:${v.tier}`)).toEqual(["vyz:base", "lavanda:base", "pulso:pro", "noturno:avancado", "areia:avancado", "fachada:avancado"]);
     expect(COMPOSED_TEMPLATES.length % VISUALS.length).toBe(0);
   });
   it("todo nicho do onboarding tem objetivo", () => {

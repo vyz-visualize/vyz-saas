@@ -1,7 +1,7 @@
 "use client";
 
 // Primeiro passo do novo dashboard: o objetivo (decide os números e o funil) e o
-// visual. Só 5 visuais; os que o plano não cobre aparecem borrados, com o plano que libera.
+// visual. Só 6 visuais; os que o plano não cobre aparecem borrados, com o plano que libera.
 // As páginas não se escolhem aqui: saem das contas, no passo seguinte.
 
 import Link from "next/link";

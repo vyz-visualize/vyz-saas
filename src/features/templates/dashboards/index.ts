@@ -1,4 +1,4 @@
-// Catálogo dos modelos de dashboard: os 5 visuais (um arquivo cada, em ./visuais) ×
+// Catálogo dos modelos de dashboard: os 6 visuais (um arquivo cada, em ./visuais) ×
 // os objetivos (./composed.ts). As páginas de cada dashboard saem das contas ligadas.
 // Visual novo: crie o arquivo em ./visuais e acrescente em ./visuais/index.ts.
 // Depois: npm run db:catalog. Guia: docs/TEMPLATES.md

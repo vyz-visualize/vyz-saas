@@ -4,7 +4,7 @@
 // planilha do lançamento (SheetDialog). As duas só existem para quem pode editar o
 // dashboard: no link público, na miniatura e no PDF a capa é só leitura.
 
-import { Check, Copy, Download, FileSpreadsheet, ImagePlus, Link2, ShieldCheck, Trash2 } from "lucide-react";
+import { Check, Copy, Download, FileSpreadsheet, Globe, ImagePlus, Link2, ShieldCheck, Trash2 } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { Modal, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
@@ -234,7 +234,7 @@ export function SheetDialog({ open, onClose, sheet }: { open: boolean; onClose: 
             </div>
           </Step>
 
-          <Step n={2} title="Compartilhe com a VYZ">
+          <Step n={2} title={serviceEmail ? "Compartilhe com a VYZ" : "Abra a planilha para quem tiver o link"}>
             {serviceEmail ? (
               <>
                 <p className="text-[13px] text-fg-2">No Google Sheets, clique em Compartilhar e adicione este e-mail como Leitor. A planilha continua fechada para todo o resto.</p>
@@ -248,7 +248,31 @@ export function SheetDialog({ open, onClose, sheet }: { open: boolean; onClose: 
                 </p>
               </>
             ) : (
-              <p className="text-[13px] text-fg-2">No Google Sheets, clique em Compartilhar e deixe &quot;Qualquer pessoa com o link&quot; como Leitor. Quem tiver o link consegue ver a planilha: por isso ela leva só contagens.</p>
+              // o passo que mais falha: em destaque, com o caminho exato no Google Sheets
+              <div role="note" className="rounded-card border-2 border-accent bg-accent-soft/50 p-3.5">
+                <p className="flex items-center gap-2 text-[14px] font-semibold text-fg">
+                  <Globe size={17} className="shrink-0 text-accent" aria-hidden />A planilha precisa estar em &ldquo;Qualquer pessoa com o link&rdquo;
+                </p>
+                <p className="mt-1 text-[12.5px] text-fg-2">Se ela ficar como &ldquo;Restrito&rdquo; (o padrão do Google), o VYZ não consegue ler os números e a planilha não liga.</p>
+                <ol className="mt-3 space-y-2 text-[13px] text-fg">
+                  {[
+                    <>No Google Sheets, clique em <strong className="font-semibold">Compartilhar</strong> (botão no canto de cima, à direita).</>,
+                    <>Em <strong className="font-semibold">Acesso geral</strong>, troque &ldquo;Restrito&rdquo; por <strong className="font-semibold">Qualquer pessoa com o link</strong>.</>,
+                    <>Deixe a permissão como <strong className="font-semibold">Leitor</strong> e clique em <strong className="font-semibold">Copiar link</strong>. É esse link que entra no passo 3.</>,
+                  ].map((text, i) => (
+                    <li key={i} className="flex gap-2.5">
+                      <span className="grid size-5 shrink-0 place-items-center rounded-full border border-accent text-[11px] font-semibold text-accent" aria-hidden>
+                        {i + 1}
+                      </span>
+                      <span className="min-w-0">{text}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-3 flex items-start gap-1.5 text-[12px] text-fg-2">
+                  <ShieldCheck size={14} className="mt-0.5 shrink-0" aria-hidden />
+                  Quem tiver o link consegue ver a planilha. Por isso ela leva só contagens: nada de nome, telefone ou e-mail de cliente.
+                </p>
+              </div>
             )}
           </Step>
 
@@ -275,7 +299,7 @@ export function SheetDialog({ open, onClose, sheet }: { open: boolean; onClose: 
               ))}
             </div>
             {mode === "link" ? (
-              <TextField label="Link da planilha" value={link} onChange={setLink} placeholder="https://docs.google.com/spreadsheets/d/..." disabled={pending} error={linkCheck && !linkCheck.ok ? linkCheck.error : undefined} hint="O VYZ lê a aba que estiver aberta no link e relê todo dia." />
+              <TextField label="Link da planilha" value={link} onChange={setLink} placeholder="https://docs.google.com/spreadsheets/d/..." disabled={pending} error={linkCheck && !linkCheck.ok ? linkCheck.error : undefined} hint={serviceEmail ? "O VYZ lê a aba que estiver aberta no link e relê todo dia." : "Cole o link copiado no passo 2, de uma planilha em “Qualquer pessoa com o link”. O VYZ lê a aba que estiver aberta no link e relê todo dia."} />
             ) : (
               <div className="space-y-1">
                 <label htmlFor="fachada-paste" className="block text-[13px] font-medium">

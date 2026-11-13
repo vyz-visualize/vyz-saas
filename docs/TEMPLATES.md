@@ -118,7 +118,7 @@ Só um `next dev` por pasta: o Next recusa o segundo e sugere encerrar o primeir
 |---|---|---|
 | Básico | 2 visuais (VYZ, Lavanda) × 8 objetivos | 4 |
 | Padrão | 3 visuais (+ Pulso) | 8 |
-| Avançado | 5 visuais (+ Noturno, Areia) | 13 |
+| Avançado | 6 visuais (+ Noturno, Areia, Fachada) | 13 |
 
 ## Orgânico (Instagram e Página do Facebook)
 
@@ -128,9 +128,9 @@ No dashboard, o orgânico chega em `data.organic` (`aggregateOrganic`, `features
 
 Antes de publicar uma mudança aqui: `npm run db:push` (migração `20261112090000_organic.sql`) e `npm run db:catalog` (plataformas, páginas e modelos novos).
 
-## Fachada (rascunho): lançamento imobiliário e leads
+## Fachada: lançamento imobiliário e leads
 
-Visual `fachada` (`visuais/fachada.ts`, desenho em `skins/Fachada.tsx` e `skins/fachada/`), com `draft: true`: só aparece em `/dev/templates?visual=fachada&objetivo=imob`.
+Visual `fachada` (`visuais/fachada.ts`, desenho em `skins/Fachada.tsx` e `skins/fachada/`), plano Avançado. Lançado em 13/11/2026.
 
 - **Capa** (primeira aba): título, endereço, campanhas em destaque, funil do período e a imagem do empreendimento. Sem imagem, uma ilustração padrão (`fachada/Tower.tsx`) na cor de destaque. A pessoa troca a imagem e o endereço pelo botão no canto (`CoverDialog`): PNG sem fundo vira "recorte", JPG vira "foto" (detecção automática, `cover.ts`).
 - **Medidores**: resultado por origem, ritmo por trecho do período, verba do mês e custo contra o alvo. Seguem o objetivo (`goalOf`): leads e visitas no imobiliário, vendas e receita em venda.
@@ -140,7 +140,4 @@ Visual `fachada` (`visuais/fachada.ts`, desenho em `skins/Fachada.tsx` e `skins/
 
 - **Onde grava**: `dashboards.cover` (caminho da imagem no bucket `dashboard-covers`, recorte ou foto e endereço) e a tabela `dashboard_launch_sheets` (link e as linhas da última leitura). Migração `20261118150000_dashboard_cover_launch_sheet.sql`. Ações em `server/dashboards/cover-actions.ts`; releitura diária em `server/import/launch-scheduled.ts`, chamada pelo `/api/cron/sync`. Sem a migração aplicada, o dashboard abre com a capa padrão (a consulta tolera a falta).
 
-Para lançar:
-1. `npm run db:push` (migração acima) e `npm run db:types`.
-2. Criar no Google Cloud uma conta de serviço só para isto, sem papel no projeto, com a Google Sheets API ligada, e pôr o JSON em `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON` (Vercel). Sem ela, vale só a planilha aberta por link.
-3. Tirar o `draft` de `visuais/fachada.ts`, `npm run db:catalog` e `npm test`.
+Migração aplicada e registrada em 13/11/2026. Para ler planilhas fechadas, falta criar a conta de serviço (sem papel no projeto, com a Google Sheets API ligada) e pôr o JSON em `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON` na Vercel; até lá, a tela pede a planilha em "Qualquer pessoa com o link".

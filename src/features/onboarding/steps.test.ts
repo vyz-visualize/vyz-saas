@@ -93,8 +93,8 @@ describe("layouts", () => {
   it("liberados antes dos travados, e os do nicho na frente", () => {
     const opts = layoutOptions("ecommerce", "base");
     expect(opts[0].fits).toBe(true);
-    // os 5 visuais no objetivo do nicho; o Básico usa o padrão VYZ e o Lavanda
-    expect(opts.map((o) => o.template.id)).toEqual(["vyz-ecommerce", "lavanda-ecommerce", "pulso-ecommerce", "noturno-ecommerce", "areia-ecommerce"]);
+    // os 6 visuais no objetivo do nicho; o Básico usa o padrão VYZ e o Lavanda
+    expect(opts.map((o) => o.template.id)).toEqual(["vyz-ecommerce", "lavanda-ecommerce", "pulso-ecommerce", "noturno-ecommerce", "areia-ecommerce", "fachada-ecommerce"]);
     expect(opts.filter((o) => o.allowed).map((o) => o.template.id)).toEqual(["vyz-ecommerce", "lavanda-ecommerce"]);
     const firstLocked = opts.findIndex((o) => o.fits && !o.allowed);
     expect(opts.slice(0, firstLocked).every((o) => o.allowed)).toBe(true);

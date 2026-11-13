@@ -153,11 +153,11 @@ export type LayoutOption = {
  * mais simples ao mais completo.
  */
 export function layoutOptions(businessTypeId: string | null, tier: Tier | null): LayoutOption[] {
-  // os 5 visuais no objetivo do nicho: o primeiro acesso escolhe só a cara do dashboard
+  // os visuais no objetivo do nicho: o primeiro acesso escolhe só a cara do dashboard
   return layoutOptionsFor(objectiveForBusiness(businessTypeId), tier);
 }
 
-/** Os 5 visuais num objetivo (o sugerido pelas campanhas ou o do segmento). */
+/** Os visuais num objetivo (o sugerido pelas campanhas ou o do segmento). */
 export function layoutOptionsFor(objective: ObjectiveId, tier: Tier | null): LayoutOption[] {
   return VISUALS.flatMap((v) => {
     const template = ALL_DASHBOARD_TEMPLATES.find((t) => t.id === composedId(v.id, objective));

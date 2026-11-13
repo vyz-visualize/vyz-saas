@@ -50,8 +50,6 @@ function layout(page: PageId, base: PageLayout, standard: (page: PageId) => Page
  * Fachada: Cinza de concreto com coral, capa com a imagem do empreendimento e medidores.
  * Pensado para lançamento imobiliário e geração de leads; nos outros objetivos, os números
  * da capa acompanham o objetivo (vendas, agendamentos...).
- * Rascunho: aparece só na bancada local (/dev/templates?visual=fachada). Para lançar,
- * tire o `draft` e rode npm run db:catalog (ver "Fachada" em docs/TEMPLATES.md).
  */
 export default {
   id: "fachada",
@@ -59,6 +57,5 @@ export default {
   skin: "fachada",
   tier: "avancado",
   description: "Cinza de concreto com coral: capa com a imagem do empreendimento e medidores.",
-  draft: true,
   layout,
 } satisfies Visual;
