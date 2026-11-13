@@ -78,16 +78,64 @@ const ACTIVITY_LABEL: Record<string, string> = {
   "team.role_changed": "Papel de um membro alterado",
   "team.member_removed": "Membro removido da equipe",
   "landing.leads_exported": "Leads exportados (CSV)",
+  "landing.waitlist_joined": "Entrou na lista de espera",
+  "ad_account.moved_to_project": "Conta movida para outro projeto",
+  "admin.plan_granted": "Plano liberado pela equipe VYZ",
+  "admin.plan_removed": "Plano retirado pela equipe VYZ",
+  "agent.consulted": "Perguntou ao VYZ",
+  "dashboard.created": "Criou um dashboard",
+  "dashboard.deleted": "Apagou um dashboard",
+  "dashboard.duplicated": "Duplicou um dashboard",
+  "dashboard.metrics_changed": "Alterou as métricas do dashboard",
+  "dashboard.template_changed": "Trocou o modelo do dashboard",
+  "dashboard.template_search": "Buscou um modelo de dashboard",
+  "dashboard.updated": "Editou o dashboard",
+  "landing_page.created": "Criou uma landing page",
+  "landing_page.deleted": "Apagou uma landing page",
+  "landing_page.published": "Publicou uma landing page",
+  "landing_page.slug_changed": "Trocou o endereço de uma landing page",
+  "landing_page.version_restored": "Restaurou uma versão da landing page",
+  "optimization.applied": "Aplicou uma otimização",
+  "optimization.autopilot_saved": "Configurou o automático das otimizações",
+  "optimization.undone": "Desfez uma otimização",
+  "project.archived": "Arquivou um projeto",
+  "project.created": "Criou um projeto",
+  "project.renamed": "Renomeou um projeto",
+  "report.deleted": "Apagou um relatório agendado",
+  "report.scheduled": "Agendou um relatório",
+  "share_link.created": "Criou um link de compartilhamento",
+  "share_link.revoked": "Desativou um link de compartilhamento",
+  "task.created": "Criou uma tarefa",
+  "task.deleted": "Apagou uma tarefa",
+  "task.playbook_applied": "Aplicou um roteiro de tarefas",
+  "task.updated": "Atualizou uma tarefa",
+  "task_group.created": "Criou um grupo de tarefas",
+  "whatsapp.preferences_changed": "Alterou os relatórios no WhatsApp",
+  "whatsapp.removed": "Removeu o número do WhatsApp",
+  "whatsapp.test_sent": "Enviou um teste no WhatsApp",
+  "whatsapp.verification_started": "Começou a verificar o WhatsApp",
+  "whatsapp.verified": "Verificou o número do WhatsApp",
+  "workspace.opened": "Abriu o workspace",
+  "workspace.updated": "Alterou os dados do workspace",
 };
 
 const PROVIDER_LABEL: Record<string, string> = { meta: "Meta Ads", google: "Google Ads" };
 
 /** Rótulo de um activity_events.event; o detalhe vem do metadata quando ajuda. */
 export function activityLabel(event: string, metadata: Record<string, unknown> = {}): string {
-  const base = ACTIVITY_LABEL[event] ?? event;
+  // evento novo sem tradução nunca aparece cru ("dashboard.metrics_changed"): vira uma frase genérica
+  const base = ACTIVITY_LABEL[event] ?? fallbackLabel(event);
   const provider = typeof metadata.provider === "string" ? PROVIDER_LABEL[metadata.provider] : undefined;
   if (provider && event.startsWith("integration.")) return `${base} · ${provider}`;
   return base;
+}
+
+const AREA: Record<string, string> = { dashboard: "Dashboard", billing: "Cobrança", integration: "Conexões", sync: "Sincronização", project: "Projetos", task: "Tarefas", whatsapp: "WhatsApp", landing_page: "Landing pages", report: "Relatórios", team: "Equipe", workspace: "Workspace", optimization: "Otimizações", agent: "Assistente VYZ" };
+
+/** "Dashboard · alteração registrada" para um evento que ainda não tem frase própria. */
+export function fallbackLabel(event: string): string {
+  const area = AREA[event.split(".")[0]];
+  return area ? `${area} · alteração registrada` : "Alteração registrada";
 }
 
 /** Atividade com falha ou bloqueio pede atenção. */

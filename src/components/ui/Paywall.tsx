@@ -56,11 +56,12 @@ export function Paywall({
 }) {
   if (current && canUse(current, required)) return <>{children}</>;
   return (
-    <div className={`relative isolate overflow-hidden rounded-card ${className}`}>
-      <div inert aria-hidden className="pointer-events-none blur-[6px] saturate-50 select-none">
+    // as duas camadas na mesma célula da grade: a área cresce com a maior (o cartão nunca é cortado)
+    <div className={`relative isolate grid overflow-hidden rounded-card ${className}`} data-paywall>
+      <div inert aria-hidden className="pointer-events-none blur-[6px] saturate-50 select-none [grid-area:1/1]">
         {children}
       </div>
-      <div className="absolute inset-0 grid place-items-center bg-[color-mix(in_srgb,var(--bg)_45%,transparent)] p-4">
+      <div className="z-10 grid place-items-center bg-[color-mix(in_srgb,var(--bg)_45%,transparent)] p-4 [grid-area:1/1]">
         <div role="note" className="flex max-w-sm flex-col items-center gap-2.5 rounded-card border border-line bg-card px-5 py-4 text-center">
           <span className="inline-flex size-9 items-center justify-center rounded-full bg-accent-soft text-fg">
             <Lock size={16} aria-hidden />

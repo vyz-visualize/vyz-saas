@@ -16,7 +16,8 @@ describe("activityLabel", () => {
   it("traduz o evento e cita a plataforma", () => {
     expect(activityLabel("billing.plan_changed")).toBe("Plano alterado");
     expect(activityLabel("integration.connected", { provider: "meta" })).toBe("Plataforma conectada · Meta Ads");
-    expect(activityLabel("x.y")).toBe("x.y");
+    // sem frase própria: genérico, nunca o código cru
+    expect(activityLabel("x.y")).toBe("Alteração registrada");
     expect(activityTone("sync.failed")).toBe("warn");
     expect(activityTone("integration.connect_failed")).toBe("warn");
     expect(activityTone("sync.finished")).toBe("neutral");
@@ -46,5 +47,19 @@ describe("deviceLabel", () => {
     expect(deviceLabel("Mozilla/5.0 (Android 14; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0")).toBe("Firefox no Android");
     expect(deviceLabel("curl/8.7.1")).toBe("Script");
     expect(deviceLabel(null)).toBe("Navegador desconhecido");
+  });
+});
+
+import { activityLabel as label2, fallbackLabel } from "./history";
+
+describe("atividade sem código cru", () => {
+  it("traduz as métricas do dashboard e a troca de modelo", () => {
+    expect(label2("dashboard.metrics_changed")).toBe("Alterou as métricas do dashboard");
+    expect(label2("dashboard.template_changed")).toBe("Trocou o modelo do dashboard");
+  });
+  it("evento novo sem frase vira genérico, nunca o código", () => {
+    expect(label2("dashboard.algo_novo")).toBe("Dashboard · alteração registrada");
+    expect(fallbackLabel("xyz.coisa")).toBe("Alteração registrada");
+    expect(label2("xyz.coisa")).not.toContain(".");
   });
 });

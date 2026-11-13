@@ -195,7 +195,10 @@ function BrandForm({ canEdit, notify }: { canEdit: boolean; notify: Notify }) {
 // ---- histórico ------------------------------------------------------------------------------
 
 function When({ at, now, timeZone }: { at: string; now: string; timeZone: string }) {
-  const full = new Intl.DateTimeFormat("pt-BR", { timeZone, dateStyle: "short", timeStyle: "short" }).format(new Date(at));
+  // montado parte a parte: o dateStyle muda entre o servidor (Node) e o Safari ("13/11/2026, 11:57" × sem vírgula)
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(at));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const full = `${get("day")}/${get("month")}/${get("year")} às ${get("hour")}:${get("minute")}`;
   return (
     <time dateTime={at} title={full} className="shrink-0 text-[12px] text-fg-2 tnum">
       {relativeTime(at, now, timeZone)}
@@ -203,11 +206,38 @@ function When({ at, now, timeZone }: { at: string; now: string; timeZone: string
   );
 }
 
+/** Listas longas: 5 linhas por vez, com "Ver mais" e "Ver menos". */
+const PAGE = 5;
+function usePaged<T>(items: readonly T[]) {
+  const [shown, setShown] = useState(PAGE);
+  const rest = items.length - shown;
+  const more =
+    items.length > PAGE ? (
+      <div className="flex items-center justify-between gap-3 border-t border-line pt-2.5 text-[13px]" data-paged>
+        <span className="text-fg-2 tnum">
+          {Math.min(shown, items.length)} de {items.length}
+        </span>
+        {rest > 0 ? (
+          <button type="button" onClick={() => setShown((n) => n + PAGE)} className="font-semibold text-fg underline-offset-4 hover:underline">
+            Ver mais ({Math.min(PAGE, rest)})
+          </button>
+        ) : (
+          <button type="button" onClick={() => setShown(PAGE)} className="font-semibold text-fg underline-offset-4 hover:underline">
+            Ver menos
+          </button>
+        )}
+      </div>
+    ) : null;
+  return { visible: items.slice(0, shown), more };
+}
+
 function AccessList({ items, now, timeZone }: { items: AccessEvent[]; now: string; timeZone: string }) {
+  const { visible, more } = usePaged(items);
   if (!items.length) return <p className="text-[13.5px] text-fg-2">Nenhum acesso registrado ainda.</p>;
   return (
+    <>
     <ul className="divide-y divide-line">
-      {items.map((e) => (
+      {visible.map((e) => (
         <li key={e.id} className="flex items-start justify-between gap-3 py-2.5 text-[13.5px]">
           <span className="flex min-w-0 gap-2.5">
             {e.tone === "warn" ? <AlertTriangle size={15} aria-hidden className="mt-0.5 shrink-0 text-error-fg" /> : <LogIn size={15} aria-hidden className="mt-0.5 shrink-0 text-fg-2" />}
@@ -223,14 +253,18 @@ function AccessList({ items, now, timeZone }: { items: AccessEvent[]; now: strin
         </li>
       ))}
     </ul>
+    {more}
+    </>
   );
 }
 
 function ActivityList({ items, now, timeZone }: { items: ActivityItem[]; now: string; timeZone: string }) {
+  const { visible, more } = usePaged(items);
   if (!items.length) return <p className="text-[13.5px] text-fg-2">Nada registrado ainda.</p>;
   return (
+    <>
     <ul className="divide-y divide-line">
-      {items.map((a) => (
+      {visible.map((a) => (
         <li key={a.id} className="flex items-start justify-between gap-3 py-2.5 text-[13.5px]">
           <span className="min-w-0">
             <span className={`block ${a.tone === "warn" ? "text-error-fg" : ""}`}>{a.label}</span>
@@ -240,6 +274,8 @@ function ActivityList({ items, now, timeZone }: { items: ActivityItem[]; now: st
         </li>
       ))}
     </ul>
+    {more}
+    </>
   );
 }
 
