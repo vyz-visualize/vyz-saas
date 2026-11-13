@@ -17,6 +17,7 @@ import { serverEnv } from "@/server/env";
 import { ADS, adsHeaders } from "@/server/integrations/providers/google";
 import { fetchJson } from "@/server/integrations/providers/http";
 import { getValidAccessToken } from "@/server/integrations/tokens";
+import type { Json } from "@/lib/supabase/database.types";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import type { GoogleRow, MetaInsight } from "@/server/sync/live/map";
 import { googleMediaRows, META_THROTTLE_PAUSE, metaMediaRows, metaThrottle, monthRange, requestHash } from "./rows";
@@ -32,13 +33,6 @@ type Account = { id: string; external_id: string; connection_id: string; currenc
 type Outcome = "concluido" | "aguardando" | "pausado" | "erro";
 type RunResult = { outcome: Outcome; reportRunId?: string; error?: string; raw?: unknown; rows?: ReturnType<typeof metaMediaRows> };
 
-type RpcResult = { data: unknown; error: { code?: string; message: string } | null };
-/**
- * As funções public.mmm_* (o schema mmm não é exposto na API). Sem tipo até a migration
- * 20261117090000 ser aplicada e o `npm run db:types` gerar as assinaturas.
- */
-const rpc = (db: ReturnType<typeof createAdminSupabase>, fn: string, args: Record<string, unknown>): Promise<RpcResult> =>
-  (db as unknown as { rpc: (f: string, a: Record<string, unknown>) => Promise<RpcResult> }).rpc(fn, args);
 
 export type BackfillSummary = { ran: number; concluded: number; waiting: number; paused: number; failed: number; durationMs: number; skipped?: string };
 
@@ -137,23 +131,25 @@ export async function runBackfillRound(opts: { budgetMs: number }): Promise<Back
   let googleOps: number | null = null;
 
   while (Date.now() - started < opts.budgetMs - 45_000) {
-    const claimed = await rpc(db, "mmm_claim_backfill", { p_limit: BACKFILL_CONCURRENCY });
+    // as funções public.mmm_* (o schema mmm não é exposto na API)
+    const claimed = await db.rpc("mmm_claim_backfill", { p_limit: BACKFILL_CONCURRENCY });
     if (claimed.error) {
       // sem a migration aplicada (ou fora do ar): a sincronização segue normal
       summary.skipped = claimed.error.code === "PGRST202" || claimed.error.code === "42883" ? "sem a base do MMM" : claimed.error.message.slice(0, 120);
       break;
     }
-    const jobs = (claimed.data ?? []) as Job[];
+    const jobs: Job[] = (claimed.data ?? []).map((j) => ({ ...j, platform_id: j.platform_id === "google" ? "google" : "meta", report_run_id: j.report_run_id ?? null }));
     if (!jobs.length) break;
     const ids = jobs.map((j) => j.ad_account_id);
     const accounts = new Map(((await db.from("ad_accounts").select("id, external_id, connection_id, currency, metadata").in("id", ids)).data ?? []).map((a) => [a.id, a as Account]));
-    if (googleOps === null && jobs.some((j) => j.platform_id === "google")) googleOps = ((await rpc(db, "mmm_google_ops_today", {})).data as number | null) ?? 0;
+    if (googleOps === null && jobs.some((j) => j.platform_id === "google")) googleOps = (await db.rpc("mmm_google_ops_today")).data ?? 0;
 
     await runPool(jobs, BACKFILL_CONCURRENCY, async (job) => {
       summary.ran++;
       const account = accounts.get(job.ad_account_id);
       const back = async (status: "aguardando" | "pendente" | "erro", erro: string | null, reportRunId: string | null, refund: boolean) => {
-        await rpc(db, "mmm_update_backfill", { p_id: job.id, p_status: status, p_erro: erro, p_report_run_id: reportRunId, p_refund: refund });
+        // sem erro ou sem relatório: o padrão da função (null) limpa o campo
+        await db.rpc("mmm_update_backfill", { p_id: job.id, p_status: status, p_erro: erro ?? undefined, p_report_run_id: reportRunId ?? undefined, p_refund: refund });
       };
       // plataforma em pausa (limite) ou teto do Google: volta para a fila sem gastar tentativa
       if (paused.has(job.platform_id) || (job.platform_id === "google" && (googleOps ?? 0) >= googleCap)) {
@@ -177,7 +173,7 @@ export async function runBackfillRound(opts: { budgetMs: number }): Promise<Back
         }
         const { from, to } = monthRange(job.mes);
         const raw = [{ date_from: from, date_to: to, request_hash: requestHash([job.platform_id, account.external_id, from, to, "campaign"]), payload: r.raw }];
-        const saved = await rpc(db, "mmm_save_backfill", { p_id: job.id, p_raw: raw, p_rows: r.rows ?? [] });
+        const saved = await db.rpc("mmm_save_backfill", { p_id: job.id, p_raw: raw as Json, p_rows: (r.rows ?? []) as Json });
         if (saved.error) throw new Error(saved.error.message);
         summary.concluded++;
       } catch (err) {

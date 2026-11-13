@@ -4217,6 +4217,57 @@ export type Database = {
         }
         Returns: string
       }
+      mmm_backfill_control: {
+        Args: {
+          p_ativo?: boolean
+          p_by?: string
+        }
+        Returns: Json
+      }
+      mmm_claim_backfill: {
+        Args: {
+          p_limit?: number
+        }
+        Returns: {
+            id: number
+            workspace_id: string
+            ad_account_id: string
+            platform_id: string
+            mes: string
+            status: string
+            tentativas: number
+            report_run_id: string
+          }[]
+      }
+      mmm_enqueue_backfill: {
+        Args: {
+          p_months?: number
+          p_requested_by?: string
+        }
+        Returns: number
+      }
+      mmm_google_ops_today: {
+        Args: never
+        Returns: number
+      }
+      mmm_save_backfill: {
+        Args: {
+          p_id: number
+          p_raw: Json
+          p_rows: Json
+        }
+        Returns: number
+      }
+      mmm_update_backfill: {
+        Args: {
+          p_id: number
+          p_status: string
+          p_erro?: string
+          p_report_run_id?: string
+          p_refund?: boolean
+        }
+        Returns: undefined
+      }
       prepare_account_deletion: {
         Args: {
           p_user_id: string

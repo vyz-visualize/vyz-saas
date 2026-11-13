@@ -10,6 +10,7 @@
 
 import { parseArgs } from "node:util";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 
 process.loadEnvFile?.(".env.local");
 
@@ -17,18 +18,17 @@ const { values } = parseArgs({ options: { status: { type: "boolean" }, enqueue: 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) throw new Error("Faltam NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env.local");
-const db = createClient(url, key, { auth: { persistSession: false } });
-const rpc = async (fn: string, args: Record<string, unknown> = {}) => {
-  const { data, error } = await (db as unknown as { rpc: (f: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }> }).rpc(fn, args);
-  if (error) throw new Error(`${fn}: ${error.message}`);
-  return data;
+const db = createClient<Database>(url, key, { auth: { persistSession: false } });
+const ok = <T,>(fn: string, r: { data: T; error: { message: string } | null }): T => {
+  if (r.error) throw new Error(`${fn}: ${r.error.message}`);
+  return r.data;
 };
 
 async function main() {
-  if (values.enqueue) console.log("trabalhos novos na fila:", await rpc("mmm_enqueue_backfill", { p_months: Number(values.months) }));
+  if (values.enqueue) console.log("trabalhos novos na fila:", ok("mmm_enqueue_backfill", await db.rpc("mmm_enqueue_backfill", { p_months: Number(values.months) })));
   if (values.start && values.pause) throw new Error("--start ou --pause, não os dois");
-  const ativo = values.start ? true : values.pause ? false : null;
-  console.log(JSON.stringify(await rpc("mmm_backfill_control", { p_ativo: ativo }), null, 2));
+  const ativo = values.start ? true : values.pause ? false : undefined;
+  console.log(JSON.stringify(ok("mmm_backfill_control", await db.rpc("mmm_backfill_control", ativo === undefined ? {} : { p_ativo: ativo })), null, 2));
 }
 
 main().catch((err) => {
