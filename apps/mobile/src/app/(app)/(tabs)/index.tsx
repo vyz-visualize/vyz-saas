@@ -185,7 +185,7 @@ export default function Home() {
                 <Pressable
                   disabled={!many}
                   accessibilityRole="button"
-                  accessibilityLabel={many ? `Workspace ${workspace?.name ?? ""}. Trocar de workspace` : (workspace?.name ?? "VYZ")}
+                  accessibilityLabel={many ? `Organização ${workspace?.name ?? ""}. Trocar de organização` : (workspace?.name ?? "VYZ")}
                   onPress={() => {
                     tap();
                     setPicker(true);
@@ -230,7 +230,7 @@ export default function Home() {
                 ))}
               </View>
             )}
-            {items.length > 0 && <SectionHeader title="Seus dashboards" caption={`${items.length} ${items.length === 1 ? "dashboard" : "dashboards"} neste workspace`} />}
+            {items.length > 0 && <SectionHeader title="Seus dashboards" caption={`${items.length} ${items.length === 1 ? "dashboard" : "dashboards"} nesta organização`} />}
           </View>
         }
         ListEmptyComponent={

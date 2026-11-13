@@ -32,7 +32,7 @@ export type StageInfo = {
 function ClientCard({ client, segment, compact = false }: { client: string; segment: string | null; compact?: boolean }) {
   return (
     <div className={`fa-float w-full rounded-[22px] border border-line bg-card shadow-[0_30px_70px_rgba(0,0,0,0.3)] ${compact ? "max-w-[300px] p-4" : "max-w-[420px] p-6"}`} data-stage-client>
-      <p className="label-caps text-fg-2">Projeto</p>
+      <p className="label-caps text-fg-2">Workspace</p>
       <p className={`display mt-1.5 truncate text-fg ${compact ? "text-[24px]" : "text-[36px]"}`}>{client}</p>
       {segment && <span className="mt-2 inline-block rounded-chip bg-accent px-2.5 py-0.5 text-[12px] font-semibold text-on-accent">{segment}</span>}
       {!compact && (

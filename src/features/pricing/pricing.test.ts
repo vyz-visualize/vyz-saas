@@ -73,7 +73,7 @@ describe("regras", () => {
   it("o plano é uma linha só, sem projeto extra nem plataforma extra", () => {
     const q = quote(s({ plano: "base", periodo: "mensal" }));
     expect(q.lines.map((l) => l.id)).toEqual(["plan"]);
-    expect(q.lines[0].label).toBe("Plano Básico · até 5 projetos");
+    expect(q.lines[0].label).toBe("Plano Básico · até 5 workspaces");
   });
 
   it("o desconto do anual vem dos preços", () => {
@@ -114,8 +114,8 @@ describe("URL", () => {
   });
 
   it("limita valores fora do teto e ignora projetos antigos na query", () => {
-    const back = fromQuery(new URLSearchParams("plano=pro&periodo=anual&projetos=500&plataformas=2&lp=40&sob=-2"));
-    expect(back).not.toHaveProperty("projetos");
+    const back = fromQuery(new URLSearchParams("plano=pro&periodo=anual&workspaces=500&plataformas=2&lp=40&sob=-2"));
+    expect(back).not.toHaveProperty("workspaces");
     expect(back).not.toHaveProperty("plataformas");
     expect(back?.lp).toBe(10);
     expect(back?.sob).toBe(0);
@@ -135,7 +135,7 @@ describe("mensagem do WhatsApp", () => {
       [
         "Olá, VYZ! Montei meu plano no site:",
         "• Plano Padrão, anual",
-        "• até 15 projetos",
+        "• até 15 workspaces",
         "• Tipo de negócio: E-commerce",
         "• Extras: 1× Landing page feita pelo time",
         "• Todo mês: R$ 183,25 (R$ 2.199,00 no ano)",

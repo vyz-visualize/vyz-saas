@@ -55,7 +55,7 @@ function checkPlan(patch: TaskPatchInput, level: "basic" | "full") {
 async function checkAssignees(db: DB, workspaceId: string, ids: string[] | undefined) {
   if (!ids?.length) return;
   const rows = unwrap(await db.from("workspace_members").select("user_id").eq("workspace_id", workspaceId).in("user_id", ids));
-  if ((rows ?? []).length !== new Set(ids).size) throw appError("validation", "Responsável fora do workspace.");
+  if ((rows ?? []).length !== new Set(ids).size) throw appError("validation", "Responsável fora da organização.");
 }
 
 function toColumns(p: TaskPatchInput) {

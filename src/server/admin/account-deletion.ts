@@ -87,7 +87,7 @@ export const CATEGORY: Record<string, string> = {
   connections: "Tokens e conexões", connection_secrets: "Tokens e conexões", oauth_states: "Tokens e conexões",
   ad_accounts: "Métricas e contas de anúncio", ad_campaigns: "Métricas e contas de anúncio", ads: "Métricas e contas de anúncio", ad_products: "Métricas e contas de anúncio", sync_runs: "Métricas e contas de anúncio", insights_account_daily: "Métricas e contas de anúncio", insights_ad_daily: "Métricas e contas de anúncio", insights_breakdown_daily: "Métricas e contas de anúncio", insights_campaign_daily: "Métricas e contas de anúncio", insights_product_daily: "Métricas e contas de anúncio", insights_search_term_daily: "Métricas e contas de anúncio", organic_daily: "Métricas e contas de anúncio", organic_posts: "Métricas e contas de anúncio", analytics_daily: "Métricas e contas de anúncio", crm_daily: "Métricas e contas de anúncio",
   dashboards: "Dashboards", dashboard_pages: "Dashboards", dashboard_sources: "Dashboards", dashboard_launch_sheets: "Dashboards", dashboard_exports: "Dashboards", share_links: "Dashboards", scheduled_reports: "Dashboards", scheduled_report_recipients: "Dashboards", report_deliveries: "Dashboards",
-  projects: "Projetos",
+  projects: "Workspaces",
   "mmm.raw_insights": "Base de MMM", "mmm.media_daily": "Base de MMM", "mmm.outcomes_daily": "Base de MMM", "mmm.eventos": "Base de MMM", "mmm.daily": "Base de MMM", "mmm.backfill_jobs": "Base de MMM",
   optimization_runs: "Otimizações", optimization_autopilot: "Otimizações",
   tasks: "Tarefas", task_groups: "Tarefas", task_automation_runs: "Tarefas",
@@ -103,7 +103,7 @@ export const CATEGORY: Record<string, string> = {
 export const KEPT_REASON: Record<string, string> = {
   invoices: "faturas: legislação tributária (em geral, 5 anos)",
   payment_transactions: "pagamentos: legislação tributária (em geral, 5 anos)",
-  billing_customers: "dados fiscais do cliente nos workspaces com fatura: legislação tributária",
+  billing_customers: "dados fiscais do cliente nas organizações com fatura: legislação tributária",
   checkout_sessions: "compras concluídas (com CPF ou CNPJ): legislação tributária",
   auth_events: "registros de acesso: Marco Civil (mínimo de 6 meses); apagados em 2 anos",
   activity_events: "atividade: histórico imutável, apagado em 13 meses",
@@ -198,7 +198,7 @@ export async function loadPlan(db: Db, rawEmail: string): Promise<DeletionPlan> 
       const mode = classifyWorkspace(m.members, invoices, payments);
       const plan: WorkspacePlan = { ...m, mode, invoices, payments, liveSubscriptions: [], counts: {}, files: [] };
       if (mode === "leave") {
-        if (m.role === "owner") warnings.push(`"${m.name}": a propriedade passa a outro membro. Os dados fiscais do workspace continuam em nome de quem contratou; avise a equipe.`);
+        if (m.role === "owner") warnings.push(`"${m.name}": a propriedade passa a outro membro. Os dados fiscais da organização continuam em nome de quem contratou; avise a equipe.`);
       } else {
         plan.liveSubscriptions = await db.query<{ id: string; provider: string; status: string }>(
           `select id::text as id, provider::text as provider, status::text as status
@@ -393,7 +393,7 @@ async function verify(db: Db, plan: DeletionPlan, addresses: string[]): Promise<
     if (w.mode === "leave") continue;
     for (const table of tables) {
       if (keeps.includes(table) || table === "workspaces") continue;
-      await check(`${table} do workspace ${w.id}`, `${ident(table)} where workspace_id = $1::uuid`, [w.id]);
+      await check(`${table} da organização ${w.id}`, `${ident(table)} where workspace_id = $1::uuid`, [w.id]);
     }
   }
   if (left.length) throw new Error(`Sobrou dado depois da exclusão, nada foi apagado: ${left.join("; ")}`);
@@ -436,7 +436,7 @@ export function renderPlan(plan: DeletionPlan): string {
     out.push("");
   }
   out.push("ACESSO A REVOGAR NA ORIGEM (antes de apagar os tokens)", "");
-  if (!plan.revocations.length) out.push("  Nenhuma conexão real (Meta ou Google) nos workspaces que saem.");
+  if (!plan.revocations.length) out.push("  Nenhuma conexão real (Meta ou Google) nas organizações que saem.");
   for (const r of plan.revocations) out.push(`  ${providerLabel(r.provider)} · ${r.account} (workspace "${r.workspaceName}")`);
   out.push("");
   out.push("O QUE FICA (obrigação legal ou histórico imutável)", "");

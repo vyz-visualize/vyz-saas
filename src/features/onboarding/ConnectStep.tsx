@@ -42,7 +42,7 @@ function ConnectLink({ href, provider, connected, canManage }: { href: string; p
   const name = PROVIDERS[provider].name;
   if (!canManage) {
     return (
-      <span className={`${btn.small} cursor-not-allowed opacity-50`} aria-disabled="true" title="Só administradores do workspace conectam contas.">
+      <span className={`${btn.small} cursor-not-allowed opacity-50`} aria-disabled="true" title="Só administradores da organização conectam contas.">
         Conectar {name}
       </span>
     );

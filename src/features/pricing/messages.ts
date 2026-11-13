@@ -4,7 +4,7 @@ import { DASH_CUSTOM, LP_CARE_MONTHLY, NICHO_LABEL, PERIOD_LABEL, PLAN_LABEL, PL
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function describeProjects(s: PlanState): string {
-  return s.plano === "sem" ? "" : `até ${plural(PLAN_PROJECTS[s.plano], "projeto", "projetos")}`;
+  return s.plano === "sem" ? "" : `até ${plural(PLAN_PROJECTS[s.plano], "workspace", "workspaces")}`;
 }
 
 export function describeExtras(s: PlanState): string[] {

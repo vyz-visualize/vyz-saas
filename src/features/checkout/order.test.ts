@@ -8,11 +8,11 @@ const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
 
 describe("pedido", () => {
   it("Padrão anual: 15 projetos fixos, mesmo com projetos na query antiga", () => {
-    const order = buildOrder(normalizeState(fromQuery(new URLSearchParams("plano=pro&periodo=anual&projetos=5"))));
+    const order = buildOrder(normalizeState(fromQuery(new URLSearchParams("plano=pro&periodo=anual&workspaces=5"))));
     expect(order.planId).toBe("pro");
     expect(order.interval).toBe("year");
     expect(order.accountsQuantity).toBe(15);
-    expect(order.items).toEqual([{ kind: "recurring", planPriceId: "pro_year", quantity: 15, amountCents: 18325, label: "Plano Padrão · até 15 projetos" }]);
+    expect(order.items).toEqual([{ kind: "recurring", planPriceId: "pro_year", quantity: 15, amountCents: 18325, label: "Plano Padrão · até 15 workspaces" }]);
     expect(order.recurringCents).toBe(219900);
     expect(order.amountDueNowCents).toBe(order.recurringCents);
     expect(order.blocked).toBeUndefined();
@@ -29,7 +29,7 @@ describe("pedido", () => {
     const order = buildOrder(s({ plano: "avancado", periodo: "anual" }));
     expect(order.items).toHaveLength(1);
     expect(order.items[0]).toMatchObject({ planPriceId: "avancado_year", quantity: 30, amountCents: 40825 });
-    expect(order.items[0].label).toBe("Plano Avançado · até 30 projetos");
+    expect(order.items[0].label).toBe("Plano Avançado · até 30 workspaces");
     expect(order.recurringCents).toBe(489900);
   });
 

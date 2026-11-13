@@ -59,7 +59,7 @@ async function Payment({ params, searchParams }: Pick<PageProps<"/assinar/pagame
           <span className="text-accent">{checkout.fullName.split(" ")[0]}.</span>
         </h1>
         <p className="mt-4 max-w-xl text-[15px] text-fg-2">
-          Assim que o pagamento for aprovado, o workspace <strong className="font-semibold text-fg">{checkout.companyName}</strong> fica pronto e você segue
+          Assim que o pagamento for aprovado, a organização <strong className="font-semibold text-fg">{checkout.companyName}</strong> fica pronta e você segue
           para conectar as contas.
         </p>
         <div className="mt-8">

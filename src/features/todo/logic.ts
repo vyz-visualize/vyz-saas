@@ -103,7 +103,7 @@ const brDate = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5
 export function tasksCsv(tasks: TaskDTO[], opts: { today: string; members: TaskMember[]; groups: { id: string; name: string }[]; full: boolean }): string {
   const name = new Map(opts.members.map((m) => [m.userId, m.name]));
   const group = new Map(opts.groups.map((g) => [g.id, g.name]));
-  const head = ["Tarefa", "Detalhe", "Projeto", "Status", "Etapa", "Prioridade", "Situação", "Prazo", ...(opts.full ? ["Início", "Responsáveis", "Grupo"] : []), "Origem", "Criada em", "Concluída em"];
+  const head = ["Tarefa", "Detalhe", "Workspace", "Status", "Etapa", "Prioridade", "Situação", "Prazo", ...(opts.full ? ["Início", "Responsáveis", "Grupo"] : []), "Origem", "Criada em", "Concluída em"];
   let out = CSV_BOM + csvRow(head);
   for (const t of tasks) {
     out += csvRow([
@@ -162,7 +162,7 @@ export const PLAYBOOKS: Playbook[] = [
     description: "Entrada de um cliente, do acesso ao primeiro relatório.",
     tasks: [
       { title: "Pedir acessos às contas de anúncio e analytics", stage: "outro", priority: "alta", startOffset: 0, days: 2 },
-      { title: "Ligar as contas no VYZ e criar o projeto", stage: "outro", priority: "alta", startOffset: 1, days: 2 },
+      { title: "Ligar as contas no VYZ e criar o workspace", stage: "outro", priority: "alta", startOffset: 1, days: 2 },
       { title: "Auditar campanhas, pixel e conversões", stage: "midia_paga", priority: "alta", startOffset: 2, days: 4 },
       { title: "Alinhar metas e verba do primeiro mês", stage: "midia_paga", priority: "media", startOffset: 3, days: 3 },
       { title: "Montar o dashboard e compartilhar com o cliente", stage: "relatorio", priority: "media", startOffset: 5, days: 3 },

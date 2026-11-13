@@ -17,7 +17,7 @@ export async function joinLandingWaitlist(rawUseCase: unknown): Promise<ActionRe
     const useCase = normalizeUseCase(rawUseCase);
     if (useCase === "invalid") throw appError("validation", `Use até ${WAITLIST_USE_CASE_MAX} caracteres.`);
     const session = await authorize("viewer", { access: false });
-    if (landingPagesEnabledFor(session.workspace.product)) throw appError("forbidden", "A lista de espera não está aberta para este workspace.");
+    if (landingPagesEnabledFor(session.workspace.product)) throw appError("forbidden", "A lista de espera não está aberta para esta organização.");
 
     const supabase = await createServerSupabase();
     // o e-mail é preenchido pelo gatilho do banco, por isso fica de fora daqui

@@ -197,16 +197,16 @@ function ChangePlan({
                 {brl(planMonthly(t, next.period))}
                 <span className="text-[12px] font-medium tracking-normal text-fg-2">/mês</span>
               </span>
-              <span className="mt-1.5 block text-[12.5px] text-fg-2">até {PLAN_PROJECTS[t]} projetos</span>
+              <span className="mt-1.5 block text-[12.5px] text-fg-2">até {PLAN_PROJECTS[t]} workspaces</span>
             </button>
           );
         })}
       </div>
       <p className="text-[13px] text-fg-2">
-        O {TIER_LABEL[next.tier]} vai até <strong className="font-semibold text-fg">{PLAN_PROJECTS[next.tier]} projetos</strong> (clientes ou marcas); você usa{" "}
+        O {TIER_LABEL[next.tier]} vai até <strong className="font-semibold text-fg">{PLAN_PROJECTS[next.tier]} workspaces</strong> (clientes ou marcas); você usa{" "}
         {usage.projects}. Mais de {MAX_PROJECTS_IN_PLAN}?{" "}
         <a
-          href={waLink(`Olá, VYZ! Tenho mais de ${MAX_PROJECTS_IN_PLAN} projetos e quero o plano Personalizado.`)}
+          href={waLink(`Olá, VYZ! Tenho mais de ${MAX_PROJECTS_IN_PLAN} workspaces e quero o plano Personalizado.`)}
           target="_blank"
           rel="noopener noreferrer"
           className="font-semibold text-accent underline-offset-4 hover:underline"
@@ -483,7 +483,7 @@ export function PlanPage({
     : tier
       ? lp
         ? `${ent.maxLandingPages} landing pages no plano`
-        : `${access.accountsQuantity} ${access.accountsQuantity === 1 ? "projeto contratado" : "projetos contratados"}`
+        : `${access.accountsQuantity} ${access.accountsQuantity === 1 ? "workspace contratado" : "workspaces contratados"}`
       : lp
         ? "Escolha um plano para publicar as landing pages."
         : "Escolha um plano para usar os dashboards.";
@@ -508,7 +508,7 @@ export function PlanPage({
 
       {inactive && !tier && (
         <p role="status" className="rounded-card bg-error-soft px-4 py-3 text-[14px]">
-          Para abrir essa página o workspace precisa de uma assinatura ativa. Os dados continuam guardados.
+          Para abrir essa página a organização precisa de uma assinatura ativa. Os dados continuam guardados.
         </p>
       )}
 
@@ -517,7 +517,7 @@ export function PlanPage({
       {tab === "plano" && (
         <div className="space-y-4" role="tabpanel" aria-label="Plano">
           {!tier && (
-            <Section id="h-assinar" title="Assinar" text={role === "owner" ? "Assine um dos planos. O pagamento libera o painel na hora." : "Peça ao dono do workspace para assinar um plano."}>
+            <Section id="h-assinar" title="Assinar" text={role === "owner" ? "Assine um dos planos. O pagamento libera o painel na hora." : "Peça ao dono da organização para assinar um plano."}>
               {role === "owner" && (
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                   <Link href={lp ? "/assinar?produto=lp&plano=pro&periodo=mensal" : "/assinar?plano=pro&periodo=anual&meta=1&google=0"} className={`${btn.small} max-sm:h-11`}>
@@ -566,12 +566,12 @@ export function PlanPage({
                   </p>
                 )}
               </Section>
-              <Section id="h-uso" title="Uso atual" text={lp ? undefined : `Cada cliente ou marca é um projeto, com até ${ent.maxAccountsPerPlatform} ${ent.maxAccountsPerPlatform === 1 ? "conta" : "contas"} de cada plataforma.`}>
+              <Section id="h-uso" title="Uso atual" text={lp ? undefined : `Cada cliente ou marca é um workspace, com até ${ent.maxAccountsPerPlatform} ${ent.maxAccountsPerPlatform === 1 ? "conta" : "contas"} de cada plataforma.`}>
                 {lp ? (
                   <Meter used={usage.publishedLandingPages} limit={ent.maxLandingPages} label="Landing pages publicadas" />
                 ) : (
                   <div className="space-y-5">
-                    <Meter used={usage.projects} limit={access.accountsQuantity} label="Projetos" />
+                    <Meter used={usage.projects} limit={access.accountsQuantity} label="Workspaces" />
                     <Meter used={usage.dashboards} limit={ent.maxDashboards} label="Dashboards" />
                   </div>
                 )}
@@ -595,7 +595,7 @@ export function PlanPage({
               </Section>
             </>
           )}
-          {sub && !canManage && overview && <p className="text-[13.5px] text-fg-2">Só o dono do workspace troca o plano ou cancela a assinatura.</p>}
+          {sub && !canManage && overview && <p className="text-[13.5px] text-fg-2">Só o dono da organização troca o plano ou cancela a assinatura.</p>}
         </div>
       )}
 

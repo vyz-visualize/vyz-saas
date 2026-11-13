@@ -52,7 +52,7 @@ function PlanSwitch({ plan, onChange }: { plan: PlanId; onChange: (p: PlanId) =>
           className={`rounded-[10px] px-2 py-2 text-center transition-colors ${plan === p ? "bg-accent text-on-accent" : "text-fg-2 hover:text-fg"}`}
         >
           <span className="block text-[13.5px] font-semibold">{PLAN_LABEL[p]}</span>
-          <span className="block text-[11.5px] tnum">até {PLAN_PROJECTS[p]} projetos</span>
+          <span className="block text-[11.5px] tnum">até {PLAN_PROJECTS[p]} workspaces</span>
         </button>
       ))}
     </div>
@@ -87,16 +87,16 @@ function ProjectHelp() {
   return (
     <details className="group mt-2 text-[13px]">
       <summary className="inline-flex cursor-pointer list-none items-center gap-1 font-semibold text-accent underline-offset-4 hover:underline">
-        <CircleHelp size={14} aria-hidden /> O que é um projeto?
+        <CircleHelp size={14} aria-hidden /> O que é um workspace?
       </summary>
       <div className="mt-2 space-y-2 rounded-control border border-line bg-bg p-3 leading-relaxed text-fg-2">
         <p>
-          <strong className="font-semibold text-fg">Projeto é cada empresa que você acompanha</strong>: a sua loja, ou cada cliente, se você é agência ou gestor
+          <strong className="font-semibold text-fg">Workspace é cada empresa que você acompanha</strong>: a sua loja, ou cada cliente, se você é agência ou gestor
           de tráfego.
         </p>
         <p>
           Exemplo: você cuida da <span className="text-fg">Padaria do João</span>, da <span className="text-fg">Loja da Maria</span> e da{" "}
-          <span className="text-fg">Clínica Sorriso</span>. São 3 projetos. Em cada um você conecta o Meta Ads e o Google Ads daquela empresa e monta os
+          <span className="text-fg">Clínica Sorriso</span>. São 3 workspaces. Em cada um você conecta o Meta Ads e o Google Ads daquela empresa e monta os
           dashboards dela.
         </p>
         <p>Passou do limite do plano? Suba para o plano de cima quando quiser, no painel.</p>
@@ -186,7 +186,7 @@ export function OrderSummary({
             <p className="text-[15px] font-semibold text-fg">O {PLAN_LABEL[plan]} inclui</p>
             <ul className="mt-2 space-y-1.5 text-[13px] text-fg-2">
               {[
-                `Até ${PLAN_PROJECTS[plan]} projetos (clientes ou marcas)`,
+                `Até ${PLAN_PROJECTS[plan]} workspaces (clientes ou marcas)`,
                 `${ENTITLEMENTS[plan].maxDashboards} dashboards`,
                 `${ENTITLEMENTS[plan].maxMembers} ${ENTITLEMENTS[plan].maxMembers === 1 ? "usuário" : "usuários"}`,
                 platformsForTier(plan)
@@ -201,9 +201,9 @@ export function OrderSummary({
             </ul>
             <ProjectHelp />
             <p className="mt-2 text-[12.5px] text-fg-2">
-              Mais de {MAX_PROJECTS_IN_PLAN} projetos?{" "}
+              Mais de {MAX_PROJECTS_IN_PLAN} workspaces?{" "}
               <a
-                href={waLink(`Olá, VYZ! Tenho mais de ${MAX_PROJECTS_IN_PLAN} projetos e quero o plano Personalizado.`)}
+                href={waLink(`Olá, VYZ! Tenho mais de ${MAX_PROJECTS_IN_PLAN} workspaces e quero o plano Personalizado.`)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-semibold text-accent underline-offset-4 hover:underline"

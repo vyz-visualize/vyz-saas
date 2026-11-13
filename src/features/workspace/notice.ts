@@ -10,7 +10,7 @@ export function subscriptionNotice(access: Pick<WorkspaceAccess, "hasAccess" | "
   if (!access.hasAccess) {
     return {
       tone: "error",
-      text: access.status ? "A assinatura deste workspace não está ativa. Os dados continuam guardados." : "Este workspace ainda não tem um plano.",
+      text: access.status ? "A assinatura desta organização não está ativa. Os dados continuam guardados." : "Esta organização ainda não tem um plano.",
       action: { label: "Ver plano", href: "/painel/plano" },
     };
   }

@@ -25,7 +25,7 @@ describe("contas por projeto", () => {
   });
 
   it("rótulo com singular", () => {
-    expect(planUsageLabel(1, 1)).toBe("1 de 1 projeto do plano");
-    expect(planUsageLabel(2, 3)).toBe("2 de 3 projetos do plano");
+    expect(planUsageLabel(1, 1)).toBe("1 de 1 workspace do plano");
+    expect(planUsageLabel(2, 3)).toBe("2 de 3 workspaces do plano");
   });
 });

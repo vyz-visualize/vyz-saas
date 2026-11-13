@@ -56,7 +56,7 @@ export async function startOnboarding(): Promise<ActionResult> {
 }
 
 const ProjectInput = z.object({
-  name: z.string().trim().min(1, "Dê um nome ao projeto.").max(80, "Até 80 caracteres."),
+  name: z.string().trim().min(1, "Dê um nome ao workspace.").max(80, "Até 80 caracteres."),
   businessTypeId: z.string().max(40),
 });
 
@@ -79,13 +79,13 @@ export async function saveFirstProject(name: string, businessTypeId: string): Pr
     if (existing) {
       if (existing.name !== clean) {
         const res = await supabase.from("projects").update({ name: clean }).eq("id", existing.id).eq("workspace_id", workspaceId);
-        if (res.error?.code === "23505") throw appError("conflict", "Já existe um projeto com esse nome.");
+        if (res.error?.code === "23505") throw appError("conflict", "Já existe um workspace com esse nome.");
         unwrap(res);
         await logActivity({ workspaceId, actorId: session.user.id, event: "project.renamed", entityType: "project", entityId: existing.id, metadata: { name: clean, source: "onboarding" } });
       }
     } else {
       const res = await supabase.from("projects").insert({ workspace_id: workspaceId, name: clean, created_by: session.user.id }).select("id").single();
-      if (res.error?.code === "23505") throw appError("conflict", "Já existe um projeto com esse nome.");
+      if (res.error?.code === "23505") throw appError("conflict", "Já existe um workspace com esse nome.");
       const row = unwrap(res);
       await logActivity({ workspaceId, actorId: session.user.id, event: "project.created", entityType: "project", entityId: row?.id ?? null, metadata: { source: "onboarding" } });
     }

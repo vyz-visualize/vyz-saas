@@ -24,9 +24,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/v1/workspac
   if (!z.uuid().safeParse(taskId).success) return fail("task:not_found", "Tarefa não encontrada.", 404);
   try {
     const ws = await bearerWorkspace(session, workspaceId);
-    if (!ws || ws.workspace.id !== workspaceId) return fail("forbidden", "Você não tem acesso a este workspace.", 403);
+    if (!ws || ws.workspace.id !== workspaceId) return fail("forbidden", "Você não tem acesso a esta organização.", 403);
     if (!hasRole(ws.role, "member")) return fail("forbidden", "Seu acesso é só de leitura.", 403);
-    if (!ws.access.hasAccess) return fail("plan:inactive", "O plano deste workspace está inativo.", 402);
+    if (!ws.access.hasAccess) return fail("plan:inactive", "O plano desta organização está inativo.", 402);
     const run = await applyTaskFor(session.db, workspaceId, session.userId, taskId);
     return apiJson({ run });
   } catch (err) {

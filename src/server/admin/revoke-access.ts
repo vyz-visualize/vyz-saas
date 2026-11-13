@@ -79,7 +79,7 @@ export async function revokeAll(pending: { item: AccessToRevoke; tokens: StoredT
 
 /** O resultado, para a tela: o que foi revogado e, à parte, o que falta remover à mão. */
 export function renderRevocations(outcomes: RevokeOutcome[]): string {
-  if (!outcomes.length) return "Revogação na origem: nenhuma conexão real nos workspaces apagados.";
+  if (!outcomes.length) return "Revogação na origem: nenhuma conexão real nas organizações apagadas.";
   const done = outcomes.filter((o) => o.revoked);
   const left = outcomes.filter((o) => !o.revoked);
   const line = (o: RevokeOutcome) => `  ${providerLabel(o.provider)} · ${o.account} (workspace "${o.workspaceName}")${o.reason ? `: ${o.reason}` : ""}`;

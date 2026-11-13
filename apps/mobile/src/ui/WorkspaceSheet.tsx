@@ -12,7 +12,7 @@ export const ROLE_LABEL: Record<Role, string> = { owner: "Dono", admin: "Adminis
 export function WorkspaceSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { me, workspace, switchTo } = useWorkspace();
   return (
-    <Sheet open={open} onClose={onClose} title="Trocar de workspace" caption="Os dashboards, as análises e as tarefas mudam junto.">
+    <Sheet open={open} onClose={onClose} title="Trocar de organização" caption="Os dashboards, as análises e as tarefas mudam junto.">
       <Card padded={false} style={{ gap: 0, overflow: "hidden" }}>
         {me?.workspaces.map((w, i) => (
           <View key={w.id}>

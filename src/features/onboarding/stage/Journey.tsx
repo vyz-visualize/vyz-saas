@@ -79,7 +79,7 @@ function BuildMini() {
 }
 
 const STEPS: { n: string; title: string; text: string; time: string; art: ReactNode }[] = [
-  { n: "01", title: "Projeto", text: "O nome do cliente e o segmento.", time: "30 s", art: <ProjectMini /> },
+  { n: "01", title: "Workspace", text: "O nome do cliente e o segmento.", time: "30 s", art: <ProjectMini /> },
   { n: "02", title: "Conectar", text: "O login do Meta Ads e do Google Ads.", time: "1 min", art: <ConnectMini /> },
   { n: "03", title: "Contas", text: "As contas, o Instagram e a Página que entram.", time: "20 s", art: <AccountsMini /> },
   { n: "04", title: "Modelo", text: "O visual do dashboard, sugerido pelo objetivo.", time: "20 s", art: <BuildMini /> },

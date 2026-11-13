@@ -24,9 +24,9 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/v1/workspa
   if (!body || typeof body !== "object") return fail("validation", "Envie os campos da tarefa.", 400);
   try {
     const ws = await bearerWorkspace(session, workspaceId);
-    if (!ws || ws.workspace.id !== workspaceId) return fail("forbidden", "Você não tem acesso a este workspace.", 403);
+    if (!ws || ws.workspace.id !== workspaceId) return fail("forbidden", "Você não tem acesso a esta organização.", 403);
     if (!hasRole(ws.role, "member")) return fail("forbidden", "Seu acesso é só de leitura.", 403);
-    if (!ws.access.hasAccess) return fail("plan:inactive", "O plano deste workspace está inativo.", 402);
+    if (!ws.access.hasAccess) return fail("plan:inactive", "O plano desta organização está inativo.", 402);
     const task = await updateTaskRow(session.db, workspaceId, taskId, body, todoLevel(ws));
     const today = todayIn(ws.workspace.timezone || "America/Sao_Paulo");
     return apiJson({ task: { ...task, situation: situationOf(task, today) } });

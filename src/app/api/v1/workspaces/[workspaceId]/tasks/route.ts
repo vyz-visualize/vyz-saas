@@ -22,7 +22,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/v1/workspace
   if (!z.uuid().safeParse(workspaceId).success) return fail("validation", "Workspace inválido.", 400);
   try {
     const ws = await bearerWorkspace(session, workspaceId);
-    if (!ws || ws.workspace.id !== workspaceId) return fail("forbidden", "Você não tem acesso a este workspace.", 403);
+    if (!ws || ws.workspace.id !== workspaceId) return fail("forbidden", "Você não tem acesso a esta organização.", 403);
     const timeZone = ws.workspace.timezone || "America/Sao_Paulo";
     if (ws.access.hasAccess) await maybeGenerateAutoTasks(createAdminSupabase(), workspaceId, timeZone);
     const openOnly = new URL(request.url).searchParams.get("abertas") === "1";

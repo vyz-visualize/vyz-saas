@@ -296,7 +296,7 @@ async function notifyApplied(db: DB, workspaceId: string, logs: OptimizationLogD
   const { data: ws } = await db.from("workspaces").select("name").eq("id", workspaceId).maybeSingle();
   const { data: subs } = await db.from("whatsapp_subscriptions").select("*").eq("workspace_id", workspaceId);
   for (const s of (subs ?? []).filter((s) => wants(s, "alertas"))) {
-    const r = await sendTemplate(s.phone, "alertas", [ws?.name ?? "seu workspace", "Otimização automática", `${title}.`, body]);
+    const r = await sendTemplate(s.phone, "alertas", [ws?.name ?? "sua organização", "Otimização automática", `${title}.`, body]);
     await recordOut(db, s.id, "alertas", r, `otimizacao:${logs[0].id}`);
   }
 }
@@ -328,7 +328,7 @@ export async function undoFor(workspaceId: string, userId: string, runId: string
 
 export async function saveAutopilotFor(userDb: DB, workspaceId: string, userId: string, projectId: string, rules: Partial<AutopilotRules>, allowed: boolean): Promise<AutopilotRules> {
   if (!allowed) throw appError("forbidden", availableIn("avancado"));
-  if (!z.uuid().safeParse(projectId).success) throw appError("validation", "Projeto não encontrado.");
+  if (!z.uuid().safeParse(projectId).success) throw appError("validation", "Workspace não encontrado.");
   const clean = cleanRules(rules);
   unwrap(
     await userDb

@@ -47,7 +47,7 @@ export function authEventLabel(event: string, method: string | null, metadata: R
 const ACTIVITY_LABEL: Record<string, string> = {
   "billing.checkout_completed": "Assinatura paga",
   "onboarding.started": "Começou o primeiro acesso",
-  "onboarding.business_chosen": "Primeiro projeto e segmento escolhidos",
+  "onboarding.business_chosen": "Primeiro workspace e segmento escolhidos",
   "onboarding.connected": "Primeiro acesso: contas conectadas",
   "onboarding.completed": "Primeiro acesso concluído",
   "onboarding.skipped": "Primeiro acesso pulado (passos pendentes na Início)",
@@ -79,7 +79,7 @@ const ACTIVITY_LABEL: Record<string, string> = {
   "team.member_removed": "Membro removido da equipe",
   "landing.leads_exported": "Leads exportados (CSV)",
   "landing.waitlist_joined": "Entrou na lista de espera",
-  "ad_account.moved_to_project": "Conta movida para outro projeto",
+  "ad_account.moved_to_project": "Conta movida para outro workspace",
   "admin.plan_granted": "Plano liberado pela equipe VYZ",
   "admin.plan_removed": "Plano retirado pela equipe VYZ",
   "agent.consulted": "Perguntou ao VYZ",
@@ -98,9 +98,9 @@ const ACTIVITY_LABEL: Record<string, string> = {
   "optimization.applied": "Aplicou uma otimização",
   "optimization.autopilot_saved": "Configurou o automático das otimizações",
   "optimization.undone": "Desfez uma otimização",
-  "project.archived": "Arquivou um projeto",
-  "project.created": "Criou um projeto",
-  "project.renamed": "Renomeou um projeto",
+  "project.archived": "Arquivou um workspace",
+  "project.created": "Criou um workspace",
+  "project.renamed": "Renomeou um workspace",
   "report.deleted": "Apagou um relatório agendado",
   "report.scheduled": "Agendou um relatório",
   "share_link.created": "Criou um link de compartilhamento",
@@ -115,8 +115,8 @@ const ACTIVITY_LABEL: Record<string, string> = {
   "whatsapp.test_sent": "Enviou um teste no WhatsApp",
   "whatsapp.verification_started": "Começou a verificar o WhatsApp",
   "whatsapp.verified": "Verificou o número do WhatsApp",
-  "workspace.opened": "Abriu o workspace",
-  "workspace.updated": "Alterou os dados do workspace",
+  "workspace.opened": "Abriu a organização",
+  "workspace.updated": "Alterou os dados da organização",
 };
 
 const PROVIDER_LABEL: Record<string, string> = { meta: "Meta Ads", google: "Google Ads" };
@@ -130,7 +130,7 @@ export function activityLabel(event: string, metadata: Record<string, unknown> =
   return base;
 }
 
-const AREA: Record<string, string> = { dashboard: "Dashboard", billing: "Cobrança", integration: "Conexões", sync: "Sincronização", project: "Projetos", task: "Tarefas", whatsapp: "WhatsApp", landing_page: "Landing pages", report: "Relatórios", team: "Equipe", workspace: "Workspace", optimization: "Otimizações", agent: "Assistente VYZ" };
+const AREA: Record<string, string> = { dashboard: "Dashboard", billing: "Cobrança", integration: "Conexões", sync: "Sincronização", project: "Workspaces", task: "Tarefas", whatsapp: "WhatsApp", landing_page: "Landing pages", report: "Relatórios", team: "Equipe", workspace: "Organização", optimization: "Otimizações", agent: "Assistente VYZ" };
 
 /** "Dashboard · alteração registrada" para um evento que ainda não tem frase própria. */
 export function fallbackLabel(event: string): string {
@@ -143,10 +143,10 @@ export const activityTone = (event: string): HistoryTone => (/\.(failed|connect_
 
 // O que cada tabela auditada é para quem lê (com artigo).
 const TABLE_NOUN: Record<string, string> = {
-  workspaces: "o workspace",
+  workspaces: "a organização",
   workspace_members: "um membro da equipe",
   workspace_invitations: "um convite",
-  workspace_platforms: "uma plataforma do workspace",
+  workspace_platforms: "uma plataforma da organização",
   dashboards: "o dashboard",
   dashboard_pages: "uma página de dashboard",
   dashboard_sources: "uma conta de dashboard",

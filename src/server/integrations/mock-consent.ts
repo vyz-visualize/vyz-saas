@@ -42,7 +42,7 @@ export async function loadMockConsent(provider: ProviderId, rawState: string | s
     state,
     // O "código de autorização" do provedor simulado (a troca confere o formato).
     code: `mock_${randomToken(24)}`,
-    workspaceName: ws?.name ?? "seu workspace",
+    workspaceName: ws?.name ?? "sua organização",
     expiresAt: data.expires_at,
     timeZone: ws?.timezone ?? "America/Sao_Paulo",
   };

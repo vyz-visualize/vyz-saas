@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   const { question, workspaceId, dashboardId, search } = parsed.data;
   try {
     const ws = await bearerWorkspace(session, workspaceId);
-    if (!ws) return apiJson({ error: { code: "workspace:not_found", message: "Workspace não encontrado." } }, 404);
+    if (!ws) return apiJson({ error: { code: "workspace:not_found", message: "Organização não encontrada." } }, 404);
     const focus = dashboardId ? { dashboardId, search: search ?? "" } : undefined;
     const ctx = await loadAgentContext(new Date(), focus, { session: ws, db: session.db });
     const answer = await createEngine().ask(question, ctx);

@@ -27,5 +27,5 @@ export function fitsProject(candidate: BillableRef, enabled: BillableRef[], maxP
 
 /** "2 de 3 projetos do plano" (com singular). */
 export function planUsageLabel(used: number, quantity: number): string {
-  return `${used} de ${quantity} ${quantity === 1 ? "projeto" : "projetos"} do plano`;
+  return `${used} de ${quantity} ${quantity === 1 ? "workspace" : "workspaces"} do plano`;
 }

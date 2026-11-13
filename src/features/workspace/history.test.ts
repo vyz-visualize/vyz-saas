@@ -28,7 +28,7 @@ describe("auditLabel", () => {
   it("monta a frase com o nome quando a coisa tem nome", () => {
     expect(auditLabel({ action: "insert", table: "dashboards", name: "Loja Verde" })).toBe("Criou o dashboard “Loja Verde”");
     expect(auditLabel({ action: "delete", table: "share_links", name: "x" })).toBe("Apagou um link compartilhado");
-    expect(auditLabel({ action: "update", table: "workspaces", name: null })).toBe("Alterou o workspace");
+    expect(auditLabel({ action: "update", table: "workspaces", name: null })).toBe("Alterou a organização");
     expect(auditLabel({ action: "insert", table: "workspace_members" })).toBe("Adicionou um membro à equipe");
   });
 

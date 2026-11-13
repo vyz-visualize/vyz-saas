@@ -126,7 +126,7 @@ export async function fullWorkspace(db: PGlite, ins: Ins, { userId, name, slug }
   const conn = await ins("connections", { workspace_id: w.id, provider: "meta", external_user_id: `fb-${slug}`, external_user_name: `Facebook de ${name}`, connected_by: userId });
   const access = (await db.query<{ id: string }>(`select vault.create_secret($1, $2) as id`, [`token-secreto-${slug}`, `vyz:${slug}`])).rows[0].id;
   await ins("connection_secrets", { connection_id: conn.id, access_token_secret_id: access });
-  const proj = await ins("projects", { workspace_id: w.id, name: "Projeto", created_by: userId });
+  const proj = await ins("projects", { workspace_id: w.id, name: "Workspace", created_by: userId });
   const acc = await ins("ad_accounts", { workspace_id: w.id, connection_id: conn.id, project_id: proj.id, platform_id: "meta", external_id: `act_${slug}`, name: "Conta", status: "active", is_enabled: true, enabled_at: "2026-11-01T00:00:00Z" });
   if (!acc.is_enabled) throw new Error("a conta de teste não ficou ativa");
   const camp = await ins("ad_campaigns", { workspace_id: w.id, ad_account_id: acc.id, external_id: `c-${slug}`, name: "Campanha" });

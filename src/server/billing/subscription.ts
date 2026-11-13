@@ -63,7 +63,7 @@ async function assertUsageFits(db: DB, workspaceId: string, next: PlanSelection)
 // o que fazer quando o uso não cabe (o hint do banco diz só o número)
 const IN_USE_ADVICE: Record<string, string> = {
   "limit:accounts_in_use": "Desative contas em Contas antes de trocar.",
-  "limit:projects_in_use": "Arquive projetos em Projetos antes de trocar.",
+  "limit:projects_in_use": "Arquive workspaces em Workspaces antes de trocar.",
   "limit:dashboards_in_use": "Apague alguns dashboards antes de trocar.",
   "limit:landing_pages_in_use": "Despublique algumas landing pages antes de trocar.",
   "limit:members_in_use": "Remova pessoas ou cancele convites em Equipe antes de trocar.",

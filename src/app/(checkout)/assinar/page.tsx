@@ -99,10 +99,10 @@ function AccountNotice({ viewer }: { viewer: CheckoutViewer }) {
       </div>
       {viewer.target && (
         <p className="text-fg-2">
-          Este pedido assina o workspace <strong className="font-semibold text-fg">{viewer.target.workspaceName}</strong>.
+          Este pedido assina a organização <strong className="font-semibold text-fg">{viewer.target.workspaceName}</strong>.
         </p>
       )}
-      {viewer.memberElsewhere && <p className="text-fg-2">Você participa do workspace de outra pessoa. Este pedido cria um workspace seu, separado.</p>}
+      {viewer.memberElsewhere && <p className="text-fg-2">Você participa da organização de outra pessoa. Este pedido cria uma organização sua, separada.</p>}
     </div>
   );
 }
@@ -138,7 +138,7 @@ function AlreadySubscribed({ workspaceName, test }: { workspaceName: string; tes
         Você já assina o VYZ.
       </h1>
       <p className="mt-4 text-[15px] text-fg-2">
-        O workspace <strong className="font-semibold text-fg">{workspaceName}</strong> já tem uma assinatura ativa. Para mudar de plano, de período ou de
+        A organização <strong className="font-semibold text-fg">{workspaceName}</strong> já tem uma assinatura ativa. Para mudar de plano, de período ou de
         contas, use a página Plano, no painel.
       </p>
       <div className="mt-6 flex flex-wrap gap-3">

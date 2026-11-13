@@ -199,7 +199,7 @@ export function TeamSection({ data, role, timeZone, notify }: { data: SettingsDa
         {removing && (
           <div className="space-y-4">
             <p className="text-[14px] text-fg-2">
-              <strong className="text-fg">{removing.name}</strong> perde o acesso a este workspace na hora. Os dashboards e páginas que a pessoa criou continuam aqui. Para voltar, só com um convite novo.
+              <strong className="text-fg">{removing.name}</strong> perde o acesso a esta organização na hora. Os dashboards e páginas que a pessoa criou continuam aqui. Para voltar, só com um convite novo.
             </p>
             {error && (
               <p role="alert" className="text-[13px] text-error-fg">

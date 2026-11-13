@@ -23,7 +23,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/v1/workspac
   if (!z.uuid().safeParse(runId).success) return fail("optimization:not_found", "Mudança não encontrada.", 404);
   try {
     const ws = await bearerWorkspace(session, workspaceId);
-    if (!ws || ws.workspace.id !== workspaceId) return fail("forbidden", "Você não tem acesso a este workspace.", 403);
+    if (!ws || ws.workspace.id !== workspaceId) return fail("forbidden", "Você não tem acesso a esta organização.", 403);
     if (!hasRole(ws.role, "member")) return fail("forbidden", "Seu acesso é só de leitura.", 403);
     const run = await undoFor(workspaceId, session.userId, runId);
     return apiJson({ run });

@@ -389,10 +389,10 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
                 <Checkbox label="Ocultar a marca VYZ (dashboard, link e PDF)" checked={draft.hideVyz} onChange={(hideVyz) => save({ hideVyz })} />
                 {draft.brandColor && (
                   <button type="button" className={`${btn.ghost} h-8 px-2 text-[13px]`} onClick={() => save({ brandColor: null })}>
-                    Usar a cor do workspace
+                    Usar a cor da organização
                   </button>
                 )}
-                <p className="text-[12.5px] text-fg-2">O logo é o do workspace (Configurações).</p>
+                <p className="text-[12.5px] text-fg-2">O logo é o da organização (Configurações).</p>
               </div>
             ) : (
               <div className="flex flex-col gap-3 text-[14px] sm:flex-row sm:items-center sm:justify-between">

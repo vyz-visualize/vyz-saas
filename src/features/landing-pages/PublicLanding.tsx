@@ -50,7 +50,7 @@ export function PublicLanding({ lp, preview = false }: { lp: RenderableLanding; 
       {preview && (
         <div className="bg-[#1e1e1e] px-4 py-2 text-center text-[12.5px] text-[#e8ece1]">
           <p>
-            Prévia {lp.status === "published" ? "do rascunho" : "· rascunho"} · só quem é do workspace vê. As tags de rastreamento não rodam aqui.
+            Prévia {lp.status === "published" ? "do rascunho" : "· rascunho"} · só quem é da organização vê. As tags de rastreamento não rodam aqui.
           </p>
         </div>
       )}
@@ -75,7 +75,7 @@ export function LandingUnavailable({ preview = false }: { preview?: boolean }) {
       <div className="max-w-md rounded-card border border-dashed border-line p-8 text-center">
         <h1 className="title text-2xl">Página indisponível</h1>
         <p className="mt-2 text-fg-2">
-          {preview ? "Não encontramos esta landing page no seu workspace. Confira o endereço ou se você entrou com a conta certa." : "Esta página não existe ou saiu do ar."}
+          {preview ? "Não encontramos esta landing page na sua organização. Confira o endereço ou se você entrou com a conta certa." : "Esta página não existe ou saiu do ar."}
         </p>
         {preview && <PendingChip className="mt-4" label="Endereço próprio em breve" detail="A publicação em subdomínio (sua-marca.vyz.app) ainda depende da hospedagem." />}
       </div>

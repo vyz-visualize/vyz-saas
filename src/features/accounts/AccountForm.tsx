@@ -139,7 +139,7 @@ export function AccountForm({ platform: fixed, onSaved, onCancel, next }: Accoun
               {formError}
             </p>
           )}
-          {!canManage && <p className="text-[12px] text-fg-2">Só administradores do workspace cadastram contas.</p>}
+          {!canManage && <p className="text-[12px] text-fg-2">Só administradores da organização cadastram contas.</p>}
           <div className={modalFooter}>
             {onCancel && (
               <button type="button" onClick={onCancel} disabled={pending} className={btnSmallGhost}>

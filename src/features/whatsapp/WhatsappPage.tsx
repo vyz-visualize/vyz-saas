@@ -266,7 +266,7 @@ export function WhatsappPage({ data }: { data: WhatsappPageData }) {
       <Section id="h-wa-numero" step={1} done={verified} title="Número" text="Enviamos um código pelo WhatsApp para confirmar que o número é seu.">
         <NumberForm data={data} notify={toast.show} />
       </Section>
-      <Section id="h-wa-relatorios" step={2} title="O que receber" text={verified ? "Escolha os relatórios. Vale só para você neste workspace." : "Verifique o número para escolher os relatórios."}>
+      <Section id="h-wa-relatorios" step={2} title="O que receber" text={verified ? "Escolha os relatórios. Vale só para você nesta organização." : "Verifique o número para escolher os relatórios."}>
         {verified ? <Preferences data={data} notify={toast.show} /> : <p className="text-[14px] text-fg-2">{REPORT_KINDS.map((k) => k.label).join(", ")}.</p>}
         <StopNote />
       </Section>

@@ -40,8 +40,8 @@ export default function ExclusaoDeDados() {
         <li>Seu perfil e seu login.</li>
         <li>Os tokens de acesso às plataformas conectadas.</li>
         <li>Os dados das contas de anúncio conectadas: métricas, campanhas, anúncios e prévias.</li>
-        <li>Os dashboards, os projetos, as landing pages e as configurações dos workspaces de que você é o único membro.</li>
-        <li>O histórico de otimizações e as tarefas desses workspaces.</li>
+        <li>Os dashboards, os workspaces, as landing pages e as configurações das organizações de que você é o único membro.</li>
+        <li>O histórico de otimizações e as tarefas dessas organizações.</li>
         <li>O número de WhatsApp cadastrado e os tokens de notificação do aparelho.</li>
       </ul>
 
@@ -52,7 +52,7 @@ export default function ExclusaoDeDados() {
           <strong>Segurança:</strong> guardamos por até 5 anos o histórico de auditoria (o registro do que foi alterado e por quem), o histórico de atividade e o
           registro de que você aceitou os termos.
         </li>
-        <li><strong>Workspaces com outros membros:</strong> seu acesso é removido e a propriedade passa a outro membro. Os dados do workspace continuam, porque também são da equipe; o novo dono pode pedir a exclusão deles.</li>
+        <li><strong>Organizações com outros membros:</strong> seu acesso é removido e a propriedade passa a outro membro. Os dados da organização continuam, porque também são da equipe; o novo dono pode pedir a exclusão deles.</li>
       </ul>
       <p>
         Mais detalhes na <Link href="/privacidade">Política de Privacidade</Link>.

@@ -121,7 +121,7 @@ export function SimulatedConsent({ provider, state, code, workspaceName, expires
       <p className="mt-2 text-[12.5px] text-fg-2">Você escolhe quais contas ativar depois, no VYZ.</p>
 
       <p className="mt-6 text-[14px]">
-        Conectar ao workspace <strong>{workspaceName}</strong>.
+        Conectar à organização <strong>{workspaceName}</strong>.
       </p>
       <ConsentActions allow={allow} deny={deny} />
       <p className="mt-3 text-center text-[12px] text-fg-2">Este pedido vale até {until}.</p>

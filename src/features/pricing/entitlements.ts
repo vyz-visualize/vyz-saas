@@ -92,7 +92,7 @@ export const LIMIT_TIERS: Tier[] = ["base", "pro", "avancado"];
 
 /** Linhas da tabela de limites (página Plano e documentação). */
 export const LIMIT_ROWS: { label: string; value: (t: Tier) => string }[] = [
-  { label: "Projetos", value: (t) => ({ base: "até 5", pro: "até 15", avancado: "até 30", personalizado: "sob consulta" })[t] },
+  { label: "Workspaces", value: (t) => ({ base: "até 5", pro: "até 15", avancado: "até 30", personalizado: "sob consulta" })[t] },
   { label: "Templates de dashboard", value: (t) => String(ENTITLEMENTS[t].dashboardTemplates) },
   ...(SHOW_LANDING_PAGES ? [{ label: "Templates de landing page", value: (t: Tier) => String(ENTITLEMENTS[t].landingTemplates) }] : []),
   {
@@ -115,7 +115,7 @@ export const LIMIT_ROWS: { label: string; value: (t: Tier) => string }[] = [
   },
   { label: "Assistente VYZ", value: (t) => (ENTITLEMENTS[t].agentVoice ? "chat + voz" : "chat") },
   { label: "Integre com sua IA (MCP)", value: (t) => (t === "base" ? "—" : "em breve") },
-  { label: "Contas por plataforma em cada projeto", value: (t) => String(ENTITLEMENTS[t].maxAccountsPerPlatform) },
+  { label: "Contas por plataforma em cada workspace", value: (t) => String(ENTITLEMENTS[t].maxAccountsPerPlatform) },
   { label: "Dashboards", value: (t) => String(ENTITLEMENTS[t].maxDashboards) },
   ...(SHOW_LANDING_PAGES ? [{ label: "Landing pages publicadas", value: (t: Tier) => String(ENTITLEMENTS[t].maxLandingPages) }] : []),
   { label: "Usuários", value: (t) => String(ENTITLEMENTS[t].maxMembers) },

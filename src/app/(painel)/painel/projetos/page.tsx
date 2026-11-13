@@ -5,25 +5,25 @@ import { ProjectsPage } from "@/features/projects/ProjectsPage";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { getProjectsState } from "@/server/projects/queries";
 
-export const metadata: Metadata = { title: "Projetos" };
+export const metadata: Metadata = { title: "Workspaces" };
 
 export default function Page() {
   return (
     <Suspense fallback={<ProjectsSkeleton />}>
-      <Projetos />
+      <Workspaces />
     </Suspense>
   );
 }
 
-async function Projetos() {
+async function Workspaces() {
   await connection();
-  await requireWorkspace({ next: "/painel/projetos" });
+  await requireWorkspace({ next: "/painel/workspaces" });
   return <ProjectsPage state={await getProjectsState()} />;
 }
 
 function ProjectsSkeleton() {
   return (
-    <div className="space-y-8" aria-busy="true" aria-label="Carregando os projetos">
+    <div className="space-y-8" aria-busy="true" aria-label="Carregando os workspaces">
       <div className="h-10 w-72 max-w-full animate-pulse rounded-control bg-card motion-reduce:animate-none" />
       <div className="h-20 animate-pulse rounded-card bg-card motion-reduce:animate-none" />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

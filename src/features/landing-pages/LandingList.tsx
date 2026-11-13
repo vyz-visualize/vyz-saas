@@ -165,7 +165,7 @@ export function LandingList({ pages, published, limit, canEdit }: Props) {
           <div className="space-y-4">
             <p className="text-[14px] text-fg-2">
               <strong className="text-fg">{removing.content.brand || removing.name}</strong> sai do ar (se estiver publicada) e some junto com as versões. O endereço{" "}
-              <span className="tnum">/p/{removing.slug}</span> fica reservado para este workspace por 180 dias.
+              <span className="tnum">/p/{removing.slug}</span> fica reservado para esta organização por 180 dias.
             </p>
             <p role="note" className="rounded-control border border-error/40 bg-error/5 p-3 text-[13.5px] text-fg">
               <strong>Os leads desta página também são apagados</strong> e não dá para recuperar. Se precisar deles,{" "}

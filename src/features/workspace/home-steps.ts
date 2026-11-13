@@ -46,5 +46,5 @@ export function homeCta(steps: HomeStep[], connected: readonly ProviderId[], opt
 
 /** "Avançado · 1 de 2 projetos": deixa claro que é o limite do plano. */
 export function planBadge(tierLabel: string, used: number, limit: number): string {
-  return `${tierLabel} · ${used} de ${limit} ${limit === 1 ? "projeto" : "projetos"}`;
+  return `${tierLabel} · ${used} de ${limit} ${limit === 1 ? "workspace" : "workspaces"}`;
 }

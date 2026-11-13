@@ -65,7 +65,7 @@ async function Convite({ params }: Pick<PageProps<"/convite/[token]">, "params">
       title={`Entrar na equipe de ${invite.workspaceName}`}
       description={
         <>
-          Você foi convidado como <strong className="text-fg">{ROLE_LABEL[invite.role as MemberRole].toLowerCase()}</strong>. Ao aceitar, este workspace abre no seu painel.
+          Você foi convidado como <strong className="text-fg">{ROLE_LABEL[invite.role as MemberRole].toLowerCase()}</strong>. Ao aceitar, esta organização abre no seu painel.
         </>
       }
     >

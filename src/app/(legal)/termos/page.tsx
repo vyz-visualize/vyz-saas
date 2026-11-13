@@ -30,13 +30,13 @@ export default function Termos() {
       <ul>
         <li>Você precisa ter 18 anos ou mais e informar dados verdadeiros.</li>
         <li>Você é responsável pela senha e por tudo o que acontece na sua conta. Avise-nos se suspeitar de acesso indevido.</li>
-        <li>O dono do workspace decide quem participa e com qual papel, dentro do limite de usuários do plano.</li>
+        <li>O dono da organização decide quem participa e com qual papel, dentro do limite de usuários do plano.</li>
         <li>Você responde pelas decisões tomadas a partir dos dados e pelas otimizações que aplicar ou deixar no automático.</li>
       </ul>
 
       <h2>3. Planos e pagamento</h2>
       <ul>
-        <li>Os planos são assinaturas mensais ou anuais, com o preço e os limites de cada plano (como o número de projetos) mostrados antes da contratação.</li>
+        <li>Os planos são assinaturas mensais ou anuais, com o preço e os limites de cada plano (como o número de workspaces) mostrados antes da contratação.</li>
         <li><strong>Renovação automática:</strong> a assinatura se renova ao fim de cada período pelo mesmo valor, até ser cancelada.</li>
         <li>
           <strong>Assinaturas feitas no aplicativo</strong> são cobradas pela conta da loja de aplicativos e se renovam automaticamente, salvo se

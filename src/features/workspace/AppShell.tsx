@@ -44,7 +44,7 @@ const NAVS: Record<Product, NavGroup[]> = {
     {
       label: "Trabalho",
       items: [
-        { href: "/painel/projetos", label: "Projetos", icon: FolderKanban },
+        { href: "/painel/workspaces", label: "Workspaces", icon: FolderKanban },
         { href: "/painel/dashboards", label: "Dashboards", icon: BarChart3 },
         { href: "/painel/a-fazer", label: "A Fazer", icon: ListChecks },
       ],
@@ -243,7 +243,7 @@ function WorkspaceMenu({ collapsed }: { collapsed: boolean }) {
     <DropMenu>
       <Tooltip content={ws.name} disabled={!collapsed}>
         <MenuTrigger
-          aria-label={`${ws.name}, ${sub}. Abrir menu do workspace`}
+          aria-label={`${ws.name}, ${sub}. Abrir menu da organização`}
           className={`flex h-[52px] w-full items-center gap-2.5 overflow-hidden rounded-[14px] border border-line bg-card px-2 text-left shadow-card transition-colors duration-150 hover:border-fg-2/40 data-[state=open]:border-fg-2/40 sb-closed:border-transparent sb-closed:bg-transparent sb-closed:shadow-none ${ring}`}
         >
           <span className="transition-transform duration-300 ease-brand sb-closed:translate-x-px">
@@ -259,7 +259,7 @@ function WorkspaceMenu({ collapsed }: { collapsed: boolean }) {
       <MenuContent side={collapsed ? "right" : "bottom"} align="start" className={collapsed ? "min-w-[15rem]" : "w-[var(--radix-dropdown-menu-trigger-width)]"}>
         {memberships.length > 1 && (
           <>
-            <MenuLabel>Workspaces</MenuLabel>
+            <MenuLabel>Organizações</MenuLabel>
             {memberships.map((mb) => (
               <MenuCheckItem
                 key={mb.id}
@@ -312,7 +312,7 @@ function UsageCard() {
         <span className={`block h-full rounded-full ${full ? "bg-warning" : "bg-accent"}`} style={{ width: `${Math.max(4, ratio * 100)}%` }} />
       </span>
       <span className="mt-1.5 block text-[12px] text-fg-2 tnum">
-        {usage.projects} de {access.accountsQuantity} {access.accountsQuantity === 1 ? "projeto" : "projetos"}
+        {usage.projects} de {access.accountsQuantity} {access.accountsQuantity === 1 ? "workspace" : "workspaces"}
       </span>
     </Link>
   );
@@ -443,8 +443,8 @@ function MobileWorkspaces() {
   const [switching, startSwitch] = useTransition();
   if (memberships.length < 2) return null;
   return (
-    <section aria-label="Workspaces" className="mt-4">
-      <p className="px-3 pb-1 text-[11px] font-semibold tracking-[0.07em] text-fg-2 uppercase">Trocar de workspace</p>
+    <section aria-label="Organizações" className="mt-4">
+      <p className="px-3 pb-1 text-[11px] font-semibold tracking-[0.07em] text-fg-2 uppercase">Trocar de organização</p>
       <ul>
         {memberships.map((mb) => (
           <li key={mb.id}>

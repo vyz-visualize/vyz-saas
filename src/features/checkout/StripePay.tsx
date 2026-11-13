@@ -33,7 +33,7 @@ export function StripePay({ checkoutId, amountCents, notice }: { checkoutId: str
       )}
       <p className="flex items-start gap-2 text-[13px] text-fg-2">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
-        <span>O pagamento é feito na página segura da Stripe. O VYZ nunca vê o número do seu cartão. Depois de pagar, você volta para cá e o workspace já está pronto.</span>
+        <span>O pagamento é feito na página segura da Stripe. O VYZ nunca vê o número do seu cartão. Depois de pagar, você volta para cá e a organização já está pronta.</span>
       </p>
     </form>
   );

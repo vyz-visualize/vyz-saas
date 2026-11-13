@@ -111,7 +111,7 @@ export default function Conta() {
             <Divider />
             <ListRow
               label={workspace.name}
-              caption={many ? `${ROLE_LABEL[workspace.role]} · toque para trocar de workspace` : `Workspace · ${ROLE_LABEL[workspace.role]}`}
+              caption={many ? `${ROLE_LABEL[workspace.role]} · toque para trocar de organização` : `Organização · ${ROLE_LABEL[workspace.role]}`}
               icon={<Avatar name={workspace.name} size={36} tone="solid" square />}
               onPress={many ? () => setPicker(true) : undefined}
             />

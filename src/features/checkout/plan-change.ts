@@ -88,7 +88,7 @@ export function planChangeBlocker(next: PlanSelection, usage: PlanUsage): { code
   if (usage.projects > next.accounts) {
     return {
       code: "limit:projects_in_use",
-      message: `Você tem ${plural(usage.projects, "projeto ativo", "projetos ativos")}. O ${tier} vai até ${next.accounts}. Arquive projetos em Projetos antes de trocar.`,
+      message: `Você tem ${plural(usage.projects, "workspace ativo", "workspaces ativos")}. O ${tier} vai até ${next.accounts}. Arquive workspaces em Workspaces antes de trocar.`,
     };
   }
   if (usage.dashboards > limits.maxDashboards) {

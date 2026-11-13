@@ -52,7 +52,7 @@ const FEATURES: Record<Product, Feature[]> = {
     {
       required: "pro",
       feature: `${ENTITLEMENTS.pro.dashboardTemplates} templates, ${ENTITLEMENTS.pro.maxDashboards} dashboards e ${ENTITLEMENTS.pro.maxMembers} usuários`,
-      text: "Mais templates, mais dashboards e mais gente no mesmo workspace.",
+      text: "Mais templates, mais dashboards e mais gente na mesma organização.",
       preview: <Preview chips={8} bars={[30, 55, 45, 70, 60, 85]} />,
     },
     { required: "avancado", feature: "Análise por áudio", text: "Pergunte em voz alta e ouça a leitura dos números.", preview: <Preview bars={[20, 70, 35, 90, 45, 75, 30, 60]} /> },
@@ -74,7 +74,7 @@ export function Upsell() {
     <section aria-labelledby="h-upsell" className="space-y-4">
       {locked.length > 0 && (
         <>
-          <SectionHeader id="h-upsell" title="Libere mais no seu plano" text={role !== "owner" ? "Quem troca o plano é o dono do workspace." : "O que os planos acima acrescentam ao seu painel."} />
+          <SectionHeader id="h-upsell" title="Libere mais no seu plano" text={role !== "owner" ? "Quem troca o plano é o dono da organização." : "O que os planos acima acrescentam ao seu painel."} />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {locked.map((f) => (
               <Paywall key={f.feature} current={current} required={f.required} feature={f.feature} text={f.text}>

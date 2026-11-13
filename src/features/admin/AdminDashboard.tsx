@@ -117,7 +117,7 @@ export function AdminDashboard({ report }: { report: AdminReport }) {
           <StatTile label="Usuários" value={int(users.data.total)} icon={<Users size={16} aria-hidden />} hint={`${int(users.data.new30)} novos em 30 dias`} />
           <StatTile label="Novos em 7 dias" value={int(users.data.new7)} icon={<UserPlus size={16} aria-hidden />} hint={<Change cur={users.data.new7} prev={users.data.newPrev7} />} />
           <StatTile label="Ativos em 7 dias" value={int(users.data.active7)} icon={<UserCheck size={16} aria-hidden />} hint={`${int(users.data.active30)} ativos em 30 dias`} />
-          <StatTile label="Workspaces com plano" value={int(users.data.workspacesWithPlan)} icon={<Wallet size={16} aria-hidden />} hint={users.data.total ? `${pct((users.data.workspacesWithPlan / users.data.total) * 100, 0)} dos usuários` : undefined} />
+          <StatTile label="Organizações com plano" value={int(users.data.workspacesWithPlan)} icon={<Wallet size={16} aria-hidden />} hint={users.data.total ? `${pct((users.data.workspacesWithPlan / users.data.total) * 100, 0)} dos usuários` : undefined} />
         </section>
       )}
 

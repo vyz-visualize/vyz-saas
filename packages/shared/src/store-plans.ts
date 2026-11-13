@@ -42,10 +42,10 @@ export function parseStorePlan(productId: string | null | undefined): StorePlan 
 
 /** O que cada plano traz (paywall do app). Mesma regra do site; cada plano inclui o de baixo. */
 export const STORE_PLAN_HIGHLIGHTS: Record<StorePlanTier, string[]> = {
-  base: ["Até 5 projetos (clientes)", "Meta Ads, Google Ads e GA4", "Visão geral com tudo junto", "Assistente VYZ por chat", "1 usuário"],
-  pro: ["Até 15 projetos (clientes)", "Tudo do Básico", "TikTok Ads e LinkedIn Ads", "CRMs: RD Station e HubSpot", "Galeria de criativos", "2 usuários"],
+  base: ["Até 5 workspaces (clientes)", "Meta Ads, Google Ads e GA4", "Visão geral com tudo junto", "Assistente VYZ por chat", "1 usuário"],
+  pro: ["Até 15 workspaces (clientes)", "Tudo do Básico", "TikTok Ads e LinkedIn Ads", "CRMs: RD Station e HubSpot", "Galeria de criativos", "2 usuários"],
   avancado: [
-    "Até 30 projetos (clientes)",
+    "Até 30 workspaces (clientes)",
     "Tudo do Padrão",
     "X Ads, Spotify Ads, Globo Ads, ChatGPT Ads e mais",
     "Comparativo de criativos",

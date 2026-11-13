@@ -460,7 +460,7 @@ export function DashboardEditor({ dashboard, sources, tier, pagesTier, whiteLabe
                           )}
                         </div>
                       ) : (
-                        <p className="text-[12.5px] text-fg-2">Só quem administra o workspace troca a logo e a cor.</p>
+                        <p className="text-[12.5px] text-fg-2">Só quem administra a organização troca a logo e a cor.</p>
                       )}
                     </div>
                     {brandBusy && <p className="text-[12.5px] text-fg-2">Enviando…</p>}

@@ -34,7 +34,7 @@ describe("Primeiros passos da Início", () => {
   });
 
   it("selo do plano deixa claro que é limite", () => {
-    expect(planBadge("Avançado", 1, 2)).toBe("Avançado · 1 de 2 projetos");
-    expect(planBadge("Básico", 0, 1)).toBe("Básico · 0 de 1 projeto");
+    expect(planBadge("Avançado", 1, 2)).toBe("Avançado · 1 de 2 workspaces");
+    expect(planBadge("Básico", 0, 1)).toBe("Básico · 0 de 1 workspace");
   });
 });

@@ -18,10 +18,10 @@ export async function POST(request: Request, ctx: RouteContext<"/api/v1/workspac
     session.db.from("workspace_members").select("role").eq("workspace_id", workspaceId).eq("user_id", session.userId).maybeSingle(),
     session.db.from("workspace_access").select("subscription_id, provider").eq("workspace_id", workspaceId).maybeSingle(),
   ]);
-  if (member.data?.role !== "owner") return fail("forbidden", "Só o dono do workspace pode mudar o plano.", 403);
+  if (member.data?.role !== "owner") return fail("forbidden", "Só o dono da organização pode mudar o plano.", 403);
   const provider = access.data?.subscription_id ? access.data.provider : null;
   if (provider && provider !== "app_store" && provider !== "play_store") {
-    return fail("store:workspace_has_plan", "O plano deste workspace não é gerenciado pelo app.", 409);
+    return fail("store:workspace_has_plan", "O plano desta organização não é gerenciado pelo app.", 409);
   }
 
   // uma assinatura da loja por usuário: viva em outro workspace, troca lá
@@ -34,7 +34,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/v1/workspac
     .maybeSingle();
   if (live.error) return fail("unknown", "Não foi possível preparar a assinatura. Tente de novo.", 500);
   if (live.data && live.data.workspace_id !== workspaceId) {
-    return fail("store:other_workspace", "Sua assinatura do app já está em outro workspace. Mude o plano por lá.", 409);
+    return fail("store:other_workspace", "Sua assinatura do app já está em outra organização. Mude o plano por lá.", 409);
   }
 
   const { error } = await admin.from("store_customers").upsert({ user_id: session.userId, workspace_id: workspaceId, updated_at: new Date().toISOString() });

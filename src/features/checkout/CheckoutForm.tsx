@@ -254,7 +254,7 @@ export function CheckoutForm({ planQuery, account, workspaceName, signInHref }: 
             error={errors.company}
             maxLength={80}
             required
-            hint={workspaceName ? `Nome na fatura. O workspace continua "${workspaceName}".` : "Vira o nome do seu workspace no VYZ."}
+            hint={workspaceName ? `Nome na fatura. A organização continua "${workspaceName}".` : "Vira o nome da sua organização no VYZ."}
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field

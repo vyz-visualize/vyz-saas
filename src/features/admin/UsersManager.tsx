@@ -137,7 +137,7 @@ export function UsersManager({ users }: { users: AdminUserRow[] }) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por e-mail, nome ou workspace"
+            placeholder="Buscar por e-mail, nome ou organização"
             className="h-10 w-full rounded-control border border-line bg-field pr-3 pl-9 text-[14px] text-fg outline-none transition-colors placeholder:text-fg-2/70 hover:border-fg-2/50 focus:border-accent focus:ring-1 focus:ring-accent max-sm:h-11 max-sm:text-[16px]"
           />
         </label>
@@ -274,7 +274,7 @@ export function UsersManager({ users }: { users: AdminUserRow[] }) {
           title="Tirar plano"
           text={
             <>
-              Tirar o plano de <strong className="break-all">{dialog.user.email}</strong>? O workspace fica sem assinatura; os dados continuam guardados.
+              Tirar o plano de <strong className="break-all">{dialog.user.email}</strong>? A organização fica sem assinatura; os dados continuam guardados.
             </>
           }
           confirm="Tirar plano"
@@ -327,9 +327,9 @@ function GrantDialog({ user, onClose, onDone }: { user: AdminUserRow; onClose: (
   const note = user.workspace
     ? user.plan
       ? `Troca o plano atual (${planLabel(user.plan.id)}) pela cortesia.`
-      : "Cria a assinatura de cortesia no workspace da pessoa."
+      : "Cria a assinatura de cortesia na organização da pessoa."
     : user.openCheckout
-      ? "A pessoa parou no pagamento: o pedido dela é concluído como cortesia (sem cobrança) e o workspace é criado."
+      ? "A pessoa parou no pagamento: o pedido dela é concluído como cortesia (sem cobrança) e a organização é criada."
       : "A pessoa ainda não tem workspace: ele é criado agora, com a cortesia, e ela passa pelas boas-vindas no próximo login.";
   return (
     <Modal open onClose={onClose} title={`Dar plano a ${user.email}`}>

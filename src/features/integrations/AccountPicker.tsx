@@ -225,7 +225,7 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
     return (
       <div className="space-y-3">
         <FirstProject />
-        <p className="text-[12.5px] text-fg-2">Depois de criar o projeto, as contas aparecem aqui para você ligar.</p>
+        <p className="text-[12.5px] text-fg-2">Depois de criar o workspace, as contas aparecem aqui para você ligar.</p>
       </div>
     );
   }
@@ -275,7 +275,7 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
               const connected = !!a.connectionId;
               const enableable = connected && a.status === "active";
               const fits = on || fitsIn(a, projectOf(a));
-              const why = !connected ? "Sem conexão: reconecte o login para ativar." : a.status === "disabled" ? "O login conectado não dá mais acesso a esta conta. Reconecte para atualizar." : a.status !== "active" ? `${accountStatusLabel(a.status)}.` : !fits ? "O projeto já tem o máximo de contas desta plataforma no seu plano." : null;
+              const why = !connected ? "Sem conexão: reconecte o login para ativar." : a.status === "disabled" ? "O login conectado não dá mais acesso a esta conta. Reconecte para atualizar." : a.status !== "active" ? `${accountStatusLabel(a.status)}.` : !fits ? "O workspace já tem o máximo de contas desta plataforma no seu plano." : null;
               const summary = a.isEnabled ? syncSummary(a, now, timeZone) : null;
               const rowSyncing = syncing && syncingId === a.id;
               const canResync = canSync && a.isEnabled && connected;
@@ -298,15 +298,15 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
                     />
                     {on && projects.length > 0 && (
                       <div className="mt-2.5 flex items-center gap-2 pl-[52px] text-[12.5px] text-fg-2">
-                        <span aria-hidden className="shrink-0">Projeto</span>
+                        <span aria-hidden className="shrink-0">Workspace</span>
                         <div className="min-w-0 flex-1 sm:w-[220px] sm:flex-none">
                           <Select
                             size="sm"
-                            ariaLabel={`Projeto de ${a.name}`}
+                            ariaLabel={`Workspace de ${a.name}`}
                             value={projectOf(a)}
                             onChange={(v) => setProject(a, v)}
                             disabled={!canManage || busy}
-                            placeholder="Escolha o projeto"
+                            placeholder="Escolha o workspace"
                             options={projects.map((p) => ({ value: p.id, label: p.name }))}
                           />
                         </div>
@@ -349,14 +349,14 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
           <Info size={15} aria-hidden className={`mt-0.5 shrink-0 ${overLimit ? "text-error-fg" : "text-fg-2"}`} />
           <div className="min-w-0">
             <p className={`font-semibold ${overLimit ? "text-error-fg" : "text-fg"}`}>
-              Até {maxPerProject} {maxPerProject === 1 ? "conta" : "contas"} de {PROVIDERS[provider].name} por projeto
+              Até {maxPerProject} {maxPerProject === 1 ? "conta" : "contas"} de {PROVIDERS[provider].name} por workspace
             </p>
             {provider === "meta" && <p className="text-fg-2">Contas da mesma BM contam como uma.</p>}
             {blockedByPlan && canManage && (
               <p className="text-fg-2">
-                Para ativar mais, coloque a conta em outro projeto em{" "}
-                <Link href="/painel/projetos" className="font-semibold text-accent underline-offset-4 hover:underline">
-                  Projetos
+                Para ativar mais, coloque a conta em outro workspace em{" "}
+                <Link href="/painel/workspaces" className="font-semibold text-accent underline-offset-4 hover:underline">
+                  Workspaces
                 </Link>{" "}
                 ou mude o plano em{" "}
                 <Link href="/painel/plano" className="font-semibold text-accent underline-offset-4 hover:underline">

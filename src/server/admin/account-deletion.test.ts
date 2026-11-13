@@ -60,7 +60,7 @@ describe("o relatório da simulação", () => {
     }),
   );
   it("mostra o que será apagado, por tipo", () => {
-    for (const label of ["Perfil e login", "Tokens de push: 2", "WhatsApp: 1", "Métricas e contas de anúncio: 11", "Dashboards: 2", "Projetos: 1", "Otimizações: 4", "Tarefas: 5", "Tokens e conexões: 1", "Arquivos no Storage: 1"]) {
+    for (const label of ["Perfil e login", "Tokens de push: 2", "WhatsApp: 1", "Métricas e contas de anúncio: 11", "Dashboards: 2", "Workspaces: 1", "Otimizações: 4", "Tarefas: 5", "Tokens e conexões: 1", "Arquivos no Storage: 1"]) {
       expect(text, label).toContain(label);
     }
   });

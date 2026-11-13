@@ -61,7 +61,7 @@ export function normalizeState(patch: Partial<PlanState> | null | undefined): Pl
 }
 
 export function planItemLabel(plan: PlanId, projects: number): string {
-  return `Plano ${PLAN_LABEL[plan]} · até ${projects} ${projects === 1 ? "projeto" : "projetos"}`;
+  return `Plano ${PLAN_LABEL[plan]} · até ${projects} ${projects === 1 ? "workspace" : "workspaces"}`;
 }
 
 export function buildOrder(state: PlanState): Order {

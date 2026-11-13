@@ -36,23 +36,23 @@ const GROUPS: { title: string; items: Faq[] }[] = [
     ],
   },
   {
-    title: "Sobre projetos",
+    title: "Sobre workspaces",
     items: [
       {
-        q: "O que é um projeto?",
+        q: "O que é um workspace?",
         a: "É o cliente, a empresa ou a marca para quem você gera os dashboards. Dentro dele você conecta as contas (Meta Ads, Google Ads e as outras plataformas do plano) e cria os dashboards daquele cliente.",
       },
       {
-        q: "Quantos projetos cabem em cada plano?",
-        a: `O Básico vai até ${PLAN_PROJECTS.base} projetos, o Padrão até ${PLAN_PROJECTS.pro} e o Avançado até ${PLAN_PROJECTS.avancado}. Tem mais de ${MAX_PROJECTS_IN_PLAN} clientes? O plano Personalizado é sob consulta, com um especialista.`,
+        q: "Quantos workspaces cabem em cada plano?",
+        a: `O Básico vai até ${PLAN_PROJECTS.base} workspaces, o Padrão até ${PLAN_PROJECTS.pro} e o Avançado até ${PLAN_PROJECTS.avancado}. Tem mais de ${MAX_PROJECTS_IN_PLAN} clientes? O plano Personalizado é sob consulta, com um especialista.`,
       },
       {
-        q: "E se eu passar do limite de projetos?",
+        q: "E se eu passar do limite de workspaces?",
         a: "Suba de plano quando quiser, na página Plano do painel. A diferença entra na cobrança, proporcional aos dias que faltam no ciclo.",
       },
       {
-        q: "Quantas contas cabem em cada projeto?",
-        a: `No Básico, 1 conta de cada plataforma por projeto. No Padrão e no Avançado, até ${ENTITLEMENTS.pro.maxAccountsPerPlatform}. No Meta, as contas da mesma Business Manager contam como uma.`,
+        q: "Quantas contas cabem em cada workspace?",
+        a: `No Básico, 1 conta de cada plataforma por workspace. No Padrão e no Avançado, até ${ENTITLEMENTS.pro.maxAccountsPerPlatform}. No Meta, as contas da mesma Business Manager contam como uma.`,
       },
     ],
   },

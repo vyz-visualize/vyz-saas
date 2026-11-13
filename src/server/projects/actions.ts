@@ -12,7 +12,7 @@ import { appError, toActionError, unwrap, type ActionResult } from "@/server/sup
 import { createServerSupabase } from "@/server/supabase/server";
 
 const Id = z.uuid();
-const Name = z.string().trim().min(1, "Dê um nome ao projeto.").max(80, "Até 80 caracteres.");
+const Name = z.string().trim().min(1, "Dê um nome ao workspace.").max(80, "Até 80 caracteres.");
 
 function parseName(name: string): string {
   const r = Name.safeParse(name);
@@ -28,7 +28,7 @@ export async function createProject(name: string): Promise<ActionResult<{ id: st
     const session = await authorize("member");
     const db = await createServerSupabase();
     const res = await db.from("projects").insert({ workspace_id: session.workspace.id, name: clean, created_by: session.user.id }).select("id").single();
-    if (res.error && duplicate(res.error)) throw appError("conflict", "Já existe um projeto com esse nome.");
+    if (res.error && duplicate(res.error)) throw appError("conflict", "Já existe um workspace com esse nome.");
     const row = unwrap(res)!;
     await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "project.created", entityType: "project", entityId: row.id });
     refresh();
@@ -46,7 +46,7 @@ export async function renameProject(projectId: string, name: string): Promise<Ac
     const session = await authorize("member");
     const db = await createServerSupabase();
     const res = await db.from("projects").update({ name: clean }).eq("id", projectId).eq("workspace_id", session.workspace.id).select("id");
-    if (res.error && duplicate(res.error)) throw appError("conflict", "Já existe um projeto com esse nome.");
+    if (res.error && duplicate(res.error)) throw appError("conflict", "Já existe um workspace com esse nome.");
     if (!unwrap(res)?.length) throw appError("project:not_found");
     await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "project.renamed", entityType: "project", entityId: projectId, metadata: { name: clean } });
     refresh();

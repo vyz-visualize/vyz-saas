@@ -319,7 +319,7 @@ export function TodoPage({ state }: { state: TodoState }) {
                 </MenuTrigger>
                 <MenuContent align="end" className="min-w-[15rem]">
                   <MenuItem icon={<Bot size={15} />} disabled={!state.autopilot.allowed} onSelect={() => setPilotOpen(true)} className="h-10">
-                    <span className="flex-1">Automático{pilots ? ` · ${pilots} ${pilots === 1 ? "projeto" : "projetos"}` : ""}</span>
+                    <span className="flex-1">Automático{pilots ? ` · ${pilots} ${pilots === 1 ? "workspace" : "workspaces"}` : ""}</span>
                     {!state.autopilot.allowed && <LockBadge label="Avançado" />}
                   </MenuItem>
                   <MenuItem icon={<Wand2 size={15} />} disabled={!full} onSelect={() => setPlayOpen(true)} className="h-10">
@@ -374,7 +374,7 @@ export function TodoPage({ state }: { state: TodoState }) {
             <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-control border border-line bg-field px-3 transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent hover:border-fg-2/50 max-sm:h-11">
               <Search size={16} aria-hidden className="shrink-0 text-fg-2" />
               <span className="sr-only">Buscar tarefa</span>
-              <input value={filters.q} onChange={(e) => set("q", e.target.value)} placeholder="Buscar por tarefa ou projeto" className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-fg outline-none placeholder:text-fg-2/70 max-sm:text-[16px]" />
+              <input value={filters.q} onChange={(e) => set("q", e.target.value)} placeholder="Buscar por tarefa ou workspace" className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-fg outline-none placeholder:text-fg-2/70 max-sm:text-[16px]" />
               {filters.q && (
                 <button type="button" onClick={() => set("q", "")} aria-label="Limpar a busca" className="-mr-1.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full text-fg-2 outline-none hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-accent">
                   <X size={15} aria-hidden />
@@ -574,7 +574,7 @@ export function TodoPage({ state }: { state: TodoState }) {
             <SelectField label="Prioridade" value={draft.priority} disabled={!state.canEdit} onChange={(v) => setDraft((d) => ({ ...d, priority: v as TaskPriority }))} options={TASK_PRIORITIES.map((s) => ({ value: s, label: PRIORITY_LABEL[s] }))} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <SelectField label="Projeto" placeholder="Sem projeto" value={draft.projectId} disabled={!state.canEdit} onChange={(v) => setDraft((d) => ({ ...d, projectId: v }))} options={[{ value: "", label: "Sem projeto" }, ...state.projects.map((p) => ({ value: p.id, label: p.name }))]} />
+            <SelectField label="Workspace" placeholder="Sem workspace" value={draft.projectId} disabled={!state.canEdit} onChange={(v) => setDraft((d) => ({ ...d, projectId: v }))} options={[{ value: "", label: "Sem workspace" }, ...state.projects.map((p) => ({ value: p.id, label: p.name }))]} />
             <TextField label="Prazo" type="date" value={draft.dueDate} disabled={!state.canEdit} onChange={(v) => setDraft((d) => ({ ...d, dueDate: v }))} />
           </div>
           {full ? (
@@ -681,7 +681,7 @@ export function TodoPage({ state }: { state: TodoState }) {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <TextField label="Começa em" type="date" value={play.start} onChange={(v) => setPlay((s) => ({ ...s, start: v }))} />
-            <SelectField label="Projeto" placeholder="Sem projeto" value={play.projectId} onChange={(v) => setPlay((s) => ({ ...s, projectId: v }))} options={[{ value: "", label: "Sem projeto" }, ...state.projects.map((p) => ({ value: p.id, label: p.name }))]} />
+            <SelectField label="Workspace" placeholder="Sem workspace" value={play.projectId} onChange={(v) => setPlay((s) => ({ ...s, projectId: v }))} options={[{ value: "", label: "Sem workspace" }, ...state.projects.map((p) => ({ value: p.id, label: p.name }))]} />
           </div>
           <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setPlayOpen(false)} className={`${btn.quiet} max-sm:h-11`}>

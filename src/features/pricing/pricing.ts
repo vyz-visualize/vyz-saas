@@ -153,7 +153,7 @@ export function annualSavingPct(plan: PlanId): number {
   return Math.round((1 - PLAN[plan].anual / PLAN[plan].mensal) * 100);
 }
 
-const projectsLabel = (n: number) => `${n} ${n === 1 ? "projeto" : "projetos"}`;
+const projectsLabel = (n: number) => `${n} ${n === 1 ? "workspace" : "workspaces"}`;
 
 export function quote(s: PlanState): Quote {
   if (s.produto === "lp") return quoteLp(s);

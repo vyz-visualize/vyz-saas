@@ -37,7 +37,7 @@ export function ConnectButton({ provider, next = "/painel/contas", connected = f
 
   if (!canManage) {
     return (
-      <span className={`${look} cursor-not-allowed opacity-50`} aria-disabled="true" aria-label={label ? undefined : full} title="Só administradores do workspace conectam contas.">
+      <span className={`${look} cursor-not-allowed opacity-50`} aria-disabled="true" aria-label={label ? undefined : full} title="Só administradores da organização conectam contas.">
         <Lock size={15} aria-hidden /> {text}
       </span>
     );

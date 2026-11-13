@@ -48,7 +48,7 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
         {current ? <Chip label={PERIOD_LABEL[current.period]} tone="accent" /> : null}
         {ending ? <Chip label={ending} tone="warn" /> : null}
       </View>
-      {current ? <Text style={{ color: t.fg2, fontSize: 13.5, lineHeight: 19 }}>Até {current.accounts} projetos</Text> : null}
+      {current ? <Text style={{ color: t.fg2, fontSize: 13.5, lineHeight: 19 }}>Até {current.accounts} workspaces</Text> : null}
     </View>
   );
 
@@ -64,7 +64,7 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
     return (
       <Card style={{ gap: 10 }}>
         {header}
-        <Text style={{ color: t.fg2, fontSize: 14, lineHeight: 20 }}>Só o dono do workspace muda o plano.</Text>
+        <Text style={{ color: t.fg2, fontSize: 14, lineHeight: 20 }}>Só o dono da organização muda o plano.</Text>
       </Card>
     );
   }

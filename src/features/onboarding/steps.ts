@@ -30,7 +30,7 @@ const DB_TO_STEP: Record<SavedStep, ActiveStep> = { business: "welcome", platfor
 
 export const STEP_LABEL: Record<ActiveStep, string> = {
   welcome: "Boas-vindas",
-  project: "Projeto",
+  project: "Workspace",
   connect: "Conectar",
   setup: "Contas",
   model: "Modelo",

@@ -192,15 +192,15 @@ export function AutopilotModal({ open, onClose, state, toast }: { open: boolean;
   return (
     <Modal open={open} onClose={onClose} title="Otimização automática">
       {!state.projects.length ? (
-        <p className="text-[14px] text-fg-2">Crie um projeto para ligar o automático.</p>
+        <p className="text-[14px] text-fg-2">Crie um workspace para ligar o automático.</p>
       ) : (
         <div className="space-y-4">
           <p className="text-[13.5px] leading-relaxed text-fg-2">
-            O VYZ aplica sozinho as mudanças das tarefas deste projeto, dentro dos limites abaixo, e avisa pelo app e pelo WhatsApp. Ele nunca cria campanha, nunca reativa campanha pausada e nunca
+            O VYZ aplica sozinho as mudanças das tarefas deste workspace, dentro dos limites abaixo, e avisa pelo app e pelo WhatsApp. Ele nunca cria campanha, nunca reativa campanha pausada e nunca
             mexe em campanha nova.
           </p>
           <SelectField
-            label="Projeto"
+            label="Workspace"
             value={projectId}
             onChange={pick}
             options={state.projects.map((p) => ({
@@ -209,7 +209,7 @@ export function AutopilotModal({ open, onClose, state, toast }: { open: boolean;
             }))}
           />
           <div className={`rounded-card border p-4 transition-colors ${rules.enabled ? "border-accent bg-[color-mix(in_srgb,var(--accent-soft)_45%,transparent)]" : "border-line bg-card"}`}>
-            <Switch label={<span className="font-semibold">Ligar o automático neste projeto</span>} checked={rules.enabled} disabled={ro} onChange={(enabled) => set({ enabled })} />
+            <Switch label={<span className="font-semibold">Ligar o automático neste workspace</span>} checked={rules.enabled} disabled={ro} onChange={(enabled) => set({ enabled })} />
           </div>
           <div role="group" aria-label="Limites do automático" className="space-y-4 rounded-card border border-line bg-card p-4">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -240,7 +240,7 @@ export function AutopilotModal({ open, onClose, state, toast }: { open: boolean;
               onChange={(allowIncrease) => set({ allowIncrease })}
             />
           </div>
-          {ro && <p className="text-[13px] text-fg-2">Só administradores do workspace mudam o automático.</p>}
+          {ro && <p className="text-[13px] text-fg-2">Só administradores da organização mudam o automático.</p>}
           <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
             <button type="button" onClick={onClose} className={`${btn.quiet} max-sm:h-11`}>
               Fechar
@@ -287,7 +287,7 @@ export function AutopilotButton({ state, onOpen }: { state: TodoState; onOpen: (
     <button type="button" onClick={onOpen} className={btn.quiet}>
       <Bot size={16} aria-hidden />
       Automático
-      {on > 0 && <Badge tone="accent">{on === 1 ? "1 projeto" : `${on} projetos`}</Badge>}
+      {on > 0 && <Badge tone="accent">{on === 1 ? "1 workspace" : `${on} workspaces`}</Badge>}
     </button>
   );
 }

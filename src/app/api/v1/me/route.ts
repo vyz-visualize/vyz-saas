@@ -46,8 +46,8 @@ export async function PATCH(request: Request) {
   const body = (await request.json().catch(() => null)) as { defaultWorkspaceId?: unknown } | null;
   const id = typeof body?.defaultWorkspaceId === "string" ? body.defaultWorkspaceId : "";
   const member = await session.db.from("workspace_members").select("workspace_id").eq("user_id", session.userId).eq("workspace_id", id).maybeSingle();
-  if (!member.data) return apiJson({ error: { code: "workspace:not_found", message: "Workspace não encontrado." } }, 404);
+  if (!member.data) return apiJson({ error: { code: "workspace:not_found", message: "Organização não encontrada." } }, 404);
   const { error } = await session.db.from("profiles").update({ default_workspace_id: id }).eq("id", session.userId);
-  if (error) return apiJson({ error: { code: "unknown", message: "Não foi possível trocar o workspace." } }, 500);
+  if (error) return apiJson({ error: { code: "unknown", message: "Não foi possível trocar a organização." } }, 500);
   return apiJson({ ok: true });
 }

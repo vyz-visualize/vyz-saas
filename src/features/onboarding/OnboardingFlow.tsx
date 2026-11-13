@@ -353,7 +353,7 @@ export function AskAdmin({ workspaceName }: { workspaceName: string }) {
         Peça ao administrador para concluir
       </h1>
       <p className="mt-2 text-[15px] leading-relaxed text-fg-2">
-        O workspace <strong className="font-semibold text-fg">{workspaceName}</strong> ainda está sendo configurado. Quem é administrador cria o primeiro projeto e conecta as contas. Assim que terminar, o painel abre para você.
+        A organização <strong className="font-semibold text-fg">{workspaceName}</strong> ainda está sendo configurada. Quem é administrador cria o primeiro workspace e conecta as contas. Assim que terminar, o painel abre para você.
       </p>
       <form action={signOut} className="mt-6">
         <button type="submit" className="inline-flex h-10 items-center gap-2 rounded-control border border-line px-4 text-[14px] font-semibold text-fg hover:border-accent hover:text-accent">

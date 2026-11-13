@@ -80,7 +80,7 @@ describe("tasksCsv", () => {
     const csv = tasksCsv([t], { ...opts, full: false });
     expect(csv.startsWith("﻿")).toBe(true);
     const [head, row] = csv.slice(1).split("\r\n");
-    expect(head).toBe("Tarefa;Detalhe;Projeto;Status;Etapa;Prioridade;Situação;Prazo;Origem;Criada em;Concluída em");
+    expect(head).toBe("Tarefa;Detalhe;Workspace;Status;Etapa;Prioridade;Situação;Prazo;Origem;Criada em;Concluída em");
     expect(row).toContain('"Revisar ""oferta""; já"');
     expect(row).toContain("Atrasado;06/11/2026;Manual;01/11/2026;");
     expect(row).not.toContain("Ana");

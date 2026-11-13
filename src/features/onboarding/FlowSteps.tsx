@@ -75,7 +75,7 @@ export function ProjectStep({ project, businessTypeId, api, nav, onNameChange, o
           submit();
         }}
       >
-        <StepTitle title="Qual é o primeiro cliente?" text="Primeiro, me diz quem é o cliente. As contas e os dashboards dele ficam dentro desse projeto." />
+        <StepTitle title="Qual é o primeiro cliente?" text="Primeiro, me diz quem é o cliente. As contas e os dashboards dele ficam dentro desse workspace." />
         <label className="block">
           <span className="text-[14px] font-medium text-fg">Nome do cliente</span>
           <input
@@ -84,7 +84,7 @@ export function ProjectStep({ project, businessTypeId, api, nav, onNameChange, o
             placeholder="Ex.: Loja da Ana"
             maxLength={80}
             data-autofocus
-            name="projeto"
+            name="workspace"
             className="mt-1.5 h-11 w-full rounded-control border border-line bg-field px-3 text-[15px] outline-none focus:border-accent"
           />
         </label>

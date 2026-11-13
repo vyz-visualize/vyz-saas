@@ -33,7 +33,7 @@ export function LeadsPage({ data, filters, timeZone }: { data: LeadsPageData | n
         <div className="flex items-start gap-3 rounded-card border border-line bg-card p-5 text-[14px]">
           <Lock size={18} aria-hidden className="mt-0.5 shrink-0 text-fg-2" />
           <p className="text-fg-2">
-            Os leads têm dados pessoais de quem preencheu o formulário: só administradores do workspace veem e exportam. Peça a um administrador o acesso ou o arquivo.
+            Os leads têm dados pessoais de quem preencheu o formulário: só administradores da organização veem e exportam. Peça a um administrador o acesso ou o arquivo.
           </p>
         </div>
       </div>

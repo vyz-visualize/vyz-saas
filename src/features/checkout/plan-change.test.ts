@@ -115,7 +115,7 @@ describe("uso atual no plano novo", () => {
   it("menos projetos do que os ativos", () => {
     expect(planChangeBlocker({ tier: "pro", period: "anual", accounts: 1 }, usage)).toEqual({
       code: "limit:projects_in_use",
-      message: "Você tem 2 projetos ativos. O Padrão vai até 1. Arquive projetos em Projetos antes de trocar.",
+      message: "Você tem 2 workspaces ativos. O Padrão vai até 1. Arquive workspaces em Workspaces antes de trocar.",
     });
   });
 

@@ -79,7 +79,7 @@ async function createWorkspaceFor(db: ReturnType<typeof createAdminSupabase>, us
   const { data: u, error: uErr } = await db.auth.admin.getUserById(userId);
   if (uErr || !u.user) throw uErr ?? new Error("usuário não encontrado");
   const { data: profile } = await db.from("profiles").select("full_name").eq("id", userId).maybeSingle();
-  const name = (profile?.full_name?.trim() || u.user.email?.split("@")[0] || "Workspace").slice(0, 80);
+  const name = (profile?.full_name?.trim() || u.user.email?.split("@")[0] || "Organização").slice(0, 80);
   const { data: ws, error } = await db.from("workspaces").insert({ name, slug: workspaceSlug(name, userId), created_by: userId }).select("id").single();
   if (error) throw error;
   const mem = await db.from("workspace_members").insert({ workspace_id: ws.id, user_id: userId, role: "owner" });
@@ -180,7 +180,7 @@ export async function removePlan(userId: string): Promise<ActionResult> {
   try {
     const db = createAdminSupabase();
     const ws = await ownedWorkspace(db, userId);
-    if (!ws) return { ok: false, message: "A pessoa não é dona de nenhum workspace." };
+    if (!ws) return { ok: false, message: "A pessoa não é dona de nenhuma organização." };
     const { data: live, error } = await db
       .from("subscriptions")
       .select("id, provider, provider_subscription_id")

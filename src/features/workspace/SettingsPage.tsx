@@ -128,7 +128,7 @@ function WorkspaceForm({ canEdit, notify }: { canEdit: boolean; notify: Notify }
       const res = await updateWorkspace({ name });
       if (!res.ok) return setError(res.error.message);
       setError(null);
-      notify("Workspace salvo.");
+      notify("Organização salva.");
     });
   return (
     <form
@@ -139,7 +139,7 @@ function WorkspaceForm({ canEdit, notify }: { canEdit: boolean; notify: Notify }
       }}
     >
       <div className="max-w-md">
-        <TextField label="Nome do workspace" value={name} onChange={setName} disabled={!canEdit} hint={canEdit ? "Aparece no menu e nos convites." : "Só admins mudam o nome."} error={error} />
+        <TextField label="Nome da organização" value={name} onChange={setName} disabled={!canEdit} hint={canEdit ? "Aparece no menu e nos convites." : "Só admins mudam o nome."} error={error} />
       </div>
       {canEdit && (
         <button type="submit" className={`${btn.small} max-sm:h-11 max-sm:w-full`} disabled={pending || !name.trim() || name.trim() === workspace.name}>
@@ -322,7 +322,7 @@ export function SettingsPage({ data }: { data: SettingsData }) {
   const tz = workspace.timezone;
   const tabs: { value: TabId; label: string }[] = [
     { value: "conta", label: "Conta" },
-    { value: "workspace", label: "Workspace" },
+    { value: "workspace", label: "Organização" },
     { value: "equipe", label: `Equipe · ${data.team.length}` },
     ...(data.activity ? [{ value: "atividade" as const, label: "Atividade" }] : []),
   ];
@@ -331,7 +331,7 @@ export function SettingsPage({ data }: { data: SettingsData }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Configurações" text={`${workspace.name} · você é ${ROLE_LABEL[role].toLowerCase()} deste workspace.`} />
+      <PageHeader title="Configurações" text={`${workspace.name} · você é ${ROLE_LABEL[role].toLowerCase()} desta organização.`} />
 
       <Tabs label="Seções das configurações" items={tabs} value={tab} onChange={setTab} />
 
@@ -370,8 +370,8 @@ export function SettingsPage({ data }: { data: SettingsData }) {
       )}
 
       {tab === "workspace" && (
-        <div className="space-y-4" role="tabpanel" aria-label="Workspace">
-          <Section id="h-ws" title="Workspace" text="O espaço onde ficam os projetos, as contas e os dashboards da equipe.">
+        <div className="space-y-4" role="tabpanel" aria-label="Organização">
+          <Section id="h-ws" title="Organização" text="O espaço onde ficam os workspaces, as contas e os dashboards da equipe.">
             <WorkspaceForm canEdit={admin} notify={toast.show} />
           </Section>
 
@@ -408,7 +408,7 @@ export function SettingsPage({ data }: { data: SettingsData }) {
 
       {tab === "atividade" && data.activity && (
         <div role="tabpanel" aria-label="Atividade">
-          <Section id="h-atividade" title="Atividade do workspace" text="O que a equipe e o sistema fizeram aqui: cobrança, conexões, dashboards e mudanças de dados.">
+          <Section id="h-atividade" title="Atividade da organização" text="O que a equipe e o sistema fizeram aqui: cobrança, conexões, dashboards e mudanças de dados.">
             <ActivityList items={data.activity} now={data.now} timeZone={tz} />
           </Section>
         </div>

@@ -66,7 +66,7 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
         setError(res.error.fields?.name ?? res.error.message);
         return;
       }
-      toast.show(editing.mode === "new" ? "Projeto criado." : "Nome atualizado.");
+      toast.show(editing.mode === "new" ? "Workspace criado." : "Nome atualizado.");
       setEditing(null);
     });
   }
@@ -87,23 +87,23 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Projetos"
-        text="Cada cliente ou marca é um projeto, com as contas e os dashboards dele. O plano conta os projetos ativos."
+        title="Workspaces"
+        text="Cada cliente ou marca é um workspace, com as contas e os dashboards dele. O plano conta os workspaces ativos."
         actions={
           state.canEdit && (
-            <button type="button" onClick={() => open({ mode: "new" })} disabled={full} title={full ? "Todos os projetos do plano estão em uso" : undefined} className={btn.small}>
+            <button type="button" onClick={() => open({ mode: "new" })} disabled={full} title={full ? "Todos os workspaces do plano estão em uso" : undefined} className={btn.small}>
               <Plus size={16} aria-hidden />
-              Novo projeto
+              Novo workspace
             </button>
           )
         }
       />
 
       {/* uso do plano: o que já foi e o que cabe em cada projeto */}
-      <section aria-label="Projetos do plano" className="flex flex-col gap-3 rounded-card border border-line bg-card p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-5">
+      <section aria-label="Workspaces do plano" className="flex flex-col gap-3 rounded-card border border-line bg-card p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-5">
         <div className="min-w-0 flex-1">
           <p className="flex items-baseline justify-between gap-3 text-[13px]">
-            <span className="font-medium text-fg-2">Projetos do plano</span>
+            <span className="font-medium text-fg-2">Workspaces do plano</span>
             <span className={`font-semibold tnum ${full ? "text-error-fg" : "text-fg"}`}>
               {used} de {state.quantity}
             </span>
@@ -115,26 +115,26 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
         <p className="text-[13px] leading-snug text-fg-2 sm:max-w-xs sm:text-right">
           {full ? (
             <>
-              Todos os projetos do plano estão em uso.{" "}
+              Todos os workspaces do plano estão em uso.{" "}
               <Link href="/painel/plano#h-trocar" className="font-semibold text-accent underline-offset-4 hover:underline">
-                Contratar mais projetos
+                Contratar mais workspaces
               </Link>
             </>
           ) : (
-            `Até ${plural(state.maxAccountsPerPlatform, "conta", "contas")} de cada plataforma em cada projeto.`
+            `Até ${plural(state.maxAccountsPerPlatform, "conta", "contas")} de cada plataforma em cada workspace.`
           )}
         </p>
       </section>
 
       {state.projects.length === 0 ? (
         <EmptyState
-          title="Nenhum projeto ainda"
-          text="Crie um projeto para cada cliente ou marca. Ao ligar uma conta em Contas, ela entra no projeto escolhido."
+          title="Nenhum workspace ainda"
+          text="Crie um workspace para cada cliente ou marca. Ao ligar uma conta em Contas, ela entra no workspace escolhido."
           action={
             state.canEdit && (
               <button type="button" onClick={() => open({ mode: "new" })} className={btn.small}>
                 <Plus size={16} aria-hidden />
-                Criar o primeiro projeto
+                Criar o primeiro workspace
               </button>
             )
           }
@@ -180,7 +180,7 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
         </ul>
       )}
 
-      <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.mode === "rename" ? "Renomear projeto" : "Novo projeto"}>
+      <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.mode === "rename" ? "Renomear workspace" : "Novo workspace"}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -194,16 +194,16 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
               Cancelar
             </button>
             <button type="submit" disabled={pending} className={`${btn.small} max-sm:h-11`}>
-              {pending ? "Salvando…" : editing?.mode === "rename" ? "Salvar" : "Criar projeto"}
+              {pending ? "Salvando…" : editing?.mode === "rename" ? "Salvar" : "Criar workspace"}
             </button>
           </ModalActions>
         </form>
       </Modal>
 
-      <Modal open={!!archiving} onClose={() => setArchiving(null)} title="Arquivar projeto">
+      <Modal open={!!archiving} onClose={() => setArchiving(null)} title="Arquivar workspace">
         <div className="space-y-5">
           <p className="text-[14.5px] leading-relaxed text-fg">
-            As contas de <strong>{archiving?.name}</strong> saem do ar e o projeto libera espaço no plano. Os dashboards e os dados já importados ficam.
+            As contas de <strong>{archiving?.name}</strong> saem do ar e o workspace libera espaço no plano. Os dashboards e os dados já importados ficam.
           </p>
           <ModalActions>
             <button type="button" onClick={() => setArchiving(null)} className={`${btn.quiet} max-sm:h-11`}>

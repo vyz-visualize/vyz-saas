@@ -211,8 +211,8 @@ export function HomePage({ data }: { data: HomeData }) {
         </div>
       </section>
 
-      <section aria-label="Números do workspace" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <StatLink href="/painel/projetos" icon={<FolderKanban size={16} aria-hidden />} label="Projetos" value={usage.projects} limit={access.accountsQuantity} hint="Clientes ou marcas" />
+      <section aria-label="Números da organização" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatLink href="/painel/workspaces" icon={<FolderKanban size={16} aria-hidden />} label="Workspaces" value={usage.projects} limit={access.accountsQuantity} hint="Clientes ou marcas" />
         <StatLink href="/painel/dashboards" icon={<BarChart3 size={16} aria-hidden />} label="Dashboards" value={usage.dashboards} limit={ent.maxDashboards} hint={`Limite do ${TIER_LABEL[tier]}`} />
         <StatLink
           href="/painel/contas"

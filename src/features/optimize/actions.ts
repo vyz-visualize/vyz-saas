@@ -135,7 +135,7 @@ export type AutopilotCheck = { ok: true; action: OptimizationAction } | { ok: fa
  * (soma das variações, ex.: -0,1). `daysRunning` = dias desde o início.
  */
 export function checkAutopilot(a: OptimizationAction, rules: AutopilotRules, ctx: { changedToday: number; daysRunning: number | null }): AutopilotCheck {
-  if (!rules.enabled) return { ok: false, reason: "Automático desligado no projeto." };
+  if (!rules.enabled) return { ok: false, reason: "Automático desligado no workspace." };
   if (ctx.daysRunning === null || ctx.daysRunning < rules.minCampaignAgeDays)
     return {
       ok: false,

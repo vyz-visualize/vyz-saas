@@ -124,9 +124,9 @@ async function Done({ params }: { params: PageProps<"/assinar/concluido/[id]">["
 function Receipt({ checkout, receipt }: { checkout: CheckoutView; receipt: CheckoutReceipt }) {
   const p = receipt.payment;
   const rows: [string, string][] = [];
-  if (receipt.workspaceName) rows.push(["Workspace", receipt.workspaceName]);
+  if (receipt.workspaceName) rows.push(["Organização", receipt.workspaceName]);
   if (checkout.planId) {
-    const accounts = checkout.product === "lp" ? "landing pages" : `até ${checkout.accountsQuantity} projetos`;
+    const accounts = checkout.product === "lp" ? "landing pages" : `até ${checkout.accountsQuantity} workspaces`;
     rows.push(["Plano", `${PLAN_LABEL[checkout.planId]} · ${INTERVAL_LABEL[checkout.interval]} · ${accounts}`]);
   }
   const method =

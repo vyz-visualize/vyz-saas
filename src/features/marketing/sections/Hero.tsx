@@ -44,7 +44,7 @@ export function Hero() {
             <HeroActions />
             <p className="mt-5 text-sm text-fg-2">
               A partir de <strong className="font-semibold text-fg tnum">{brl(startingPrice("base", "anual"))}/mês</strong> no anual · até 5
-              projetos
+              workspaces
             </p>
           </Reveal>
         </div>

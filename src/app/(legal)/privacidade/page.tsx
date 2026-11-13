@@ -91,7 +91,7 @@ export default function Privacidade() {
       <ul>
         <li>Dados da conta: enquanto ela existir.</li>
         <li>Tokens de acesso: até você desconectar a conta ou revogar o acesso.</li>
-        <li>Métricas de anúncios já importadas: até a exclusão do workspace, mesmo depois de desconectar a conta.</li>
+        <li>Métricas de anúncios já importadas: até a exclusão da organização, mesmo depois de desconectar a conta.</li>
         <li>Registros de acesso: no mínimo 6 meses, como exige o Marco Civil da Internet.</li>
         <li>Faturas e dados fiscais: pelo prazo da legislação tributária (em geral, 5 anos), sem vínculo com seu perfil depois da exclusão da conta.</li>
       </ul>
@@ -116,14 +116,14 @@ export default function Privacidade() {
 
       <h2>12. Excluir sua conta e seus dados</h2>
       <p>
-        No aplicativo, em <strong>Conta → Excluir conta</strong>, você apaga seu perfil e seus acessos. Se você for o dono de um workspace com outros membros,
-        a propriedade passa a outro membro; sem equipe, a assinatura é encerrada. Para apagar também os dados do workspace, siga as instruções de{" "}
+        No aplicativo, em <strong>Conta → Excluir conta</strong>, você apaga seu perfil e seus acessos. Se você for o dono de uma organização com outros membros,
+        a propriedade passa a outro membro; sem equipe, a assinatura é encerrada. Para apagar também os dados da organização, siga as instruções de{" "}
         <Link href="/exclusao-de-dados">Exclusão de dados</Link>. Ficam apenas os registros que a lei nos obriga a guardar.
       </p>
 
       <h2>13. Cookies</h2>
       <p>
-        No Serviço, usamos apenas cookies necessários para manter você conectado, lembrar o workspace aberto e o tema escolhido.
+        No Serviço, usamos apenas cookies necessários para manter você conectado, lembrar a organização aberta e o tema escolhido.
         {siteTags ? " No site público, usamos ferramentas de medição de anúncios (como Google Tag Manager e Meta Pixel), que registram a visita; os dados das contas conectadas não passam por elas." : " Não usamos cookies de publicidade."}
       </p>
 

@@ -33,7 +33,7 @@ async function Editar({ params }: { params: PageProps<"/painel/dashboards/[id]/e
     return (
       <EmptyState
         title="Dashboard não encontrado"
-        text="Ele pode ter sido apagado ou ser de outro workspace."
+        text="Ele pode ter sido apagado ou ser de outra organização."
         action={
           <Link href="/painel/dashboards" className={btn.small}>
             Ver meus dashboards

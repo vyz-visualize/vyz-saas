@@ -75,7 +75,7 @@ export async function setEnabledAccounts(platformId: string, adAccountIds: strin
     // A lista do navegador é só a escolha: o que existe e o estado de cada conta vêm do banco.
     const rows = unwrap(await supabase.from("ad_accounts").select("id, name, status, is_enabled, connection_id, project_id").eq("workspace_id", ws).eq("platform_id", platform)) ?? [];
     const byId = new Map(rows.map((r) => [r.id, r]));
-    if (ids.some((id) => !byId.has(id))) throw appError("not_found", "Alguma das contas escolhidas não está neste workspace.");
+    if (ids.some((id) => !byId.has(id))) throw appError("not_found", "Alguma das contas escolhidas não está nesta organização.");
     const blocked = ids.map((id) => byId.get(id)!).find((r) => !r.connection_id || r.status !== "active");
     if (blocked) {
       const why = blocked.connection_id ? "o login conectado não dá mais acesso a ela" : "ela está sem conexão; reconecte o login";
@@ -214,7 +214,7 @@ export async function addManualAccount(input: ManualAccountInput): Promise<Actio
       .insert({ ...check.row, workspace_id: session.workspace.id, status: "pending" })
       .select("id, name")
       .single();
-    if (error) throw error.code === "23505" ? appError("conflict", "Essa conta já está cadastrada neste workspace.") : fromPostgrest(error);
+    if (error) throw error.code === "23505" ? appError("conflict", "Essa conta já está cadastrada nesta organização.") : fromPostgrest(error);
 
     await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "ad_account.added", entityType: "ad_account", entityId: data.id, metadata: { platform: platformId, manual: true } });
     refresh();

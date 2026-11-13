@@ -51,7 +51,7 @@ export class ReportContext {
     return this.insights.get(workspaceId)!;
   }
   workspaceName(workspaceId: string) {
-    if (!this.names.has(workspaceId)) this.names.set(workspaceId, Promise.resolve(this.db.from("workspaces").select("name").eq("id", workspaceId).maybeSingle()).then((r) => r.data?.name ?? "seu workspace"));
+    if (!this.names.has(workspaceId)) this.names.set(workspaceId, Promise.resolve(this.db.from("workspaces").select("name").eq("id", workspaceId).maybeSingle()).then((r) => r.data?.name ?? "sua organização"));
     return this.names.get(workspaceId)!;
   }
   async firstName(userId: string) {
