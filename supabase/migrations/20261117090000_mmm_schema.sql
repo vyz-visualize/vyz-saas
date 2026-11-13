@@ -11,8 +11,8 @@
 --   A carga do histórico (37 meses) passa pela fila backfill_jobs, ligada e
 --   pausada por backfill_control (começa desligada).
 --
---   Retenção: bruto 13 meses (derrubada de partição); tratado enquanto o contrato
---   estiver ativo + 90 dias (private.retention_policy, regra "contrato").
+--   Retenção: bruto 13 meses (derrubada de partição, já valendo); tratado enquanto o
+--   contrato estiver ativo + 90 dias (regra "contrato", começa em simulação).
 -- =============================================================================
 
 create schema mmm;
@@ -382,13 +382,16 @@ alter table private.retention_policy
   add constraint retention_policy_keep_check check (keep between interval '30 days' and interval '10 years');
 comment on column private.retention_policy.regra is 'linha: created_at mais velho que keep; particao: derruba as partições mensais mais velhas que keep; contrato: dados do workspace sem acesso há mais que keep.';
 
+-- O bruto já entra valendo (derrubada de partição). As regras "contrato" começam em SIMULAÇÃO,
+-- como as de 5 anos: só contam e registram em private.retention_runs. Para liberar (numa migração nova):
+--   update private.retention_policy set apply = true, updated_at = now() where regra = 'contrato';
 insert into private.retention_policy (table_name, keep, apply, regra) values
   ('mmm.raw_insights', interval '13 months', true, 'particao'),
-  ('mmm.media_daily', interval '90 days', true, 'contrato'),
-  ('mmm.outcomes_daily', interval '90 days', true, 'contrato'),
-  ('mmm.eventos', interval '90 days', true, 'contrato'),
-  ('mmm.daily', interval '90 days', true, 'contrato'),
-  ('mmm.backfill_jobs', interval '90 days', true, 'contrato');
+  ('mmm.media_daily', interval '90 days', false, 'contrato'),
+  ('mmm.outcomes_daily', interval '90 days', false, 'contrato'),
+  ('mmm.eventos', interval '90 days', false, 'contrato'),
+  ('mmm.daily', interval '90 days', false, 'contrato'),
+  ('mmm.backfill_jobs', interval '90 days', false, 'contrato');
 
 -- Workspaces cujo contrato acabou há mais que p_keep (sem acesso, e a última assinatura terminou antes).
 create function private.contract_ended(p_keep interval)

@@ -168,6 +168,15 @@ describe("cascata e retenção", () => {
   it("bruto: partições do mês criadas e derrubadas depois de 13 meses; tratado: sai 90 dias depois do fim do contrato", async () => {
     // contrato da Bia acabou há 100 dias; o da Ana segue ativo
     await db.query(`update public.subscriptions set status = 'canceled', canceled_at = now() - interval '100 days', ended_at = now() - interval '100 days', current_period_start = now() - interval '130 days', current_period_end = now() - interval '100 days' where workspace_id = $1`, [wsB.id]);
+    // começa em simulação: conta o que sairia e não apaga nada
+    const policy = (await db.query<{ table_name: string; apply: boolean }>(`select table_name, apply from private.retention_policy where table_name like 'mmm.%' order by 1`)).rows;
+    expect(policy.filter((p) => p.apply).map((p) => p.table_name)).toEqual(["mmm.raw_insights"]);
+    const sim = (await db.query<{ r: Record<string, { mode: string; rows?: number; error?: string }> }>(`select private.apply_retention() r`)).rows[0].r;
+    expect(sim["mmm.eventos"]).toEqual({ mode: "simulacao", rows: 1 });
+    expect(sim["mmm.media_daily"]).toEqual({ mode: "simulacao", rows: 0 });
+    expect(await n(`mmm.eventos where workspace_id = $1`, [wsB.id])).toBe(1);
+    // liberada: apaga só o do contrato encerrado há mais de 90 dias
+    await db.exec(`update private.retention_policy set apply = true where regra = 'contrato'`);
     const out = (await db.query<{ r: Record<string, { mode: string; rows?: number; error?: string }> }>(`select private.apply_retention() r`)).rows[0].r;
     expect(out["mmm.eventos"]).toEqual({ mode: "exclusao", rows: 1 });
     expect(out["mmm.media_daily"]?.error).toBeUndefined();
