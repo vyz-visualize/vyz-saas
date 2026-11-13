@@ -4,6 +4,7 @@
 // investimento em azul. Faixa de números com minilinha, receita e investimento por
 // dia, anéis por canal, funil de compra, produtos e campanhas. Gráficos da Bklit UI.
 
+import { breakEvenOf, GOAL_INVITE, hasGoal, hasMargin, MARGIN_INVITE } from "@/features/metrics/targets";
 import { CalendarDays, CircleDollarSign, Percent, ShoppingBag, Target, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
 import { biggestDrop, platformPart } from "@/features/metrics/compute";
@@ -76,8 +77,8 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
   const nodes = {
     "s-receita": <StatBlock title={label(ctx, "revenue")} v={value(ctx, "revenue")} delta={change(ctx, "revenue")} note="contra o período anterior" values={daily(ctx, "revenue")} icon={CircleDollarSign} solid={HERO} />,
     "s-invest": <StatBlock title={label(ctx, "spend")} v={value(ctx, "spend")} delta={hide ? undefined : change(ctx, "spend")} note={hide ? "oculto neste link" : `${int(ctx.cur.conversions)} vendas`} values={hide ? undefined : daily(ctx, "spend")} color={BLUE} icon={Wallet} />,
-    "s-roas": <StatBlock title={label(ctx, "roas")} v={value(ctx, "roas")} delta={hide ? undefined : change(ctx, "roas")} note={hide ? undefined : `equilíbrio em ${decimal(breakEven, 1)}`} values={hide ? undefined : daily(ctx, "roas")} color={P.accent} icon={Percent} />,
-    "s-cpa": <StatBlock title={label(ctx, "cpa")} v={value(ctx, "cpa")} delta={hide ? undefined : change(ctx, "cpa")} note={hide ? undefined : `alvo ${brl(ctx.ds.goal, { decimals: false })}`} values={hide ? undefined : daily(ctx, "cpa")} color={VIOLET} icon={Target} />,
+    "s-roas": <StatBlock title={label(ctx, "roas")} v={value(ctx, "roas")} delta={hide ? undefined : change(ctx, "roas")} note={hide ? undefined : `equilíbrio em ${decimal(breakEvenOf(ctx.ds), 1)}${hasMargin(ctx.ds) ? "" : ` · ${MARGIN_INVITE}`}`} values={hide ? undefined : daily(ctx, "roas")} color={P.accent} icon={Percent} />,
+    "s-cpa": <StatBlock title={label(ctx, "cpa")} v={value(ctx, "cpa")} delta={hide ? undefined : change(ctx, "cpa")} note={hide ? undefined : hasGoal(ctx.ds) ? `alvo ${brl(ctx.ds.goal, { decimals: false })}` : GOAL_INVITE} values={hide ? undefined : daily(ctx, "cpa")} color={VIOLET} icon={Target} />,
     "s-vendas": (
       <Block
         title={hide ? "Receita por dia" : "Receita e investimento"}

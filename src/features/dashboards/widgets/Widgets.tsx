@@ -1,6 +1,7 @@
 // Widgets do dashboard. Os mesmos componentes servem o gerador da LP, o passo 2
 // de "Como funciona", as miniaturas, o painel e o link público: só muda o Dataset.
 
+import { BUDGET_INVITE, breakEvenOf, GOAL_INVITE, hasBudget, hasGoal, hasMargin, MARGIN_INVITE } from "@/features/metrics/targets";
 import type { CSSProperties, ReactNode } from "react";
 import { BarList } from "@/components/charts/BarList";
 import { StageFunnel } from "@/components/charts/StageFunnel";
@@ -93,6 +94,11 @@ function Delta({ cur, prev, id, profile, suffix = "" }: { cur: number; prev: num
   );
 }
 
+/** Convite no lugar de um número que depende de algo ainda não definido no dashboard. */
+function Invite({ text }: { text: string }) {
+  return <span data-invite className="font-medium text-accent">{text}</span>;
+}
+
 // ---- KPI ------------------------------------------------------------------
 
 export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec: KpiSpec; ctx: WidgetContext; delay: number; size?: "md" | "lg"; /** Atalho de ocultar (só para quem pode editar). */ onHide?: () => void; /** Modo personalizar: o ✕. */ onRemove?: () => void }) {
@@ -114,22 +120,23 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
       sub = ctx.compare ? <Delta cur={cur[spec.metric]} prev={prev[spec.metric]} id={spec.metric} profile={profile} suffix={filters?.compared ? ` vs ${rangeLabel(filters.compared)}` : " vs anterior"} /> : "no período";
       break;
     case "split": {
-      const parts = byPlatform(ds).map((p) => `${short(p.id)} ${int(p.conv)}`);
-      sub = parts.length ? parts.join(" · ") : "Confirmadas no GA4";
+      const plats = byPlatform(ds);
+      // uma plataforma só: "Meta 36" parecia uma meta; diz de onde vieram
+      sub = plats.length > 1 ? plats.map((p) => `${short(p.id)} ${int(p.conv)}`).join(" · ") : plats.length ? `todas pelo ${PLATFORMS[plats[0].id].name}` : "Confirmadas no GA4";
       break;
     }
     case "breakEven":
-      sub = `Equilíbrio ${decimal(ds.breakEven)}`;
+      sub = `Equilíbrio ${decimal(breakEvenOf(ds))}${hasMargin(ds) ? "" : ` · ${MARGIN_INVITE}`}`;
       break;
     case "ofLeads":
       sub = `de ${int(cur.leads || cur.conversions)} leads`;
       break;
     case "budget":
       // a verba do mês é da conta inteira: não dá para comparar com um recorte
-      sub = filtered ? "no recorte" : hidden ? "da verba do mês" : `${pct(ds.budget.spent / ds.budget.monthly, 0)} da verba do mês`;
+      sub = filtered ? "no recorte" : hidden ? "da verba do mês" : hasBudget(ds) ? `${pct(ds.budget.spent / ds.budget.monthly, 0)} da verba do mês` : <Invite text={BUDGET_INVITE} />;
       break;
     case "goal":
-      sub = `alvo ${brl(ds.goal, { decimals: false })}`;
+      sub = hasGoal(ds) ? `alvo ${brl(ds.goal, { decimals: false })}` : <Invite text={GOAL_INVITE} />;
       break;
   }
 
@@ -143,7 +150,7 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
     >
       <p className={`min-h-[2.3em] leading-[1.15] font-medium tracking-[0.08em] uppercase ${lg ? "text-[11px]" : "text-[9.5px]"} ${strong ? "" : "text-fg-2"}`}>{label}</p>
       <p className={`mt-1 leading-none font-bold tracking-[-0.02em] ${lg ? "text-[22px] @[760px]:text-[26px]" : value.length > 10 ? "text-[15px] @[900px]:text-[18px]" : "text-[17px] @[900px]:text-[21px]"}`}>
-        <Odometer value={value} />
+        <Odometer value={value} label={hidden ? HIDDEN : raw} />
       </p>
       <p className={`mt-1.5 leading-tight ${lg ? "text-[12px]" : "text-[10px]"} ${strong ? "[&_span]:text-inherit" : "text-fg-2"}`}>{sub}</p>
       {goal && !hidden && <GoalLine goal={goal} value={cur[spec.metric]} profile={profile} strong={!!strong} lg={lg} />}
@@ -247,7 +254,7 @@ export function Widget({ spec, ctx: shown, delay }: { spec: WidgetSpec; ctx: Wid
       );
     case "bars":
       return (
-        <Card title={spec.reference === "goal" && title ? `${title} ${brl(ds.goal, { decimals: false })}` : title} delay={delay} note={note} fill>
+        <Card title={spec.reference === "goal" && title && hasGoal(ds) ? `${title} ${brl(ds.goal, { decimals: false })}` : title} delay={delay} note={note} fill>
           <BarsWidget spec={spec} ctx={ctx} />
         </Card>
       );
@@ -394,8 +401,8 @@ export function barData(spec: BarsSpec, ctx: WidgetContext) {
   }
   const reference =
     spec.reference === "breakEven"
-      ? { value: ds.breakEven, label: `equilíbrio ${decimal(ds.breakEven)}` }
-      : spec.reference === "goal"
+      ? { value: breakEvenOf(ds), label: `equilíbrio ${decimal(breakEvenOf(ds))}` }
+      : spec.reference === "goal" && hasGoal(ds)
         ? { value: ds.goal, label: `alvo ${brl(ds.goal, { decimals: false })}` }
         : undefined;
   const better: "up" | "down" = spec.metric === "cpa" ? "down" : "up";
@@ -676,6 +683,15 @@ function Creatives({ ctx }: { ctx: WidgetContext }) {
 function Goals({ ctx }: { ctx: WidgetContext }) {
   const { ds, cur } = ctx;
   const b = ds.budget;
+  // sem verba ou sem alvo, o acompanhamento do mês não tem com o que comparar: convite, não zero
+  if (!hasBudget(ds) || !hasGoal(ds)) {
+    const missing = [!hasBudget(ds) ? "a verba do mês" : null, !hasGoal(ds) ? "o alvo de custo por conversão" : null].filter(Boolean).join(" e ");
+    return (
+      <p className="text-[12px] leading-relaxed text-fg-2">
+        <Invite text={`Defina ${missing}`} /> para acompanhar o mês aqui: o quanto já foi usado, a projeção e se o custo está dentro do alvo.
+      </p>
+    );
+  }
   const pacing = b.day / b.daysInMonth;
   const used = b.spent / b.monthly;
   const projection = (b.spent / b.day) * b.daysInMonth;
@@ -740,7 +756,7 @@ function Audience({ ctx }: { ctx: WidgetContext }) {
             <span className="text-fg-2">{a.label}</span>
             <span className="h-2.5 rounded-[3px] bg-accent" style={{ width: `${(a.share / max) * 100}%` }} />
             <span className="font-semibold">{pct(a.share, 0)}</span>
-            {!ctx.hideSpend && <span className={`w-16 text-right ${a.cpa > ds.goal * 1.15 ? "text-error-fg" : "text-fg-2"}`}>{brl(a.cpa, { decimals: false })}</span>}
+            {!ctx.hideSpend && <span className={`w-16 text-right ${hasGoal(ds) && a.cpa > ds.goal * 1.15 ? "text-error-fg" : "text-fg-2"}`}>{brl(a.cpa, { decimals: false })}</span>}
           </li>
         ))}
         <li className="text-[10px] text-fg-2">

@@ -4,12 +4,13 @@
 // ao login e volta para este mesmo passo, já com "Conectado ✓". Só segue com
 // alguma plataforma conectada; sem nenhuma, a saída é "Pular por agora".
 
-import { CircleAlert, CircleCheck, LoaderCircle, PlugZap, X } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, CircleAlert, CircleCheck, LoaderCircle, PlugZap, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { PendingChip } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { MOCK_NOTICE } from "@/features/integrations/mock-data";
 import { CORE_PROVIDER_IDS, loginThe, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
+import { cleanReturnUrl, EXTRA_PLATFORMS } from "./steps";
 import type { ConnectResult } from "@/features/integrations/results";
 import type { ConnectState } from "@/features/integrations/types";
 import type { FlowApi } from "./api";
@@ -59,11 +60,64 @@ function ConnectLink({ href, provider, connected, canManage }: { href: string; p
   );
 }
 
+/**
+ * As outras plataformas (docs/PLATAFORMAS.md): conecta só a que tem o login com credencial no
+ * servidor (state.providers); as outras aparecem como "Em breve", desligadas. A planilha não
+ * tem login: entra pela tela de Contas, depois.
+ */
+function MorePlatforms({ state, api, open, onToggle }: { state: ConnectState; api: FlowApi; open: boolean; onToggle: () => void }) {
+  return (
+    <section aria-labelledby="mais-plataformas" className="rounded-card border border-line">
+      <button type="button" id="mais-plataformas" aria-expanded={open} aria-controls="mais-plataformas-lista" onClick={onToggle} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-[14.5px] font-semibold text-fg outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        Mais plataformas
+        <ChevronDown size={17} aria-hidden className={`shrink-0 text-fg-2 transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div id="mais-plataformas-lista" className="border-t border-line px-4 pt-3 pb-4">
+          <p className="text-[13px] text-fg-2">O primeiro dashboard usa o Meta Ads e o Google Ads. As outras plataformas entram nos dashboards depois.</p>
+          <ul className="mt-3 divide-y divide-line">
+            {EXTRA_PLATFORMS.map((x) => {
+              const ready = !x.soon && x.provider ? state.providers.includes(x.provider) : false;
+              const connected = x.provider ? state.platforms[x.provider]?.connected : false;
+              return (
+                <li key={x.id} data-extra-platform={x.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <span className="min-w-0 text-[14px] text-fg">{x.name}</span>
+                  {connected ? (
+                    <span className="inline-flex items-center gap-1 rounded-chip bg-accent px-2 py-0.5 text-[12px] font-semibold text-on-accent">
+                      <CircleCheck size={12} aria-hidden /> Conectado ✓
+                    </span>
+                  ) : x.provider && ready ? (
+                    <ConnectLink href={api.connectHref(x.provider)} provider={x.provider} connected={false} canManage={state.canManage} />
+                  ) : x.later ? (
+                    <span className="text-[12.5px] text-fg-2">{x.later}</span>
+                  ) : (
+                    <span aria-disabled="true" className="rounded-chip border border-dashed border-line px-2 py-0.5 text-[12px] text-fg-2">
+                      Em breve
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function ConnectStep({ state, result, api, nav, showTestBadges }: { state: ConnectState; result: ConnectResult | null; api: FlowApi; nav: StepNav; showTestBadges: boolean }) {
   const [banner, setBanner] = useState(result);
   const action = useStepAction();
   const connected = CORE_PROVIDER_IDS.filter((p) => state.platforms[p].connected);
   const can = canContinueFromConnect(connected);
+  // aberta se alguma das outras já está conectada (ex.: volta do login do TikTok)
+  const [more, setMore] = useState(() => EXTRA_PLATFORMS.some((x) => x.provider && state.platforms[x.provider]?.connected));
+
+  // volta do login: tira ?conectado=/?erro= e o "#_=_" que a Meta põe no fim, sem recarregar
+  useEffect(() => {
+    const clean = cleanReturnUrl(window.location.href);
+    if (clean !== window.location.href) window.history.replaceState(window.history.state, "", clean);
+  }, []);
 
   return (
     <>
@@ -98,6 +152,7 @@ export function ConnectStep({ state, result, api, nav, showTestBadges }: { state
             );
           })}
         </ul>
+        <MorePlatforms state={state} api={api} open={more} onToggle={() => setMore((v) => !v)} />
       </div>
       <FlowFooter
         {...nav}

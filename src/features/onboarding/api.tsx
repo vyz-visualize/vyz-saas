@@ -7,30 +7,35 @@
 import { useCallback, type ComponentType } from "react";
 import { AccountPicker, type PickerSelection } from "@/features/integrations/AccountPicker";
 import { connectHref as providerConnectHref, type ProviderId } from "@/features/integrations/providers";
-import type { ConnectState } from "@/features/integrations/types";
-import { buildFirstDashboard, continueToSetup, goToStep, saveFirstProject, skipOnboarding, startOnboarding } from "@/server/onboarding/actions";
+import type { PlatformId } from "@/features/accounts/platforms";
+import type { AdAccountDTO, ConnectState } from "@/features/integrations/types";
+import { buildFirstDashboard, continueToSetup, finishFirstAccess, goToStep, saveFirstProject, skipOnboarding, startOnboarding } from "@/server/onboarding/actions";
 import type { ActionResult } from "@/server/supabase/errors";
 import type { ActiveStep } from "./steps";
 
+/** Um seletor do passo de contas: as contas de anúncio do login ou um grupo extra dele (Instagram, Página). */
+export type AccountsGroup = { key: string; provider: ProviderId; platformId: PlatformId; accounts: AdAccountDTO[] };
+
 export type AccountsPanelProps = {
-  provider: ProviderId;
+  group: AccountsGroup;
   state: ConnectState;
   now: string;
   timeZone: string;
-  onSelection: (provider: ProviderId, selection: PickerSelection) => void;
+  onSelection: (key: string, selection: PickerSelection) => void;
 };
 
 export type FlowApi = {
   start: () => Promise<ActionResult>;
   saveProject: (name: string, businessTypeId: string) => Promise<ActionResult>;
   toSetup: () => Promise<ActionResult>;
+  /** Fase 1 da montagem: cria o dashboard (o primeiro acesso ainda não termina). */
   build: (templateId: string) => Promise<ActionResult<{ id: string }>>;
+  /** Fase 2, depois da tela "Montando": conclui o primeiro acesso e abre o dashboard com o tour. */
+  finish: (dashboardId: string) => Promise<ActionResult>;
   skip: (step: ActiveStep) => Promise<ActionResult>;
   back: (step: ActiveStep) => Promise<ActionResult>;
   /** O login da plataforma, voltando para o mesmo passo do primeiro acesso. */
   connectHref: (provider: ProviderId) => string;
-  /** O dashboard montado, aberto com o tour. */
-  dashboardHref: (id: string) => string;
   /** Seletor das contas de anúncio de uma plataforma conectada. */
   AccountsPanel: ComponentType<AccountsPanelProps>;
 };
@@ -38,15 +43,16 @@ export type FlowApi = {
 /** Volta do login da Meta e do Google: o passo de conectar, com o "Conectado". */
 export const ONBOARDING_RETURN = "/comecar";
 
-function ProductAccountsPanel({ provider, state, now, timeZone, onSelection }: AccountsPanelProps) {
-  const p = state.platforms[provider];
+function ProductAccountsPanel({ group, state, now, timeZone, onSelection }: AccountsPanelProps) {
+  const { provider, platformId, accounts, key } = group;
   // estável: o seletor avisa a escolha num efeito
-  const onChange = useCallback((s: PickerSelection) => onSelection(provider, s), [onSelection, provider]);
-  if (p.accounts.length === 0) return <p className="text-[14px] text-fg-2">O login não devolveu nenhuma conta de anúncio. Confira se ele tem acesso às contas e conecte de novo.</p>;
+  const onChange = useCallback((s: PickerSelection) => onSelection(key, s), [onSelection, key]);
+  if (accounts.length === 0) return <p className="text-[14px] text-fg-2">O login não devolveu nenhuma conta de anúncio. Confira se ele tem acesso às contas e conecte de novo.</p>;
   return (
     <AccountPicker
       provider={provider}
-      accounts={p.accounts}
+      platformId={platformId}
+      accounts={accounts}
       projects={state.projects}
       maxPerProject={state.limit.maxAccountsPerPlatform}
       canManage={state.canManage}
@@ -67,6 +73,6 @@ export const realFlowApi: FlowApi = {
   skip: skipOnboarding,
   back: goToStep,
   connectHref: (provider) => providerConnectHref(provider, ONBOARDING_RETURN),
-  dashboardHref: (id) => `/painel/dashboards/${id}?tour=1`,
+  finish: finishFirstAccess,
   AccountsPanel: ProductAccountsPanel,
 };

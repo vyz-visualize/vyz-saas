@@ -112,11 +112,15 @@ export async function continueToSetup(): Promise<ActionResult> {
   redirect(HOME);
 }
 
+/** Montar de novo depois de sair no meio (aba fechada na tela "Montando") reaproveita o dashboard. */
+const REUSE_WINDOW_MS = 2 * 60 * 60 * 1000;
+
 /**
- * Passo 4 → "Montando seu dashboard…": cria o dashboard do modelo escolhido já
- * com as contas ativas (do projeto da primeira conta) e conclui o primeiro
- * acesso. Sem conta ativa, não cria nada. Devolve o id: a tela mostra a
- * montagem e abre o dashboard com o tour.
+ * Passo 4 → "Montando seu dashboard…" (fase 1): cria o dashboard do modelo
+ * escolhido já com as contas ativas (do projeto da primeira conta). Não conclui
+ * o primeiro acesso: assim a página não é redesenhada no meio da montagem (uma
+ * ação que renova o cookie da sessão redesenha a página atual). Sem conta
+ * ativa, não cria nada. Devolve o id; finishFirstAccess conclui e abre.
  */
 export async function buildFirstDashboard(templateId: string): Promise<ActionResult<{ id: string }>> {
   try {
@@ -150,6 +154,12 @@ export async function buildFirstDashboard(templateId: string): Promise<ActionRes
     if (pages.length === 0) throw appError("dashboard:no_pages");
     const [projectRow] = project ? (unwrap(await supabase.from("projects").select("name").eq("id", project).limit(1)) ?? []) : [];
 
+    // já montou e saiu no meio: o mesmo dashboard (do mesmo modelo, desta pessoa, há pouco)
+    const since = new Date(Date.now() - REUSE_WINDOW_MS).toISOString();
+    const [recent] =
+      unwrap(await supabase.from("dashboards").select("id").eq("workspace_id", workspaceId).eq("created_by", session.user.id).eq("template_id", template.id).gte("created_at", since).order("created_at", { ascending: false }).limit(1)) ?? [];
+    if (recent) return { ok: true, data: { id: recent.id } };
+
     const id = unwrap(
       await supabase.rpc("create_dashboard", {
         p_workspace_id: workspaceId,
@@ -168,13 +178,30 @@ export async function buildFirstDashboard(templateId: string): Promise<ActionRes
     if (chosen.length) unwrap(await supabase.from("workspace_platforms").insert(chosen.map((platform_id) => ({ workspace_id: workspaceId, platform_id }))));
 
     await logActivity({ workspaceId, actorId: session.user.id, event: "dashboard.created", entityType: "dashboard", entityId: id, metadata: { template_id: template.id, pages, accounts: sources.length, source: "onboarding" } });
-    await saveStep(workspaceId, "done");
-    await logActivity({ workspaceId, actorId: session.user.id, event: "onboarding.completed", metadata: { dashboards: 1, accounts: sources.length } });
     return { ok: true, data: { id } };
   } catch (err) {
     unstable_rethrow(err);
     return toActionError(err);
   }
+}
+
+/** Fase 2, depois da tela "Montando": conclui o primeiro acesso e abre o dashboard com o tour. */
+export async function finishFirstAccess(dashboardId: string): Promise<ActionResult> {
+  let target = "/painel";
+  try {
+    if (!z.uuid().safeParse(dashboardId).success) throw appError("dashboard:not_found");
+    const session = await onboardingSession("setup");
+    const supabase = await createServerSupabase();
+    const [d] = unwrap(await supabase.from("dashboards").select("id, sources:dashboard_sources(ad_account_id)").eq("id", dashboardId).eq("workspace_id", session.workspace.id).limit(1)) ?? [];
+    if (!d) throw appError("dashboard:not_found");
+    await saveStep(session.workspace.id, "done");
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "onboarding.completed", metadata: { dashboards: 1, accounts: (d.sources ?? []).length } });
+    target = `/painel/dashboards/${d.id}?tour=1`;
+  } catch (err) {
+    unstable_rethrow(err);
+    return toActionError(err);
+  }
+  redirect(target);
 }
 
 /** "Pular por agora": conclui o primeiro acesso sem criar nada. O que faltou fica pendente na Início. */

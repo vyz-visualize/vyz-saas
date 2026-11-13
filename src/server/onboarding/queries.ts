@@ -4,7 +4,7 @@ import "server-only";
 // quem está logado: passo atual, segmento, plano, o primeiro projeto e, nos
 // passos de conectar e de contas e modelo, as conexões e as contas.
 
-import { activeStepOf } from "@/features/onboarding/steps";
+import { activeStepOf, isNamedProject } from "@/features/onboarding/steps";
 import type { OnboardingState } from "@/features/onboarding/types";
 import { hasRole, type WorkspaceSession } from "@/features/workspace/session";
 import { canSeeTestBadges } from "@/server/env";
@@ -23,7 +23,8 @@ export async function getOnboardingState(session: WorkspaceSession): Promise<Onb
     supabase.from("projects").select("id, name").eq("workspace_id", session.workspace.id).is("archived_at", null).order("created_at").limit(1),
     late ? getConnectState() : Promise.resolve(null),
   ]);
-  const project = unwrap(projects)?.[0] ?? null;
+  const first = unwrap(projects)?.[0] ?? null;
+  const project = first ? { ...first, named: isNamedProject(first.name, [session.workspace.name, session.user.fullName]) } : null;
   return {
     step,
     firstName: session.user.fullName.split(" ")[0] ?? "",

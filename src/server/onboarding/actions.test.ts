@@ -36,6 +36,7 @@ function builder(table: string) {
     is: (c: string, v: unknown) => (op.filters.push([c, v]), b),
     not: () => b,
     in: () => b,
+    gte: () => b,
     order: () => b,
     limit: () => b,
     single: () => b,
@@ -97,7 +98,7 @@ describe("montar o primeiro dashboard", () => {
     expect(workspaceUpdates()).toEqual([]);
   });
 
-  it("com contas, liga as do projeto da primeira conta e conclui", async () => {
+  it("com contas, liga as do projeto da primeira conta, sem concluir ainda (a tela Montando segue no ar)", async () => {
     const { buildFirstDashboard } = await import("./actions");
     fixtures.ad_accounts = [
       { id: "a1", platform_id: "meta", project_id: "p1" },
@@ -111,7 +112,30 @@ describe("montar o primeiro dashboard", () => {
     expect(rpcs[0].fn).toBe("create_dashboard");
     expect(rpcs[0].args.p_ad_account_ids).toEqual(["a1", "a2"]);
     expect(rpcs[0].args.p_client_name).toBe("Loja da Ana");
+    // concluir agora redesenharia /comecar no meio da montagem: fica para finishFirstAccess
+    expect(workspaceUpdates()).toEqual([]);
+  });
+
+  it("montar de novo depois de sair no meio reaproveita o dashboard", async () => {
+    const { buildFirstDashboard } = await import("./actions");
+    fixtures.ad_accounts = [{ id: "a1", platform_id: "meta", project_id: "p1" }];
+    fixtures.dashboards = [{ id: "dash-antigo" }];
+    expect(await buildFirstDashboard(TEMPLATE)).toEqual({ ok: true, data: { id: "dash-antigo" } });
+    expect(rpcs).toEqual([]);
+  });
+
+  it("fase 2: conclui o primeiro acesso e abre o dashboard com o tour", async () => {
+    const { finishFirstAccess } = await import("./actions");
+    fixtures.dashboards = [{ id: "11111111-1111-4111-8111-111111111111", sources: [{ ad_account_id: "a1" }] }];
+    await expect(finishFirstAccess("11111111-1111-4111-8111-111111111111")).rejects.toThrow("redirect:/painel/dashboards/11111111-1111-4111-8111-111111111111?tour=1");
     expect(workspaceUpdates().map((u) => u.onboarding_step)).toEqual(["done"]);
+  });
+
+  it("fase 2 com um id que não é do workspace: não conclui", async () => {
+    const { finishFirstAccess } = await import("./actions");
+    fixtures.dashboards = [];
+    expect(await finishFirstAccess("11111111-1111-4111-8111-111111111111")).toMatchObject({ ok: false, error: { code: "dashboard:not_found" } });
+    expect(workspaceUpdates()).toEqual([]);
   });
 
   it("antes do passo de contas e modelo, recusa", async () => {

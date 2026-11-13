@@ -6,7 +6,6 @@
 // login da Meta ou do Google, o modal reabre no mesmo passo, com "Conectado ✓".
 
 import { LogOut, UserRound } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ConnectResult } from "@/features/integrations/results";
 import { track } from "@/lib/track";
@@ -16,13 +15,14 @@ import { ConnectStep } from "./ConnectStep";
 import { BuildingView, ProjectStep, SetupStep, WelcomeStep } from "./FlowSteps";
 import { ACTION_STEPS, actionNumber, ONBOARDING_STEPS, progressOf, STEP_LABEL, stepIndex, type ActiveStep } from "./steps";
 import type { OnboardingState } from "./types";
+import { NUDGE_SESSION_KEY } from "./guides";
 import { useStepAction } from "./ui";
 
 /** O que todo passo recebe para o rodapé: pular e voltar. */
 export type StepNav = { onSkip: () => void; skipping: boolean; onBack?: () => void; backing?: boolean; error: string | null };
 
-/** Tempo mínimo da tela "Montando seu dashboard…" antes de abrir o dashboard. */
-export const BUILDING_MS = 1800;
+/** Tempo mínimo da tela "Montando seu dashboard…" antes de abrir o dashboard (as 4 etapas aparecem). */
+export const BUILDING_MS = 1600;
 
 const LAST_STEP_KEY = "vyz:onboarding-step";
 
@@ -112,10 +112,10 @@ type OnboardingFlowProps = {
 
 export function OnboardingFlow({ state, result, now, timeZone, api = realFlowApi }: OnboardingFlowProps) {
   const { step } = state;
-  const router = useRouter();
   const skip = useStepAction();
   const back = useStepAction();
   const [building, setBuilding] = useState(false);
+  const [buildError, setBuildError] = useState<string | null>(null);
   useStepTracking(step);
 
   const at = stepIndex(step);
@@ -123,21 +123,43 @@ export function OnboardingFlow({ state, result, now, timeZone, api = realFlowApi
   const nav: StepNav = {
     onSkip: () => {
       track("onboarding_skip", { step });
+      try {
+        sessionStorage.setItem(NUDGE_SESSION_KEY, "1");
+      } catch {}
       skip.run(() => api.skip(step));
     },
     skipping: skip.pending,
     onBack: prev ? () => back.run(() => api.back(prev)) : undefined,
     backing: back.pending,
-    error: skip.error ?? back.error,
+    error: skip.error ?? back.error ?? buildError,
   };
 
-  function onBuilt(id: string) {
+  /**
+   * A tela "Montando" aparece já no clique e fica pelo menos BUILDING_MS, enquanto o servidor
+   * cria o dashboard (fase 1). Depois, a fase 2 conclui o primeiro acesso e abre o dashboard.
+   */
+  async function onBuild(templateId: string) {
+    setBuildError(null);
+    setBuilding(true);
+    const started = Date.now();
+    const res = await api.build(templateId);
+    if (!res.ok) {
+      setBuilding(false);
+      setBuildError(res.error.message);
+      return;
+    }
+    await new Promise((r) => window.setTimeout(r, Math.max(0, BUILDING_MS - (Date.now() - started))));
     track("onboarding_step_complete", { step: "setup" });
     try {
       sessionStorage.removeItem(LAST_STEP_KEY);
+      // o lembrete de conexão não aparece na mesma sessão do primeiro acesso: só na próxima visita
+      sessionStorage.setItem(NUDGE_SESSION_KEY, "1");
     } catch {}
-    setBuilding(true);
-    window.setTimeout(() => router.push(api.dashboardHref(id)), BUILDING_MS);
+    const done = await api.finish(res.data.id);
+    if (done && !done.ok) {
+      setBuilding(false);
+      setBuildError(done.error.message);
+    }
   }
 
   return (
@@ -151,7 +173,7 @@ export function OnboardingFlow({ state, result, now, timeZone, api = realFlowApi
       ) : step === "connect" && state.connect ? (
         <ConnectStep state={state.connect} result={result} api={api} nav={nav} showTestBadges={state.showTestBadges} />
       ) : step === "setup" && state.connect ? (
-        <SetupStep state={state.connect} businessTypeId={state.businessTypeId} tier={state.tier} now={now} timeZone={timeZone} api={api} nav={nav} onBuilt={onBuilt} />
+        <SetupStep state={state.connect} businessTypeId={state.businessTypeId} tier={state.tier} now={now} timeZone={timeZone} api={api} nav={nav} onBuild={onBuild} />
       ) : null}
     </FlowDialog>
   );

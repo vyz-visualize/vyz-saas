@@ -67,6 +67,52 @@ export const canContinueFromConnect = (connected: readonly ProviderId[]) => conn
 /** O dashboard só é montado com conta ativa: sem nenhuma, nada é criado (o passo fica pendente na Início). */
 export const canBuildDashboard = (enabledAccounts: number) => enabledAccounts > 0;
 
+/**
+ * "Mais plataformas" no passo de conectar, na ordem de docs/PLATAFORMAS.md. Com login: conecta
+ * se a credencial está no servidor; sem ela, "Em breve". A planilha entra pela tela de Contas.
+ */
+export const EXTRA_PLATFORMS: readonly { id: string; name: string; provider?: ProviderId; later?: string; soon?: boolean }[] = [
+  { id: "tiktok", name: "TikTok Ads", provider: "tiktok" },
+  { id: "linkedin", name: "LinkedIn Ads", provider: "linkedin" },
+  { id: "ga4", name: "GA4", provider: "ga4" },
+  { id: "rdstation", name: "RD Station CRM", provider: "rdstation" },
+  { id: "hubspot", name: "HubSpot", provider: "hubspot" },
+  { id: "pipedrive", name: "Pipedrive", provider: "pipedrive" },
+  { id: "kommo", name: "Kommo", provider: "kommo" },
+  { id: "planilha", name: "Planilha (Google Sheets ou CSV)", later: "Depois, em Contas" },
+  // decisão de 10/11/2026: "Em breve" mesmo com o login pronto no código (app ainda não criado)
+  { id: "mercado", name: "Mercado Ads", provider: "mercado", soon: true },
+];
+
+/**
+ * O rodapé do passo de contas: o total que entra no dashboard, dividido como a pessoa vê na
+ * tela ("3 contas no dashboard: 2 de anúncio do Meta Ads e 1 do Instagram").
+ */
+export function accountsSummary(parts: readonly { platformId: string; n: number }[]): string {
+  const total = parts.reduce((a, p) => a + p.n, 0);
+  const head = `${total} ${total === 1 ? "conta" : "contas"} no dashboard`;
+  const shown = parts.filter((p) => p.n > 0);
+  if (shown.length < 2) return `${head}.`;
+  const name = (id: string) => (id === "meta" ? "de anúncio do Meta Ads" : id === "google" ? "de anúncio do Google Ads" : id === "instagram" ? "do Instagram" : id === "facebook" ? "de Página do Facebook" : `de ${id}`);
+  const list = shown.map((p) => `${p.n} ${name(p.platformId)}`);
+  return `${head}: ${list.slice(0, -1).join(", ")} e ${list[list.length - 1]}.`;
+}
+
+/** O nome do projeto foi dado por alguém? O padrão do banco é o nome do workspace (às vezes o da pessoa). */
+export function isNamedProject(name: string, defaults: readonly (string | null | undefined)[]): boolean {
+  const norm = (v: string) => v.trim().toLocaleLowerCase("pt-BR");
+  const n = norm(name);
+  return n.length > 0 && !defaults.some((d) => d && norm(d) === n);
+}
+
+/** O endereço da volta do login sem ?conectado=, ?erro=, ?provedor= nem o "#_=_" que a Meta acrescenta. */
+export function cleanReturnUrl(href: string): string {
+  const url = new URL(href);
+  for (const k of ["conectado", "erro", "provedor"]) url.searchParams.delete(k);
+  if (url.hash === "#_=_" || url.hash === "#") url.hash = "";
+  return url.toString().replace(/#$/, "");
+}
+
 /** Plataformas que conectam por login agora (as outras aparecem como "em breve"). */
 export const CONNECTABLE: readonly ProviderId[] = CORE_PROVIDER_IDS;
 export const isConnectable = (id: string): id is ProviderId => (CONNECTABLE as readonly string[]).includes(id);

@@ -11,8 +11,12 @@ export type OnboardingState = {
   businessTypeId: string | null;
   tier: Tier | null;
   canManage: boolean;
-  /** O primeiro projeto, se já existe (refazer o primeiro acesso reaproveita). */
-  project: { id: string; name: string } | null;
+  /**
+   * O primeiro projeto, se já existe (refazer o primeiro acesso reaproveita). named = alguém deu
+   * esse nome; o projeto criado sozinho pelo banco leva o nome do workspace (que costuma ser o
+   * nome da pessoa) e não conta como nomeado.
+   */
+  project: { id: string; name: string; named: boolean } | null;
   /** Contas e conexões: só nos passos de conectar e de contas e modelo. */
   connect: ConnectState | null;
   /** Selo "Modo de teste" nas plataformas: só em desenvolvimento ou para ONBOARDING_REPLAY_EMAILS (nunca para o cliente). */

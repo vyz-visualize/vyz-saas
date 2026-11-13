@@ -72,9 +72,11 @@ export type Dataset = {
   budget: { monthly: number; spent: number; day: number; daysInMonth: number };
   /** Com filtro: a frequência do recorte. Sem isso, a do modelo. */
   filteredFrequency?: { current: number; previous: number };
-  /** Meta de custo por conversão e ROAS de equilíbrio (1 ÷ margem). */
+  /** Meta de custo por conversão e ROAS de equilíbrio (1 ÷ margem). 0 = não definido (ver metrics/targets). */
   goal: number;
   breakEven: number;
+  /** false: a margem não foi definida e o equilíbrio é o padrão ROAS 1. Sem o campo: definida (amostra). */
+  marginSet?: boolean;
 };
 
 export interface DataSource {

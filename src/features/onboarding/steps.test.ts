@@ -16,6 +16,10 @@ import {
   progressOf,
   STEP_TO_DB,
   ACTION_STEPS,
+  accountsSummary,
+  cleanReturnUrl,
+  EXTRA_PLATFORMS,
+  isNamedProject,
   actionNumber,
   parseDecimal,
   stepIndex,
@@ -140,3 +144,35 @@ describe("números digitados", () => {
     expect(centsFromReais("-3")).toBe("invalid");
   });
 });
+
+describe("ajustes do teste real", () => {
+  it("volta do login: tira ?conectado= e o #_=_ da Meta, e mantém o resto", () => {
+    expect(cleanReturnUrl("https://vyzualize.com.br/comecar?conectado=meta#_=_")).toBe("https://vyzualize.com.br/comecar");
+    expect(cleanReturnUrl("https://vyzualize.com.br/comecar?erro=negado&provedor=google")).toBe("https://vyzualize.com.br/comecar");
+    expect(cleanReturnUrl("https://vyzualize.com.br/comecar?x=1&conectado=meta#_=_")).toBe("https://vyzualize.com.br/comecar?x=1");
+    expect(cleanReturnUrl("https://vyzualize.com.br/comecar")).toBe("https://vyzualize.com.br/comecar");
+  });
+
+  it("projeto criado sozinho (nome do workspace ou da pessoa) não vem preenchido", () => {
+    expect(isNamedProject("Pedro Freitas", ["Agência", "Pedro Freitas"])).toBe(false);
+    expect(isNamedProject("  pedro freitas ", ["Pedro Freitas"])).toBe(false);
+    expect(isNamedProject("Agência X", ["Agência X", "Pedro"])).toBe(false);
+    expect(isNamedProject("Loja da Ana", ["Agência X", "Pedro"])).toBe(true);
+    expect(isNamedProject("", [])).toBe(false);
+  });
+
+  it("o rodapé conta o que está na tela (anúncio, Instagram e Página), não a soma escondida", () => {
+    expect(accountsSummary([{ platformId: "meta", n: 2 }])).toBe("2 contas no dashboard.");
+    expect(accountsSummary([{ platformId: "meta", n: 2 }, { platformId: "instagram", n: 2 }, { platformId: "facebook", n: 2 }])).toBe(
+      "6 contas no dashboard: 2 de anúncio do Meta Ads, 2 do Instagram e 2 de Página do Facebook.",
+    );
+    expect(accountsSummary([{ platformId: "meta", n: 1 }, { platformId: "instagram", n: 0 }])).toBe("1 conta no dashboard.");
+  });
+
+  it("mais plataformas: as de docs/PLATAFORMAS.md; Mercado Ads é sempre Em breve; planilha entra por Contas", () => {
+    expect(EXTRA_PLATFORMS.map((x) => x.id)).toEqual(["tiktok", "linkedin", "ga4", "rdstation", "hubspot", "pipedrive", "kommo", "planilha", "mercado"]);
+    expect(EXTRA_PLATFORMS.find((x) => x.id === "mercado")?.soon).toBe(true);
+    expect(EXTRA_PLATFORMS.find((x) => x.id === "planilha")).toMatchObject({ later: "Depois, em Contas" });
+  });
+});
+

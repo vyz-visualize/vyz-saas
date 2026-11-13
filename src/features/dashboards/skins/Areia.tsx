@@ -5,6 +5,7 @@
 // leads por dia, funil do CRM, origem dos leads, verba do mês e custo por campanha.
 // Gráficos da Bklit UI.
 
+import { BUDGET_INVITE, GOAL_INVITE, hasBudget, hasGoal } from "@/features/metrics/targets";
 import { BadgeCheck, CalendarDays, Handshake, Target, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { platformPart } from "@/features/metrics/compute";
@@ -86,7 +87,7 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
 
   const nodes = {
     "s-leads": <StatBlock title={label(ctx, leadKey)} v={value(ctx, leadKey)} delta={change(ctx, leadKey)} note="contra o período anterior" values={daily(ctx, leadKey)} icon={Users} solid={HERO} />,
-    "s-cpl": <StatBlock title={label(ctx, costKey)} v={value(ctx, costKey)} delta={hide ? undefined : change(ctx, costKey)} note={hide ? "oculto neste link" : `alvo ${brl(ctx.ds.goal, { decimals: false })}`} values={hide ? undefined : daily(ctx, costKey)} color={OCHRE} icon={Target} />,
+    "s-cpl": <StatBlock title={label(ctx, costKey)} v={value(ctx, costKey)} delta={hide ? undefined : change(ctx, costKey)} note={hide ? "oculto neste link" : hasGoal(ctx.ds) ? `alvo ${brl(ctx.ds.goal, { decimals: false })}` : GOAL_INVITE} values={hide ? undefined : daily(ctx, costKey)} color={OCHRE} icon={Target} />,
     "s-qualificados": <StatBlock title="Leads qualificados" v={int(qualified)} delta={change(ctx, "qualified")} note={leads > 0 ? `${pct(qualified / leads, 0)} dos leads` : undefined} values={daily(ctx, "qualified")} color={TEAL} icon={BadgeCheck} />,
     "s-vendas": <StatBlock title="Vendas no CRM" v={sales ? int(sales.count) : "—"} note={sales && leads > 0 ? `${pct(sales.count / leads, 1)} dos leads · ${brlCompact(sales.value)}` : undefined} bars={crm.map((s) => s.count)} color={PLUM} icon={Handshake} />,
     "s-diario": (
@@ -134,6 +135,10 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
       <Block title="Verba do mês">
         {hide ? (
           <p className="text-[12px] text-fg-2">O investimento está oculto neste link.</p>
+        ) : !hasBudget(ctx.ds) ? (
+          <p className="text-[12px] text-fg-2">
+            <span className="font-medium text-accent">{BUDGET_INVITE}</span> para ver o quanto já foi usado e onde o mês fecha.
+          </p>
         ) : (
           <>
             <Gauge className="flex-1" value={budget.spent} max={budget.monthly} color={TEAL} label="usado" summary={`Verba do mês: ${brlCompact(budget.spent)} de ${brlCompact(budget.monthly)}, dia ${budget.day} de ${budget.daysInMonth}.`} />

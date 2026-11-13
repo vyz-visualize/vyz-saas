@@ -250,6 +250,8 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
     alerts: [],
     budget: { monthly: spec.budget ?? 0, spent: spentMonth, day, daysInMonth },
     goal: spec.goal ?? 0,
-    breakEven: spec.margin ? 1 / spec.margin : 0,
+    // sem margem, a regra do produto: equilíbrio no ROAS 1 (receita = investimento)
+    breakEven: spec.margin ? 1 / spec.margin : 1,
+    marginSet: !!spec.margin,
   };
 }

@@ -386,6 +386,10 @@ html.lenis body {
   line-height: 1.15em;
   transition: transform 750ms var(--ease);
 }
+/* a fita é só desenho: fora do texto da página (o valor lido fica no sr-only do Odometer) */
+.odo-strip::before {
+  content: "0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9";
+}
 .odo-char {
   display: block;
   height: 1.15em;

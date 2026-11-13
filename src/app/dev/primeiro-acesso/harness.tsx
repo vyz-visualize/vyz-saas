@@ -9,14 +9,17 @@
 //   ?tela=fluxo&conectado=meta volta do login (simulada): o modal reabre no conectar com "Conectado ✓"
 //   ?tela=inicio&caso=pulou|meta|pronto
 //   ?tela=dashboard            dashboard de exemplo com o aviso e o tour
+//   ?tela=direcoes             as duas direções de visual (Agente VYZ e Palco) para escolher
 //   ?reset=1                   começa de novo
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { sampleCreatives } from "@/features/analytics/creatives/sample";
-import { DEFAULT_SETTINGS } from "@/features/dashboards/data";
+import { datasetFor, DEFAULT_SETTINGS } from "@/features/dashboards/data";
+import type { Dataset } from "@/features/metrics/source";
 import { SampleDashboard } from "@/features/dashboards/SampleDashboard";
 import { SampleNotice } from "@/features/dashboards/SampleNotice";
+import type { PlatformId } from "@/features/accounts/platforms";
 import type { AdAccountDTO, ConnectState, PlatformConnectState } from "@/features/integrations/types";
 import { CORE_PROVIDER_IDS, isProviderId, PROVIDER_IDS, type ProviderId } from "@/features/integrations/providers";
 import { connectResult } from "@/features/integrations/results";
@@ -32,6 +35,7 @@ import { HomePage } from "@/features/workspace/HomePage";
 import type { WorkspaceSession } from "@/features/workspace/session";
 import { WorkspaceProvider } from "@/features/workspace/WorkspaceProvider";
 import type { ActionResult } from "@/server/supabase/errors";
+import { Direcoes } from "./direcoes";
 
 const KEY = "vyz-dev:primeiro-acesso";
 const BASE = "/dev/primeiro-acesso";
@@ -40,7 +44,7 @@ const TEMPLATE = "vyz-ecommerce";
 const OK: ActionResult = { ok: true, data: undefined };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type Mock = { step: ActiveStep; project: { id: string; name: string } | null; businessTypeId: string | null; connected: ProviderId[]; enabled: Partial<Record<ProviderId, string[]>> };
+type Mock = { step: ActiveStep; project: { id: string; name: string; named: boolean } | null; businessTypeId: string | null; connected: ProviderId[]; enabled: Record<string, string[]> };
 const START: Mock = { step: "welcome", project: null, businessTypeId: null, connected: [], enabled: {} };
 
 function load(): Mock {
@@ -56,11 +60,18 @@ function save(m: Mock) {
   } catch {}
 }
 
-function account(provider: ProviderId, n: number, enabled: boolean): AdAccountDTO {
-  const name = provider === "meta" ? ["Loja da Ana · Vendas", "Loja da Ana · Remarketing"][n] : ["Loja da Ana · Pesquisa", "Loja da Ana · Shopping"][n];
+const NAMES: Record<string, string[]> = {
+  meta: ["Loja da Ana · Vendas", "Loja da Ana · Remarketing"],
+  google: ["Loja da Ana · Pesquisa", "Loja da Ana · Shopping"],
+  instagram: ["@lojadaana"],
+  facebook: ["Loja da Ana"],
+};
+
+function account(provider: ProviderId, n: number, enabled: boolean, platformId: PlatformId = provider): AdAccountDTO {
+  const name = NAMES[platformId][n];
   return {
-    id: `${provider}-${n}`,
-    platformId: provider,
+    id: `${platformId}-${n}`,
+    platformId,
     connectionId: `c-${provider}`,
     name,
     externalId: `${provider === "meta" ? "act_" : ""}10000${n}`,
@@ -87,7 +98,10 @@ function connectState(m: Mock): ConnectState {
   const platform = (p: ProviderId): PlatformConnectState => {
     const connected = m.connected.includes(p);
     const accounts = connected ? [0, 1].map((n) => account(p, n, (m.enabled[p] ?? []).includes(`${p}-${n}`))) : [];
+    // a Meta traz o Instagram e a Página no mesmo login (como no produto)
+    const extras = connected && p === "meta" ? (["instagram", "facebook"] as PlatformId[]).map((pid) => ({ platformId: pid, accounts: [account(p, 0, (m.enabled[`meta:${pid}`] ?? []).includes(`${pid}-0`), pid)] })) : [];
     return {
+      ...(extras.length ? { extras } : {}),
       platformId: p,
       provider: p,
       connected,
@@ -108,21 +122,21 @@ function connectState(m: Mock): ConnectState {
 }
 
 /** Imitação do seletor de contas (o de verdade grava no banco). */
-function MockAccountsPanel({ provider, state, onSelection }: AccountsPanelProps) {
-  const accounts = state.platforms[provider].accounts;
+function MockAccountsPanel({ group, onSelection }: AccountsPanelProps) {
+  const { key, accounts } = group;
   const [picked, setPicked] = useState(() => accounts.filter((a) => a.isEnabled).map((a) => a.id));
   const initial = useMemo(() => accounts.filter((a) => a.isEnabled).map((a) => a.id).join(), [accounts]);
   useEffect(() => {
-    onSelection(provider, {
+    onSelection(key, {
       dirty: picked.join() !== initial,
       count: picked.length,
       save: async () => {
         const m = load();
-        save({ ...m, enabled: { ...m.enabled, [provider]: picked } });
+        save({ ...m, enabled: { ...m.enabled, [key]: picked } });
         return true;
       },
     });
-  }, [picked, initial, onSelection, provider]);
+  }, [picked, initial, onSelection, key]);
   return (
     <ul className="space-y-2">
       {accounts.map((a) => (
@@ -162,7 +176,7 @@ function Flow() {
   const api: FlowApi = useMemo(
     () => ({
       start: async () => (await wait(150), update({ step: "project" }), OK),
-      saveProject: async (name, businessTypeId) => (await wait(150), update({ step: "connect", project: { id: "p1", name }, businessTypeId }), OK),
+      saveProject: async (name, businessTypeId) => (await wait(150), update({ step: "connect", project: { id: "p1", name, named: true }, businessTypeId }), OK),
       toSetup: async () => {
         await wait(150);
         if (load().connected.length === 0) return { ok: false, error: { code: "onboarding:no_connection", message: "Conecte o Meta Ads ou o Google Ads para seguir." } };
@@ -177,8 +191,9 @@ function Flow() {
       },
       skip: async () => (await wait(150), router.push(`${BASE}?tela=inicio&caso=pulou`), OK),
       back: async (step) => (await wait(100), update({ step }), OK),
-      connectHref: (p) => `${BASE}?tela=fluxo&conectado=${p}`,
-      dashboardHref: () => `${BASE}?tela=dashboard`,
+      // a Meta devolve com "#_=_" no fim (a tela limpa)
+      connectHref: (p) => `${BASE}?tela=fluxo&conectado=${p}${p === "meta" ? "#_=_" : ""}`,
+      finish: async () => (router.push(`${BASE}?tela=dashboard`), OK),
       AccountsPanel: MockAccountsPanel,
     }),
     [update, router],
@@ -253,17 +268,21 @@ function Inicio() {
 }
 
 function Dashboard() {
+  // ?metas=nenhuma: como o primeiro dashboard real, sem verba, alvo nem margem definidos
+  const semMetas = useSearchParams().get("metas") === "nenhuma";
   const t = dashboardTemplate(TEMPLATE)!;
   const pages = t.pages;
   const settings = { ...DEFAULT_SETTINGS };
   const spec = { name: "Visão geral", client: "Loja da Ana", settings };
   const creatives = sampleCreatives(t, spec, pages, { tier: "avancado", tab: undefined, ads: undefined, upsell: false } as never, { period: settings.period, customDays: settings.customDays });
+  const base = datasetFor({ templateId: t.id, ...spec }, 30);
+  const realData: Dataset | undefined = semMetas ? { ...base, budget: { ...base.budget, monthly: 0 }, goal: 0, breakEven: 1, marginSet: false } : undefined;
   return (
     <WorkspaceProvider session={SESSION}>
       <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6">
-        <SampleNotice connectHref="/painel/contas" canConnect />
-        <SampleDashboard dashboard={{ id: "demo", templateId: t.id, ...spec, pages }} brand={{ color: "", logo: undefined, hideVyz: false }} canEdit sampleOnly creatives={creatives} />
-        <DashboardTour onFinish={async () => OK} />
+        {!semMetas && <SampleNotice connectHref="/painel/contas" canConnect />}
+        <SampleDashboard dashboard={{ id: "demo", templateId: t.id, ...spec, pages }} brand={{ color: "", logo: undefined, hideVyz: false }} canEdit sampleOnly={!semMetas} creatives={semMetas ? undefined : creatives} realData={realData} />
+        {!semMetas && <DashboardTour onFinish={async () => OK} />}
       </div>
     </WorkspaceProvider>
   );
@@ -273,5 +292,6 @@ export function Harness() {
   const tela = useSearchParams().get("tela") ?? "fluxo";
   if (tela === "inicio") return <Inicio />;
   if (tela === "dashboard") return <Dashboard />;
+  if (tela === "direcoes") return <Direcoes />;
   return <Flow />;
 }
