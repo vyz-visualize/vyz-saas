@@ -3,28 +3,54 @@
 // Página Projetos: cada cliente ou marca é um projeto, com as contas e os
 // dashboards dele. O plano limita os projetos ativos; arquivar libera espaço.
 
-import { Archive, FolderKanban, Pencil, Plus } from "lucide-react";
+import { Archive, BarChart3, MoreHorizontal, Pencil, Plug, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { EmptyState, Modal, PageHeader, TextField } from "@/components/ui/kit";
+import { EmptyState, Modal, ModalActions, PageHeader, TextField } from "@/components/ui/kit";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/Menu";
 import { btn } from "@/components/ui/styles";
 import { useToast } from "@/components/ui/Toast";
-import { UsageBar } from "@/features/accounts/AccountsPage";
+import { shortDate } from "@/features/integrations/sync-label";
+import { useWorkspaceSession } from "@/features/workspace/WorkspaceProvider";
 import { archiveProject, createProject, renameProject } from "@/server/projects/actions";
 import type { ProjectDTO, ProjectsState } from "./types";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("") || "P";
+
 type Editing = { mode: "new" } | { mode: "rename"; project: ProjectDTO } | null;
+
+/** Um número do projeto (contas, dashboards) que leva à tela que cuida dele. */
+function Metric({ href, icon, value, label }: { href: string; icon: React.ReactNode; value: number; label: string }) {
+  return (
+    <Link href={href} className="group/metric flex items-center gap-2.5 rounded-control bg-surface-2/70 px-3 py-2.5 outline-none transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-accent">
+      <span className="text-fg-2 transition-colors group-hover/metric:text-accent">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-[17px] leading-none font-bold tnum">{value}</span>
+        <span className="mt-1 block truncate text-[11.5px] text-fg-2">{label}</span>
+      </span>
+    </Link>
+  );
+}
 
 export function ProjectsPage({ state }: { state: ProjectsState }) {
   const toast = useToast();
+  const { workspace } = useWorkspaceSession();
   const [editing, setEditing] = useState<Editing>(null);
   const [archiving, setArchiving] = useState<ProjectDTO | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const full = state.projects.length >= state.quantity;
+  const used = state.projects.length;
+  const full = used >= state.quantity;
+  const ratio = Math.min(1, used / Math.max(1, state.quantity));
 
   function open(next: Editing) {
     setError(null);
@@ -59,14 +85,13 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
-        eyebrow="Workspace"
         title="Projetos"
         text="Cada cliente ou marca é um projeto, com as contas e os dashboards dele. O plano conta os projetos ativos."
         actions={
           state.canEdit && (
-            <button type="button" onClick={() => open({ mode: "new" })} disabled={full} className={btn.small}>
+            <button type="button" onClick={() => open({ mode: "new" })} disabled={full} title={full ? "Todos os projetos do plano estão em uso" : undefined} className={btn.small}>
               <Plus size={16} aria-hidden />
               Novo projeto
             </button>
@@ -74,9 +99,20 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
         }
       />
 
-      <section className="flex flex-col gap-4 rounded-card border border-line bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
-        <UsageBar used={state.projects.length} limit={state.quantity} label="Projetos do plano" />
-        <p className="text-[13px] text-fg-2 sm:max-w-sm sm:text-right">
+      {/* uso do plano: o que já foi e o que cabe em cada projeto */}
+      <section aria-label="Projetos do plano" className="flex flex-col gap-3 rounded-card border border-line bg-card p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-5">
+        <div className="min-w-0 flex-1">
+          <p className="flex items-baseline justify-between gap-3 text-[13px]">
+            <span className="font-medium text-fg-2">Projetos do plano</span>
+            <span className={`font-semibold tnum ${full ? "text-error-fg" : "text-fg"}`}>
+              {used} de {state.quantity}
+            </span>
+          </p>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+            <div className={`h-full rounded-full transition-[width] duration-500 ease-brand ${full ? "bg-error" : ratio >= 0.8 ? "bg-warning" : "bg-accent"}`} style={{ width: `${Math.max(used ? 3 : 0, ratio * 100)}%` }} />
+          </div>
+        </div>
+        <p className="text-[13px] leading-snug text-fg-2 sm:max-w-xs sm:text-right">
           {full ? (
             <>
               Todos os projetos do plano estão em uso.{" "}
@@ -104,36 +140,40 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
           }
         />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {state.projects.map((p) => (
-            <li key={p.id} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
+            <li key={p.id} className="flex flex-col rounded-card border border-line bg-card p-4 transition-colors hover:border-fg-2/40 sm:p-5">
               <div className="flex items-start gap-3">
-                <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
-                  <FolderKanban size={19} aria-hidden />
+                <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-[11px] bg-accent-soft text-[13px] font-bold text-accent">
+                  {initials(p.name)}
                 </span>
-                <div className="min-w-0">
-                  <h2 className="title text-[17px] break-words text-fg">{p.name}</h2>
-                  <p className="mt-0.5 text-[13px] text-fg-2">
-                    {plural(p.enabledAccounts, "conta ativa", "contas ativas")} · {plural(p.dashboards, "dashboard", "dashboards")}
-                  </p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-[15.5px] leading-snug font-semibold break-words text-fg">{p.name}</h2>
+                  <p className="mt-0.5 text-[12.5px] text-fg-2">Criado em {shortDate(p.createdAt, workspace.timezone)}</p>
                 </div>
+                {(state.canEdit || state.canArchive) && (
+                  <Menu>
+                    <MenuTrigger aria-label={`Mais ações de ${p.name}`} className={`${btn.icon} -mt-1 -mr-1.5 outline-none focus-visible:ring-2 focus-visible:ring-accent data-[state=open]:bg-surface-2 data-[state=open]:text-fg`}>
+                      <MoreHorizontal size={18} aria-hidden />
+                    </MenuTrigger>
+                    <MenuContent align="end">
+                      {state.canEdit && (
+                        <MenuItem icon={<Pencil size={15} />} onSelect={() => open({ mode: "rename", project: p })}>
+                          Renomear
+                        </MenuItem>
+                      )}
+                      {state.canArchive && (
+                        <MenuItem icon={<Archive size={15} />} onSelect={() => setArchiving(p)}>
+                          Arquivar
+                        </MenuItem>
+                      )}
+                    </MenuContent>
+                  </Menu>
+                )}
               </div>
-              <div className="mt-auto flex flex-wrap gap-2">
-                <Link href="/painel/contas" className={`${btn.ghost} h-9`}>
-                  Contas
-                </Link>
-                {state.canEdit && (
-                  <button type="button" onClick={() => open({ mode: "rename", project: p })} className={`${btn.ghost} h-9`} aria-label={`Renomear ${p.name}`}>
-                    <Pencil size={14} aria-hidden />
-                    Renomear
-                  </button>
-                )}
-                {state.canArchive && (
-                  <button type="button" onClick={() => setArchiving(p)} className={`${btn.ghost} h-9`} aria-label={`Arquivar ${p.name}`}>
-                    <Archive size={14} aria-hidden />
-                    Arquivar
-                  </button>
-                )}
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <Metric href="/painel/contas" icon={<Plug size={16} aria-hidden />} value={p.enabledAccounts} label={p.enabledAccounts === 1 ? "conta ativa" : "contas ativas"} />
+                <Metric href="/painel/dashboards" icon={<BarChart3 size={16} aria-hidden />} value={p.dashboards} label={p.dashboards === 1 ? "dashboard" : "dashboards"} />
               </div>
             </li>
           ))}
@@ -146,33 +186,33 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
             e.preventDefault();
             save();
           }}
-          className="space-y-4"
+          className="space-y-5"
         >
           <TextField label="Nome do cliente ou marca" value={name} onChange={setName} placeholder="Ex.: Loja Aurora" error={error} />
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setEditing(null)} className={`${btn.ghost} h-10`}>
+          <ModalActions>
+            <button type="button" onClick={() => setEditing(null)} className={`${btn.quiet} max-sm:h-11`}>
               Cancelar
             </button>
-            <button type="submit" disabled={pending} className={btn.small}>
+            <button type="submit" disabled={pending} className={`${btn.small} max-sm:h-11`}>
               {pending ? "Salvando…" : editing?.mode === "rename" ? "Salvar" : "Criar projeto"}
             </button>
-          </div>
+          </ModalActions>
         </form>
       </Modal>
 
       <Modal open={!!archiving} onClose={() => setArchiving(null)} title="Arquivar projeto">
-        <div className="space-y-4">
-          <p className="text-[14.5px] text-fg">
+        <div className="space-y-5">
+          <p className="text-[14.5px] leading-relaxed text-fg">
             As contas de <strong>{archiving?.name}</strong> saem do ar e o projeto libera espaço no plano. Os dashboards e os dados já importados ficam.
           </p>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={() => setArchiving(null)} className={`${btn.ghost} h-10`}>
+          <ModalActions>
+            <button type="button" onClick={() => setArchiving(null)} className={`${btn.quiet} max-sm:h-11`}>
               Cancelar
             </button>
-            <button type="button" onClick={archive} disabled={pending} className={btn.small}>
+            <button type="button" onClick={archive} disabled={pending} className={`${btn.small} max-sm:h-11`}>
               {pending ? "Arquivando…" : "Arquivar"}
             </button>
-          </div>
+          </ModalActions>
         </div>
       </Modal>
       {toast.node}

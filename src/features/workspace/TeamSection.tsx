@@ -6,7 +6,7 @@
 import { Check, Copy, Trash2, Users, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Checkbox } from "@/components/ui/controls";
-import { Modal, TextField } from "@/components/ui/kit";
+import { Badge, Modal, ModalActions, TextField } from "@/components/ui/kit";
 import { Select } from "@/components/ui/Select";
 import { btn } from "@/components/ui/styles";
 import { shortDate } from "@/features/integrations/sync-label";
@@ -57,7 +57,7 @@ function InviteForm({ notify }: { notify: Notify }) {
       notify("Convite criado.");
     });
   return (
-    <div className="space-y-3 rounded-control border border-line p-4">
+    <div className="space-y-3 rounded-[calc(var(--r-card)-4px)] border border-line bg-surface-2/50 p-4">
       <form
         className="grid gap-3 sm:grid-cols-[1fr_180px_auto] sm:items-end"
         onSubmit={(e) => {
@@ -66,13 +66,13 @@ function InviteForm({ notify }: { notify: Notify }) {
         }}
       >
         <TextField label="Convidar por e-mail" type="email" inputMode="email" value={email} onChange={setEmail} placeholder="nome@empresa.com.br" error={error} />
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <label className="block text-[13px] font-medium text-fg" htmlFor="invite-role">
             Papel
           </label>
           <Select id="invite-role" value={role} onChange={(v) => setRole(v as InviteRole)} options={roleOptions(INVITE_ROLES)} />
         </div>
-        <button type="submit" className={`${btn.small} h-10`} disabled={pending || !email.trim()}>
+        <button type="submit" className={`${btn.small} h-10 max-sm:h-11`} disabled={pending || !email.trim()}>
           {pending ? "Convidando…" : "Convidar"}
         </button>
       </form>
@@ -109,10 +109,10 @@ function MemberRow({ m, actor, owners, onRemove, notify }: { m: TeamMember; acto
       notify(`${m.name} agora é ${ROLE_LABEL[role as MemberRole].toLowerCase()}.`);
     });
   return (
-    <li className="py-2.5 text-[14px]">
+    <li className="py-3 text-[14px]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="flex min-w-0 items-center gap-3">
-          <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12px] font-bold text-fg" aria-hidden>
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12.5px] font-bold text-accent" aria-hidden>
             {(m.name[0] ?? "?").toUpperCase()}
           </span>
           <span className="min-w-0">
@@ -127,10 +127,10 @@ function MemberRow({ m, actor, owners, onRemove, notify }: { m: TeamMember; acto
           {roles.length ? (
             <Select ariaLabel={`Papel de ${m.name}`} size="sm" className="w-32" value={m.role} onChange={change} options={roleOptions(roles)} disabled={pending} />
           ) : (
-            <span className="rounded-chip border border-line px-2 py-0.5 text-[12px] text-fg-2">{ROLE_LABEL[m.role]}</span>
+            <Badge tone={m.role === "owner" ? "accent" : "outline"}>{ROLE_LABEL[m.role]}</Badge>
           )}
           {removable && (
-            <button type="button" className="inline-flex size-9 items-center justify-center rounded-control text-fg-2 hover:bg-error/10 hover:text-error-fg" aria-label={`Remover ${m.name}`} onClick={() => onRemove(m)}>
+            <button type="button" className="inline-flex size-9 items-center justify-center rounded-control text-fg-2 transition-colors hover:bg-error-soft hover:text-error-fg" aria-label={`Remover ${m.name}`} onClick={() => onRemove(m)}>
               <Trash2 size={15} aria-hidden />
             </button>
           )}
@@ -169,15 +169,15 @@ export function TeamSection({ data, role, timeZone, notify }: { data: SettingsDa
 
   return (
     <>
-      {admin ? <InviteForm notify={notify} /> : <p className="-mt-2 text-[14px] text-fg-2">Só administradores convidam e mudam papéis.</p>}
+      {admin ? <InviteForm notify={notify} /> : <p className="text-[14px] text-fg-2">Só administradores convidam e mudam papéis.</p>}
       <ul className="divide-y divide-line">
         {data.team.map((m) => (
           <MemberRow key={m.userId} m={m} actor={role} owners={owners} onRemove={setRemoving} notify={notify} />
         ))}
       </ul>
       {admin && data.invitations.length > 0 && (
-        <div className="space-y-2 border-t border-line pt-3">
-          <p className="flex items-center gap-1.5 text-[13px] font-medium">
+        <div className="space-y-2 border-t border-line pt-4">
+          <p className="flex items-center gap-1.5 text-[13px] font-semibold">
             <Users size={14} aria-hidden /> Convites pendentes
           </p>
           <ul className="divide-y divide-line text-[13.5px]">
@@ -186,7 +186,7 @@ export function TeamSection({ data, role, timeZone, notify }: { data: SettingsDa
                 <span className="min-w-0 truncate text-fg-2">
                   <span className="text-fg">{i.email}</span> · {ROLE_LABEL[i.role]} · vence em {shortDate(i.expiresAt, timeZone)}
                 </span>
-                <button type="button" className={`${btn.ghost} h-8 shrink-0 text-[13px]`} disabled={pending} onClick={() => revoke(i.id)} aria-label={`Cancelar convite de ${i.email}`}>
+                <button type="button" className={`${btn.quiet} h-8 shrink-0 text-[13px]`} disabled={pending} onClick={() => revoke(i.id)} aria-label={`Cancelar convite de ${i.email}`}>
                   <X size={14} aria-hidden /> Cancelar
                 </button>
               </li>
@@ -206,14 +206,14 @@ export function TeamSection({ data, role, timeZone, notify }: { data: SettingsDa
                 {error}
               </p>
             )}
-            <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" className={`${btn.ghost} h-9`} disabled={pending} onClick={() => setRemoving(null)}>
+            <ModalActions>
+              <button type="button" className={`${btn.quiet} max-sm:h-11`} disabled={pending} onClick={() => setRemoving(null)}>
                 Cancelar
               </button>
-              <button type="button" className="inline-flex h-9 items-center justify-center rounded-control bg-error px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50" disabled={pending} onClick={confirmRemove}>
+              <button type="button" className={`${btn.danger} max-sm:h-11`} disabled={pending} onClick={confirmRemove}>
                 {pending ? "Removendo…" : "Remover"}
               </button>
-            </div>
+            </ModalActions>
           </div>
         )}
       </Modal>

@@ -1,10 +1,14 @@
 "use client";
 
 // Gerenciador de usuários (aba Interno, só admins): lista, busca, filtros e ações.
+// No computador é uma tabela; abaixo de lg, cada pessoa vira um cartão (sem rolagem de lado).
+// A ação mais usada (Dar plano) fica à vista; as outras moram no menu de cada linha.
 
+import { ArrowLeft, Ban, Gift, MoreHorizontal, RotateCcw, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { Modal, PageHeader, TextField } from "@/components/ui/kit";
+import { Badge, Modal, ModalActions, PageHeader, TextField, type BadgeTone } from "@/components/ui/kit";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/Menu";
 import { Select } from "@/components/ui/Select";
 import { btn } from "@/components/ui/styles";
 import { applyDeletionAction, grantPlanAction, previewDeletionAction, removePlanAction, setInactiveAction } from "@/server/admin/user-actions";
@@ -17,11 +21,75 @@ const ago = (iso: string | null) => {
   return d <= 0 ? "hoje" : d === 1 ? "ontem" : `há ${d} dias`;
 };
 const planLabel = (id: string) => GRANT_LABEL[id.replace(/^lp_/, "") as GrantTier] ?? id;
-const TONE: Record<UserStatus, string> = { ativo: "bg-accent-soft text-accent", inativado: "bg-error/15 text-error", sem_plano: "bg-field text-fg-2", parou_no_pagamento: "bg-field text-fg" };
-const small = btn.secondary.replace("h-12 px-6", "h-8 px-3 text-[13px]");
-const danger = `${small} hover:!border-error hover:!text-error`;
+const TONE: Record<UserStatus, BadgeTone> = { ativo: "ok", inativado: "error", sem_plano: "neutral", parou_no_pagamento: "warn" };
+const FILTERS = ["todos", "ativo", "parou_no_pagamento", "sem_plano", "inativado"] as const;
 
-type Dialog = { kind: "grant"; user: AdminUserRow } | { kind: "delete"; user: AdminUserRow } | null;
+const initials = (u: AdminUserRow) =>
+  (u.name ?? u.email)
+    .split(/[\s.@]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("") || "?";
+
+const subline = (u: AdminUserRow) => [u.name, u.workspace?.name && `${u.workspace.name}${u.workspace.role !== "owner" ? ` (${u.workspace.role})` : ""}`].filter(Boolean).join(" · ") || "sem workspace";
+
+type Dialog = { kind: "grant" | "delete" | "remove-plan" | "inactive"; user: AdminUserRow } | null;
+
+function Avatar({ u }: { u: AdminUserRow }) {
+  return (
+    <span aria-hidden className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${u.banned ? "bg-surface-2 text-fg-2" : "bg-accent-soft text-accent"}`}>
+      {initials(u)}
+    </span>
+  );
+}
+
+function PlanCell({ u }: { u: AdminUserRow }) {
+  if (u.plan)
+    return (
+      <>
+        <p className="flex flex-wrap items-center gap-1.5 text-fg">
+          {planLabel(u.plan.id)}
+          {u.plan.courtesy && <Badge tone="accent">cortesia</Badge>}
+        </p>
+        <p className="text-[12px] whitespace-nowrap text-fg-2">
+          {u.plan.provider} · até {dt(u.plan.periodEnd)}
+        </p>
+      </>
+    );
+  if (u.openCheckout) return <p className="text-[12.5px] text-fg-2">escolheu {u.openCheckout.planId ? planLabel(u.openCheckout.planId) : "pedido"}</p>;
+  return <span className="text-fg-2">Sem plano</span>;
+}
+
+/** Ações de uma pessoa: Dar plano à vista e o resto no menu. */
+function RowActions({ u, pending, open }: { u: AdminUserRow; pending: boolean; open: (d: Dialog) => void }) {
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <button type="button" className={btn.subtle} disabled={pending} onClick={() => open({ kind: "grant", user: u })}>
+        <Gift size={14} aria-hidden /> Dar plano
+      </button>
+      <Menu>
+        <MenuTrigger aria-label={`Mais ações de ${u.email}`} disabled={pending} className={`${btn.icon} outline-none focus-visible:ring-2 focus-visible:ring-accent data-[state=open]:bg-surface-2 data-[state=open]:text-fg`}>
+          <MoreHorizontal size={18} aria-hidden />
+        </MenuTrigger>
+        <MenuContent align="end">
+          {u.plan && (
+            <MenuItem icon={<X size={15} />} onSelect={() => open({ kind: "remove-plan", user: u })}>
+              Tirar plano
+            </MenuItem>
+          )}
+          <MenuItem icon={u.banned ? <RotateCcw size={15} /> : <Ban size={15} />} onSelect={() => open({ kind: "inactive", user: u })}>
+            {u.banned ? "Reativar" : "Inativar"}
+          </MenuItem>
+          <MenuSeparator />
+          <MenuItem icon={<Trash2 size={15} />} className="text-error-fg" onSelect={() => open({ kind: "delete", user: u })}>
+            Excluir
+          </MenuItem>
+        </MenuContent>
+      </Menu>
+    </div>
+  );
+}
 
 export function UsersManager({ users }: { users: AdminUserRow[] }) {
   const [query, setQuery] = useState("");
@@ -37,7 +105,16 @@ export function UsersManager({ users }: { users: AdminUserRow[] }) {
     return c;
   }, [users]);
 
-  const run = (fn: () => Promise<ActionResult>) => start(async () => setResult(await fn()));
+  const run = (fn: () => Promise<ActionResult>) =>
+    start(async () => {
+      setResult(await fn());
+      setDialog(null);
+    });
+  const done = (r: ActionResult) => {
+    setResult(r);
+    if (r.ok) setDialog(null);
+  };
+  const th = "px-4 py-2.5 text-left text-[11.5px] font-medium tracking-[0.02em] text-fg-2";
 
   return (
     <div className="space-y-5">
@@ -46,144 +123,200 @@ export function UsersManager({ users }: { users: AdminUserRow[] }) {
         title="Usuários"
         text="Todos os cadastros: último acesso, logins, plano e ações. Liberar plano aqui não cobra nada."
         actions={
-          <Link href="/painel/interno" className={small}>
-            Voltar ao Interno
+          <Link href="/painel/interno" className={btn.subtle}>
+            <ArrowLeft size={15} aria-hidden /> Voltar ao Interno
           </Link>
         }
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="sm:w-80">
-          <TextField label="Buscar" value={query} onChange={setQuery} placeholder="e-mail, nome ou workspace" />
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {(["todos", "ativo", "parou_no_pagamento", "sem_plano", "inativado"] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              aria-pressed={filter === f}
-              className={`h-8 rounded-pill px-3 text-[13px] ${filter === f ? "bg-accent text-on-accent" : "border border-line text-fg-2 hover:text-fg"}`}
-            >
-              {f === "todos" ? "Todos" : STATUS_LABEL[f]} · {counts[f] ?? 0}
-            </button>
-          ))}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <label className="relative block lg:w-80">
+          <span className="sr-only">Buscar</span>
+          <Search size={16} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-2" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por e-mail, nome ou workspace"
+            className="h-10 w-full rounded-control border border-line bg-field pr-3 pl-9 text-[14px] text-fg outline-none transition-colors placeholder:text-fg-2/70 hover:border-fg-2/50 focus:border-accent focus:ring-1 focus:ring-accent max-sm:h-11 max-sm:text-[16px]"
+          />
+        </label>
+        <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
+          <div role="group" aria-label="Filtrar por situação" className="flex w-max gap-1.5">
+            {FILTERS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                aria-pressed={filter === f}
+                className={`inline-flex h-9 items-center gap-1.5 rounded-chip px-3 text-[13px] font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-accent ${filter === f ? "bg-accent text-on-accent" : "border border-line bg-card text-fg-2 hover:text-fg"}`}
+              >
+                {f === "todos" ? "Todos" : STATUS_LABEL[f]}
+                <span className={`tabular-nums ${filter === f ? "opacity-80" : "text-fg-2/70"}`}>{counts[f] ?? 0}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {result && (
-        <p role="status" className={`rounded-control px-3 py-2 text-[13.5px] ${result.ok ? "bg-accent-soft text-fg" : "bg-error/10 text-error"}`}>
-          {result.message}
+        <p role="status" className={`flex items-start justify-between gap-3 rounded-control px-3.5 py-2.5 text-[13.5px] ${result.ok ? "bg-accent-soft text-fg" : "bg-error-soft text-error-fg"}`}>
+          <span>{result.message}</span>
+          <button type="button" onClick={() => setResult(null)} aria-label="Fechar aviso" className="-my-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-black/5">
+            <X size={14} aria-hidden />
+          </button>
         </p>
       )}
 
-      <div className="overflow-x-auto rounded-card border border-line bg-card">
-        <table className="w-full min-w-[920px] text-left text-[13.5px]">
-          <thead className="border-b border-line text-[12px] text-fg-2">
-            <tr>
-              <th className="px-3 py-2 font-medium">Usuário</th>
-              <th className="px-3 py-2 font-medium">Cadastro</th>
-              <th className="px-3 py-2 font-medium">Último acesso</th>
-              <th className="px-3 py-2 font-medium tabular-nums">Logins</th>
-              <th className="px-3 py-2 font-medium">Plano</th>
-              <th className="px-3 py-2 font-medium">Situação</th>
-              <th className="px-3 py-2 text-right font-medium">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
+      {list.length === 0 ? (
+        <p className="rounded-card border border-dashed border-line px-4 py-12 text-center text-[14px] text-fg-2">Ninguém encontrado com esse filtro.</p>
+      ) : (
+        <>
+          {/* computador: tabela */}
+          <div className="hidden overflow-hidden rounded-card border border-line bg-card lg:block">
+            <table className="w-full text-left text-[13.5px]">
+              <thead className="border-b border-line bg-surface-2/50">
+                <tr>
+                  <th className={th}>Usuário</th>
+                  <th className={th}>Cadastro</th>
+                  <th className={th}>Último acesso</th>
+                  <th className={`${th} text-right`}>Logins</th>
+                  <th className={th}>Plano</th>
+                  <th className={th}>Situação</th>
+                  <th className={`${th} text-right`}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((u) => {
+                  const s = statusOf(u);
+                  return (
+                    <tr key={u.id} className="border-b border-line/70 transition-colors last:border-0 hover:bg-surface-2/40">
+                      <td className="max-w-[320px] px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar u={u} />
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-fg" title={u.email}>
+                              {u.email}
+                            </p>
+                            <p className="truncate text-[12px] text-fg-2">{subline(u)}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-fg-2 tabular-nums">{dt(u.createdAt)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-fg-2" title={u.lastSignInAt ? new Date(u.lastSignInAt).toLocaleString("pt-BR") : undefined}>
+                        {ago(u.lastSignInAt)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">{u.signIns}</td>
+                      <td className="px-4 py-3">
+                        <PlanCell u={u} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge tone={TONE[s]}>{STATUS_LABEL[s]}</Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <RowActions u={u} pending={pending} open={setDialog} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* celular e tablet: um cartão por pessoa */}
+          <ul className="space-y-3 lg:hidden">
             {list.map((u) => {
               const s = statusOf(u);
               return (
-                <tr key={u.id} className="border-b border-line/60 last:border-0 align-top">
-                  <td className="px-3 py-2.5">
-                    <p className="font-medium text-fg">{u.email}</p>
-                    <p className="text-[12px] text-fg-2">
-                      {[u.name, u.workspace?.name && `${u.workspace.name}${u.workspace.role !== "owner" ? ` (${u.workspace.role})` : ""}`].filter(Boolean).join(" · ") || "sem workspace"}
-                    </p>
-                  </td>
-                  <td className="px-3 py-2.5 tabular-nums text-fg-2">{dt(u.createdAt)}</td>
-                  <td className="px-3 py-2.5 text-fg-2" title={u.lastSignInAt ? new Date(u.lastSignInAt).toLocaleString("pt-BR") : undefined}>
-                    {ago(u.lastSignInAt)}
-                  </td>
-                  <td className="px-3 py-2.5 tabular-nums">{u.signIns}</td>
-                  <td className="px-3 py-2.5">
-                    {u.plan ? (
-                      <>
-                        <p className="text-fg">
-                          {planLabel(u.plan.id)}
-                          {u.plan.courtesy && <span className="ml-1.5 text-[11.5px] text-accent">cortesia</span>}
-                        </p>
-                        <p className="text-[12px] text-fg-2">
-                          {u.plan.provider} · até {dt(u.plan.periodEnd)}
-                        </p>
-                      </>
-                    ) : u.openCheckout ? (
-                      <p className="text-[12px] text-fg-2">escolheu {u.openCheckout.planId ? planLabel(u.openCheckout.planId) : "pedido"}</p>
-                    ) : (
-                      <span className="text-fg-2">-</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className={`inline-flex rounded-pill px-2 py-0.5 text-[12px] ${TONE[s]}`}>{STATUS_LABEL[s]}</span>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex flex-wrap justify-end gap-1.5">
-                      <button type="button" className={small} disabled={pending} onClick={() => setDialog({ kind: "grant", user: u })}>
-                        Dar plano
-                      </button>
-                      {u.plan && (
-                        <button type="button" className={small} disabled={pending} onClick={() => confirm(`Tirar o plano de ${u.email}?`) && run(() => removePlanAction(u.id))}>
-                          Tirar plano
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className={small}
-                        disabled={pending}
-                        onClick={() => confirm(`${u.banned ? "Reativar" : "Inativar"} ${u.email}?`) && run(() => setInactiveAction(u.id, !u.banned))}
-                      >
-                        {u.banned ? "Reativar" : "Inativar"}
-                      </button>
-                      <button type="button" className={danger} disabled={pending} onClick={() => setDialog({ kind: "delete", user: u })}>
-                        Excluir
-                      </button>
+                <li key={u.id} className="rounded-card border border-line bg-card p-4">
+                  <div className="flex items-start gap-3">
+                    <Avatar u={u} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium [overflow-wrap:anywhere] text-fg">{u.email}</p>
+                      <p className="text-[12.5px] text-fg-2">{subline(u)}</p>
                     </div>
-                  </td>
-                </tr>
+                    <Badge tone={TONE[s]}>{STATUS_LABEL[s]}</Badge>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-3 gap-2 text-[12.5px]">
+                    <div className="rounded-control bg-surface-2/70 px-2.5 py-2">
+                      <dt className="text-fg-2">Cadastro</dt>
+                      <dd className="mt-0.5 font-medium tabular-nums">{dt(u.createdAt)}</dd>
+                    </div>
+                    <div className="rounded-control bg-surface-2/70 px-2.5 py-2">
+                      <dt className="text-fg-2">Acesso</dt>
+                      <dd className="mt-0.5 font-medium">{ago(u.lastSignInAt)}</dd>
+                    </div>
+                    <div className="rounded-control bg-surface-2/70 px-2.5 py-2">
+                      <dt className="text-fg-2">Logins</dt>
+                      <dd className="mt-0.5 font-medium tabular-nums">{u.signIns}</dd>
+                    </div>
+                  </dl>
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3">
+                    <div className="min-w-0 text-[13.5px]">
+                      <PlanCell u={u} />
+                    </div>
+                    <RowActions u={u} pending={pending} open={setDialog} />
+                  </div>
+                </li>
               );
             })}
-            {!list.length && (
-              <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-fg-2">
-                  Ninguém encontrado.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+          <p className="text-[12.5px] text-fg-2 tabular-nums">
+            {list.length} de {users.length} {users.length === 1 ? "cadastro" : "cadastros"}
+          </p>
+        </>
+      )}
 
-      {dialog?.kind === "grant" && (
-        <GrantDialog
-          user={dialog.user}
+      {dialog?.kind === "grant" && <GrantDialog user={dialog.user} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog?.kind === "delete" && <DeleteDialog user={dialog.user} onClose={() => setDialog(null)} onDone={done} />}
+      {dialog?.kind === "remove-plan" && (
+        <ConfirmDialog
+          title="Tirar plano"
+          text={
+            <>
+              Tirar o plano de <strong className="break-all">{dialog.user.email}</strong>? O workspace fica sem assinatura; os dados continuam guardados.
+            </>
+          }
+          confirm="Tirar plano"
+          pending={pending}
           onClose={() => setDialog(null)}
-          onDone={(r) => {
-            setResult(r);
-            if (r.ok) setDialog(null);
-          }}
+          onConfirm={() => run(() => removePlanAction(dialog.user.id))}
         />
       )}
-      {dialog?.kind === "delete" && (
-        <DeleteDialog
-          user={dialog.user}
+      {dialog?.kind === "inactive" && (
+        <ConfirmDialog
+          title={dialog.user.banned ? "Reativar usuário" : "Inativar usuário"}
+          text={
+            <>
+              {dialog.user.banned ? "Reativar" : "Inativar"} <strong className="break-all">{dialog.user.email}</strong>? {dialog.user.banned ? "A pessoa volta a conseguir entrar." : "A pessoa deixa de conseguir entrar; nada é apagado."}
+            </>
+          }
+          confirm={dialog.user.banned ? "Reativar" : "Inativar"}
+          pending={pending}
           onClose={() => setDialog(null)}
-          onDone={(r) => {
-            setResult(r);
-            if (r.ok) setDialog(null);
-          }}
+          onConfirm={() => run(() => setInactiveAction(dialog.user.id, !dialog.user.banned))}
         />
       )}
     </div>
+  );
+}
+
+/** Confirmação curta (no lugar do confirm() do navegador). */
+function ConfirmDialog({ title, text, confirm, pending, onClose, onConfirm }: { title: string; text: React.ReactNode; confirm: string; pending: boolean; onClose: () => void; onConfirm: () => void }) {
+  return (
+    <Modal open onClose={onClose} title={title}>
+      <div className="space-y-5">
+        <p className="text-[14.5px] leading-relaxed">{text}</p>
+        <ModalActions>
+          <button type="button" className={`${btn.quiet} max-sm:h-11`} onClick={onClose} disabled={pending}>
+            Cancelar
+          </button>
+          <button type="button" className={`${btn.small} max-sm:h-11`} onClick={onConfirm} disabled={pending}>
+            {pending ? "Aguarde…" : confirm}
+          </button>
+        </ModalActions>
+      </div>
+    </Modal>
   );
 }
 
@@ -217,19 +350,14 @@ function GrantDialog({ user, onClose, onDone }: { user: AdminUserRow; onClose: (
             />
           </label>
         </div>
-        <div className="flex justify-end gap-2">
-          <button type="button" className={small} onClick={onClose}>
+        <ModalActions>
+          <button type="button" className={`${btn.quiet} max-sm:h-11`} onClick={onClose}>
             Cancelar
           </button>
-          <button
-            type="button"
-            className={btn.small}
-            disabled={pending}
-            onClick={() => start(async () => onDone(await grantPlanAction(user.id, tier, months)))}
-          >
+          <button type="button" className={`${btn.small} max-sm:h-11`} disabled={pending} onClick={() => start(async () => onDone(await grantPlanAction(user.id, tier, months)))}>
             {pending ? "Liberando…" : "Liberar sem cobrar"}
           </button>
-        </div>
+        </ModalActions>
       </div>
     </Modal>
   );
@@ -245,29 +373,29 @@ function DeleteDialog({ user, onClose, onDone }: { user: AdminUserRow; onClose: 
       <div className="space-y-4">
         <p className="text-[13.5px] text-fg-2">Exclusão total e definitiva (o mesmo processo dos pedidos de exclusão de dados). Primeiro veja a simulação: ela não apaga nada.</p>
         {!preview && (
-          <button type="button" className={small} disabled={pending} onClick={() => start(async () => setPreview(await previewDeletionAction(user.email)))}>
+          <button type="button" className={btn.subtle} disabled={pending} onClick={() => start(async () => setPreview(await previewDeletionAction(user.email)))}>
             {pending ? "Simulando…" : "Ver simulação"}
           </button>
         )}
-        {preview && !preview.ok && <p className="rounded-control bg-error/10 px-3 py-2 text-[13px] text-error">{preview.message}</p>}
-        {preview?.ok && <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-control bg-field p-3 text-[12px] text-fg">{preview.text}</pre>}
-        {preview?.ok && preview.blocked && <p className="text-[13px] text-error">Há bloqueios acima: resolva antes de excluir.</p>}
+        {preview && !preview.ok && <p className="rounded-control bg-error-soft px-3 py-2 text-[13px] text-error-fg">{preview.message}</p>}
+        {preview?.ok && <pre className="max-h-72 overflow-auto rounded-control border border-line bg-field p-3 text-[12px] whitespace-pre-wrap text-fg">{preview.text}</pre>}
+        {preview?.ok && preview.blocked && <p className="text-[13px] text-error-fg">Há bloqueios acima: resolva antes de excluir.</p>}
         {ready && (
           <>
             <TextField label={`Para confirmar, digite ${user.email}`} value={typed} onChange={setTyped} />
-            <div className="flex justify-end gap-2">
-              <button type="button" className={small} onClick={onClose}>
+            <ModalActions>
+              <button type="button" className={`${btn.quiet} max-sm:h-11`} onClick={onClose}>
                 Cancelar
               </button>
               <button
                 type="button"
-                className={`${btn.small} !bg-error !text-white`}
+                className={`${btn.danger} max-sm:h-11`}
                 disabled={pending || typed.trim().toLowerCase() !== user.email.toLowerCase()}
                 onClick={() => start(async () => onDone(await applyDeletionAction(user.email, typed, preview.code)))}
               >
                 {pending ? "Excluindo…" : "Excluir de vez"}
               </button>
-            </div>
+            </ModalActions>
           </>
         )}
       </div>

@@ -1,16 +1,16 @@
 "use client";
 
-import { Plus, Radio, Shuffle, Trash2 } from "lucide-react";
+import { MoreHorizontal, Plus, Radio, Shuffle, Trash2 } from "lucide-react";
 import { ChangeTemplateModal, type ChangeTemplateTarget } from "./ChangeTemplateModal";
 import { NewDashboardDialog } from "./NewDashboardDialog";
 import type { SourceOption } from "./model";
 import type { Tier } from "@/features/pricing/entitlements";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { EmptyState, Modal, PageHeader } from "@/components/ui/kit";
+import { Badge, EmptyState, Modal, ModalActions, PageHeader } from "@/components/ui/kit";
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/Menu";
 import { ScaledPreview } from "@/components/ui/ScaledPreview";
 import { btn } from "@/components/ui/styles";
-import { UsageBar } from "@/features/accounts/AccountsPage";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { anyDashboardTemplate } from "@/features/templates/live";
@@ -32,7 +32,7 @@ export function DashboardThumb({ d }: { d: Pick<DashboardListItem, "templateId" 
   if (t.skin && first === t.pages[0]) {
     return (
       <ScaledPreview height={150} width={1100}>
-        <div inert aria-hidden>
+        <div inert aria-hidden className="tokens-brand text-fg">
           <SkinView skin={t.skin} ctx={makeContext(ds)} name={d.name} client={d.client} pages={d.pages.length ? d.pages : t.pages} active={first} periodLabel="Últimos 30 dias" />
         </div>
       </ScaledPreview>
@@ -40,7 +40,7 @@ export function DashboardThumb({ d }: { d: Pick<DashboardListItem, "templateId" 
   }
   return (
     <ScaledPreview height={150} width={760}>
-      <div inert aria-hidden className="bg-bg p-3">
+      <div inert aria-hidden className="tokens-brand bg-bg p-3 text-fg">
         <PageView layout={pageLayout(t, d.pages[0] ?? t.pages[0])} ctx={makeContext(ds)} variant="compact" />
       </div>
     </ScaledPreview>
@@ -51,7 +51,7 @@ export function DashboardThumb({ d }: { d: Pick<DashboardListItem, "templateId" 
 function LiveThumb({ d }: { d: DashboardListItem }) {
   const enabled = d.sources.filter((s) => s.isEnabled);
   return (
-    <div className="relative flex h-[150px] flex-col justify-between overflow-hidden bg-bg p-4">
+    <div className="relative flex h-[150px] flex-col justify-between overflow-hidden bg-surface-2/60 p-4">
       <svg viewBox="0 0 300 80" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-20 w-full text-accent" aria-hidden>
         <path d="M0 62 C40 58 60 40 100 44 S170 20 210 28 S270 12 300 8 L300 80 L0 80 Z" fill="currentColor" opacity="0.1" />
         <path d="M0 62 C40 58 60 40 100 44 S170 20 210 28 S270 12 300 8" fill="none" stroke="currentColor" strokeWidth="2" />
@@ -105,13 +105,33 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
     </button>
   );
 
+  const ratio = Math.min(1, items.length / Math.max(1, limit));
+
   return (
-    <div className="space-y-8">
-      <PageHeader eyebrow="Dashboards" title="Meus dashboards" text="Cada dashboard tem um visual, um objetivo e as contas que você ligou a ele." actions={newButton} />
-      <div className="rounded-card border border-line bg-card p-4">
-        <UsageBar used={items.length} limit={limit} label={`Dashboards × limite do ${planLabel}`} />
-        {atLimit && canEdit && <p className="mt-2 text-[13px] text-fg-2">Você chegou ao limite do plano. Apague um dashboard ou troque de plano em Plano.</p>}
+    <div className="space-y-6">
+      <PageHeader title="Dashboards" text="Cada dashboard tem um visual, um objetivo e as contas que você ligou a ele." actions={newButton} />
+
+      {/* uso do plano, numa linha */}
+      <div className="flex flex-col gap-2 rounded-card border border-line bg-card p-4 sm:flex-row sm:items-center sm:gap-5 sm:px-5">
+        <p className="flex shrink-0 items-baseline gap-2 text-[13px]">
+          <span className="font-medium text-fg-2">Dashboards do {planLabel}</span>
+          <span className={`font-semibold tnum ${atLimit ? "text-error-fg" : "text-fg"}`}>
+            {items.length} de {limit}
+          </span>
+        </p>
+        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-2" role="img" aria-label={`${items.length} de ${limit} dashboards`}>
+          <div className={`h-full rounded-full transition-[width] duration-500 ease-brand ${atLimit ? "bg-error" : ratio >= 0.8 ? "bg-warning" : "bg-accent"}`} style={{ width: `${Math.max(items.length ? 3 : 0, ratio * 100)}%` }} />
+        </div>
+        {atLimit && canEdit && (
+          <p className="text-[13px] text-fg-2">
+            Limite do plano atingido.{" "}
+            <Link href="/painel/plano#h-trocar" className="font-semibold text-accent underline-offset-4 hover:underline">
+              Trocar de plano
+            </Link>
+          </p>
+        )}
       </div>
+
       {items.length === 0 ? (
         <EmptyState
           title="Nenhum dashboard ainda"
@@ -122,56 +142,70 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((d) => {
             const t = anyDashboardTemplate(d.templateId);
+            const enabled = d.sources.filter((s) => s.isEnabled);
             return (
-              <li key={d.id} className="group relative overflow-hidden rounded-card border border-line bg-card transition-colors hover:border-accent">
-                <Link href={`/painel/dashboards/${d.id}`} className="block rounded-card outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                  <div className="border-b border-line">{d.live ? <LiveThumb d={d} /> : <DashboardThumb d={d} />}</div>
-                  <div className="p-4">
-                    <p className="truncate font-semibold">{d.name}</p>
-                    <p className="truncate text-[13px] text-fg-2">
-                      {[d.client, t?.name].filter(Boolean).join(" · ")}
-                    </p>
-                    <p className="mt-2 flex flex-wrap gap-1">
-                      {(t?.sources ?? []).map((s) => (
-                        <span key={s} className="rounded-chip border border-line px-2 py-0.5 text-[11px] text-fg-2">
-                          {PLATFORMS[s].short}
-                        </span>
-                      ))}
-                      {!d.live &&
-                        (d.sources.some((s) => s.isEnabled) ? (
-                          <span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[11px] text-fg" title={d.sources.filter((s) => s.isEnabled).map((s) => s.name).join(" · ")}>
-                            Dados reais · {d.sources.filter((s) => s.isEnabled).length} {d.sources.filter((s) => s.isEnabled).length === 1 ? "conta" : "contas"}
-                          </span>
+              <li key={d.id} className="group relative flex flex-col overflow-hidden rounded-card border border-line bg-card transition-[border-color,box-shadow] duration-200 hover:border-fg-2/40 hover:shadow-pop">
+                <Link href={`/painel/dashboards/${d.id}`} className="flex flex-1 flex-col rounded-card outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset">
+                  <div className="relative overflow-hidden border-b border-line">
+                    {d.live ? <LiveThumb d={d} /> : <DashboardThumb d={d} />}
+                    {!d.live && (
+                      <span className="absolute bottom-2 left-2">
+                        {enabled.length ? (
+                          <Badge tone="ok" className="shadow-card ring-1 ring-line" title={enabled.map((s) => s.name).join(" · ")}>
+                            <Radio size={11} aria-hidden /> Dados reais · {enabled.length} {enabled.length === 1 ? "conta" : "contas"}
+                          </Badge>
                         ) : (
-                          <span className="rounded-chip border border-dashed border-line px-2 py-0.5 text-[11px] text-fg-2">Amostra</span>
+                          <Badge tone="neutral" className="bg-card ring-1 ring-line">
+                            Amostra
+                          </Badge>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col p-4 pr-12">
+                    <p className="truncate text-[15px] font-semibold">{d.name}</p>
+                    <p className="mt-0.5 truncate text-[13px] text-fg-2">{[d.client, t?.name].filter(Boolean).join(" · ")}</p>
+                    {(t?.sources ?? []).length > 0 && (
+                      <p className="mt-3 flex flex-wrap gap-1">
+                        {(t?.sources ?? []).map((s) => (
+                          <Badge key={s} tone="outline">
+                            {PLATFORMS[s].short}
+                          </Badge>
                         ))}
-                    </p>
+                      </p>
+                    )}
                   </div>
                 </Link>
-                {canEdit && t?.composed && (
-                  <button
-                    type="button"
-                    aria-label={`Trocar modelo de ${d.name}`}
-                    title="Trocar modelo"
-                    onClick={() => setSwitching({ id: d.id, name: d.name, visual: t.composed!.visual as ChangeTemplateTarget["visual"], objective: t.composed!.objective as ChangeTemplateTarget["objective"] })}
-                    className="absolute top-2 right-12 inline-flex size-8 items-center justify-center rounded-control border border-line bg-card/90 text-fg-2 backdrop-blur transition-colors hover:border-accent hover:text-fg"
-                    data-change-template-open
-                  >
-                    <Shuffle size={14} aria-hidden />
-                  </button>
-                )}
                 {canEdit && (
-                  <button
-                    type="button"
-                    aria-label={`Apagar ${d.name}`}
-                    onClick={() => {
-                      setError(null);
-                      setRemoving(d);
-                    }}
-                    className="absolute top-2 right-2 inline-flex size-8 items-center justify-center rounded-control border border-line bg-card/90 text-fg-2 backdrop-blur transition-colors hover:border-error hover:text-error"
-                  >
-                    <Trash2 size={14} aria-hidden />
-                  </button>
+                  <Menu>
+                    <MenuTrigger aria-label={`Mais ações de ${d.name}`} className={`${btn.icon} absolute right-2 bottom-3 outline-none focus-visible:ring-2 focus-visible:ring-accent data-[state=open]:bg-surface-2 data-[state=open]:text-fg`}>
+                      <MoreHorizontal size={18} aria-hidden />
+                    </MenuTrigger>
+                    <MenuContent align="end">
+                      {t?.composed && (
+                        <>
+                          <MenuItem
+                            icon={<Shuffle size={15} />}
+                            data-change-template-open
+                            onSelect={() => setSwitching({ id: d.id, name: d.name, visual: t.composed!.visual as ChangeTemplateTarget["visual"], objective: t.composed!.objective as ChangeTemplateTarget["objective"] })}
+                          >
+                            Trocar modelo
+                          </MenuItem>
+                          <MenuSeparator />
+                        </>
+                      )}
+                      <MenuItem
+                        icon={<Trash2 size={15} />}
+                        className="text-error-fg"
+                        onSelect={() => {
+                          setError(null);
+                          setRemoving(d);
+                        }}
+                      >
+                        Apagar
+                      </MenuItem>
+                    </MenuContent>
+                  </Menu>
                 )}
               </li>
             );
@@ -211,14 +245,14 @@ export function DeleteDashboardModal({
               {error}
             </p>
           )}
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={`${btn.small} bg-error`} onClick={onConfirm} disabled={pending}>
-              {pending ? "Apagando…" : "Apagar"}
-            </button>
-            <button type="button" className={`${btn.ghost} h-9`} onClick={onClose} disabled={pending}>
+          <ModalActions>
+            <button type="button" className={`${btn.quiet} max-sm:h-11`} onClick={onClose} disabled={pending}>
               Cancelar
             </button>
-          </div>
+            <button type="button" className={`${btn.danger} max-sm:h-11`} onClick={onConfirm} disabled={pending}>
+              {pending ? "Apagando…" : "Apagar"}
+            </button>
+          </ModalActions>
         </div>
       )}
     </Modal>

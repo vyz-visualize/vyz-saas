@@ -3,14 +3,16 @@
 // Configurações: perfil, workspace, marca própria (logo no Storage pelo
 // servidor), segurança, equipe, histórico de acessos e atividade do
 // workspace. Tudo vem do servidor e grava por Server Actions.
+// A página é dividida em abas (Conta, Workspace, Equipe, Atividade) para a pessoa não
+// rolar por tudo: a aba aberta fica no # do endereço, então dá para mandar o link dela.
 
 import { AlertTriangle, ArrowRight, ImageOff, LogIn } from "lucide-react";
 import Link from "next/link";
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
 import { ColorField } from "@/components/ui/ColorField";
 import { Switch } from "@/components/ui/controls";
 import { FileInput } from "@/components/ui/FileInput";
-import { LockBadge, PageHeader, TextField } from "@/components/ui/kit";
+import { LockBadge, PageHeader, Tabs, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { useToast } from "@/components/ui/Toast";
 import { ChangePasswordForm, SignOutEverywhereButton } from "@/features/auth/AccountSecurity";
@@ -28,17 +30,46 @@ type Notify = (msg: string) => void;
 
 function Section({ id, title, aside, text, children }: { id: string; title: string; aside?: ReactNode; text?: ReactNode; children: ReactNode }) {
   return (
-    <section className="space-y-4 rounded-card border border-line bg-card p-5" aria-labelledby={id}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id={id} className="title text-lg">
-          {title}
-        </h2>
-        {aside}
+    <section className="space-y-5 rounded-card border border-line bg-card p-5 sm:p-6" aria-labelledby={id}>
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id={id} className="text-[16.5px] font-semibold tracking-[-0.015em]">
+            {title}
+          </h2>
+          {aside}
+        </div>
+        {text && <p className="mt-1 max-w-2xl text-[13.5px] leading-relaxed text-fg-2">{text}</p>}
       </div>
-      {text && <p className="-mt-2 text-[14px] text-fg-2">{text}</p>}
       {children}
     </section>
   );
+}
+
+// ---- abas (no # do endereço) ---------------------------------------------------------------
+
+const TAB_IDS = ["conta", "workspace", "equipe", "atividade"] as const;
+type TabId = (typeof TAB_IDS)[number];
+/** Âncoras antigas das seções levam à aba onde a seção mora. */
+const LEGACY_HASH: Record<string, TabId> = { "h-perfil": "conta", "h-seguranca": "conta", "h-acessos": "conta", "h-ws": "workspace", "h-marca": "workspace", "h-whatsapp": "workspace", "h-equipe": "equipe", "h-atividade": "atividade" };
+
+function subscribeHash(cb: () => void) {
+  window.addEventListener("hashchange", cb);
+  return () => window.removeEventListener("hashchange", cb);
+}
+
+function useHashTab(allowed: readonly TabId[]): [TabId, (t: TabId) => void] {
+  const hash = useSyncExternalStore(
+    subscribeHash,
+    () => window.location.hash.slice(1),
+    () => "",
+  );
+  const wanted = (TAB_IDS as readonly string[]).includes(hash) ? (hash as TabId) : LEGACY_HASH[hash];
+  const tab = wanted && allowed.includes(wanted) ? wanted : allowed[0];
+  const set = (t: TabId) => {
+    window.history.replaceState(null, "", `#${t}`);
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  };
+  return [tab, set];
 }
 
 function ErrorLine({ children }: { children: ReactNode }) {
@@ -72,13 +103,15 @@ function ProfileForm({ profile, notify }: { profile: SettingsData["profile"]; no
         save();
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
         <TextField label="Seu nome" value={fullName} onChange={setFullName} error={errors.fullName} />
         <TextField label="WhatsApp" value={phone} onChange={(v) => setPhone(formatPhone(v))} inputMode="tel" placeholder="(71) 99999-9999" error={errors.phone} hint="Opcional. Para avisos da conta." />
-        <TextField label="E-mail" value={profile.email} onChange={() => {}} disabled hint="O e-mail de acesso não muda por aqui." />
+        <div className="sm:col-span-2">
+          <TextField label="E-mail" value={profile.email} onChange={() => {}} disabled hint="O e-mail de acesso não muda por aqui." />
+        </div>
       </div>
       {errors.form && <ErrorLine>{errors.form}</ErrorLine>}
-      <button type="submit" className={btn.small} disabled={!dirty || pending}>
+      <button type="submit" className={`${btn.small} max-sm:h-11 max-sm:w-full`} disabled={!dirty || pending}>
         {pending ? "Salvando…" : "Salvar perfil"}
       </button>
     </form>
@@ -109,7 +142,7 @@ function WorkspaceForm({ canEdit, notify }: { canEdit: boolean; notify: Notify }
         <TextField label="Nome do workspace" value={name} onChange={setName} disabled={!canEdit} hint={canEdit ? "Aparece no menu e nos convites." : "Só admins mudam o nome."} error={error} />
       </div>
       {canEdit && (
-        <button type="submit" className={btn.small} disabled={pending || !name.trim() || name.trim() === workspace.name}>
+        <button type="submit" className={`${btn.small} max-sm:h-11 max-sm:w-full`} disabled={pending || !name.trim() || name.trim() === workspace.name}>
           {pending ? "Salvando…" : "Salvar"}
         </button>
       )}
@@ -147,7 +180,7 @@ function BrandForm({ canEdit, notify }: { canEdit: boolean; notify: Notify }) {
   return (
     <div className="space-y-5" aria-busy={pending}>
       <div className="grid gap-4 md:grid-cols-[180px_1fr] md:items-start">
-        <div className="flex h-[112px] items-center justify-center rounded-card border border-line bg-bg p-3">
+        <div className="flex h-[112px] items-center justify-center rounded-[calc(var(--r-card)-4px)] border border-line bg-surface-2/60 p-3">
           {workspace.brandLogoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- logo do Storage, tamanho livre
             <img src={workspace.brandLogoUrl} alt={`Logo de ${workspace.name}`} className="max-h-full max-w-full object-contain" />
@@ -161,7 +194,7 @@ function BrandForm({ canEdit, notify }: { canEdit: boolean; notify: Notify }) {
           <div className="space-y-2">
             <FileInput label="Logo" hint={LOGO_HINT} accept={LOGO_ACCEPT} onFile={upload} compact />
             {workspace.brandLogoUrl && (
-              <button type="button" className={`${btn.ghost} h-8 px-2 text-[13px] text-fg-2`} disabled={pending} onClick={() => run(removeBrandLogo, "Logo removido.")}>
+              <button type="button" className={`${btn.quiet} h-8 px-2 text-[13px]`} disabled={pending} onClick={() => run(removeBrandLogo, "Logo removido.")}>
                 Remover logo
               </button>
             )}
@@ -282,69 +315,104 @@ function ActivityList({ items, now, timeZone }: { items: ActivityItem[]; now: st
 // ---- página ---------------------------------------------------------------------------------
 
 export function SettingsPage({ data }: { data: SettingsData }) {
-  const { workspace, role, access } = useWorkspaceSession();
+  const { workspace, role, access, user } = useWorkspaceSession();
   const toast = useToast();
   const admin = hasRole(role, "admin");
   const white = !!access.entitlements?.whiteLabel && access.hasAccess;
   const tz = workspace.timezone;
+  const tabs: { value: TabId; label: string }[] = [
+    { value: "conta", label: "Conta" },
+    { value: "workspace", label: "Workspace" },
+    { value: "equipe", label: `Equipe · ${data.team.length}` },
+    ...(data.activity ? [{ value: "atividade" as const, label: "Atividade" }] : []),
+  ];
+  const [tab, setTab] = useHashTab(tabs.map((t) => t.value));
+  const name = data.profile.fullName || user.fullName || data.profile.email;
 
   return (
-    <div className="space-y-8">
-      <PageHeader eyebrow="Configurações" title="Conta e workspace" text={`${workspace.name} · você é ${ROLE_LABEL[role].toLowerCase()} deste workspace.`} />
+    <div className="space-y-6">
+      <PageHeader title="Configurações" text={`${workspace.name} · você é ${ROLE_LABEL[role].toLowerCase()} deste workspace.`} />
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Section id="h-perfil" title="Perfil">
-          <ProfileForm profile={data.profile} notify={toast.show} />
-        </Section>
-        <Section id="h-ws" title="Workspace">
-          <WorkspaceForm canEdit={admin} notify={toast.show} />
-        </Section>
-      </div>
+      <Tabs label="Seções das configurações" items={tabs} value={tab} onChange={setTab} />
 
-      <Section id="h-marca" title="Marca própria (white-label)" aside={!white && <LockBadge label="Sob consulta" />}>
-        <p className="-mt-2 text-[14px] text-fg-2">Seu logo e suas cores no dashboard, no link e no PDF, sem a marca VYZ.</p>
-        {white ? (
-          <BrandForm canEdit={admin} notify={toast.show} />
-        ) : (
-          <Paywall current={access.hasAccess ? access.tier : null} required="personalizado" feature="Marca própria" text="Para agências que entregam o dashboard como se fosse delas.">
-            <BrandForm canEdit={false} notify={toast.show} />
-          </Paywall>
-        )}
-      </Section>
+      {tab === "conta" && (
+        <div className="space-y-4" role="tabpanel" aria-label="Conta">
+          <Section id="h-perfil" title="Perfil" text="Como você aparece para a equipe e onde chegam os avisos da conta.">
+            <div className="flex items-center gap-3">
+              <span aria-hidden className="inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[15px] font-bold text-accent">
+                {name
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((w) => w[0]?.toUpperCase())
+                  .join("") || "V"}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[15px] font-semibold">{name}</span>
+                <span className="block truncate text-[13px] text-fg-2">{data.profile.email}</span>
+              </span>
+            </div>
+            <ProfileForm profile={data.profile} notify={toast.show} />
+          </Section>
 
-      <Section
-        id="h-whatsapp"
-        title="Relatórios no WhatsApp"
-        aside={!access.entitlements?.whatsappReports && <LockBadge label="Avançado" />}
-        text="Resumo diário, semanal e alertas no seu WhatsApp, pelo número oficial da VYZ. Responda PARAR para não receber mais."
-      >
-        <Link href="/painel/whatsapp" className={btn.small}>
-          Configurar WhatsApp <ArrowRight size={15} aria-hidden />
-        </Link>
-      </Section>
+          <Section id="h-seguranca" title="Segurança" text="Trocar a senha pede a senha atual. Os outros aparelhos saem da conta.">
+            <ChangePasswordForm />
+            <div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[14px] text-fg-2">Esqueceu um aparelho logado? Saia de todos, inclusive deste.</p>
+              <SignOutEverywhereButton className="shrink-0" />
+            </div>
+          </Section>
 
-      <Section id="h-seguranca" title="Segurança" text="Trocar a senha pede a senha atual. Os outros aparelhos saem da conta.">
-        <ChangePasswordForm />
-        <div className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[14px] text-fg-2">Esqueceu um aparelho logado? Saia de todos, inclusive deste.</p>
-          <SignOutEverywhereButton className="shrink-0" />
+          <Section id="h-acessos" title="Seus acessos" text="Entradas, saídas e trocas de senha da sua conta, com o aparelho e o IP.">
+            <AccessList items={data.access} now={data.now} timeZone={tz} />
+          </Section>
         </div>
-      </Section>
+      )}
 
-      <Section id="h-equipe" title="Equipe" text={admin ? "Convide por e-mail, escolha o papel de cada pessoa e tire quem não precisa mais de acesso." : undefined}>
-        <TeamSection data={data} role={role} timeZone={tz} notify={toast.show} />
-      </Section>
+      {tab === "workspace" && (
+        <div className="space-y-4" role="tabpanel" aria-label="Workspace">
+          <Section id="h-ws" title="Workspace" text="O espaço onde ficam os projetos, as contas e os dashboards da equipe.">
+            <WorkspaceForm canEdit={admin} notify={toast.show} />
+          </Section>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Section id="h-acessos" title="Seus acessos" text="Entradas, saídas e trocas de senha da sua conta, com o aparelho e o IP.">
-          <AccessList items={data.access} now={data.now} timeZone={tz} />
-        </Section>
-        {data.activity && (
+          <Section id="h-marca" title="Marca própria (white-label)" aside={!white && <LockBadge label="Sob consulta" />} text="Seu logo e suas cores no dashboard, no link e no PDF, sem a marca VYZ.">
+            {white ? (
+              <BrandForm canEdit={admin} notify={toast.show} />
+            ) : (
+              <Paywall current={access.hasAccess ? access.tier : null} required="personalizado" feature="Marca própria" text="Para agências que entregam o dashboard como se fosse delas.">
+                <BrandForm canEdit={false} notify={toast.show} />
+              </Paywall>
+            )}
+          </Section>
+
+          <Section
+            id="h-whatsapp"
+            title="Relatórios no WhatsApp"
+            aside={!access.entitlements?.whatsappReports && <LockBadge label="Avançado" />}
+            text="Resumo diário, semanal e alertas no seu WhatsApp, pelo número oficial da VYZ. Responda PARAR para não receber mais."
+          >
+            <Link href="/painel/whatsapp" className={`${btn.small} max-sm:h-11 max-sm:w-full`}>
+              Configurar WhatsApp <ArrowRight size={15} aria-hidden />
+            </Link>
+          </Section>
+        </div>
+      )}
+
+      {tab === "equipe" && (
+        <div role="tabpanel" aria-label="Equipe">
+          <Section id="h-equipe" title="Equipe" text={admin ? "Convide por e-mail, escolha o papel de cada pessoa e tire quem não precisa mais de acesso." : undefined}>
+            <TeamSection data={data} role={role} timeZone={tz} notify={toast.show} />
+          </Section>
+        </div>
+      )}
+
+      {tab === "atividade" && data.activity && (
+        <div role="tabpanel" aria-label="Atividade">
           <Section id="h-atividade" title="Atividade do workspace" text="O que a equipe e o sistema fizeram aqui: cobrança, conexões, dashboards e mudanças de dados.">
             <ActivityList items={data.activity} now={data.now} timeZone={tz} />
           </Section>
-        )}
-      </div>
+        </div>
+      )}
       {toast.node}
     </div>
   );

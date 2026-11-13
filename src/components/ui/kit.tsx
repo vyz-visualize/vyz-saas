@@ -259,3 +259,8 @@ export function StatTile({ label, value, hint, icon, className = "" }: { label: 
     </div>
   );
 }
+
+/** Rodapé de ações de um modal: à direita no computador; no celular, em largura cheia com a principal em cima. */
+export function ModalActions({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end ${className}`}>{children}</div>;
+}
