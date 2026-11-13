@@ -1,41 +1,33 @@
-// Conta: perfil, plano do workspace, notificações (ligar e testar), créditos,
-// documentos, sair e excluir a conta.
+// Conta: perfil, workspace (trocar), notificações (ligar e testar), plano do
+// workspace, créditos, documentos, sair e excluir a conta.
 
 import Constants from "expo-constants";
 import { useEffect, useState } from "react";
-import { Alert, Linking, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Linking, ScrollView, Text, View } from "react-native";
 import type { PurchasesPackage } from "react-native-purchases";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ENV } from "@/lib/env";
 import { buy, creditPackages } from "@/lib/purchases";
 import { pushStatus, registerPush, type PushStatus } from "@/lib/push";
 import { useWorkspace } from "@/lib/workspace";
-import { IconBell, IconChevron } from "@/ui/icons";
-import { Button, Card, Notice, SectionHeader } from "@/ui/kit";
+import { IconBell, IconCoins, IconDoc, IconLogout, IconMail, IconShield, IconTrash } from "@/ui/icons";
+import { Avatar, Button, Card, Chip, Divider, ListRow, Notice, ScreenHeader, SectionHeader } from "@/ui/kit";
+import { useLayout } from "@/ui/layout";
 import { PlanCard } from "@/ui/PlanCard";
-import { radius, useTheme } from "@/ui/theme";
-
-function Row({ label, onPress, danger }: { label: string; onPress: () => void; danger?: boolean }) {
-  const t = useTheme();
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, opacity: pressed ? 0.6 : 1 })}>
-      <Text style={{ color: danger ? t.danger : t.fg, fontSize: 15.5, fontWeight: "500" }}>{label}</Text>
-      {!danger && <IconChevron color={t.fg3} size={18} />}
-    </Pressable>
-  );
-}
+import { radius, type as typo, useTheme } from "@/ui/theme";
+import { ROLE_LABEL, WorkspaceSheet } from "@/ui/WorkspaceSheet";
 
 export default function Conta() {
   const t = useTheme();
-  const insets = useSafeAreaInsets();
+  const L = useLayout();
   const auth = useAuth();
   const { me, workspace, refresh } = useWorkspace();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [push, setPush] = useState<PushStatus>("undetermined");
+  const [picker, setPicker] = useState(false);
 
   useEffect(() => {
     creditPackages().then(setPackages).catch(() => setPackages([]));
@@ -95,44 +87,54 @@ export default function Conta() {
     ]);
 
   const name = me?.user.fullName || "Sua conta";
+  const many = (me?.workspaces.length ?? 0) > 1;
+  const pushOn = push === "granted";
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: t.bg }} contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 16, paddingBottom: 40, gap: 14 }}>
-      <Text accessibilityRole="header" style={{ color: t.fg, fontSize: 30, fontWeight: "800", letterSpacing: -0.9 }}>
-        Conta
-      </Text>
+    <ScrollView style={{ flex: 1, backgroundColor: t.bg }} contentContainerStyle={[L.content, { paddingTop: L.top, paddingBottom: L.tabBarSpace, gap: 14 }]}>
+      <WorkspaceSheet open={picker} onClose={() => setPicker(false)} />
+      <ScreenHeader title="Conta" />
 
-      <Card style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-        <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: t.accentSoft, borderWidth: 1, borderColor: t.accent, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ color: t.accent, fontSize: 21, fontWeight: "800" }}>{(name || "V").slice(0, 1).toUpperCase()}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: t.fg, fontSize: 17, fontWeight: "700" }} numberOfLines={1}>
-            {name}
-          </Text>
-          <Text style={{ color: t.fg2, fontSize: 13.5 }} numberOfLines={1}>
-            {me?.user.email}
-          </Text>
-          {workspace && (
-            <Text style={{ color: t.fg3, fontSize: 12.5 }} numberOfLines={1}>
-              Workspace: {workspace.name}
+      <Card padded={false} style={{ gap: 0, overflow: "hidden" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 14, padding: 16 }}>
+          <Avatar name={name} size={56} />
+          <View style={{ flex: 1, gap: 1 }}>
+            <Text style={{ color: t.fg, fontSize: 18, lineHeight: 23, fontWeight: "800", letterSpacing: -0.3 }} numberOfLines={1}>
+              {name}
             </Text>
-          )}
+            <Text style={{ color: t.fg2, fontSize: 13.5, lineHeight: 19 }} numberOfLines={1}>
+              {me?.user.email}
+            </Text>
+          </View>
         </View>
+        {workspace && (
+          <>
+            <Divider />
+            <ListRow
+              label={workspace.name}
+              caption={many ? `${ROLE_LABEL[workspace.role]} · toque para trocar de workspace` : `Workspace · ${ROLE_LABEL[workspace.role]}`}
+              icon={<Avatar name={workspace.name} size={36} tone="solid" square />}
+              onPress={many ? () => setPicker(true) : undefined}
+            />
+          </>
+        )}
       </Card>
 
       <SectionHeader title="Notificações" caption="Resumo diário e alertas das suas contas" />
-      <Card style={{ gap: 12 }}>
+      <Card style={{ gap: 14 }}>
         <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-          <View style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: push === "granted" ? t.goodSoft : t.surface2, alignItems: "center", justifyContent: "center" }}>
-            <IconBell color={push === "granted" ? t.good : t.fg2} size={20} />
+          <View style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: pushOn ? t.goodSoft : t.surface2, alignItems: "center", justifyContent: "center" }}>
+            <IconBell color={pushOn ? t.good : t.fg2} size={20} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: t.fg, fontSize: 15, fontWeight: "700" }}>{push === "granted" ? "Ligadas" : push === "unavailable" ? "Indisponível aqui" : "Desligadas"}</Text>
-            <Text style={{ color: t.fg2, fontSize: 13 }}>Toda manhã, o destaque mais importante; tocar abre o dashboard certo.</Text>
+          <View style={{ flex: 1, gap: 2 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ color: t.fg, ...typo.heading, fontSize: 15.5 }}>{pushOn ? "Ligadas" : push === "unavailable" ? "Indisponível aqui" : "Desligadas"}</Text>
+              {pushOn ? <Chip label="Ativo" tone="good" /> : null}
+            </View>
+            <Text style={{ color: t.fg2, fontSize: 13, lineHeight: 18 }}>Toda manhã, o destaque mais importante; tocar abre o dashboard certo.</Text>
           </View>
         </View>
-        {push !== "granted" && push !== "unavailable" && <Button label="Ligar notificações" busy={busy === "push"} onPress={enablePush} />}
-        {push === "granted" && <Button tone="secondary" label="Enviar notificação de teste" busy={busy === "test"} onPress={testPush} />}
+        {!pushOn && push !== "unavailable" && <Button size="md" label="Ligar notificações" busy={busy === "push"} onPress={enablePush} />}
+        {pushOn && <Button size="md" tone="secondary" label="Enviar notificação de teste" busy={busy === "test"} onPress={testPush} />}
       </Card>
       <Notice text={message} tone="info" />
 
@@ -140,26 +142,36 @@ export default function Conta() {
       {workspace ? <PlanCard key={workspace.id} workspace={workspace} onChanged={() => setTimeout(refresh, 1500)} /> : null}
 
       {packages.length > 0 && (
-        <Card>
-          <Text style={{ color: t.fg2, fontSize: 13 }}>Créditos</Text>
-          <Text style={{ color: t.fg, fontSize: 28, fontWeight: "700" }}>{me?.credits ?? 0}</Text>
+        <Card style={{ gap: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: t.accentSoft, alignItems: "center", justifyContent: "center" }}>
+              <IconCoins color={t.accent} size={20} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: t.fg2, fontSize: 13, lineHeight: 18 }}>Créditos</Text>
+              <Text style={{ color: t.fg, fontSize: 28, lineHeight: 33, fontWeight: "800", letterSpacing: -0.6, fontVariant: ["tabular-nums"] }}>{me?.credits ?? 0}</Text>
+            </View>
+          </View>
           {packages.map((p) => (
-            <Button key={p.identifier} tone="secondary" label={`${p.product.title} · ${p.product.priceString}`} busy={busy === p.identifier} onPress={() => purchase(p)} />
+            <Button key={p.identifier} size="md" tone="secondary" label={`${p.product.title} · ${p.product.priceString}`} busy={busy === p.identifier} onPress={() => purchase(p)} />
           ))}
         </Card>
       )}
 
-      <Card style={{ paddingVertical: 2 }}>
-        <Row label="Termos de Uso" onPress={() => void Linking.openURL(`${ENV.apiUrl}/termos`)} />
-        <View style={{ height: 1, backgroundColor: t.line }} />
-        <Row label="Política de Privacidade" onPress={() => void Linking.openURL(`${ENV.apiUrl}/privacidade`)} />
-        <View style={{ height: 1, backgroundColor: t.line }} />
-        <Row label="Falar com o suporte" onPress={() => void Linking.openURL("mailto:suporte@vyzualize.com.br")} />
+      <SectionHeader title="Ajuda e documentos" />
+      <Card padded={false} style={{ gap: 0, overflow: "hidden" }}>
+        <ListRow label="Termos de Uso" icon={<IconDoc color={t.fg2} size={18} />} onPress={() => void Linking.openURL(`${ENV.apiUrl}/termos`)} />
+        <Divider inset={62} />
+        <ListRow label="Política de Privacidade" icon={<IconShield color={t.fg2} size={18} />} onPress={() => void Linking.openURL(`${ENV.apiUrl}/privacidade`)} />
+        <Divider inset={62} />
+        <ListRow label="Falar com o suporte" icon={<IconMail color={t.fg2} size={18} />} onPress={() => void Linking.openURL("mailto:suporte@vyzualize.com.br")} />
       </Card>
 
-      <Button tone="secondary" label="Sair" onPress={() => void auth.signOut()} />
-      <Button tone="danger" label="Excluir conta" busy={busy === "delete"} onPress={confirmDelete} />
-      <Text style={{ color: t.fg3, fontSize: 12, textAlign: "center" }}>VYZ {Constants.expoConfig?.version} · VYZ Intelligence</Text>
+      <View style={{ gap: 10, marginTop: 6 }}>
+        <Button size="md" tone="secondary" label="Sair" icon={<IconLogout color={t.fg} size={18} />} onPress={() => void auth.signOut()} />
+        <Button size="md" tone="danger" label="Excluir conta" icon={<IconTrash color={t.danger} size={18} />} busy={busy === "delete"} onPress={confirmDelete} />
+      </View>
+      <Text style={{ color: t.fg3, fontSize: 12, lineHeight: 16, textAlign: "center", marginTop: 4 }}>VYZ {Constants.expoConfig?.version} · VYZ Intelligence</Text>
     </ScrollView>
   );
 }

@@ -1,22 +1,15 @@
-import { Tabs } from "expo-router";
-import { tap } from "@/ui/kit";
+// Abas do app: Início, Análises, VYZ e Conta, com a barra flutuante (ui/TabBar).
+// A barra fica por cima do conteúdo: cada tela deixa o espaço dela embaixo.
+
+import { Tabs } from "expo-router/js-tabs";
 import { IconHome, IconPulse, IconSpark, IconUser } from "@/ui/icons";
+import { TabBar } from "@/ui/TabBar";
 import { useTheme } from "@/ui/theme";
 
 export default function TabsLayout() {
   const t = useTheme();
   return (
-    <Tabs
-      screenListeners={{ tabPress: () => tap() }}
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: t.accent,
-        tabBarInactiveTintColor: t.fg3,
-        tabBarStyle: { backgroundColor: t.bg, borderTopColor: t.line },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
-        sceneStyle: { backgroundColor: t.bg },
-      }}
-    >
+    <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: t.bg } }}>
       <Tabs.Screen name="index" options={{ title: "Início", tabBarIcon: ({ color }) => <IconHome color={color as string} /> }} />
       <Tabs.Screen name="analises" options={{ title: "Análises", tabBarIcon: ({ color }) => <IconPulse color={color as string} /> }} />
       <Tabs.Screen name="vyz" options={{ title: "VYZ", tabBarIcon: ({ color }) => <IconSpark color={color as string} /> }} />

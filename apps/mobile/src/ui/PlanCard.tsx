@@ -5,37 +5,19 @@
 
 import { STORE_PLAN_HIGHLIGHTS, STORE_PLAN_PERIODS, STORE_PLAN_TIERS, storePlan, type MeResponse, type StorePlan, type StorePlanPeriod, type StorePlanTier } from "@vyz/shared";
 import { useEffect, useState } from "react";
-import { Linking, Platform, Pressable, Text, View } from "react-native";
+import { Linking, Platform, Text, View } from "react-native";
 import type { PurchasesStoreProduct } from "react-native-purchases";
 import { api, ApiFailure } from "@/lib/api";
 import { buyPlan, manageSubscription, planProduct, restorePurchases } from "@/lib/purchases";
 import { ENV } from "@/lib/env";
-import { Button, Card, Notice } from "./kit";
-import { useTheme } from "./theme";
+import { IconCheck } from "./icons";
+import { Button, Card, Chip, Divider, Notice, Segmented } from "./kit";
+import { type as typo, useTheme } from "./theme";
 
 const TIER_LABEL: Record<StorePlanTier, string> = { base: "Básico", pro: "Padrão", avancado: "Avançado" };
 const PERIOD_LABEL: Record<StorePlanPeriod, string> = { mensal: "Mensal", anual: "Anual" };
 
 type Workspace = MeResponse["workspaces"][number];
-
-function Choice<T extends string>({ options, value, label, onChange }: { options: readonly T[]; value: T; label: (v: T) => string; onChange: (v: T) => void }) {
-  const t = useTheme();
-  return (
-    <View style={{ flexDirection: "row", gap: 8 }}>
-      {options.map((o) => (
-        <Pressable
-          key={o}
-          accessibilityRole="button"
-          accessibilityState={{ selected: o === value }}
-          onPress={() => onChange(o)}
-          style={{ flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: "center", borderColor: o === value ? t.accent : t.line, backgroundColor: o === value ? t.accent : "transparent" }}
-        >
-          <Text style={{ color: o === value ? t.accentFg : t.fg, fontWeight: "600" }}>{label(o)}</Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
 
 export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onChanged: () => void }) {
   const t = useTheme();
@@ -57,31 +39,32 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
     };
   }, [plan]);
 
+  const ending = current && workspace.cancelAtPeriodEnd && workspace.periodEnd ? `Termina em ${new Date(workspace.periodEnd).toLocaleDateString("pt-BR")}` : null;
   const header = (
-    <>
-      <Text style={{ color: t.fg2, fontSize: 13 }}>Plano</Text>
-      <Text style={{ color: t.fg, fontSize: 20, fontWeight: "700" }}>
-        {current ? `${TIER_LABEL[current.tier]} · ${PERIOD_LABEL[current.period]} · até ${current.accounts} projetos` : "Sem plano"}
-      </Text>
-      {current && workspace.cancelAtPeriodEnd && workspace.periodEnd ? (
-        <Text style={{ color: t.fg2 }}>Termina em {new Date(workspace.periodEnd).toLocaleDateString("pt-BR")}</Text>
-      ) : null}
-    </>
+    <View style={{ gap: 4 }}>
+      <Text style={{ color: t.fg2, ...typo.overline }}>Plano atual</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <Text style={{ color: t.fg, ...typo.title }}>{current ? TIER_LABEL[current.tier] : "Sem plano"}</Text>
+        {current ? <Chip label={PERIOD_LABEL[current.period]} tone="accent" /> : null}
+        {ending ? <Chip label={ending} tone="warn" /> : null}
+      </View>
+      {current ? <Text style={{ color: t.fg2, fontSize: 13.5, lineHeight: 19 }}>Até {current.accounts} projetos</Text> : null}
+    </View>
   );
 
   if (workspace.planSource === "site") {
     return (
-      <Card>
+      <Card style={{ gap: 10 }}>
         {header}
-        <Text style={{ color: t.fg2 }}>Este plano não é gerenciado pelo app.</Text>
+        <Text style={{ color: t.fg2, fontSize: 14, lineHeight: 20 }}>Este plano não é gerenciado pelo app.</Text>
       </Card>
     );
   }
   if (workspace.role !== "owner") {
     return (
-      <Card>
+      <Card style={{ gap: 10 }}>
         {header}
-        <Text style={{ color: t.fg2 }}>Só o dono do workspace muda o plano.</Text>
+        <Text style={{ color: t.fg2, fontSize: 14, lineHeight: 20 }}>Só o dono do workspace muda o plano.</Text>
       </Card>
     );
   }
@@ -122,32 +105,36 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
   };
 
   return (
-    <Card>
+    <Card style={{ gap: 14 }}>
       {header}
-      <Choice options={STORE_PLAN_TIERS} value={plan.tier} label={(v) => TIER_LABEL[v]} onChange={(tier) => setPlan((p) => storePlan(tier, p.period))} />
-      <View style={{ gap: 6 }}>
+      <Divider />
+      <Segmented options={STORE_PLAN_TIERS.map((v) => ({ value: v, label: TIER_LABEL[v] }))} value={plan.tier} onChange={(tier) => setPlan((p) => storePlan(tier, p.period))} />
+      <View style={{ gap: 8 }}>
         {STORE_PLAN_HIGHLIGHTS[plan.tier].map((h) => (
-          <Text key={h} style={{ color: t.fg2 }}>
-            ✓ {h}
-          </Text>
+          <View key={h} style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+            <View style={{ marginTop: 2 }}>
+              <IconCheck color={t.accent} size={16} strokeWidth={2.4} />
+            </View>
+            <Text style={{ color: t.fg2, fontSize: 14, lineHeight: 20, flex: 1 }}>{h}</Text>
+          </View>
         ))}
       </View>
-      <Choice options={STORE_PLAN_PERIODS} value={plan.period} label={(v) => PERIOD_LABEL[v]} onChange={(period) => setPlan((p) => storePlan(p.tier, period))} />
-      <Text style={{ color: t.fg, fontSize: 17, fontWeight: "600" }}>{product ? `${product.priceString} por ${plan.period === "anual" ? "ano" : "mês"}` : "Carregando preço…"}</Text>
+      <Segmented options={STORE_PLAN_PERIODS.map((v) => ({ value: v, label: PERIOD_LABEL[v] }))} value={plan.period} onChange={(period) => setPlan((p) => storePlan(p.tier, period))} />
+      <Text style={{ color: t.fg, fontSize: 19, lineHeight: 25, fontWeight: "800", letterSpacing: -0.3, fontVariant: ["tabular-nums"] }}>{product ? `${product.priceString} por ${plan.period === "anual" ? "ano" : "mês"}` : "Carregando preço…"}</Text>
       {same ? null : <Button label={current ? "Trocar plano" : "Assinar"} busy={busy} onPress={purchase} />}
-      {current ? <Button tone="secondary" label="Gerenciar assinatura" onPress={() => void manageSubscription()} /> : null}
-      <Button tone="secondary" label="Restaurar compras" busy={busy} onPress={() => void restore()} />
+      {current ? <Button size="md" tone="secondary" label="Gerenciar assinatura" onPress={() => void manageSubscription()} /> : null}
+      <Button size="md" tone="ghost" label="Restaurar compras" busy={busy} onPress={() => void restore()} />
       {/* o que a Apple e o Google pedem junto da compra: renovação automática, cancelamento e os documentos */}
       <Text style={{ color: t.fg3, fontSize: 12, lineHeight: 17 }}>
         Assinatura com renovação automática. A cobrança é feita na sua conta {Platform.OS === "ios" ? "Apple" : "Google Play"} ao confirmar a compra e se repete a cada{" "}
         {plan.period === "anual" ? "ano" : "mês"} pelo mesmo valor, a menos que a renovação seja desligada até 24 horas antes do fim do período. Gerencie ou cancele nos ajustes da
         sua conta da loja.
       </Text>
-      <View style={{ flexDirection: "row", gap: 16 }}>
-        <Text accessibilityRole="link" style={{ color: t.accent, fontSize: 12.5, fontWeight: "600" }} onPress={() => void Linking.openURL(`${ENV.apiUrl}/termos`)}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 16 }}>
+        <Text accessibilityRole="link" style={{ color: t.accent, fontSize: 12.5, fontWeight: "600", paddingVertical: 8 }} onPress={() => void Linking.openURL(`${ENV.apiUrl}/termos`)}>
           Termos de Uso
         </Text>
-        <Text accessibilityRole="link" style={{ color: t.accent, fontSize: 12.5, fontWeight: "600" }} onPress={() => void Linking.openURL(`${ENV.apiUrl}/privacidade`)}>
+        <Text accessibilityRole="link" style={{ color: t.accent, fontSize: 12.5, fontWeight: "600", paddingVertical: 8 }} onPress={() => void Linking.openURL(`${ENV.apiUrl}/privacidade`)}>
           Política de Privacidade
         </Text>
       </View>

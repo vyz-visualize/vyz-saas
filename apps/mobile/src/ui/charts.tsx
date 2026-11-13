@@ -2,7 +2,7 @@
 // lê com o dedo (arrastar mostra o dia e o valor, com um toque de vibração).
 
 import * as Haptics from "expo-haptics";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Platform, View, type LayoutChangeEvent } from "react-native";
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 import { useTheme } from "./theme";
@@ -36,8 +36,14 @@ function smooth(pts: Pt[]): string {
   return d;
 }
 
+/** Id do degradê único por gráfico (na versão web, ids repetidos na página pegam a cor do primeiro). */
+function useGradientId(prefix: string) {
+  return `${prefix}${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+}
+
 export function Sparkline({ values, width = 96, height = 32, color }: { values: (number | null)[]; width?: number; height?: number; color?: string }) {
   const t = useTheme();
+  const gid = useGradientId("sf");
   const pts = points(values, width, height, 2).filter((p): p is Pt => !!p);
   if (pts.length < 2) return <View style={{ width, height }} />;
   const line = smooth(pts);
@@ -46,12 +52,12 @@ export function Sparkline({ values, width = 96, height = 32, color }: { values: 
   return (
     <Svg width={width} height={height}>
       <Defs>
-        <LinearGradient id="sf" x1="0" y1="0" x2="0" y2="1">
+        <LinearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor={c} stopOpacity={0.28} />
           <Stop offset="1" stopColor={c} stopOpacity={0} />
         </LinearGradient>
       </Defs>
-      <Path d={area} fill="url(#sf)" />
+      <Path d={area} fill={`url(#${gid})`} />
       <Path d={line} stroke={c} strokeWidth={1.8} fill="none" strokeLinecap="round" />
     </Svg>
   );
@@ -69,6 +75,7 @@ type AreaChartProps = {
 /** Gráfico grande: arraste o dedo para ler cada dia. */
 export function AreaChart({ values, labels, height = 170, maturingFrom = null, onScrub }: AreaChartProps) {
   const t = useTheme();
+  const gid = useGradientId("af");
   const [w, setW] = useState(0);
   const [active, setActive] = useState<number | null>(null);
   const pts = useMemo(() => (w ? points(values, w, height, 10) : []), [values, w, height]);
@@ -92,6 +99,8 @@ export function AreaChart({ values, labels, height = 170, maturingFrom = null, o
   }
 
   const a = active !== null ? pts[active] : null;
+  // sem o dedo no gráfico, o último dia fica marcado
+  const last = solid.length > 1 && dashed.length < 2 ? solid[solid.length - 1] : null;
   return (
     <View
       onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}
@@ -107,7 +116,7 @@ export function AreaChart({ values, labels, height = 170, maturingFrom = null, o
       {w > 0 && (
         <Svg width={w} height={height}>
           <Defs>
-            <LinearGradient id="af" x1="0" y1="0" x2="0" y2="1">
+            <LinearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor={t.chart} stopOpacity={0.35} />
               <Stop offset="1" stopColor={t.chart} stopOpacity={0} />
             </LinearGradient>
@@ -115,9 +124,10 @@ export function AreaChart({ values, labels, height = 170, maturingFrom = null, o
           {[0.25, 0.5, 0.75].map((f) => (
             <Line key={f} x1={0} x2={w} y1={height * f} y2={height * f} stroke={t.line} strokeWidth={1} strokeDasharray="2 6" />
           ))}
-          {area ? <Path d={area} fill="url(#af)" /> : null}
+          {area ? <Path d={area} fill={`url(#${gid})`} /> : null}
           <Path d={line} stroke={t.chart} strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
           {dashed.length > 1 && <Path d={smooth(dashed)} stroke={t.chart} strokeOpacity={0.6} strokeWidth={2} strokeDasharray="4 5" fill="none" />}
+          {!a && last ? <Circle cx={last.x} cy={last.y} r={4} fill={t.chart} stroke={t.surface} strokeWidth={2} /> : null}
           {a && (
             <>
               <Rect x={a.x - 0.5} y={0} width={1} height={height} fill={t.fg2} opacity={0.5} />
