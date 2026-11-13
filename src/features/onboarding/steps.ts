@@ -3,7 +3,7 @@
 // Um passo por vez, em modal, e "Pular por agora" em todos (nada bloqueia).
 // Puro: o servidor (actions) e a tela usam as mesmas funções.
 
-import { composedId, FEATURES, featureFits, objectiveForBusiness, VISUALS, type Feature, type FeatureId } from "@/features/templates/dashboards/composed";
+import { composedId, FEATURES, featureFits, objectiveForBusiness, VISUALS, type Feature, type FeatureId, type ObjectiveId } from "@/features/templates/dashboards/composed";
 import { CORE_PROVIDER_IDS, type ProviderId } from "@/features/integrations/providers";
 import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
@@ -146,7 +146,11 @@ export type LayoutOption = {
  */
 export function layoutOptions(businessTypeId: string | null, tier: Tier | null): LayoutOption[] {
   // os 5 visuais no objetivo do nicho: o primeiro acesso escolhe só a cara do dashboard
-  const objective = objectiveForBusiness(businessTypeId);
+  return layoutOptionsFor(objectiveForBusiness(businessTypeId), tier);
+}
+
+/** Os 5 visuais num objetivo (o sugerido pelas campanhas ou o do segmento). */
+export function layoutOptionsFor(objective: ObjectiveId, tier: Tier | null): LayoutOption[] {
   return VISUALS.flatMap((v) => {
     const template = ALL_DASHBOARD_TEMPLATES.find((t) => t.id === composedId(v.id, objective));
     if (!template) return [];

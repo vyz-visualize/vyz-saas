@@ -9,7 +9,6 @@
 //   ?tela=fluxo&conectado=meta volta do login (simulada): o modal reabre no conectar com "Conectado ✓"
 //   ?tela=inicio&caso=pulou|meta|pronto
 //   ?tela=dashboard            dashboard de exemplo com o aviso e o tour
-//   ?tela=direcoes             as duas direções de visual (Agente VYZ e Palco) para escolher
 //   ?reset=1                   começa de novo
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,6 +25,7 @@ import { connectResult } from "@/features/integrations/results";
 import type { AccountsPanelProps, FlowApi } from "@/features/onboarding/api";
 import { DashboardTour } from "@/features/onboarding/DashboardTour";
 import type { GuidesState } from "@/features/onboarding/guides";
+import { suggestObjective } from "@/features/onboarding/objective";
 import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { stepIndex, type ActiveStep } from "@/features/onboarding/steps";
 import type { OnboardingState } from "@/features/onboarding/types";
@@ -35,7 +35,6 @@ import { HomePage } from "@/features/workspace/HomePage";
 import type { WorkspaceSession } from "@/features/workspace/session";
 import { WorkspaceProvider } from "@/features/workspace/WorkspaceProvider";
 import type { ActionResult } from "@/server/supabase/errors";
-import { Direcoes } from "./direcoes";
 
 const KEY = "vyz-dev:primeiro-acesso";
 const BASE = "/dev/primeiro-acesso";
@@ -211,11 +210,13 @@ function Flow() {
     project: mock.project,
     connect: late ? connectState(mock) : null,
     showTestBadges: true,
+    // como no primeiro acesso de verdade: as campanhas ainda estão sendo importadas
+    suggestion: mock.step === "setup" ? suggestObjective([], mock.businessTypeId) : null,
   };
   const result = mock.step === "connect" ? connectResult(Object.fromEntries(params.entries())) : null;
   return (
     <div className="min-h-dvh bg-bg px-4 pt-16">
-      <OnboardingFlow key={mock.step} state={state} result={result} now={NOW} timeZone="America/Sao_Paulo" api={api} />
+      <OnboardingFlow state={state} result={result} now={NOW} timeZone="America/Sao_Paulo" api={api} />
     </div>
   );
 }
@@ -292,6 +293,5 @@ export function Harness() {
   const tela = useSearchParams().get("tela") ?? "fluxo";
   if (tela === "inicio") return <Inicio />;
   if (tela === "dashboard") return <Dashboard />;
-  if (tela === "direcoes") return <Direcoes />;
   return <Flow />;
 }

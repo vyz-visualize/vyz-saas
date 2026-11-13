@@ -31,14 +31,14 @@ function useCycle(pages: readonly PageId[], playing: boolean) {
   return pages[playing ? i : 0];
 }
 
-function Preview({ t, live, page, width }: { t: DashboardTemplate; live: boolean; page: PageId; width: number }) {
+function Preview({ t, live, page, width, client }: { t: DashboardTemplate; live: boolean; page: PageId; width: number; client?: string }) {
   return live ? (
     <div className="bg-bg p-4">
       <LiveDashboardPreview key={page} templateId={t.id} pageIds={[page]} />
     </div>
   ) : (
     <div style={{ width }}>
-      <TemplatePreview key={page} t={t} page={page} variant={width > 900 ? "full" : "compact"} />
+      <TemplatePreview key={page} t={t} page={page} variant={width > 900 ? "full" : "compact"} client={client} />
     </div>
   );
 }
@@ -49,6 +49,7 @@ export function LayoutCard({
   nicheName,
   onSelect,
   onOpen,
+  client,
 }: {
   option: LayoutOption;
   selected: boolean;
@@ -57,6 +58,8 @@ export function LayoutCard({
   onSelect: () => void;
   /** Abre a prévia grande (sem: o cartão não mostra "Ver"). */
   onOpen?: () => void;
+  /** Nome do cliente na prévia (primeiro acesso). */
+  client?: string;
 }) {
   const { template: t, allowed, lockLabel, live } = option;
   const [hover, setHover] = useState(false);
@@ -90,7 +93,7 @@ export function LayoutCard({
       >
         <ScaledPreview height={210} width={width}>
           <div inert className={`transition-opacity duration-300 ${hover ? "opacity-100" : "opacity-95"}`}>
-            <Preview t={t} live={live} page={page} width={width} />
+            <Preview t={t} live={live} page={page} width={width} client={client} />
           </div>
         </ScaledPreview>
         {hover && t.pages.length > 1 && (

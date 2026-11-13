@@ -15,6 +15,7 @@ import type { ConnectResult } from "@/features/integrations/results";
 import type { ConnectState } from "@/features/integrations/types";
 import type { FlowApi } from "./api";
 import { canContinueFromConnect } from "./steps";
+import { Celebrate } from "./stage/Celebrate";
 import { FlowFooter, STEP_BODY, StepTitle, useStepAction } from "./ui";
 import type { StepNav } from "./OnboardingFlow";
 
@@ -112,6 +113,12 @@ export function ConnectStep({ state, result, api, nav, showTestBadges }: { state
   const can = canContinueFromConnect(connected);
   // aberta se alguma das outras já está conectada (ex.: volta do login do TikTok)
   const [more, setMore] = useState(() => EXTRA_PLATFORMS.some((x) => x.provider && state.platforms[x.provider]?.connected));
+  // acabou de voltar do login de uma das duas: o check se desenha com confete, e o agente comemora
+  const fresh = result?.kind === "connected" && result.provider && (CORE_PROVIDER_IDS as readonly string[]).includes(result.provider) && state.platforms[result.provider].connected ? result.provider : null;
+  const missing = CORE_PROVIDER_IDS.find((p) => !state.platforms[p].connected);
+  const speech = fresh
+    ? `Pronto! ${PROVIDERS[fresh].name} conectado. ${missing ? `Quer conectar o ${PROVIDERS[missing].name} também?` : "Agora é só escolher as contas."}`
+    : "Um login por plataforma, sem copiar ID. O VYZ lê os relatórios e só altera campanhas quando você clica em Aplicar ou liga o automático.";
 
   // volta do login: tira ?conectado=/?erro= e o "#_=_" que a Meta põe no fim, sem recarregar
   useEffect(() => {
@@ -122,7 +129,7 @@ export function ConnectStep({ state, result, api, nav, showTestBadges }: { state
   return (
     <>
       <div className={STEP_BODY}>
-        <StepTitle title="Conecte as contas de anúncio" text="Um login por plataforma, sem copiar ID. O VYZ lê os relatórios e só altera campanhas quando você clica em Aplicar ou liga o automático." />
+        <StepTitle title={fresh ? `${PROVIDERS[fresh].name} conectado.` : "Conecte as contas de anúncio"} text={speech} />
         {banner && <ResultBanner result={banner} onClose={() => setBanner(null)} />}
         <ul className="space-y-3">
           {CORE_PROVIDER_IDS.map((p) => {
@@ -145,7 +152,8 @@ export function ConnectStep({ state, result, api, nav, showTestBadges }: { state
                   </div>
                   <p className="mt-1 text-[13.5px] text-fg-2">{login ? `Login: ${login.userName ?? login.userEmail ?? "conectado"}` : `Entre com ${loginThe(p)}.`}</p>
                 </div>
-                <div className="shrink-0">
+                <div className="flex shrink-0 items-center gap-2">
+                  {fresh === p && <Celebrate />}
                   <ConnectLink href={api.connectHref(p)} provider={p} connected={s.connected} canManage={state.canManage} />
                 </div>
               </li>

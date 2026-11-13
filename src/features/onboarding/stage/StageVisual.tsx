@@ -1,0 +1,183 @@
+"use client";
+
+// O palco: a prévia grande de cada passo, à esquerda (no celular, um banner no topo).
+// Boas-vindas: o resultado primeiro. Projeto: o cartão do cliente. Conectar: o VYZ ligado
+// às plataformas. Contas e modelo: o modelo escolhido, com o nome do cliente. Montando: a
+// prévia se montando.
+
+import { useSyncExternalStore } from "react";
+import { ScaledPreview } from "@/components/ui/ScaledPreview";
+import { TemplatePreview, TemplateThumb } from "@/features/dashboards/TemplatePreview";
+import type { ProviderId } from "@/features/integrations/providers";
+import type { DashboardTemplate } from "@/features/templates/types";
+import type { ActiveStep } from "../steps";
+import { BuildPreview } from "./BuildPreview";
+
+export type StageInfo = {
+  step: ActiveStep;
+  building: boolean;
+  /** O nome do cliente (o digitado no passo 1); sem nome, "Seu cliente". */
+  client: string;
+  segment: string | null;
+  connected: readonly ProviderId[];
+  /** Acabou de voltar do login desta plataforma (o nó desenha o check). */
+  justConnected: ProviderId | null;
+  template: DashboardTemplate | null;
+};
+
+function ClientCard({ client, segment, compact = false }: { client: string; segment: string | null; compact?: boolean }) {
+  return (
+    <div className={`fa-float w-full rounded-[22px] border border-line bg-card shadow-[0_30px_70px_rgba(0,0,0,0.3)] ${compact ? "max-w-[300px] p-4" : "max-w-[420px] p-6"}`} data-stage-client>
+      <p className="label-caps text-fg-2">Projeto</p>
+      <p className={`display mt-1.5 truncate text-fg ${compact ? "text-[24px]" : "text-[36px]"}`}>{client}</p>
+      {segment && <span className="mt-2 inline-block rounded-chip bg-accent px-2.5 py-0.5 text-[12px] font-semibold text-on-accent">{segment}</span>}
+      {!compact && (
+        <div className="mt-5 space-y-2">
+          {["Contas de anúncio", "Dashboards", "Links para o cliente"].map((k, i) => (
+            <div key={k} className="flex items-center justify-between rounded-control border border-dashed border-line px-3 py-2.5 text-[13.5px] text-fg-2">
+              {k}
+              <span className="text-[12px]">{i === 0 ? "no próximo passo" : "em seguida"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Hub({ connected, justConnected, compact = false }: { connected: readonly ProviderId[]; justConnected: ProviderId | null; compact?: boolean }) {
+  const nodes = [
+    { id: "meta", label: "Meta Ads", x: 70, y: 70 },
+    { id: "google", label: "Google Ads", x: 70, y: 230 },
+    { id: "ga4", label: "GA4", x: 330, y: 70, extra: true },
+    { id: "crm", label: "CRM", x: 330, y: 230, extra: true },
+  ];
+  return (
+    <svg viewBox="0 0 400 300" className={`fa-anim w-full ${compact ? "max-w-[300px]" : "max-w-[520px]"}`} aria-hidden data-stage-hub>
+      {nodes.map((n) => {
+        const on = connected.includes(n.id as ProviderId);
+        return (
+          <path
+            key={n.id}
+            d={`M${n.x},${n.y} L200,150`}
+            stroke={on ? "var(--accent)" : "color-mix(in srgb, var(--fg) 20%, transparent)"}
+            strokeWidth={on ? 3 : 1.5}
+            strokeDasharray={on ? "6 6" : "3 6"}
+            style={on ? { animation: "fa-dash 700ms linear infinite" } : undefined}
+          />
+        );
+      })}
+      <circle cx="200" cy="150" r="46" fill="var(--accent)" opacity=".16" />
+      <circle cx="200" cy="150" r="34" fill="var(--card)" stroke="var(--accent)" strokeWidth="2" />
+      <text x="200" y="156" textAnchor="middle" fontSize="18" fontWeight="800" fill="var(--accent)">
+        VYZ
+      </text>
+      {nodes.map((n) => {
+        const on = connected.includes(n.id as ProviderId);
+        const fresh = justConnected === n.id;
+        return (
+          <g key={n.label} data-node={n.id} data-on={on || undefined}>
+            <circle cx={n.x} cy={n.y} r="26" fill={on ? "var(--accent)" : "var(--card)"} stroke={on ? "var(--accent)" : "var(--line)"} strokeWidth="2" opacity={n.extra ? 0.7 : 1} />
+            {on && (
+              <path
+                d={`M${n.x - 9},${n.y} l5.5,6.5 l12,-13`}
+                fill="none"
+                stroke="var(--on-accent)"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="30"
+                strokeDashoffset={fresh ? 30 : 0}
+                style={fresh ? { animation: "fa-draw 420ms 200ms var(--ease) forwards" } : undefined}
+              />
+            )}
+            <text x={n.x} y={n.y + 44} textAnchor="middle" fontSize="12.5" fill="var(--fg)" opacity={n.extra ? 0.7 : 1}>
+              {n.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function Visual({ info, compact }: { info: StageInfo; compact: boolean }) {
+  const { step, building, client, segment, connected, justConnected, template } = info;
+  if (building) return <BuildPreview client={client} compact={compact} />;
+  if (step === "welcome")
+    return (
+      <div className={`w-full ${compact ? "max-w-[340px]" : "max-w-[560px]"}`}>
+        {!compact && <p className="display text-center text-[clamp(1.5rem,2.6vw,2.2rem)] leading-[1.08] text-fg">O mês do seu cliente, num link que ele entende.</p>}
+        <div className={`fa-float ${compact ? "" : "mt-6"}`}>
+          <BuildPreview client={client} compact={compact} />
+        </div>
+        <p className={`text-center text-fg-2 ${compact ? "mt-2 text-[12px]" : "mt-4 text-[14px]"}`} data-stage-promise>
+          Em ~2 minutos, isto aqui com os números reais.
+        </p>
+      </div>
+    );
+  if (step === "project") return <ClientCard client={client} segment={segment} compact={compact} />;
+  if (step === "connect") return <Hub connected={connected} justConnected={justConnected} compact={compact} />;
+  if (step === "setup" && template)
+    return (
+      <div className="relative w-full max-w-[640px]">
+        <div className="overflow-hidden rounded-[16px] border border-line bg-card shadow-[0_30px_70px_rgba(0,0,0,0.3)]">
+          {compact ? (
+            <TemplateThumb t={template} height={150} client={client} />
+          ) : (
+            <ScaledPreview height={430} width={template.skin ? 1100 : 760}>
+              <div inert>
+                <TemplatePreview t={template} variant="full" client={client} />
+              </div>
+            </ScaledPreview>
+          )}
+        </div>
+        <span className="absolute top-2 right-2 rounded-chip bg-bg/90 px-2 py-0.5 text-[11px] text-fg-2 backdrop-blur">Prévia com dados de exemplo</span>
+      </div>
+    );
+  return null;
+}
+
+const LG = "(min-width: 1024px)";
+function useLg() {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(LG);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(LG).matches,
+    () => false,
+  );
+}
+
+/** O palco inteiro: grande no desktop, banner no celular (cada um com a sua versão). */
+export function StageVisual({ info }: { info: StageInfo }) {
+  const key = info.building ? "building" : info.step;
+  const lg = useLg();
+  // a prévia do modelo é pesada: desenha só a versão da tela atual (as outras são leves e trocam pelo CSS)
+  const heavy = key === "setup";
+  return (
+    <div
+      className="relative flex h-full min-h-0 items-center justify-center overflow-hidden px-5 py-5 lg:px-10"
+      style={{ background: "radial-gradient(120% 90% at 30% 20%, color-mix(in srgb, var(--accent) 26%, var(--bg)), var(--bg) 72%)" }}
+      data-stage={key}
+    >
+      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "linear-gradient(var(--fg) 1px, transparent 1px), linear-gradient(90deg, var(--fg) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
+      {heavy ? (
+        <div key={`${key}-${lg}`} className="fa-in relative flex w-full justify-center">
+          <Visual info={info} compact={!lg} />
+        </div>
+      ) : (
+        <>
+          <div key={key} className="fa-in relative flex w-full justify-center lg:hidden">
+            <Visual info={info} compact />
+          </div>
+          <div key={`${key}-lg`} className="fa-in relative hidden w-full justify-center lg:flex">
+            <Visual info={info} compact={false} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

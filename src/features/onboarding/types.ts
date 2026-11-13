@@ -2,6 +2,7 @@
 
 import type { ConnectState } from "@/features/integrations/types";
 import type { Tier } from "@/features/pricing/entitlements";
+import type { ObjectiveSuggestion } from "./objective";
 import type { ActiveStep } from "./steps";
 
 export type OnboardingState = {
@@ -19,6 +20,8 @@ export type OnboardingState = {
   project: { id: string; name: string; named: boolean } | null;
   /** Contas e conexões: só nos passos de conectar e de contas e modelo. */
   connect: ConnectState | null;
+  /** Passo de contas e modelo: o modelo sugerido pelo objetivo das campanhas (ou pelo segmento). */
+  suggestion: ObjectiveSuggestion | null;
   /** Selo "Modo de teste" nas plataformas: só em desenvolvimento ou para ONBOARDING_REPLAY_EMAILS (nunca para o cliente). */
   showTestBadges: boolean;
 };

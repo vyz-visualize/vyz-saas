@@ -3,7 +3,7 @@
 // Os passos do primeiro acesso (menos o de conectar, em ConnectStep): boas-
 // vindas, projeto, contas e modelo, e a tela "Montando seu dashboard…".
 
-import { Check, FolderPlus, LayoutTemplate, LoaderCircle, PlugZap } from "lucide-react";
+import { Check, LoaderCircle, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BUSINESS_TYPES } from "@/features/catalog/business-types";
 import type { PickerSelection } from "@/features/integrations/AccountPicker";
@@ -14,7 +14,10 @@ import type { Tier } from "@/features/pricing/entitlements";
 import type { AccountsGroup, FlowApi } from "./api";
 import { LayoutCard } from "./LayoutCard";
 import type { StepNav } from "./OnboardingFlow";
-import { accountsSummary, canBuildDashboard, layoutOptions } from "./steps";
+import { objectiveForBusiness, type ObjectiveId } from "@/features/templates/dashboards/composed";
+import { objectiveLabel, type ObjectiveSuggestion } from "./objective";
+import { Journey } from "./stage/Journey";
+import { accountsSummary, canBuildDashboard, layoutOptionsFor } from "./steps";
 import { FlowFooter, STEP_BODY, StepTitle, useStepAction } from "./ui";
 
 const BODY = STEP_BODY;
@@ -22,39 +25,43 @@ const NO_ACCOUNTS = "Ative pelo menos uma conta para montar o dashboard. Ou pule
 
 export function WelcomeStep({ firstName, api, nav }: { firstName: string; api: FlowApi; nav: StepNav }) {
   const action = useStepAction();
-  const items = [
-    { icon: FolderPlus, text: "Crie o projeto do seu cliente" },
-    { icon: PlugZap, text: "Conecte o Meta Ads e o Google Ads" },
-    { icon: LayoutTemplate, text: "Escolha as contas e o modelo do dashboard" },
-  ];
   return (
     <>
       <div className={BODY}>
-        <StepTitle title={firstName ? `Boas-vindas, ${firstName}.` : "Boas-vindas ao VYZ."} text="Em três passos, o seu cliente recebe um dashboard com os números reais das contas dele." />
-        <ol className="space-y-2.5">
-          {items.map(({ icon: Icon, text }, i) => (
-            <li key={text} className="flex items-center gap-3 rounded-card border border-line bg-card p-3.5">
-              <span aria-hidden className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-fg">
-                <Icon size={18} />
-              </span>
-              <span className="text-[15px] text-fg">
-                <span className="tnum mr-1.5 font-semibold text-fg-2">{i + 1}.</span>
-                {text}
-              </span>
-            </li>
-          ))}
-        </ol>
+        <StepTitle
+          title={firstName ? `Boas-vindas, ${firstName}.` : "Boas-vindas ao VYZ."}
+          text={`Oi${firstName ? `, ${firstName}` : ""}! Eu sou o VYZ. Em 3 passos o seu cliente recebe o mês dele num link.`}
+        />
+        <Journey />
       </div>
       <FlowFooter {...nav} error={action.error ?? nav.error} primaryLabel="Começar" pendingLabel="Abrindo…" pending={action.pending} onPrimary={() => action.run(() => api.start())} />
     </>
   );
 }
 
-export function ProjectStep({ project, businessTypeId, api, nav }: { project: { name: string; named: boolean } | null; businessTypeId: string | null; api: FlowApi; nav: StepNav }) {
+type ProjectProps = {
+  project: { name: string; named: boolean } | null;
+  businessTypeId: string | null;
+  api: FlowApi;
+  nav: StepNav;
+  /** O palco mostra o cartão do cliente enquanto a pessoa digita. */
+  onNameChange?: (name: string) => void;
+  onSegmentChange?: (id: string) => void;
+};
+
+export function ProjectStep({ project, businessTypeId, api, nav, onNameChange, onSegmentChange }: ProjectProps) {
   // só vem preenchido com um nome que alguém deu (nunca o do workspace ou o da pessoa)
-  const [name, setName] = useState(project?.named ? project.name : "");
+  const [name, setNameState] = useState(project?.named ? project.name : "");
   const available = BUSINESS_TYPES.filter((b) => b.available);
-  const [segment, setSegment] = useState(available.find((b) => b.id === businessTypeId)?.id ?? available[0]?.id ?? "");
+  const [segment, setSegmentState] = useState<string>(available.find((b) => b.id === businessTypeId)?.id ?? available[0]?.id ?? "");
+  const setName = (v: string) => {
+    setNameState(v);
+    onNameChange?.(v);
+  };
+  const setSegment = (v: string) => {
+    setSegmentState(v);
+    onSegmentChange?.(v);
+  };
   const action = useStepAction();
   const submit = () => name.trim() && segment && action.run(() => api.saveProject(name.trim(), segment));
   return (
@@ -66,7 +73,7 @@ export function ProjectStep({ project, businessTypeId, api, nav }: { project: { 
           submit();
         }}
       >
-        <StepTitle title="Qual é o primeiro cliente?" text="Um projeto é o cliente ou a marca que você acompanha. As contas e os dashboards ficam dentro dele." />
+        <StepTitle title="Qual é o primeiro cliente?" text="Primeiro, me diz quem é o cliente. As contas e os dashboards dele ficam dentro desse projeto." />
         <label className="block">
           <span className="text-[14px] font-medium text-fg">Nome do cliente</span>
           <input
@@ -113,12 +120,26 @@ type SetupProps = {
   nav: StepNav;
   /** Salvas as contas: a tela "Montando" assume (cria o dashboard e abre). */
   onBuild: (templateId: string) => void;
+  /** O nome do cliente nas prévias dos modelos. */
+  client?: string;
+  /** O objetivo sugerido pelas campanhas (ou pelo segmento) e o porquê. */
+  suggestion?: ObjectiveSuggestion | null;
+  /** O palco mostra o modelo escolhido. */
+  onTemplateChange?: (templateId: string | null) => void;
 };
 
-export function SetupStep({ state, businessTypeId, tier, now, timeZone, api, nav, onBuild }: SetupProps) {
+export function SetupStep({ state, businessTypeId, tier, now, timeZone, api, nav, onBuild, client, suggestion, onTemplateChange }: SetupProps) {
   const groups = useMemo(() => accountGroups(state), [state]);
-  const options = useMemo(() => layoutOptions(businessTypeId, tier).filter((o) => o.allowed), [businessTypeId, tier]);
-  const [chosen, setChosen] = useState<string | null>(options[0]?.template.id ?? null);
+  // o objetivo: o sugerido pelas campanhas (ou pelo segmento); a pessoa pode trocar
+  const segmentObjective = objectiveForBusiness(businessTypeId);
+  const [objective, setObjective] = useState<ObjectiveId>(suggestion?.objective ?? segmentObjective);
+  const objectives = [...new Set<ObjectiveId>([suggestion?.objective ?? segmentObjective, "ecommerce", "leads", segmentObjective])];
+  const options = useMemo(() => layoutOptionsFor(objective, tier).filter((o) => o.allowed), [objective, tier]);
+  // o visual escolhido vale em qualquer objetivo (Padrão VYZ · Vender online → Padrão VYZ · Gerar leads)
+  const [visual, setVisual] = useState(0);
+  const chosen = options[Math.min(visual, options.length - 1)]?.template.id ?? null;
+  useEffect(() => onTemplateChange?.(chosen), [chosen, onTemplateChange]);
+  const setChosen = (id: string) => setVisual(Math.max(0, options.findIndex((o) => o.template.id === id)));
   const [selections, setSelections] = useState<Record<string, PickerSelection>>({});
   const onSelection = useCallback((key: string, s: PickerSelection) => setSelections((prev) => ({ ...prev, [key]: s })), []);
   const action = useStepAction();
@@ -151,7 +172,7 @@ export function SetupStep({ state, businessTypeId, tier, now, timeZone, api, nav
   return (
     <>
       <div className={BODY}>
-        <StepTitle title="Escolha as contas e o modelo" text="As contas marcadas entram no dashboard e os últimos 90 dias chegam na hora." />
+        <StepTitle title="Escolha as contas e o modelo" text="Marque as contas que entram no dashboard e escolha o visual. Eu trago os últimos 90 dias delas." />
         <div className="space-y-3">
           {groups.map((g) => (
             <section key={g.key} aria-labelledby={`contas-${g.key}`} data-provider={g.provider} data-platform={g.platformId} className="rounded-card border border-line bg-card p-4">
@@ -166,9 +187,30 @@ export function SetupStep({ state, businessTypeId, tier, now, timeZone, api, nav
           <h3 id="modelo-titulo" className="title text-[16px] text-fg">
             Modelo do dashboard
           </h3>
+          <div role="radiogroup" aria-label="Objetivo do dashboard" className="mt-2 flex flex-wrap gap-2">
+            {objectives.map((o) => (
+              <button
+                key={o}
+                type="button"
+                role="radio"
+                aria-checked={objective === o}
+                onClick={() => setObjective(o)}
+                className={`rounded-chip px-3 py-1.5 text-[13px] transition-colors duration-150 ${objective === o ? "bg-accent font-semibold text-on-accent" : "border border-line text-fg-2 hover:text-fg"}`}
+              >
+                {objectiveLabel(o)}
+                {suggestion && o === suggestion.objective && <span className="ml-1 opacity-80">· sugerido</span>}
+              </button>
+            ))}
+          </div>
+          {suggestion && (
+            <p className="mt-2 flex items-start gap-1.5 text-[13px] text-fg-2" data-suggestion={suggestion.source}>
+              <Sparkles size={14} aria-hidden className="mt-0.5 shrink-0 text-accent" />
+              {suggestion.reason}
+            </p>
+          )}
           <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {options.map((o) => (
-              <LayoutCard key={o.template.id} option={o} selected={chosen === o.template.id} nicheName={null} onSelect={() => setChosen(o.template.id)} />
+              <LayoutCard key={o.template.id} option={o} selected={chosen === o.template.id} nicheName={null} onSelect={() => setChosen(o.template.id)} client={client} />
             ))}
           </ul>
         </section>
@@ -202,7 +244,7 @@ const groupTitle = (g: AccountsGroup) => (g.platformId === PROVIDERS[g.provider]
 export const BUILDING_LINES = ["Ligando as contas ao dashboard", "Importando as campanhas dos últimos 90 dias", "Calculando as métricas", "Abrindo o dashboard"];
 export const BUILDING_STEP_MS = 400;
 
-/** "Montando seu dashboard…": sempre aparece, com o que está acontecendo, até o dashboard abrir. */
+/** "Montando seu dashboard…": sempre aparece, com o que está acontecendo, até o dashboard abrir. A prévia se monta no palco. */
 export function BuildingView() {
   const [shown, setShown] = useState(1);
   useEffect(() => {
@@ -211,18 +253,15 @@ export function BuildingView() {
     return () => window.clearTimeout(t);
   }, [shown]);
   return (
-    <div role="status" aria-live="polite" className="flex flex-col items-center px-6 py-12 text-center">
-      <LoaderCircle size={34} aria-hidden className="animate-spin text-accent motion-reduce:animate-none" />
-      <h2 id="passo-titulo" tabIndex={-1} className="display mt-5 text-[clamp(1.4rem,3vw,1.9rem)] text-fg outline-none">
-        Montando seu dashboard…
-      </h2>
-      <ul className="mt-5 space-y-2 text-left" data-building-lines={shown}>
+    <div role="status" aria-live="polite" className={BODY}>
+      <StepTitle title="Montando seu dashboard…" text="Montando o seu primeiro dashboard. Em segundos ele abre com os números de verdade." />
+      <ul className="space-y-2.5" data-building-lines={shown}>
         {BUILDING_LINES.map((l, i) => {
           const done = i < shown - 1;
           const current = i === shown - 1;
           return (
-            <li key={l} className={`flex items-center gap-2 text-[14px] transition-opacity duration-300 motion-reduce:transition-none ${i < shown ? "opacity-100" : "opacity-0"} ${current ? "text-fg" : "text-fg-2"}`}>
-              {done ? <Check size={15} aria-hidden className="text-accent" /> : <LoaderCircle size={15} aria-hidden className={`text-accent ${current ? "animate-spin motion-reduce:animate-none" : ""}`} />}
+            <li key={l} className={`flex items-center gap-2.5 text-[15px] transition-opacity duration-300 motion-reduce:transition-none ${i < shown ? "opacity-100" : "opacity-0"} ${current ? "text-fg" : "text-fg-2"}`}>
+              {done ? <Check size={16} aria-hidden className="text-accent" /> : <LoaderCircle size={16} aria-hidden className={`text-accent ${current ? "animate-spin motion-reduce:animate-none" : ""}`} />}
               {l}
             </li>
           );

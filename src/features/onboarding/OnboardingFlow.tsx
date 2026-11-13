@@ -6,14 +6,22 @@
 // login da Meta ou do Google, o modal reabre no mesmo passo, com "Conectado ✓".
 
 import { LogOut, UserRound } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { BUSINESS_TYPES, businessType } from "@/features/catalog/business-types";
+import { CORE_PROVIDER_IDS, PROVIDERS } from "@/features/integrations/providers";
 import type { ConnectResult } from "@/features/integrations/results";
+import type { ConnectState } from "@/features/integrations/types";
+import { anyDashboardTemplate } from "@/features/templates/live";
 import { track } from "@/lib/track";
 import { signOut } from "@/server/auth/actions";
+import type { ActionResult } from "@/server/supabase/errors";
 import { realFlowApi, type FlowApi } from "./api";
 import { ConnectStep } from "./ConnectStep";
 import { BuildingView, ProjectStep, SetupStep, WelcomeStep } from "./FlowSteps";
-import { ACTION_STEPS, actionNumber, ONBOARDING_STEPS, progressOf, STEP_LABEL, stepIndex, type ActiveStep } from "./steps";
+import { StageVisual, type StageInfo } from "./stage/StageVisual";
+import { Trail, type TrailSummaries } from "./stage/Trail";
+import { useMascotTransition } from "./stage/useMascotTransition";
+import { ONBOARDING_STEPS, stepIndex, type ActiveStep } from "./steps";
 import type { OnboardingState } from "./types";
 import { NUDGE_SESSION_KEY } from "./guides";
 import { useStepAction } from "./ui";
@@ -49,7 +57,22 @@ function useStepTracking(step: ActiveStep) {
   }, [step]);
 }
 
-function FlowDialog({ step, building, children }: { step: ActiveStep; building: boolean; children: ReactNode }) {
+type FlowScreenProps = {
+  step: ActiveStep;
+  building: boolean;
+  stage: StageInfo;
+  summaries: TrailSummaries;
+  transition: ReturnType<typeof useMascotTransition>;
+  content: React.RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+};
+
+/**
+ * A tela do primeiro acesso: cheia, com o palco (a prévia grande do passo) à esquerda e o
+ * conteúdo à direita, a trilha dos passos no topo. No celular, o palco vira um banner.
+ * É um <dialog> modal: o foco fica dentro, e Esc não fecha (a saída é "Pular por agora").
+ */
+function FlowScreen({ step, building, stage, summaries, transition, content, children }: FlowScreenProps) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -62,40 +85,28 @@ function FlowDialog({ step, building, children }: { step: ActiveStep; building: 
     const raf = requestAnimationFrame(() => (d?.querySelector<HTMLElement>("[data-autofocus]") ?? d?.querySelector<HTMLElement>("#passo-titulo"))?.focus());
     return () => cancelAnimationFrame(raf);
   }, [step, building]);
-  const number = actionNumber(step);
-  const progress = Math.round(progressOf(building ? "building" : step) * 100);
-  const wide = step === "setup" && !building;
   return (
     <dialog
       ref={ref}
-      // Esc não fecha: a saída é "Pular por agora" (o modal não some deixando a tela vazia)
       onCancel={(e) => e.preventDefault()}
       aria-labelledby="passo-titulo"
+      aria-busy={transition.active || undefined}
       data-onboarding-step={building ? "building" : step}
-      className={`m-auto max-h-[calc(100dvh-1.5rem)] overflow-hidden rounded-[20px] border border-line bg-bg p-0 text-fg backdrop:bg-black/55 backdrop:backdrop-blur-[2px] ${wide ? "w-[min(920px,calc(100vw-1.5rem))]" : "w-[min(620px,calc(100vw-1.5rem))]"}`}
+      className="m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden bg-bg p-0 text-fg backdrop:bg-bg"
     >
-      <div className="flex max-h-[calc(100dvh-1.5rem)] flex-col">
-        <div className="px-5 pt-5 sm:px-7">
-          <p className="text-[13px] text-fg-2">
-            {building ? (
-              "Quase lá"
-            ) : number ? (
-              <>
-                Passo <span className="tnum font-semibold text-fg">{number}</span> de {ACTION_STEPS.length} · {STEP_LABEL[step]}
-              </>
-            ) : (
-              `${STEP_LABEL[step]} · ${ACTION_STEPS.length} passos`
-            )}
-          </p>
-          <div role="progressbar" aria-label="Progresso do primeiro acesso" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
-            <div className="h-full rounded-full bg-accent transition-[width] duration-500 ease-brand motion-reduce:transition-none" style={{ width: `${progress}%` }} />
+      <div ref={content} className="grid h-full grid-rows-[minmax(170px,30dvh)_1fr] lg:grid-cols-[1.1fr_1fr] lg:grid-rows-1">
+        <StageVisual info={stage} />
+        <div className="flex min-h-0 flex-col border-line lg:border-l">
+          <div className="px-5 pt-4 sm:px-8 lg:px-10 lg:pt-8">
+            <Trail step={step} building={building} summaries={summaries} />
+          </div>
+          {/* key: cada passo entra com uma animação curta (sem movimento se o sistema pede) */}
+          <div key={building ? "building" : step} className="fa-in flex min-h-0 flex-1 flex-col overflow-hidden">
+            {children}
           </div>
         </div>
-        {/* key: cada passo entra com uma animação curta (sem movimento se o sistema pede) */}
-        <div key={building ? "building" : step} className="flex min-h-0 flex-1 flex-col overflow-hidden motion-safe:animate-[rise_240ms_var(--ease)_both]">
-          {children}
-        </div>
       </div>
+      {transition.overlay}
     </dialog>
   );
 }
@@ -110,13 +121,38 @@ type OnboardingFlowProps = {
   api?: FlowApi;
 };
 
-export function OnboardingFlow({ state, result, now, timeZone, api = realFlowApi }: OnboardingFlowProps) {
+export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = realFlowApi }: OnboardingFlowProps) {
   const { step } = state;
+  const content = useRef<HTMLDivElement>(null);
+  const transition = useMascotTransition(content);
   const skip = useStepAction();
   const back = useStepAction();
   const [building, setBuilding] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
+  // o que a pessoa escolhe e o palco mostra: o nome digitado, o segmento e o modelo
+  const [typedName, setTypedName] = useState(state.project?.named ? state.project.name : "");
+  // o segmento: o salvo ou o primeiro disponível (o mesmo que o passo 1 já mostra marcado)
+  const [segmentId, setSegmentId] = useState<string | null>(state.businessTypeId ?? BUSINESS_TYPES.find((b) => b.available)?.id ?? null);
+  const [templateId, setTemplateId] = useState<string | null>(null);
   useStepTracking(step);
+
+  // o próximo passo chegou (ou a montagem começou): o mascote abre a tela
+  const { settle } = transition;
+  useEffect(() => settle(), [step, building, settle]);
+
+  // cada ação que troca de passo passa pela transição; a ação roda junto, sem esperar a animação
+  const { begin } = transition;
+  const api = useMemo<FlowApi>(() => {
+    const wrap =
+      <A extends unknown[], R>(fn: (...a: A) => Promise<ActionResult<R>>, dir: 1 | -1) =>
+      async (...a: A) => {
+        begin(dir);
+        const r = await fn(...a);
+        if (r && !r.ok) settle(); // falhou: o mascote volta e abre o mesmo passo, com o erro
+        return r;
+      };
+    return { ...baseApi, start: wrap(baseApi.start, 1), saveProject: wrap(baseApi.saveProject, 1), toSetup: wrap(baseApi.toSetup, 1), back: wrap(baseApi.back, -1) };
+  }, [baseApi, begin, settle]);
 
   const at = stepIndex(step);
   const prev = at > 0 ? ONBOARDING_STEPS[at - 1] : null;
@@ -135,15 +171,17 @@ export function OnboardingFlow({ state, result, now, timeZone, api = realFlowApi
   };
 
   /**
-   * A tela "Montando" aparece já no clique e fica pelo menos BUILDING_MS, enquanto o servidor
-   * cria o dashboard (fase 1). Depois, a fase 2 conclui o primeiro acesso e abre o dashboard.
+   * A tela "Montando" aparece já no clique (pelo mascote) e fica pelo menos BUILDING_MS,
+   * enquanto o servidor cria o dashboard (fase 1). Depois, a fase 2 conclui e abre.
    */
-  async function onBuild(templateId: string) {
+  async function onBuild(id: string) {
     setBuildError(null);
+    begin(1);
     setBuilding(true);
     const started = Date.now();
-    const res = await api.build(templateId);
+    const res = await api.build(id);
     if (!res.ok) {
+      begin(-1);
       setBuilding(false);
       setBuildError(res.error.message);
       return;
@@ -157,26 +195,55 @@ export function OnboardingFlow({ state, result, now, timeZone, api = realFlowApi
     } catch {}
     const done = await api.finish(res.data.id);
     if (done && !done.ok) {
+      begin(-1);
       setBuilding(false);
       setBuildError(done.error.message);
     }
   }
 
+  const connect = state.connect;
+  const connected = connect ? CORE_PROVIDER_IDS.filter((p) => connect.platforms[p].connected) : [];
+  const projectName = step === "welcome" ? "" : step === "project" ? typedName : (state.project?.name ?? typedName);
+  const client = projectName.trim() || "Seu cliente";
+  const segment = businessType(segmentId)?.name ?? null;
+  const summaries: TrailSummaries = {
+    project: state.project?.name ? `${state.project.name}${businessType(state.businessTypeId)?.name ? ` · ${businessType(state.businessTypeId)?.name}` : ""}` : undefined,
+    connect: connect && connected.length ? connectSummary(connect, connected) : undefined,
+  };
+  const stage: StageInfo = {
+    step,
+    building,
+    client,
+    segment,
+    connected,
+    justConnected: result?.kind === "connected" && result.provider && isCore(result.provider) ? result.provider : null,
+    template: templateId ? (anyDashboardTemplate(templateId) ?? null) : null,
+  };
+
   return (
-    <FlowDialog step={step} building={building}>
+    <FlowScreen step={step} building={building} stage={stage} summaries={summaries} transition={transition} content={content}>
       {building ? (
         <BuildingView />
       ) : step === "welcome" ? (
         <WelcomeStep firstName={state.firstName} api={api} nav={nav} />
       ) : step === "project" ? (
-        <ProjectStep project={state.project} businessTypeId={state.businessTypeId} api={api} nav={nav} />
+        <ProjectStep project={state.project} businessTypeId={state.businessTypeId} api={api} nav={nav} onNameChange={setTypedName} onSegmentChange={setSegmentId} />
       ) : step === "connect" && state.connect ? (
         <ConnectStep state={state.connect} result={result} api={api} nav={nav} showTestBadges={state.showTestBadges} />
       ) : step === "setup" && state.connect ? (
-        <SetupStep state={state.connect} businessTypeId={state.businessTypeId} tier={state.tier} now={now} timeZone={timeZone} api={api} nav={nav} onBuild={onBuild} />
+        <SetupStep state={state.connect} businessTypeId={state.businessTypeId} tier={state.tier} now={now} timeZone={timeZone} api={api} nav={nav} onBuild={onBuild} client={client} suggestion={state.suggestion} onTemplateChange={setTemplateId} />
       ) : null}
-    </FlowDialog>
+    </FlowScreen>
   );
+}
+
+const isCore = (p: string): p is (typeof CORE_PROVIDER_IDS)[number] => (CORE_PROVIDER_IDS as readonly string[]).includes(p);
+
+/** "Meta Ads ✓ · 2 contas" (as contas que o login trouxe). */
+function connectSummary(connect: ConnectState, connected: readonly (typeof CORE_PROVIDER_IDS)[number][]): string {
+  const names = connected.map((p) => `${PROVIDERS[p].name} ✓`).join(" · ");
+  const n = connected.reduce((a, p) => a + connect.platforms[p].accounts.length, 0);
+  return n ? `${names} · ${n} ${n === 1 ? "conta" : "contas"}` : names;
 }
 
 /** Para quem não é admin: o primeiro acesso é do administrador do workspace. */

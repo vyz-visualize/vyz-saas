@@ -24,8 +24,9 @@ const SAMPLE_CLIENT: Record<string, string> = {
 
 const PREVIEW_TABS: PageId[] = ["visao-geral", "meta-ads", "google-ads", "site", "funil"];
 
-export function TemplatePreview({ t, page, variant = "full" }: { t: DashboardTemplate; page?: PageId; variant?: "full" | "compact" }) {
-  const client = SAMPLE_CLIENT[t.category];
+/** client: o nome do cliente de verdade (primeiro acesso); sem ele, um cliente de exemplo do nicho. */
+export function TemplatePreview({ t, page, variant = "full", client: clientName }: { t: DashboardTemplate; page?: PageId; variant?: "full" | "compact"; client?: string }) {
+  const client = clientName?.trim() || SAMPLE_CLIENT[t.category];
   const ds = datasetFor({ templateId: t.id, name: t.name, client }, 30);
   const p = page ?? t.pages[0];
   // modelo novo: as abas de um exemplo com Meta, Google e GA4 (não as 13 possíveis)
@@ -48,11 +49,11 @@ export function TemplatePreview({ t, page, variant = "full" }: { t: DashboardTem
 }
 
 /** Miniatura real do modelo (primeira aba), escalada para caber. */
-export function TemplateThumb({ t, height = 168, page }: { t: DashboardTemplate; height?: number; page?: PageId }) {
+export function TemplateThumb({ t, height = 168, page, client }: { t: DashboardTemplate; height?: number; page?: PageId; client?: string }) {
   return (
     <ScaledPreview height={height} width={t.skin ? 1100 : 760}>
       <div inert>
-        <TemplatePreview t={t} page={page} variant="compact" />
+        <TemplatePreview t={t} page={page} variant="compact" client={client} />
       </div>
     </ScaledPreview>
   );

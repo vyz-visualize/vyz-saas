@@ -5,11 +5,12 @@
 
 import { ArrowLeft, ArrowRight, CircleAlert, LoaderCircle } from "lucide-react";
 import { btn } from "@/components/ui/styles";
+import { AgentSpeech } from "./stage/AgentSpeech";
 import { useState, useTransition, type ReactNode } from "react";
 import type { ActionResult } from "@/server/supabase/errors";
 
 /** Corpo de um passo: rola dentro do modal; o rodapé (Pular, Voltar e o botão principal) fica sempre à vista. */
-export const STEP_BODY = "min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-6 sm:px-7";
+export const STEP_BODY = "min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5 sm:px-8 lg:px-10 lg:py-7";
 
 /** Roda a ação do passo; sucesso vira redirect no servidor (ou a tela segue), erro fica na tela. */
 export function useStepAction() {
@@ -26,14 +27,15 @@ export function useStepAction() {
   return { pending, error, setError, run };
 }
 
-export function StepTitle({ title, text }: { title: ReactNode; text?: ReactNode }) {
+/** O título grande do passo e, no lugar do subtítulo, o agente VYZ falando. */
+export function StepTitle({ title, text }: { title: ReactNode; text?: string }) {
   return (
     <header>
-      {/* o modal leva o foco ao título de cada passo (leitor de tela anuncia o passo) */}
-      <h2 id="passo-titulo" tabIndex={-1} className="display text-[clamp(1.5rem,3.4vw,2.1rem)] text-fg outline-none">
+      {/* o foco vai para o título de cada passo (leitor de tela anuncia o passo) */}
+      <h2 id="passo-titulo" tabIndex={-1} className="display text-[clamp(1.7rem,3.2vw,2.5rem)] leading-[1.05] text-fg outline-none">
         {title}
       </h2>
-      {text && <p className="mt-2 text-[15px] leading-relaxed text-fg-2">{text}</p>}
+      {text && <AgentSpeech text={text} />}
     </header>
   );
 }
@@ -108,7 +110,7 @@ type FlowFooterProps = {
 export function FlowFooter({ onSkip, skipping, onBack, backing, primaryLabel, pendingLabel = "Salvando…", onPrimary, pending, disabled, error, hint }: FlowFooterProps) {
   const busy = pending || skipping || !!backing;
   return (
-    <footer className="border-t border-line bg-bg px-5 py-4 sm:px-7">
+    <footer className="border-t border-line bg-bg px-5 py-3.5 sm:px-8 lg:px-10">
       <ErrorLine message={error} />
       {hint && !error && <p className="text-[13px] text-fg-2">{hint}</p>}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">

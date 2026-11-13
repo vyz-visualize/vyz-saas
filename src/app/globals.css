@@ -396,6 +396,199 @@ html.lenis body {
   line-height: 1.15em;
 }
 
+/* ---- Primeiro acesso: palco, agente e jornada ------------------------ */
+/* Tudo some com "reduzir movimento": as telas aparecem no estado final (painéis acesos, linhas desenhadas). */
+@keyframes fa-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+@keyframes fa-bubble {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+}
+@keyframes fa-in {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+}
+@keyframes fa-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes fa-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--r));
+  }
+}
+@keyframes fa-growx {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes fa-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+@keyframes fa-float {
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes fa-caret {
+  50% {
+    opacity: 0;
+  }
+}
+.fa-pop {
+  animation: fa-pop 520ms var(--ease) both;
+}
+.fa-bubble {
+  animation: fa-bubble 360ms var(--ease) both;
+  transform-origin: 0 100%;
+}
+.fa-in {
+  animation: fa-in 420ms var(--ease) both;
+}
+.fa-float {
+  animation: fa-float 6s ease-in-out infinite;
+}
+/* jornada das boas-vindas: cada painel acende um terço do ciclo, um depois do outro */
+@keyframes fa-lit {
+  0%,
+  30% {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  38%,
+  100% {
+    border-color: var(--line);
+    background: transparent;
+  }
+}
+@keyframes fa-num {
+  0%,
+  30% {
+    color: var(--accent);
+    -webkit-text-stroke-color: var(--accent);
+  }
+  38%,
+  100% {
+    color: transparent;
+    -webkit-text-stroke-color: color-mix(in srgb, var(--fg) 45%, transparent);
+  }
+}
+@keyframes fa-type {
+  0% {
+    width: 0;
+  }
+  18%,
+  100% {
+    width: 100%;
+  }
+}
+@keyframes fa-chip {
+  0%,
+  14% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  22%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fa-wire {
+  0% {
+    stroke-dashoffset: 60;
+    stroke: var(--line);
+  }
+  20%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke: var(--accent);
+  }
+}
+@keyframes fa-bar {
+  0%,
+  4% {
+    transform: scaleY(0.1);
+  }
+  24%,
+  100% {
+    transform: scaleY(1);
+  }
+}
+.fa-journey > li {
+  --fa-cycle: 7.5s;
+  animation: fa-lit var(--fa-cycle) ease-in-out infinite;
+  animation-delay: var(--fa-d, 0s);
+}
+.fa-journey > li .fa-num {
+  color: transparent;
+  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--fg) 45%, transparent);
+  animation: fa-num var(--fa-cycle) ease-in-out infinite;
+  animation-delay: var(--fa-d, 0s);
+}
+.fa-journey .fa-type {
+  animation: fa-type var(--fa-cycle) steps(14, end) infinite;
+  animation-delay: var(--fa-d, 0s);
+}
+.fa-journey .fa-chip {
+  animation: fa-chip var(--fa-cycle) var(--ease) infinite;
+  animation-delay: var(--fa-d, 0s);
+}
+.fa-journey .fa-wire {
+  stroke-dasharray: 60;
+  animation: fa-wire var(--fa-cycle) ease-in-out infinite;
+  animation-delay: var(--fa-d, 0s);
+}
+.fa-journey .fa-bar {
+  transform-origin: bottom;
+  animation: fa-bar var(--fa-cycle) var(--ease) infinite;
+  animation-delay: calc(var(--fa-d, 0s) + var(--fa-b, 0s));
+}
+@media (prefers-reduced-motion: reduce) {
+  .fa-pop,
+  .fa-bubble,
+  .fa-in,
+  .fa-float,
+  .fa-anim,
+  .fa-anim *,
+  .fa-journey > li,
+  .fa-journey * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .fa-confetti {
+    display: none;
+  }
+  /* parado: os três painéis acesos, com o número cheio */
+  .fa-journey > li {
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  .fa-journey > li .fa-num {
+    color: var(--accent);
+    -webkit-text-stroke-color: var(--accent);
+  }
+  .fa-journey .fa-wire {
+    stroke: var(--accent);
+    stroke-dashoffset: 0;
+  }
+}
+
 /* ---- Onda sonora (Avançado) ----------------------------------------- */
 .wave span {
   display: block;
