@@ -1,152 +1,40 @@
 "use client";
 
-// Moldura do painel. No computador: menu lateral em grupos (com o workspace em cima e a
-// pessoa embaixo), topo com a seção aberta e o conteúdo num fundo neutro com cartões
-// brancos. A seção ativa é uma pílula que desliza entre os itens (layoutId). O menu recolhe
-// pelo botão do topo ou com "[", e o estado fica no <html data-sidebar>, aplicado antes da
-// primeira pintura. No celular: topo curto, barra flutuante embaixo e "Mais" numa folha que
-// sobe (o resto do menu, a troca de workspace e a conta).
+// Moldura do painel. No computador: o menu lateral de vidro (GlassSidebar: trilho que abre no
+// hover, alfinete para fixar), o topo com a seção aberta e o conteúdo num fundo neutro com
+// cartões brancos; o conteúdo reflui junto com o menu (padding no CSS, mesma curva). No
+// celular: topo curto, barra flutuante embaixo e "Mais" numa folha que sobe (o resto do menu,
+// a troca de organização e a conta).
 // A moldura marca [data-ui="app"]: é o que liga os tokens do painel (globals.css).
 // O dashboard (ver, editar e montar) abre em tela cheia: sem o menu do produto, só uma barra
 // fina com o botão de voltar (isFocusPath), e o conteúdo dele fica nos tokens da marca.
 
-import { AlertTriangle, ArrowLeft, ArrowUpRight, BarChart3, Check, ChevronRight, ChevronsUpDown, FolderKanban, Gem, Home, Inbox, Info, ListChecks, LogOut, Menu, Moon, PanelLeft, PanelsTopLeft, Plug, Settings, Share2, ShieldCheck, Sun } from "lucide-react";
-import { LazyMotion, m, MotionConfig } from "motion/react";
+import { AlertTriangle, ArrowLeft, ArrowUpRight, Check, ChevronRight, Info, LogOut, Menu, Moon, Sun } from "lucide-react";
+import { LazyMotion, MotionConfig } from "motion/react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { createContext, Suspense, use, useEffect, useState, useSyncExternalStore, useTransition, type ReactNode } from "react";
+import { Suspense, useState, useTransition, type ReactNode } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { Modal, PendingChip } from "@/components/ui/kit";
-import { Menu as DropMenu, MenuCheckItem, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/ui/Menu";
 import { setTheme, ThemeToggle, useTheme } from "@/components/ui/ThemeToggle";
-import { Tooltip, TooltipProvider } from "@/components/ui/Tooltip";
+import { TooltipProvider } from "@/components/ui/Tooltip";
 import { AgentDrawer } from "@/features/agent/AgentDrawer";
 import { AgentBar, AgentFab } from "@/features/agent/AgentEntry";
 import { AgentProvider } from "@/features/agent/AgentProvider";
 import { Caption } from "@/features/agent/Caption";
 import { TIER_LABEL } from "@/features/pricing/entitlements";
-import { planBadge } from "./home-steps";
+import type { Product } from "@/features/pricing/pricing";
 import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
-import type { Product } from "@/features/pricing/pricing";
 import { FOCUS_ACTIONS_ID, isFocusPath } from "./focus";
+import { GlassSidebar } from "./GlassSidebar";
+import { planBadge } from "./home-steps";
+import { activeHref, AdminContext, flat, isActive, PreviewPathContext, useNavGroups, usePanelPath, type NavIcon } from "./nav";
 import { subscriptionNotice } from "./notice";
 import { ROLE_LABEL } from "./session";
 import { useWorkspaceSession } from "./WorkspaceProvider";
 
-type NavItem = { href: string; label: string; icon: typeof Home; short?: string; soon?: boolean };
-type NavGroup = { label: string | null; items: NavItem[] };
-
-// cada produto tem o seu menu: dashboards não vê LPs e vice-versa
-const NAVS: Record<Product, NavGroup[]> = {
-  dash: [
-    { label: null, items: [{ href: "/painel", label: "Início", icon: Home }] },
-    {
-      label: "Trabalho",
-      items: [
-        { href: "/painel/workspaces", label: "Workspaces", icon: FolderKanban },
-        { href: "/painel/dashboards", label: "Dashboards", icon: BarChart3 },
-        { href: "/painel/a-fazer", label: "A Fazer", icon: ListChecks },
-      ],
-    },
-    {
-      label: "Dados",
-      items: [
-        { href: "/painel/contas", label: "Contas", icon: Plug },
-        { href: "/painel/compartilhar", label: "Compartilhar", icon: Share2 },
-      ],
-    },
-    // Landing pages: fora do menu da linha Dashboards até o lançamento; a rota continua existindo
-    {
-      label: "Conta",
-      items: [
-        { href: "/painel/plano", label: "Plano", icon: Gem },
-        { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
-      ],
-    },
-  ],
-  lp: [
-    {
-      label: null,
-      items: [
-        { href: "/painel/landing-pages", label: "Landing pages", icon: PanelsTopLeft, short: "LPs" },
-        { href: "/painel/landing-pages/leads", label: "Leads", icon: Inbox },
-      ],
-    },
-    {
-      label: "Conta",
-      items: [
-        { href: "/painel/plano", label: "Plano", icon: Gem },
-        { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
-      ],
-    },
-  ],
-};
-
-// aba "Interno" só para os admins da Vyzualize (o servidor confere de novo na página)
-const AdminContext = createContext(false);
-const ADMIN_GROUP: NavGroup = { label: "Vyzualize", items: [{ href: "/painel/interno", label: "Interno", icon: ShieldCheck }] };
-
-// bancada (/dev/painel): o endereço simulado, para a seção ativa e a tela cheia
-const PreviewPathContext = createContext<string | null>(null);
-function usePanelPath() {
-  const real = usePathname();
-  return use(PreviewPathContext) ?? real;
-}
-
-function useNavGroups(): NavGroup[] {
-  const groups = NAVS[useWorkspaceSession().workspace.product];
-  return use(AdminContext) ? [...groups, ADMIN_GROUP] : groups;
-}
-
-const flat = (groups: NavGroup[]) => groups.flatMap((g) => g.items);
-
-const isActive = (path: string | null, href: string) =>
-  href === "/painel" ? path === "/painel" : href === "/painel/landing-pages" ? !!path?.startsWith(href) && !path.startsWith("/painel/landing-pages/leads") : !!path?.startsWith(href);
-
 // layoutId precisa das features de layout; chegam depois da primeira pintura
 const loadFeatures = () => import("motion/react").then((r) => r.domMax);
-const PILL_SPRING = { type: "spring", stiffness: 420, damping: 36, mass: 0.8 } as const;
-
-// ---- estado do menu lateral (no <html>, com localStorage) ---------------------
-
-const SB_KEY = "vyz:sidebar";
-const SB_EVENT = "vyz-sidebar";
-
-function subscribeSidebar(cb: () => void) {
-  window.addEventListener(SB_EVENT, cb);
-  return () => window.removeEventListener(SB_EVENT, cb);
-}
-const readCollapsed = () => document.documentElement.getAttribute("data-sidebar") === "closed";
-
-function setCollapsed(next: boolean) {
-  document.documentElement.setAttribute("data-sidebar", next ? "closed" : "open");
-  try {
-    localStorage.setItem(SB_KEY, next ? "closed" : "open");
-  } catch {}
-  window.dispatchEvent(new Event(SB_EVENT));
-}
-
-function useCollapsed() {
-  return useSyncExternalStore(subscribeSidebar, readCollapsed, () => false);
-}
-
-/** Atalho "[" (ignorado quando o foco está num campo). */
-function useSidebarShortcut() {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "[" || e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = e.target as HTMLElement | null;
-      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.closest("[role=combobox],[role=listbox],[role=menu],[role=dialog]"))) return;
-      e.preventDefault();
-      setCollapsed(!readCollapsed());
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-}
-
-// ---- peças ---------------------------------------------------------------------
 
 const initials = (name: string) =>
   name
@@ -156,7 +44,7 @@ const initials = (name: string) =>
     .map((w) => w[0]?.toUpperCase())
     .join("") || "V";
 
-/** "Avançado · 1 de 2 projetos" (o limite do plano, com o que já está em uso) ou "Sem plano ativo". */
+/** "Avançado · 1 de 2 workspaces" (o limite do plano, com o que já está em uso) ou "Sem plano ativo". */
 function planLine(session: Pick<ReturnType<typeof useWorkspaceSession>, "access" | "usage">, product: Product) {
   const { access, usage } = session;
   if (!access.hasAccess || !access.tier) return "Sem plano ativo";
@@ -164,10 +52,7 @@ function planLine(session: Pick<ReturnType<typeof useWorkspaceSession>, "access"
   return planBadge(TIER_LABEL[access.tier], usage.projects, access.accountsQuantity);
 }
 
-// rótulos somem antes de recolher e voltam depois de expandir, sem quebrar linha
-const fade = "whitespace-nowrap transition-[opacity,transform] duration-200 delay-150 ease-brand sb-closed:pointer-events-none sb-closed:-translate-x-1.5 sb-closed:opacity-0 sb-closed:delay-0 sb-closed:duration-100";
 const ring = "outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
-const iconBtn = `inline-flex size-9 shrink-0 items-center justify-center rounded-control text-fg-2 transition-colors duration-150 hover:bg-surface-2 hover:text-fg ${ring}`;
 
 function WorkspaceAvatar({ name, size = "md" }: { name: string; size?: "md" | "lg" }) {
   return (
@@ -177,230 +62,14 @@ function WorkspaceAvatar({ name, size = "md" }: { name: string; size?: "md" | "l
   );
 }
 
-function UserAvatar({ name }: { name: string }) {
-  return (
-    <span aria-hidden className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[12.5px] font-bold text-accent">
-      {initials(name)}
-    </span>
-  );
-}
-
-// ---- menu lateral ----------------------------------------------------------------
-
-function SideNav({ path, collapsed }: { path: string | null; collapsed: boolean }) {
-  const groups = useNavGroups();
-  return (
-    <div className="space-y-5">
-      {groups.map((g, gi) => (
-        <div key={g.label ?? gi}>
-          {g.label && (
-            <>
-              <p className="mb-1.5 px-3 text-[11px] font-semibold tracking-[0.07em] text-fg-2/80 uppercase sb-closed:hidden">{g.label}</p>
-              <span aria-hidden className="mx-auto mb-3 hidden h-px w-6 bg-line sb-closed:block" />
-            </>
-          )}
-          <ul className="space-y-0.5">
-            {g.items.map(({ href, label, icon: I, soon }) => {
-              const active = isActive(path, href);
-              return (
-                <li key={href} className="relative">
-                  {active && <m.span layoutId="side-pill" transition={PILL_SPRING} aria-hidden className="absolute inset-0 rounded-control border border-line bg-card shadow-card" />}
-                  <Tooltip content={soon ? `${label} · em breve` : label} disabled={!collapsed}>
-                    <Link
-                      href={href}
-                      aria-current={active ? "page" : undefined}
-                      aria-label={collapsed ? (soon ? `${label}, em breve` : label) : undefined}
-                      className={`group relative flex h-10 items-center gap-3 overflow-hidden rounded-control px-3 text-[14px] transition-colors duration-150 ${ring} ${active ? "font-semibold text-fg" : "font-medium text-fg-2 hover:bg-surface-2 hover:text-fg"}`}
-                    >
-                      <I size={18} aria-hidden className={`shrink-0 transition-transform duration-300 ease-brand sb-closed:translate-x-[5px] ${active ? "text-accent" : ""}`} />
-                      <span className={fade}>
-                        {label}
-                        {soon && <span className="ml-2 rounded-chip border border-line px-1.5 py-px text-[10.5px] font-medium">Em breve</span>}
-                      </span>
-                    </Link>
-                  </Tooltip>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ActiveSideNav({ collapsed }: { collapsed: boolean }) {
-  return <SideNav path={usePanelPath()} collapsed={collapsed} />;
-}
-
-/** Workspace no topo do menu: nome, plano e a troca (quando a pessoa está em mais de um). Recolhido, vira avatar. */
-function WorkspaceMenu({ collapsed }: { collapsed: boolean }) {
-  const { workspace: ws, access, usage, memberships } = useWorkspaceSession();
-  const router = useRouter();
-  const [switching, startSwitch] = useTransition();
-  const sub = switching ? "Abrindo…" : planLine({ access, usage }, ws.product);
-  return (
-    <DropMenu>
-      <Tooltip content={ws.name} disabled={!collapsed}>
-        <MenuTrigger
-          aria-label={`${ws.name}, ${sub}. Abrir menu da organização`}
-          className={`flex h-[52px] w-full items-center gap-2.5 overflow-hidden rounded-[14px] border border-line bg-card px-2 text-left shadow-card transition-colors duration-150 hover:border-fg-2/40 data-[state=open]:border-fg-2/40 sb-closed:border-transparent sb-closed:bg-transparent sb-closed:shadow-none ${ring}`}
-        >
-          <span className="transition-transform duration-300 ease-brand sb-closed:translate-x-px">
-            <WorkspaceAvatar name={ws.name} />
-          </span>
-          <span className={`min-w-0 flex-1 ${fade}`}>
-            <span className="block truncate text-[13.5px] leading-tight font-semibold text-fg">{ws.name}</span>
-            <span className="mt-0.5 block truncate text-[12px] leading-tight text-fg-2">{sub}</span>
-          </span>
-          <ChevronsUpDown size={15} aria-hidden className={`mr-1 shrink-0 text-fg-2 ${fade}`} />
-        </MenuTrigger>
-      </Tooltip>
-      <MenuContent side={collapsed ? "right" : "bottom"} align="start" className={collapsed ? "min-w-[15rem]" : "w-[var(--radix-dropdown-menu-trigger-width)]"}>
-        {memberships.length > 1 && (
-          <>
-            <MenuLabel>Organizações</MenuLabel>
-            {memberships.map((mb) => (
-              <MenuCheckItem
-                key={mb.id}
-                checked={mb.id === ws.id}
-                disabled={switching}
-                onSelect={() => {
-                  if (mb.id !== ws.id) startSwitch(() => switchWorkspace(mb.id));
-                }}
-              >
-                <span className="min-w-0 flex-1 truncate">{mb.name}</span>
-                <span className="ml-3 shrink-0 text-[11.5px] text-fg-2">{ROLE_LABEL[mb.role]}</span>
-              </MenuCheckItem>
-            ))}
-            <MenuSeparator />
-          </>
-        )}
-        <MenuItem icon={<Gem size={15} />} onSelect={() => router.push("/painel/plano")}>
-          Plano e cobrança
-        </MenuItem>
-        <MenuItem icon={<Settings size={15} />} onSelect={() => router.push("/painel/configuracoes")}>
-          Configurações
-        </MenuItem>
-      </MenuContent>
-    </DropMenu>
-  );
-}
-
-/** Uso do plano no pé do menu: os projetos, que é o que o plano limita. Some com o menu recolhido e em telas baixas. */
-function UsageCard() {
-  const { access, usage, workspace } = useWorkspaceSession();
-  if (workspace.product !== "dash") return null;
-  if (!access.hasAccess || !access.tier) {
-    return (
-      <Link href="/painel/plano" className={`block rounded-[14px] border border-dashed border-line p-3 text-[12.5px] text-fg-2 transition-colors hover:border-accent hover:text-fg sb-closed:hidden [@media(max-height:720px)]:hidden ${ring}`}>
-        <span className="block font-semibold text-fg">Sem plano ativo</span>
-        Escolha um plano para liberar o painel.
-      </Link>
-    );
-  }
-  const limit = Math.max(1, access.accountsQuantity);
-  const ratio = Math.min(1, usage.projects / limit);
-  const full = usage.projects >= limit;
-  return (
-    <Link href="/painel/plano" className={`group block rounded-[14px] border border-line bg-card p-3 shadow-card transition-colors hover:border-fg-2/40 sb-closed:hidden [@media(max-height:720px)]:hidden ${ring}`}>
-      <span className="flex items-center justify-between gap-2 text-[12.5px]">
-        <span className="font-semibold text-fg">Plano {TIER_LABEL[access.tier]}</span>
-        <ArrowUpRight size={14} aria-hidden className="text-fg-2 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-      </span>
-      <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-surface-2">
-        <span className={`block h-full rounded-full ${full ? "bg-warning" : "bg-accent"}`} style={{ width: `${Math.max(4, ratio * 100)}%` }} />
-      </span>
-      <span className="mt-1.5 block text-[12px] text-fg-2 tnum">
-        {usage.projects} de {access.accountsQuantity} {access.accountsQuantity === 1 ? "workspace" : "workspaces"}
-      </span>
-    </Link>
-  );
-}
-
-/** A pessoa no pé do menu: tema, site e Sair. Recolhido, vira avatar. */
-function UserMenu({ collapsed }: { collapsed: boolean }) {
-  const { user, role } = useWorkspaceSession();
-  const router = useRouter();
-  const dark = useTheme() === "dark";
-  const name = user.fullName || user.email;
-  return (
-    <DropMenu>
-      <Tooltip content={name} disabled={!collapsed}>
-        <MenuTrigger aria-label={`${name}. Abrir menu da conta`} className={`flex h-12 w-full items-center gap-2.5 overflow-hidden rounded-[12px] px-1.5 text-left transition-colors duration-150 hover:bg-surface-2 data-[state=open]:bg-surface-2 ${ring}`}>
-          <span className="transition-transform duration-300 ease-brand sb-closed:translate-x-[2px]">
-            <UserAvatar name={name} />
-          </span>
-          <span className={`min-w-0 flex-1 ${fade}`}>
-            <span className="block truncate text-[13px] leading-tight font-semibold text-fg">{name}</span>
-            <span className="mt-0.5 block truncate text-[11.5px] leading-tight text-fg-2">{ROLE_LABEL[role]}</span>
-          </span>
-          <ChevronsUpDown size={14} aria-hidden className={`mr-1 shrink-0 text-fg-2 ${fade}`} />
-        </MenuTrigger>
-      </Tooltip>
-      <MenuContent side={collapsed ? "right" : "top"} align={collapsed ? "end" : "start"} className={collapsed ? "min-w-[15rem]" : "w-[var(--radix-dropdown-menu-trigger-width)]"}>
-        <div className="px-2.5 pt-1.5 pb-2">
-          <p className="truncate text-[13.5px] font-semibold">{name}</p>
-          <p className="truncate text-[12px] text-fg-2">{user.email}</p>
-        </div>
-        <MenuSeparator />
-        <MenuItem icon={<Settings size={15} />} onSelect={() => router.push("/painel/configuracoes")}>
-          Minha conta
-        </MenuItem>
-        <MenuItem icon={dark ? <Sun size={15} /> : <Moon size={15} />} onSelect={() => setTheme(dark ? "light" : "dark")}>
-          {dark ? "Modo claro" : "Modo escuro"}
-        </MenuItem>
-        <MenuItem icon={<ArrowUpRight size={15} />} onSelect={() => router.push("/")}>
-          Voltar ao site
-        </MenuItem>
-        <MenuSeparator />
-        <MenuItem icon={<LogOut size={15} />} onSelect={() => void signOut()}>
-          Sair
-        </MenuItem>
-      </MenuContent>
-    </DropMenu>
-  );
-}
-
-function Sidebar() {
-  const collapsed = useCollapsed();
-  useSidebarShortcut();
-  return (
-    <aside
-      aria-label="Navegação do painel"
-      className="hidden h-dvh w-[264px] shrink-0 flex-col overflow-hidden border-r border-line px-3 pt-4 pb-3 transition-[width] duration-300 ease-brand sb-closed:w-[76px] sb-closed:delay-100 md:flex print:hidden"
-    >
-      <div className="flex h-9 items-center px-2">
-        <Link href="/painel" aria-label="VYZ, início do painel" className={`block w-[62px] shrink-0 rounded-[6px] transition-[width,transform] duration-300 ease-brand sb-closed:w-[36px] ${ring}`}>
-          <Wordmark decorative />
-        </Link>
-      </div>
-
-      <div className="mt-5">
-        <WorkspaceMenu collapsed={collapsed} />
-      </div>
-
-      <nav aria-label="Seções" className="-mx-1 mt-5 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-1 pb-2 [scrollbar-width:none]">
-        <Suspense fallback={<SideNav path={null} collapsed={collapsed} />}>
-          <ActiveSideNav collapsed={collapsed} />
-        </Suspense>
-      </nav>
-
-      <div className="space-y-2 pt-2">
-        <UsageCard />
-        <UserMenu collapsed={collapsed} />
-      </div>
-    </aside>
-  );
-}
-
 // ---- barra de baixo (celular) ------------------------------------------------
 
 function BottomNav({ path, onMore }: { path: string | null; onMore: () => void }) {
-  const all = flat(useNavGroups());
+  const groups = useNavGroups();
+  const all = flat(groups);
   const items = all.slice(0, 4);
-  const moreActive = all.slice(4).some((n) => isActive(path, n.href));
-  const cell = (active: boolean, I: typeof Home, label: string) => (
+  const moreActive = all.slice(4).some((n) => isActive(groups, path, n.href));
+  const cell = (active: boolean, I: NavIcon, label: string) => (
     <>
       <span className={`inline-flex h-8 w-12 items-center justify-center rounded-chip transition-colors duration-200 ${active ? "bg-accent-soft text-accent" : ""}`}>
         <I size={20} aria-hidden strokeWidth={active ? 2.2 : 1.9} />
@@ -412,7 +81,7 @@ function BottomNav({ path, onMore }: { path: string | null; onMore: () => void }
   return (
     <ul className="grid grid-cols-5 gap-0.5">
       {items.map((n) => {
-        const active = isActive(path, n.href);
+        const active = isActive(groups, path, n.href);
         return (
           <li key={n.href} className="min-w-0">
             <Link href={n.href} aria-current={active ? "page" : undefined} className={cls}>
@@ -535,7 +204,9 @@ function MoreSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 /** A seção aberta, no topo: orienta quando o título da página já rolou para fora. */
 function SectionCrumb({ path }: { path: string | null }) {
   const { workspace } = useWorkspaceSession();
-  const current = flat(useNavGroups()).find((n) => isActive(path, n.href));
+  const groups = useNavGroups();
+  const href = activeHref(groups, path);
+  const current = flat(groups).find((n) => n.href === href);
   return (
     <p className="flex min-w-0 items-center gap-1.5 text-[13.5px]">
       <span className="hidden truncate text-fg-2 lg:inline">{workspace.name}</span>
@@ -547,17 +218,6 @@ function SectionCrumb({ path }: { path: string | null }) {
 
 function ActiveSectionCrumb() {
   return <SectionCrumb path={usePanelPath()} />;
-}
-
-function SidebarToggle() {
-  const collapsed = useCollapsed();
-  return (
-    <Tooltip content={collapsed ? "Expandir menu  [" : "Recolher menu  ["} side="bottom">
-      <button type="button" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expandir menu" : "Recolher menu"} aria-keyshortcuts="[" aria-expanded={!collapsed} className={`${iconBtn} -ml-2 max-md:hidden`}>
-        <PanelLeft size={18} aria-hidden />
-      </button>
-    </Tooltip>
-  );
 }
 
 const NOTICE_STYLE = {
@@ -648,21 +308,21 @@ function Shell({ children, simulatedBilling }: { children: ReactNode; simulatedB
       <MotionConfig reducedMotion="user">
         <TooltipProvider>
           <AgentProvider>
-            <div data-ui="app" className="min-h-dvh bg-bg md:flex md:h-dvh md:overflow-hidden print:block print:h-auto print:bg-white">
+            <div data-ui="app" className="min-h-dvh bg-bg md:h-dvh md:overflow-hidden print:block print:h-auto print:bg-white">
               <a href="#conteudo" className="sr-only rounded-control bg-accent px-4 py-2 text-[14px] font-semibold text-on-accent focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100]">
                 Pular para o conteúdo
               </a>
-              <Sidebar />
+              <GlassSidebar />
 
-              <div className="shell-content min-h-dvh min-w-0 flex-1 md:h-dvh md:min-h-0 md:overflow-y-auto print:h-auto print:overflow-visible">
+              {/* o conteúdo reflui com o menu: 100 px recolhido, 300 px aberto (só a partir de lg; antes, o menu passa por cima) */}
+              <div className="shell-content min-h-dvh min-w-0 transition-[padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] md:h-dvh md:min-h-0 md:overflow-y-auto md:pl-[100px] lg:pl-[300px] lg:sb-closed:pl-[100px] print:h-auto print:overflow-visible print:pl-0">
                 <header className={`@container ${topBar}`}>
                   <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
                     <div className="flex min-w-0 items-center gap-2">
                       <Link href="/painel" aria-label="VYZ, início do painel" className={`mr-1 block w-[52px] shrink-0 rounded-[6px] md:hidden ${ring}`}>
                         <Wordmark decorative />
                       </Link>
-                      <SidebarToggle />
-                      <span aria-hidden className="h-5 w-px shrink-0 bg-line" />
+                      <span aria-hidden className="h-5 w-px shrink-0 bg-line md:hidden" />
                       <Suspense fallback={<SectionCrumb path={null} />}>
                         <ActiveSectionCrumb />
                       </Suspense>

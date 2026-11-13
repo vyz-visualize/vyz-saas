@@ -27,9 +27,9 @@ export const viewport: Viewport = {
 };
 
 // Roda antes da primeira pintura: tema salvo (o padrão é o escuro), marca que
-// há JS, estado da sidebar do painel (recolhida abaixo de 1280 px, se nada
-// salvo) e decide se a intro roda (primeira visita à home, sem campanha).
-const bootScript = `(function(){var d=document.documentElement;d.setAttribute("data-js","");try{var t=localStorage.getItem("vyz-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}try{if(location.pathname.indexOf("/painel")===0){var b=localStorage.getItem("vyz:sidebar");d.setAttribute("data-sidebar",b==="open"||b==="closed"?b:innerWidth<1280?"closed":"open")}}catch(e){}try{if((${shouldPlayIntro.toString()})({pathname:location.pathname,search:location.search,hash:location.hash,seen:!!localStorage.getItem("${INTRO_KEY}"),reducedMotion:matchMedia("(prefers-reduced-motion: reduce)").matches}))d.setAttribute("data-intro","")}catch(e){}})()`;
+// há JS, menu do painel aberto (ele recolhe sozinho em 2 s, se não estiver fixado)
+// e decide se a intro roda (primeira visita à home, sem campanha).
+const bootScript = `(function(){var d=document.documentElement;d.setAttribute("data-js","");try{var t=localStorage.getItem("vyz-theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}try{if(location.pathname.indexOf("/painel")===0)d.setAttribute("data-sidebar","open")}catch(e){}try{if((${shouldPlayIntro.toString()})({pathname:location.pathname,search:location.search,hash:location.hash,seen:!!localStorage.getItem("${INTRO_KEY}"),reducedMotion:matchMedia("(prefers-reduced-motion: reduce)").matches}))d.setAttribute("data-intro","")}catch(e){}})()`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
