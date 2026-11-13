@@ -307,6 +307,7 @@ export function PulsoSkin({
               {children ? <SkinPage palette={PAGE}>{children}</SkinPage> : (
               <SkinGrid
                 skin="pulso"
+                palette={PAGE}
                 ctx={ctx}
                 grid={grid}
                 // nada em branco: com menos de 3 campanhas no período, os cards que sobrariam vazios saem

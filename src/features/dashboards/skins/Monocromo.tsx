@@ -255,6 +255,7 @@ export function MonocromoSkin({
             {children ? <SkinPage palette={CHART} className="mt-5">{children}</SkinPage> : (
             <SkinGrid
               skin="monocromo"
+              palette={CHART}
               ctx={ctx}
               grid={grid}
               // nada em branco: sem anúncio no período, o melhor criativo sai

@@ -244,6 +244,7 @@ export function LavandaSkin({
         {children ? <SkinPage palette={PAGE}>{children}</SkinPage> : (
         <SkinGrid
           skin="lavanda"
+          palette={PAGE}
           ctx={ctx}
           grid={grid}
           // nada em branco: sem campanhas no período (só GA4 ou orgânico), a lista e os filtros dela saem

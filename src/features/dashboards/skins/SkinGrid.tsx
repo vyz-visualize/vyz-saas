@@ -11,6 +11,7 @@ import { kindOf, parseMetricCardId, type PageGrid } from "../layout/model";
 import type { WidgetContext } from "../widgets/Widgets";
 import type { SkinId } from "@/features/templates/types";
 import { isSkinCard, SKIN_BLOCKS, skinGrid, withoutBlocks } from "./blocks";
+import { themeVars, type SkinPalette } from "./bklit-blocks";
 
 export type SkinGridControl = {
   items: PageGrid;
@@ -29,6 +30,7 @@ export function SkinGrid({
   ctx,
   grid,
   hide = [],
+  palette,
 }: {
   skin: SkinId;
   nodes: Record<string, ReactNode>;
@@ -36,6 +38,12 @@ export function SkinGrid({
   grid?: SkinGridControl;
   /** Blocos sem nada para mostrar neste dashboard: saem da tela e o vizinho ocupa o espaço (no Personalizar, ficam). */
   hide?: readonly string[];
+  /**
+   * Cores do visual para a grade e o Personalizar (cabeçalhos dos blocos, barra e bandeja), nos
+   * visuais que não trocam as cores da tela toda (Lavanda, Pulso, Monocromo). Sem isso, valem as
+   * do contêiner (Noturno, Areia, Fachada já declaram as delas).
+   */
+  palette?: SkinPalette;
 }) {
   const saved = grid?.items ?? skinGrid(skin);
   const items = grid?.editing ? saved : withoutBlocks(saved, hide);
@@ -59,7 +67,7 @@ export function SkinGrid({
         ),
       };
   }
-  return (
+  const canvas = (
     <GridCanvas
       items={items}
       blocks={blocks}
@@ -75,4 +83,5 @@ export function SkinGrid({
       }
     />
   );
+  return palette ? <div style={themeVars(palette)}>{canvas}</div> : canvas;
 }

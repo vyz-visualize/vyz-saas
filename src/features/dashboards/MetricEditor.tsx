@@ -246,6 +246,8 @@ type EditorState = ReturnType<typeof useMetricEditorState>;
 
 // ---- faixa do topo --------------------------------------------------------------------------------
 
+const BAR_BUTTON = "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control border border-line bg-card px-3 text-[13px] font-medium whitespace-nowrap text-fg outline-none transition-colors hover:border-fg-2 focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50";
+
 export function MetricEditBar({ state }: { state: EditorState }) {
   const { input, section, max, columns, cancel } = state;
   const { metrics, visibleKpis, kpiPlace, noKpis, goToCards } = input;
@@ -280,19 +282,19 @@ export function MetricEditBar({ state }: { state: EditorState }) {
       )}
       <div className="flex shrink-0 flex-wrap gap-2">
         {input.align && section !== "columns" && (
-          <button type="button" onClick={input.align} disabled={metrics.pending} title="Fecha as fileiras e iguala as alturas, sem trocar a ordem dos blocos" className={`${btn.ghost} h-9 border border-accent/60 text-[13px] whitespace-nowrap`}>
+          <button type="button" onClick={input.align} disabled={metrics.pending} title="Fecha as fileiras e iguala as alturas, sem trocar a ordem dos blocos" className={BAR_BUTTON}>
             <LayoutGrid size={15} aria-hidden /> Alinhar grade
           </button>
         )}
         {input.settingsHref && (
-          <Link href={input.settingsHref} className={`${btn.ghost} h-9 border border-line text-[13px] whitespace-nowrap`}>
+          <Link href={input.settingsHref} className={BAR_BUTTON}>
             <Settings2 size={15} aria-hidden /> Nome, contas e metas
           </Link>
         )}
-        <button type="button" onClick={metrics.restore} disabled={metrics.pending} className={`${btn.ghost} h-9 border border-line text-[13px] whitespace-nowrap`}>
+        <button type="button" onClick={metrics.restore} disabled={metrics.pending} className={BAR_BUTTON}>
           Restaurar padrão
         </button>
-        <button type="button" onClick={cancel} disabled={metrics.pending} className={`${btn.ghost} h-9 border border-line text-[13px] whitespace-nowrap`}>
+        <button type="button" onClick={cancel} disabled={metrics.pending} className={BAR_BUTTON}>
           Cancelar
         </button>
         <button type="button" onClick={() => void metrics.save()} disabled={metrics.pending} className={`${btn.small} h-9 whitespace-nowrap`}>
@@ -576,7 +578,7 @@ export function MetricTray({ state }: { state: EditorState }) {
       <Modal open={guard.open} onClose={guard.keep} title="Sair sem salvar?">
         <p className="text-[14px] text-fg-2">As mudanças nas métricas ainda não foram salvas. Se sair agora, elas se perdem.</p>
         <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <button type="button" onClick={guard.keep} className={`${btn.ghost} h-9 border border-line text-[13px] whitespace-nowrap`}>
+          <button type="button" onClick={guard.keep} className={BAR_BUTTON}>
             Continuar editando
           </button>
           <button type="button" onClick={guard.discard} className={`${btn.small} h-9 whitespace-nowrap`}>
