@@ -14,7 +14,8 @@
     "db:types": "tsx scripts/db/gen-types.ts",
     "db:catalog": "tsx scripts/db/sync-catalog.ts",
     "check:google-ads": "tsx --conditions=react-server --env-file=.env.local scripts/check/google-ads-queries.mts",
-    "admin:delete-account": "tsx scripts/admin/delete-account-data.ts"
+    "admin:delete-account": "tsx scripts/admin/delete-account-data.ts",
+    "mmm:backfill": "tsx scripts/mmm/backfill.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
