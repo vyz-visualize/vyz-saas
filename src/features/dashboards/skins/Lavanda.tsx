@@ -156,6 +156,7 @@ export function LavandaSkin({
             {days.length}
           </span>
           <nav
+            data-tour="abas"
             className="flex min-w-0 max-w-full flex-nowrap gap-1 overflow-x-auto rounded-full p-1 [scrollbar-width:none] [&>*]:shrink-0 [&>*]:whitespace-nowrap"
             style={{ background: C.dark }}
           >

@@ -31,12 +31,14 @@ const meta: DashboardTemplate = { ...vyz, sources: ["meta", "instagram", "facebo
 const google: DashboardTemplate = { ...vyz, sources: ["google", "ga4"] };
 
 describe("passos do primeiro acesso", () => {
-  it("boas-vindas → projeto → conectar → contas e modelo, e só volta para trás", () => {
+  it("boas-vindas → projeto → conectar → contas → modelo, e só volta para trás", () => {
     expect(stepIndex("welcome")).toBe(0);
     expect(stepIndex("project")).toBe(1);
     expect(stepIndex("connect")).toBe(2);
     expect(stepIndex("setup")).toBe(3);
-    expect(stepIndex("done")).toBe(4);
+    expect(stepIndex("model")).toBe(4);
+    expect(stepIndex("done")).toBe(5);
+    expect(canGoBackTo("model", "setup")).toBe(true);
     expect(canGoBackTo("connect", "welcome")).toBe(true);
     expect(canGoBackTo("connect", "project")).toBe(true);
     expect(canGoBackTo("connect", "connect")).toBe(false);
@@ -45,7 +47,8 @@ describe("passos do primeiro acesso", () => {
   });
 
   it("grava no enum antigo do banco, sem migration, e lê de volta", () => {
-    expect(STEP_TO_DB).toEqual({ welcome: "business", project: "platforms", connect: "connect", setup: "dashboard" });
+    // Contas e Modelo dividem o "dashboard" do enum: o Modelo é só da tela (recarregar volta para Contas)
+    expect(STEP_TO_DB).toEqual({ welcome: "business", project: "platforms", connect: "connect", setup: "dashboard", model: "dashboard" });
     expect(activeStepOf("business")).toBe("welcome");
     expect(activeStepOf("platforms")).toBe("project");
     expect(activeStepOf("connect")).toBe("connect");
@@ -54,10 +57,10 @@ describe("passos do primeiro acesso", () => {
     expect(activeStepOf("done")).toBe("welcome");
   });
 
-  it('a barra conta só os 3 passos de ação (as boas-vindas prometem "três passos") e completa ao montar', () => {
-    expect(ACTION_STEPS).toEqual(["project", "connect", "setup"]);
-    expect((["welcome", "project", "connect", "setup"] as const).map(actionNumber)).toEqual([null, 1, 2, 3]);
-    expect((["welcome", "project", "connect", "setup"] as const).map(progressOf)).toEqual([0, 0.25, 0.5, 0.75]);
+  it('a barra conta só os 4 passos de ação (as boas-vindas prometem "quatro passos") e completa ao montar', () => {
+    expect(ACTION_STEPS).toEqual(["project", "connect", "setup", "model"]);
+    expect((["welcome", "project", "connect", "setup", "model"] as const).map(actionNumber)).toEqual([null, 1, 2, 3, 4]);
+    expect((["welcome", "project", "connect", "setup", "model"] as const).map(progressOf)).toEqual([0, 0.2, 0.4, 0.6, 0.8]);
     expect(progressOf("building")).toBe(1);
   });
 

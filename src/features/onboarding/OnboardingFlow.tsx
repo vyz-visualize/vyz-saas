@@ -17,10 +17,10 @@ import { signOut } from "@/server/auth/actions";
 import type { ActionResult } from "@/server/supabase/errors";
 import { realFlowApi, type FlowApi } from "./api";
 import { ConnectStep } from "./ConnectStep";
-import { BuildingView, ProjectStep, SetupStep, WelcomeStep } from "./FlowSteps";
+import { AccountsStep, BuildingView, ModelStep, ProjectStep, WelcomeStep } from "./FlowSteps";
 import { StageVisual, type StageInfo } from "./stage/StageVisual";
 import { Trail, type TrailSummaries } from "./stage/Trail";
-import { useMascotTransition } from "./stage/useMascotTransition";
+import { useStepTransition } from "./stage/useStepTransition";
 import { ONBOARDING_STEPS, stepIndex, type ActiveStep } from "./steps";
 import type { OnboardingState } from "./types";
 import { LAST_STEP_KEY, NUDGE_SESSION_KEY } from "./guides";
@@ -63,7 +63,7 @@ type FlowScreenProps = {
   loading?: boolean;
   stage: StageInfo;
   summaries: TrailSummaries;
-  transition: ReturnType<typeof useMascotTransition>;
+  transition: ReturnType<typeof useStepTransition>;
   content: React.RefObject<HTMLDivElement | null>;
   children: ReactNode;
 };
@@ -116,7 +116,6 @@ function FlowScreen({ step, building, loading = false, stage, summaries, transit
           </div>
         </div>
       </div>
-      {transition.overlay}
     </dialog>
   );
 }
@@ -134,7 +133,7 @@ type OnboardingFlowProps = {
 export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = realFlowApi }: OnboardingFlowProps) {
   const { step } = state;
   const content = useRef<HTMLDivElement>(null);
-  const transition = useMascotTransition(content);
+  const transition = useStepTransition(content);
   const skip = useStepAction();
   const back = useStepAction();
   const [building, setBuilding] = useState(false);
@@ -146,11 +145,16 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
   // o segmento: o salvo ou o primeiro disponível (o mesmo que o passo 1 já mostra marcado)
   const [segmentId, setSegmentId] = useState<string | null>(state.businessTypeId ?? BUSINESS_TYPES.find((b) => b.available)?.id ?? null);
   const [templateId, setTemplateId] = useState<string | null>(null);
-  useStepTracking(step);
+  // 04 Modelo: só da tela (o banco grava Contas e Modelo como o mesmo passo); recarregar volta para Contas
+  const [onModel, setOnModel] = useState(false);
+  // quantas contas a pessoa marcou nas Contas (o resumo da trilha não espera o servidor)
+  const [marked, setMarked] = useState<number | null>(null);
+  const shown: ActiveStep = step === "setup" && onModel ? "model" : step;
+  useStepTracking(shown);
 
-  // o próximo passo chegou (ou a montagem começou): o mascote abre a tela
+  // o próximo passo chegou (ou a montagem começou): a tela abre
   const { settle } = transition;
-  useEffect(() => settle(), [step, building, settle]);
+  useEffect(() => settle(), [step, building, onModel, settle]);
 
   // cada ação que troca de passo passa pela transição; a ação roda junto, sem esperar a animação
   const { begin } = transition;
@@ -177,8 +181,18 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
     };
   }, [baseApi, begin, settle]);
 
-  const at = stepIndex(step);
+  const at = stepIndex(shown);
   const prev = at > 0 ? ONBOARDING_STEPS[at - 1] : null;
+  // Contas ↔ Modelo trocam só na tela; o resto passa pelo servidor
+  const toModel = (enabled: number) => {
+    setMarked(enabled);
+    begin(1);
+    setOnModel(true);
+  };
+  const backToAccounts = () => {
+    begin(-1);
+    setOnModel(false);
+  };
   const nav: StepNav = {
     onSkip: () => {
       track("onboarding_skip", { step });
@@ -188,7 +202,7 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
       skip.run(() => api.skip(step));
     },
     skipping: skip.pending,
-    onBack: prev ? () => back.run(() => api.back(prev)) : undefined,
+    onBack: shown === "model" ? backToAccounts : prev ? () => back.run(() => api.back(prev)) : undefined,
     backing: back.pending,
     error: skip.error ?? back.error ?? buildError,
   };
@@ -210,7 +224,7 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
       return;
     }
     await new Promise((r) => window.setTimeout(r, Math.max(0, BUILDING_MS - (Date.now() - started))));
-    track("onboarding_step_complete", { step: "setup" });
+    track("onboarding_step_complete", { step: "model" });
     try {
       sessionStorage.removeItem(LAST_STEP_KEY);
       // o lembrete de conexão não aparece na mesma sessão do primeiro acesso: só na próxima visita
@@ -226,7 +240,7 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
 
   // o passo que a tela mostra: o do servidor ou, enquanto ele não chega, o esqueleto do próximo
   const waiting = !!pending && pending !== step && !building;
-  const view = waiting ? pending : step;
+  const view = waiting ? pending : shown;
   const connect = state.connect;
   const connected = connect ? CORE_PROVIDER_IDS.filter((p) => connect.platforms[p].connected) : [];
   const projectName = step === "welcome" ? "" : step === "project" ? typedName : (state.project?.name ?? typedName);
@@ -235,9 +249,11 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
   const summaries: TrailSummaries = {
     project: state.project?.name ? `${state.project.name}${businessType(state.businessTypeId)?.name ? ` · ${businessType(state.businessTypeId)?.name}` : ""}` : undefined,
     connect: connect && connected.length ? connectSummary(connect, connected) : undefined,
+    setup: marked ? `${marked} ${marked === 1 ? "conta" : "contas"} no dashboard` : connect ? enabledSummary(connect) : undefined,
+    model: templateId ? anyDashboardTemplate(templateId)?.name : undefined,
   };
   const stage: StageInfo = {
-    step,
+    step: shown,
     building,
     client,
     segment,
@@ -258,8 +274,10 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
         <ProjectStep project={state.project} businessTypeId={state.businessTypeId} api={api} nav={nav} onNameChange={setTypedName} onSegmentChange={setSegmentId} />
       ) : step === "connect" && state.connect ? (
         <ConnectStep state={state.connect} result={result} api={api} nav={nav} showTestBadges={state.showTestBadges} />
+      ) : shown === "model" ? (
+        <ModelStep businessTypeId={state.businessTypeId} tier={state.tier} nav={nav} onBuild={onBuild} client={client} suggestion={state.suggestion} templateId={templateId} onTemplateChange={setTemplateId} />
       ) : step === "setup" && state.connect ? (
-        <SetupStep state={state.connect} businessTypeId={state.businessTypeId} tier={state.tier} now={now} timeZone={timeZone} api={api} nav={nav} onBuild={onBuild} client={client} suggestion={state.suggestion} onTemplateChange={setTemplateId} />
+        <AccountsStep state={state.connect} now={now} timeZone={timeZone} api={api} nav={nav} onContinue={toModel} />
       ) : null}
     </FlowScreen>
   );
@@ -282,6 +300,15 @@ function StepSkeleton() {
 }
 
 const isCore = (p: string): p is (typeof CORE_PROVIDER_IDS)[number] => (CORE_PROVIDER_IDS as readonly string[]).includes(p);
+
+/** "3 contas no dashboard" (as ativas, de todas as plataformas e extras). */
+function enabledSummary(connect: ConnectState): string | undefined {
+  const n = CORE_PROVIDER_IDS.reduce((a, p) => {
+    const s = connect.platforms[p];
+    return a + s.accounts.filter((x) => x.isEnabled).length + (s.extras ?? []).reduce((b, e) => b + e.accounts.filter((x) => x.isEnabled).length, 0);
+  }, 0);
+  return n ? `${n} ${n === 1 ? "conta" : "contas"} no dashboard` : undefined;
+}
 
 /** "Meta Ads ✓ · 2 contas" (as contas que o login trouxe). */
 function connectSummary(connect: ConnectState, connected: readonly (typeof CORE_PROVIDER_IDS)[number][]): string {

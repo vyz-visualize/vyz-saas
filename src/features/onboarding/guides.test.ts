@@ -29,7 +29,7 @@ describe("tour do primeiro dashboard", () => {
   });
 
   it("tem os 4 pontos pedidos, na ordem", () => {
-    expect(TOUR_STEPS.map((s) => s.id)).toEqual(["periodo", "metricas", "criativos", "compartilhar"]);
+    expect(TOUR_STEPS.map((s) => s.id)).toEqual(["periodo", "metricas", "abas", "filtrar", "editar", "compartilhar", "pergunte"]);
   });
 
   it("acha só o alvo visível, e pelo texto quando pedido", () => {

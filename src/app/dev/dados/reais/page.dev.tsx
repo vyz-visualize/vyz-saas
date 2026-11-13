@@ -59,6 +59,7 @@ async function Real({ searchParams }: { searchParams: Promise<Record<string, str
       dataset={dataset}
       linkedPlatforms={[...new Set(warehouse.accounts.map((a) => a.platform))] as never}
       page={q.pagina}
+      tour={q.tour === "1"}
     />
   );
 }

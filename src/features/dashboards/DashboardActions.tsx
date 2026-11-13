@@ -106,7 +106,7 @@ export function DashboardActions({ dashboard, period, pages, onExport, sampleOnl
   const shown = error ?? exporter.error;
   return (
     <div ref={rootRef} className="relative flex shrink-0 items-center print:hidden" style={{ gap: GAP }}>
-      <Link ref={itemRef(0)} href={editHref} className={`${action} ${show(0)}`}>
+      <Link ref={itemRef(0)} href={editHref} data-tour="editar" className={`${action} ${show(0)}`}>
         <Pencil size={15} aria-hidden /> Editar
       </Link>
       <button ref={itemRef(1)} type="button" data-tour="compartilhar" onClick={openShare} className={`${action} ${show(1)}`}>

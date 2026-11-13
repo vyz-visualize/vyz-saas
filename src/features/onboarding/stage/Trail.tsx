@@ -1,6 +1,6 @@
 "use client";
 
-// O indicador do topo: uma trilha que se preenche entre os 3 passos, com o atual em
+// O indicador do topo: uma trilha que se preenche entre os 4 passos, com o atual em
 // destaque e, nos concluídos, o que foi feito ("Loja da Ana · E-commerce", "Meta Ads ✓ ·
 // 2 contas"). No celular, uma barra compacta: "02 Conectar" e o resumo do passo anterior.
 
@@ -9,6 +9,9 @@ import { ACTION_STEPS, actionNumber, progressOf, STEP_LABEL, type ActiveStep } f
 export type TrailSummaries = Partial<Record<(typeof ACTION_STEPS)[number], string>>;
 
 const pad = (n: number) => String(n).padStart(2, "0");
+const N = ACTION_STEPS.length;
+/** As colunas da trilha (classes fixas, para o Tailwind gerar). */
+const COLS: Record<number, string> = { 3: "sm:grid-cols-3", 4: "sm:grid-cols-4", 5: "sm:grid-cols-5" };
 
 export function Trail({ step, building, summaries }: { step: ActiveStep; building: boolean; summaries: TrailSummaries }) {
   const number = actionNumber(step);
@@ -38,12 +41,13 @@ export function Trail({ step, building, summaries }: { step: ActiveStep; buildin
         <div className="h-full rounded-full bg-accent transition-[width] duration-500 ease-brand motion-reduce:transition-none" style={{ width: `${progress}%` }} />
       </div>
       {/* telas maiores: a trilha conectada */}
-      <ol className="relative mt-1 hidden grid-cols-3 gap-3 sm:grid" aria-hidden={false}>
-        <span aria-hidden className="absolute top-[15px] right-[calc(100%/6)] left-[calc(100%/6)] h-[3px] rounded-full bg-line" />
+      {/* a linha vai do centro do primeiro ao centro do último passo */}
+      <ol className={`relative mt-1 hidden gap-3 sm:grid ${COLS[N]}`} aria-hidden={false}>
+        <span aria-hidden className="absolute top-[15px] h-[3px] rounded-full bg-line" style={{ left: `calc(100% / ${2 * N})`, right: `calc(100% / ${2 * N})` }} />
         <span
           aria-hidden
-          className="absolute top-[15px] left-[calc(100%/6)] h-[3px] rounded-full bg-accent transition-[width] duration-500 ease-brand motion-reduce:transition-none"
-          style={{ width: `calc((100% * 2 / 3) * ${Math.min(1, Math.max(0, (current - 1) / 2))})` }}
+          className="absolute top-[15px] h-[3px] rounded-full bg-accent transition-[width] duration-500 ease-brand motion-reduce:transition-none"
+          style={{ left: `calc(100% / ${2 * N})`, width: `calc((100% * ${N - 1} / ${N}) * ${Math.min(1, Math.max(0, (current - 1) / (N - 1)))})` }}
         />
         {ACTION_STEPS.map((s, i) => {
           const on = i + 1 === current;

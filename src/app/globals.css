@@ -464,14 +464,14 @@ html.lenis body {
 .fa-float {
   animation: fa-float 6s ease-in-out infinite;
 }
-/* jornada das boas-vindas: cada painel acende um terço do ciclo, um depois do outro */
+/* jornada das boas-vindas: cada painel acende um quarto do ciclo, um depois do outro */
 @keyframes fa-lit {
   0%,
-  30% {
+  22% {
     border-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
-  38%,
+  28%,
   100% {
     border-color: var(--line);
     background: transparent;
@@ -479,11 +479,11 @@ html.lenis body {
 }
 @keyframes fa-num {
   0%,
-  30% {
+  22% {
     color: var(--accent);
     -webkit-text-stroke-color: var(--accent);
   }
-  38%,
+  28%,
   100% {
     color: transparent;
     -webkit-text-stroke-color: color-mix(in srgb, var(--fg) 45%, transparent);
@@ -532,7 +532,7 @@ html.lenis body {
   }
 }
 .fa-journey > li {
-  --fa-cycle: 7.5s;
+  --fa-cycle: 10s;
   animation: fa-lit var(--fa-cycle) ease-in-out infinite;
   animation-delay: var(--fa-d, 0s);
 }
@@ -575,7 +575,7 @@ html.lenis body {
   .fa-confetti {
     display: none;
   }
-  /* parado: os três painéis acesos, com o número cheio */
+  /* parado: os quatro painéis acesos, com o número cheio */
   .fa-journey > li {
     border-color: color-mix(in srgb, var(--accent) 60%, transparent);
   }

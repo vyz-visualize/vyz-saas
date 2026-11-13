@@ -1,6 +1,6 @@
 "use client";
 
-// Boas-vindas: os 3 passos como uma jornada, não uma lista. Cada painel tem o número grande,
+// Boas-vindas: os 4 passos como uma jornada, não uma lista. Cada painel tem o número grande,
 // o tempo estimado e uma mini-animação do que acontece nele; acendem um depois do outro em
 // loop suave (CSS: .fa-journey em globals.css). Com "reduzir movimento", todos acesos e parados.
 
@@ -40,6 +40,26 @@ function ConnectMini() {
   );
 }
 
+function AccountsMini() {
+  const rows = ["Loja · Meta Ads", "Instagram", "Página do Facebook"];
+  return (
+    <ul className="h-[74px] space-y-1.5 rounded-[10px] border border-line bg-bg/60 p-2">
+      {rows.map((r, i) => (
+        <li key={r} className="flex items-center gap-1.5 text-[10.5px] text-fg">
+          <span className={`fa-chip grid size-3.5 shrink-0 place-items-center rounded-[4px] ${i < 2 ? "bg-accent text-on-accent" : "border border-line"}`} style={{ animationDelay: `calc(var(--fa-d, 0s) + ${i * 0.25}s)` }}>
+            {i < 2 && (
+              <svg viewBox="0 0 12 12" className="size-2.5" aria-hidden>
+                <path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </span>
+          <span className="truncate">{r}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function BuildMini() {
   const bars = [46, 70, 38, 88, 60, 74];
   return (
@@ -61,12 +81,13 @@ function BuildMini() {
 const STEPS: { n: string; title: string; text: string; time: string; art: ReactNode }[] = [
   { n: "01", title: "Projeto", text: "O nome do cliente e o segmento.", time: "30 s", art: <ProjectMini /> },
   { n: "02", title: "Conectar", text: "O login do Meta Ads e do Google Ads.", time: "1 min", art: <ConnectMini /> },
-  { n: "03", title: "Contas e modelo", text: "As contas e o visual do dashboard.", time: "30 s", art: <BuildMini /> },
+  { n: "03", title: "Contas", text: "As contas, o Instagram e a Página que entram.", time: "20 s", art: <AccountsMini /> },
+  { n: "04", title: "Modelo", text: "O visual do dashboard, sugerido pelo objetivo.", time: "20 s", art: <BuildMini /> },
 ];
 
 export function Journey() {
   return (
-    <ol className="fa-journey grid gap-3 sm:grid-cols-3" aria-label="Os 3 passos" data-journey>
+    <ol className="fa-journey grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Os 4 passos" data-journey>
       {STEPS.map((s, i) => (
         <li key={s.n} className="flex flex-col gap-2.5 rounded-card border border-line p-3.5" style={{ ["--fa-d" as string]: `${i * 2.5}s` } as CSSProperties}>
           <div className="flex items-start justify-between gap-2">

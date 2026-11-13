@@ -20,6 +20,7 @@ export function AgentBar() {
     <button
       type="button"
       onClick={() => setOpen(true)}
+      data-tour="pergunte"
       aria-keyshortcuts="Meta+K Control+K"
       className="inline-flex h-9 w-56 items-center gap-2 rounded-control border border-line bg-field pr-2 pl-2.5 text-left text-[13px] text-fg-2 outline-none transition-colors hover:border-fg-2/60 focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent"
     >
@@ -62,6 +63,7 @@ export function AgentFab() {
             if (!wasDrag()) setOpen(true);
           }}
           aria-label="Abrir o assistente VYZ"
+          data-tour="pergunte"
           className={`group relative inline-flex touch-none items-center justify-center rounded-full outline-none select-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--panel)] ${dragging ? "cursor-grabbing" : "cursor-pointer"}`}
           style={{ width: size, height: size }}
         >

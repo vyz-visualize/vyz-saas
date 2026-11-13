@@ -245,7 +245,7 @@ export function PulsoSkin({
             </span>
             <span className="h-px w-10 shrink-0 bg-white/20" />
             {/* uma aba por página: com muitas, a lista rola dentro da barra (que nunca passa da altura da tela) */}
-            <nav aria-label="Páginas" className="flex min-h-0 w-full flex-1 flex-col items-center gap-3 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <nav aria-label="Páginas" data-tour="abas" className="flex min-h-0 w-full flex-1 flex-col items-center gap-3 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {pages.map((p, i) => {
               const Icon = ICONS[i % ICONS.length];
               return (

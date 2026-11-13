@@ -44,6 +44,7 @@ const OK: ActionResult = { ok: true, data: undefined };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type Mock = { step: ActiveStep; project: { id: string; name: string; named: boolean } | null; businessTypeId: string | null; connected: ProviderId[]; enabled: Record<string, string[]> };
+const MOCK_CHANGED = "vyz:mock-changed";
 const START: Mock = { step: "welcome", project: null, businessTypeId: null, connected: [], enabled: {} };
 
 function load(): Mock {
@@ -132,6 +133,8 @@ function MockAccountsPanel({ group, onSelection }: AccountsPanelProps) {
       save: async () => {
         const m = load();
         save({ ...m, enabled: { ...m.enabled, [key]: picked } });
+        // como o servidor (refresh depois de ativar): a tela relê as contas salvas
+        window.dispatchEvent(new Event(MOCK_CHANGED));
         return true;
       },
     });
@@ -165,6 +168,13 @@ function Flow() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- lê o estado imitado do sessionStorage uma vez
     setMock(next);
   }, [params]);
+
+  // as contas salvas pelo seletor voltam para o estado (o servidor de verdade redesenha a página)
+  useEffect(() => {
+    const on = () => setMock(load());
+    window.addEventListener(MOCK_CHANGED, on);
+    return () => window.removeEventListener(MOCK_CHANGED, on);
+  }, []);
 
   const update = useCallback((patch: Partial<Mock>) => {
     const m = { ...load(), ...patch };

@@ -1,5 +1,5 @@
 // Regras do primeiro acesso (/comecar): boas-vindas → projeto → conectar →
-// contas e modelo → "Montando seu dashboard…" → o dashboard abre com o tour.
+// contas → modelo → "Montando seu dashboard…" → o dashboard abre com o tour.
 // Um passo por vez, em modal, e "Pular por agora" em todos (nada bloqueia).
 // Puro: o servidor (actions) e a tela usam as mesmas funções.
 
@@ -11,21 +11,29 @@ import { PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
 import type { OnboardingStep } from "@/features/workspace/session";
 
-/** Passos em ordem ("done" fica de fora: é o fim). O 5º, "montando", é só a transição para o dashboard. */
-export const ONBOARDING_STEPS = ["welcome", "project", "connect", "setup"] as const;
+/**
+ * Passos em ordem ("done" fica de fora: é o fim). "setup" é o de Contas; "model", o de Modelo.
+ * Depois deles, "montando" é só a transição para o dashboard.
+ */
+export const ONBOARDING_STEPS = ["welcome", "project", "connect", "setup", "model"] as const;
 export type ActiveStep = (typeof ONBOARDING_STEPS)[number];
 /** Passos que o banco grava (o enum antigo, sem migration). */
 export type SavedStep = Exclude<OnboardingStep, "done">;
 
-/** Passo da tela → valor gravado em workspaces.onboarding_step. */
-export const STEP_TO_DB: Record<ActiveStep, SavedStep> = { welcome: "business", project: "platforms", connect: "connect", setup: "dashboard" };
+/**
+ * Passo da tela → valor gravado em workspaces.onboarding_step. Contas e Modelo dividem o
+ * "dashboard" do enum (sem migration): o Modelo é só da tela; recarregar volta para Contas,
+ * com as contas já salvas.
+ */
+export const STEP_TO_DB: Record<ActiveStep, SavedStep> = { welcome: "business", project: "platforms", connect: "connect", setup: "dashboard", model: "dashboard" };
 const DB_TO_STEP: Record<SavedStep, ActiveStep> = { business: "welcome", platforms: "project", connect: "connect", dashboard: "setup" };
 
 export const STEP_LABEL: Record<ActiveStep, string> = {
   welcome: "Boas-vindas",
   project: "Projeto",
   connect: "Conectar",
-  setup: "Contas e modelo",
+  setup: "Contas",
+  model: "Modelo",
 };
 
 /** Passo do banco → passo da tela (valor desconhecido: o começo). */
@@ -44,12 +52,12 @@ export function canGoBackTo(current: ActiveStep, target: unknown): target is Act
 }
 
 /**
- * Os passos de ação, os que a barra conta ("Passo 1 de 3"): as boas-vindas só
- * apresentam e prometem "três passos", então ficam fora da contagem.
+ * Os passos de ação, os que a barra conta ("Passo 1 de 4"): as boas-vindas só
+ * apresentam e prometem "quatro passos", então ficam fora da contagem.
  */
-export const ACTION_STEPS = ["project", "connect", "setup"] as const satisfies readonly ActiveStep[];
+export const ACTION_STEPS = ["project", "connect", "setup", "model"] as const satisfies readonly ActiveStep[];
 
-/** Número do passo de ação (1 a 3); as boas-vindas não têm número. */
+/** Número do passo de ação (1 a 4); as boas-vindas não têm número. */
 export function actionNumber(step: ActiveStep): number | null {
   const i = (ACTION_STEPS as readonly string[]).indexOf(step);
   return i < 0 ? null : i + 1;

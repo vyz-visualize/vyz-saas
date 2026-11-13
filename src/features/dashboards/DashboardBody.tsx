@@ -480,6 +480,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
         <div className={fit ? "flex flex-col gap-3 @[1000px]:flex-row @[1000px]:items-end" : "flex flex-col gap-3"}>
           <div className={fit ? "min-w-0 @[1000px]:flex-1" : "min-w-0"}>
             <OverflowTabs
+              tourId="abas"
               label="Páginas do dashboard"
               value={active}
               onChange={(p) => {

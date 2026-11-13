@@ -90,11 +90,14 @@ export const nudgeText = (provider: ProviderId) => `Você ainda não conectou o 
  * visível na tela fica de fora.
  */
 export const TOUR_STEPS: readonly { id: string; selector: string; label?: string; title: string; text: string }[] = [
-  { id: "periodo", selector: '[data-tour="periodo"]', title: "Período", text: "Troque o período aqui: o dashboard inteiro acompanha, e os últimos 3 dias aparecem como em maturação." },
-  { id: "metricas", selector: "[data-kpi-row]", title: "Métricas principais", text: "Os números que decidem o mês ficam no topo. Clique numa campanha e eles filtram junto." },
-  { id: "criativos", selector: '[role="tab"], [data-page-tab]', label: "Criativos", title: "Criativos", text: "Veja quais anúncios vendem mais, lado a lado, com a prévia de cada um." },
+  { id: "periodo", selector: '[data-tour="periodo"]', title: "Período e comparação", text: "Troque o período aqui e ligue o Comparar: cada número mostra quanto mudou contra o período anterior." },
+  { id: "metricas", selector: '[data-tour="personalizar"], [data-kpi-row]', title: "Indicadores principais", text: "Os números que decidem o mês ficam no topo. Em Personalizar métricas você escolhe quais aparecem e em que ordem." },
+  { id: "abas", selector: '[data-tour="abas"]', title: "Abas do dashboard", text: "Meta Ads, Criativos, Funil e as outras abas aprofundam cada parte. O cliente vê as mesmas no link." },
+  { id: "filtrar", selector: "[data-filter-item]", title: "Clique para filtrar", text: "Clique numa campanha, num anúncio ou numa plataforma e o dashboard inteiro filtra por ela. Clique de novo para limpar." },
+  { id: "editar", selector: '[data-tour="editar"], [aria-label="Mais ações"]', title: "Editar", text: "Troque contas, páginas, metas e a marca do dashboard. Em telas menores, fica no menu ⋯." },
   // sem espaço (celular), o botão vai para o menu "Mais ações": o tour aponta para o menu
-  { id: "compartilhar", selector: '[data-tour="compartilhar"], [aria-label="Mais ações"]', title: "Compartilhar", text: "Mande ao cliente um link só de leitura ou o PDF. Em telas menores, ele fica no menu ⋯." },
+  { id: "compartilhar", selector: '[data-tour="compartilhar"], [aria-label="Mais ações"]', title: "Compartilhar e exportar", text: "Mande ao cliente um link só de leitura ou exporte o PDF. Em telas menores, ficam no menu ⋯." },
+  { id: "pergunte", selector: '[data-tour="pergunte"]', title: "Pergunte ao VYZ", text: "Tire dúvidas sobre os números a qualquer hora: clique aqui ou use ⌘K (Ctrl K no Windows)." },
 ];
 
 /** O primeiro elemento visível de um passo do tour (ou nenhum). */

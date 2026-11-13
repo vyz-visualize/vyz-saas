@@ -23,7 +23,7 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 
 export function CustomizeButton({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-control border border-line px-3 text-[13.5px] font-medium whitespace-nowrap outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent print:hidden">
+    <button type="button" onClick={onClick} data-tour="personalizar" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-control border border-line px-3 text-[13.5px] font-medium whitespace-nowrap outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent print:hidden">
       <SlidersHorizontal size={15} aria-hidden /> Personalizar métricas
     </button>
   );

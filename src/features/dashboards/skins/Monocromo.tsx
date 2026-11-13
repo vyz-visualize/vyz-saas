@@ -160,7 +160,7 @@ export function MonocromoSkin({
               </span>
               {client}
             </p>
-            <nav className="mt-14 space-y-1.5">
+            <nav data-tour="abas" className="mt-14 space-y-1.5">
               {pages.map((p, i) => {
                 const Icon = ICONS[i % ICONS.length];
                 const on = p === active;

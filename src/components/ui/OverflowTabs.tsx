@@ -9,13 +9,13 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from "./Menu";
 
 const GAP = 4;
 
-export function OverflowTabs<T extends string>({ items, value, onChange, label }: { items: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
+export function OverflowTabs<T extends string>({ items, value, onChange, label, tourId }: { items: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string; /** Alvo do tour do primeiro dashboard (data-tour). */ tourId?: string }) {
   const active = items.findIndex((it) => it.value === value);
   const { rootRef, moreRef, itemRef, visible } = useFitItems({ count: items.length, gap: GAP, pinned: active });
   const hidden = items.filter((_, i) => !visible.includes(i));
 
   return (
-    <div ref={rootRef} className="relative flex items-stretch overflow-x-clip border-b border-line">
+    <div ref={rootRef} data-tour={tourId} className="relative flex items-stretch overflow-x-clip border-b border-line">
       <div role="tablist" aria-label={label} className="flex min-w-0 flex-1" style={{ gap: GAP }}>
         {items.map((it, i) => (
           <button

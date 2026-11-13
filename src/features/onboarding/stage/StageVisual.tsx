@@ -1,8 +1,8 @@
 "use client";
 
 // O palco: a prévia grande de cada passo, à esquerda (no celular, um banner no topo).
-// Boas-vindas: o resultado primeiro. Projeto: o cartão do cliente. Conectar: o VYZ ligado
-// às plataformas. Contas e modelo: o modelo escolhido, com o nome do cliente. Montando: a
+// Boas-vindas: o resultado primeiro. Projeto: o cartão do cliente. Conectar e Contas: o VYZ
+// ligado às plataformas. Modelo: o modelo escolhido, com o nome do cliente. Montando: a
 // prévia se montando.
 
 import { useSyncExternalStore } from "react";
@@ -118,8 +118,8 @@ function Visual({ info, compact }: { info: StageInfo; compact: boolean }) {
       </div>
     );
   if (step === "project") return <ClientCard client={client} segment={segment} compact={compact} />;
-  if (step === "connect") return <Hub connected={connected} justConnected={justConnected} compact={compact} />;
-  if (step === "setup" && template) return <SetupPreview template={template} client={client} compact={compact} />;
+  if (step === "connect" || step === "setup") return <Hub connected={connected} justConnected={step === "connect" ? justConnected : null} compact={compact} />;
+  if (step === "model" && template) return <SetupPreview template={template} client={client} compact={compact} />;
   return null;
 }
 
@@ -174,7 +174,7 @@ export function StageVisual({ info }: { info: StageInfo }) {
   const key = info.building ? "building" : info.step;
   const lg = useLg();
   // a prévia do modelo é pesada: desenha só a versão da tela atual (as outras são leves e trocam pelo CSS)
-  const heavy = key === "setup";
+  const heavy = key === "model";
   return (
     <div
       className="relative flex h-full min-h-0 items-center justify-center overflow-hidden px-5 py-5 lg:px-10"
