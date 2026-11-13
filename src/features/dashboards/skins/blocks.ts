@@ -86,6 +86,32 @@ export const SKIN_BLOCKS: Record<SkinId, SkinBlock[]> = {
   ],
 };
 
+/**
+ * Tira da grade os blocos sem nada para mostrar (com dados reais, nenhum bloco aparece vazio)
+ * e passa o espaço ao vizinho da mesma fileira: o da esquerda cresce para a direita; sem ele,
+ * o da direita cresce para a esquerda. Sem vizinho na fileira, a grade fecha o buraco por baixo.
+ * Não muda o layout salvo: é só o que a tela desenha.
+ */
+export function withoutBlocks(items: PageGrid, hidden: readonly string[]): PageGrid {
+  if (!hidden.length) return items;
+  let out = items.map((it) => ({ ...it }));
+  for (const id of hidden) {
+    const gone = out.find((it) => it.id === id);
+    if (!gone) continue;
+    out = out.filter((it) => it.id !== id);
+    // mesma fileira: cobre toda a altura do bloco que saiu
+    const sameRow = (it: (typeof out)[number]) => it.y <= gone.y && it.y + it.h >= gone.y + gone.h;
+    const left = out.find((it) => sameRow(it) && it.x + it.w === gone.x);
+    const right = out.find((it) => sameRow(it) && it.x === gone.x + gone.w);
+    if (left) left.w += gone.w;
+    else if (right) {
+      right.x = gone.x;
+      right.w += gone.w;
+    }
+  }
+  return out;
+}
+
 export const skinGrid = (skin: SkinId): PageGrid => SKIN_BLOCKS[skin].map(({ id, x, y, w, h }) => ({ id, x, y, w, h }));
 export const isSkinBlock = (skin: SkinId, id: string) => SKIN_BLOCKS[skin].some((s) => s.id === id);
 /** O bloco é um card (altura fixa no encaixe da tela)? */

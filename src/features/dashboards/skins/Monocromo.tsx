@@ -257,6 +257,8 @@ export function MonocromoSkin({
               skin="monocromo"
               ctx={ctx}
               grid={grid}
+              // nada em branco: sem anúncio no período, o melhor criativo sai
+              hide={creative ? [] : ["s-criativo"]}
               nodes={{
                 "s-gantt": (
                   <section className="min-w-0">

@@ -309,6 +309,8 @@ export function PulsoSkin({
                 skin="pulso"
                 ctx={ctx}
                 grid={grid}
+                // nada em branco: com menos de 3 campanhas no período, os cards que sobrariam vazios saem
+                hide={[0, 1, 2].filter((k) => !campaigns[k]).map((k) => `s-prog${k + 1}`)}
                 nodes={{
                   "s-visao": (
                     <section

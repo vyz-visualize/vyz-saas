@@ -16,7 +16,7 @@ import { PAGES } from "@/features/templates/pages";
 import { brlCompact } from "@/lib/format";
 import { Block, SkinBar, SkinChrome, SkinPage, DailyChart, dayDates, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
-import { brl, change, chrono, daily, dayLabel, decimal, goalOf, HIDDEN, initials, int, label, money, platformName, platformShort, value, type SkinProps } from "./shared";
+import { brl, change, chrono, daily, dayLabel, decimal, goalOf, HIDDEN, initials, int, Invite, label, money, platformName, platformShort, value, type SkinProps } from "./shared";
 
 const P: SkinPalette = {
   scheme: "dark",
@@ -84,6 +84,9 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
   const products = useMemo(() => [...ctx.ds.products].sort((a, b) => b.revenue - a.revenue).slice(0, 5), [ctx.ds.products]);
   const campaigns = useMemo(() => [...ctx.ds.campaigns].sort((a, b) => (g.sales ? b.revenue - a.revenue : b.conversions - a.conversions)).slice(0, 5), [ctx.ds.campaigns, g.sales]);
   const breakEven = ctx.ds.breakEven;
+
+  // nada em branco: fora de venda, produtos saem (o funil ocupa o espaço); funil e campanhas vazios também saem
+  const hidden = [...(g.sales ? [] : ["s-produtos"]), ...(funnel.length < 2 ? ["s-funil"] : []), ...(campaigns.length ? [] : ["s-campanhas"])];
 
   const nodes = {
     "s-receita": <StatBlock title={label(ctx, valueKey)} v={value(ctx, valueKey)} delta={change(ctx, valueKey)} note="contra o período anterior" values={daily(ctx, valueKey)} icon={g.sales ? CircleDollarSign : Target} solid={HERO} />,
@@ -155,12 +158,16 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
     ),
     "s-produtos": (
       <Block title="Produtos que mais vendem">
-        <RankBars
-          className="flex-1"
-          color={P.accent}
-          rows={products.map((p) => ({ name: p.name, value: p.revenue, display: brlCompact(p.revenue) }))}
-          summary={`Produtos por receita: ${products.map((p) => `${p.name} ${brlCompact(p.revenue)}`).join(", ")}.`}
-        />
+        {products.length ? (
+          <RankBars
+            className="flex-1"
+            color={P.accent}
+            rows={products.map((p) => ({ name: p.name, value: p.revenue, display: brlCompact(p.revenue) }))}
+            summary={`Produtos por receita: ${products.map((p) => `${p.name} ${brlCompact(p.revenue)}`).join(", ")}.`}
+          />
+        ) : (
+          <Invite>Os produtos aparecem quando o período tem campanhas de catálogo na Meta ou de Shopping no Google.</Invite>
+        )}
       </Block>
     ),
     "s-campanhas": (
@@ -188,7 +195,6 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
               </li>
             );
           })}
-          {!campaigns.length && <li className="py-2 text-[12px] text-fg-2">Sem campanhas neste recorte.</li>}
         </ul>
       </Block>
     ),
@@ -239,7 +245,7 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
 
         <SkinChrome palette={P} controls={controls} note={note} screen={screen} className="mt-4" />
 
-        <div className="mt-5">{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="noturno" ctx={ctx} grid={grid} nodes={nodes} />}</div>
+        <div className="mt-5">{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="noturno" ctx={ctx} grid={grid} nodes={nodes} hide={hidden} />}</div>
       </div>
     </div>
   );

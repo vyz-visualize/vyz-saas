@@ -14,7 +14,7 @@ import { PAGES } from "@/features/templates/pages";
 import { brlCompact } from "@/lib/format";
 import { Block, SkinBar, SkinChrome, SkinPage, DailyChart, dayDates, Gauge, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
 import { SkinGrid } from "./SkinGrid";
-import { brl, change, chrono, daily, dayLabel, goalOf, HIDDEN, initials, int, label, money, pct, platformName, value, type SkinProps } from "./shared";
+import { brl, change, chrono, daily, dayLabel, goalOf, HIDDEN, initials, int, Invite, label, money, pct, platformName, value, type SkinProps } from "./shared";
 
 const P: SkinPalette = {
   scheme: "light",
@@ -88,6 +88,9 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
   const { budget } = ctx.ds;
   const projected = budget.day > 0 ? Math.round((budget.spent / budget.day) * budget.daysInMonth) : 0;
 
+  // nada em branco: campanhas e origens sem números saem (o vizinho ocupa o espaço)
+  const hidden = [...(campaigns.length ? [] : ["s-campanhas"]), ...(totalOrigin > 0 ? [] : ["s-origem"])];
+
   const nodes = {
     "s-leads": <StatBlock title={label(ctx, leadKey)} v={value(ctx, leadKey)} delta={change(ctx, leadKey)} note="contra o período anterior" values={daily(ctx, leadKey)} icon={Users} solid={HERO} />,
     "s-cpl": <StatBlock title={label(ctx, costKey)} v={value(ctx, costKey)} delta={hide ? undefined : change(ctx, costKey)} note={hide ? "oculto neste link" : hasGoal(ctx.ds) ? `alvo ${brl(ctx.ds.goal, { decimals: false })}` : GOAL_INVITE} values={hide ? undefined : daily(ctx, costKey)} color={OCHRE} icon={Target} />,
@@ -95,13 +98,18 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
     "s-qualificados": salesGoal ? (
       <StatBlock title={label(ctx, "revenue")} v={value(ctx, "revenue")} delta={change(ctx, "revenue")} note="contra o período anterior" values={daily(ctx, "revenue")} color={TEAL} icon={CircleDollarSign} />
     ) : (
-      <StatBlock title="Leads qualificados" v={int(qualified)} delta={change(ctx, "qualified")} note={leads > 0 ? `${pct(qualified / leads, 0)} dos leads` : undefined} values={daily(ctx, "qualified")} color={TEAL} icon={BadgeCheck} />
+      // sem a qualificação nos dados (ela vem do CRM ou do imobiliário), o card diz o que falta em vez de mostrar 0
+      qualified > 0 ? (
+        <StatBlock title="Leads qualificados" v={int(qualified)} delta={change(ctx, "qualified")} note={leads > 0 ? `${pct(qualified / leads, 0)} dos leads` : undefined} values={daily(ctx, "qualified")} color={TEAL} icon={BadgeCheck} />
+      ) : (
+        <StatBlock title="Leads qualificados" v="—" note="Conecte um CRM para separar os qualificados" color={TEAL} icon={BadgeCheck} />
+      )
     ),
     "s-vendas":
       salesGoal && !sales ? (
         <StatBlock title={label(ctx, "roas")} v={value(ctx, "roas")} delta={hide ? undefined : change(ctx, "roas")} note="receita ÷ investimento" values={hide ? undefined : daily(ctx, "roas")} color={PLUM} icon={Percent} />
       ) : (
-        <StatBlock title="Vendas no CRM" v={sales ? int(sales.count) : "—"} note={sales && leads > 0 ? `${pct(sales.count / leads, 1)} ${salesGoal ? "das vendas" : "dos leads"} · ${brlCompact(sales.value)}` : undefined} bars={crm.map((s) => s.count)} color={PLUM} icon={Handshake} />
+        <StatBlock title="Vendas no CRM" v={sales ? int(sales.count) : "—"} note={sales ? (leads > 0 ? `${pct(sales.count / leads, 1)} ${salesGoal ? "das vendas" : "dos leads"} · ${brlCompact(sales.value)}` : undefined) : "Conecte um CRM para ver as vendas fechadas"} bars={crm.map((s) => s.count)} color={PLUM} icon={Handshake} />
       ),
     "s-diario": (
       <Block
@@ -126,7 +134,11 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
     ),
     "s-crm": (
       <Block title="Funil do CRM" aside={proposal ? <span className="text-[11px] text-fg-2">{brlCompact(proposal.value)} em propostas</span> : undefined}>
+        {!crm.some((s) => s.count > 0) ? (
+          <Invite>Conecte um CRM (RD Station, HubSpot, Pipedrive ou Kommo) em Contas para ver o funil do lead à venda.</Invite>
+        ) : (
         <StageFunnel className="flex-1" orientation="vertical" color={P.accent} steps={crm.map((s, i) => ({ label: s.stage, value: s.count, display: int(s.count), note: i > 0 && crm[i - 1].count > 0 ? `${Math.round((s.count / crm[i - 1].count) * 100)}% avançam` : undefined }))} summary={`Funil do CRM: ${crm.map((s) => `${s.stage} ${int(s.count)}`).join(", ")}.`} />
+        )}
       </Block>
     ),
     "s-origem": (
@@ -244,7 +256,7 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
           <h2 className="mt-1 max-w-[24ch] text-[26px] leading-[1.15] font-bold tracking-tight text-balance @[700px]:text-[32px]">{headline}</h2>
         </div>
 
-        <div className={screen ? "mt-4" : "mt-5"}>{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="areia" ctx={ctx} grid={grid} nodes={nodes} />}</div>
+        <div className={screen ? "mt-4" : "mt-5"}>{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="areia" ctx={ctx} grid={grid} nodes={nodes} hide={hidden} />}</div>
       </div>
     </div>
   );

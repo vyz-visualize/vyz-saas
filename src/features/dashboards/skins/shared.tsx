@@ -187,6 +187,15 @@ export const SERIES = [
   "#c9a227",
 ];
 
+/** No lugar de um bloco vazio: diz o que falta para ele aparecer (nenhum bloco fica em branco). */
+export function Invite({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="grid flex-1 place-items-center px-3 text-center text-[12.5px] leading-snug text-fg-2 [text-wrap:balance]" data-block-invite>
+      {children}
+    </p>
+  );
+}
+
 export function Panel({
   title,
   aside,

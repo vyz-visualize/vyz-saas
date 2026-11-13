@@ -245,6 +245,8 @@ export function LavandaSkin({
           skin="lavanda"
           ctx={ctx}
           grid={grid}
+          // nada em branco: sem campanhas no período (só GA4 ou orgânico), a lista e os filtros dela saem
+          hide={campaigns.length ? [] : ["s-filtros", "s-campanhas"]}
           nodes={{
             "s-cpa": (
               <section

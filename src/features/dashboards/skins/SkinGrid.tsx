@@ -10,7 +10,7 @@ import { PlatformMetricCard } from "../layout/LayoutEditor";
 import { kindOf, parseMetricCardId, type PageGrid } from "../layout/model";
 import type { WidgetContext } from "../widgets/Widgets";
 import type { SkinId } from "@/features/templates/types";
-import { isSkinCard, SKIN_BLOCKS, skinGrid } from "./blocks";
+import { isSkinCard, SKIN_BLOCKS, skinGrid, withoutBlocks } from "./blocks";
 
 export type SkinGridControl = {
   items: PageGrid;
@@ -28,13 +28,17 @@ export function SkinGrid({
   nodes,
   ctx,
   grid,
+  hide = [],
 }: {
   skin: SkinId;
   nodes: Record<string, ReactNode>;
   ctx: WidgetContext;
   grid?: SkinGridControl;
+  /** Blocos sem nada para mostrar neste dashboard: saem da tela e o vizinho ocupa o espaço (no Personalizar, ficam). */
+  hide?: readonly string[];
 }) {
-  const items = grid?.items ?? skinGrid(skin);
+  const saved = grid?.items ?? skinGrid(skin);
+  const items = grid?.editing ? saved : withoutBlocks(saved, hide);
   const blocks: Record<string, Block> = {};
   for (const s of SKIN_BLOCKS[skin])
     blocks[s.id] = {
