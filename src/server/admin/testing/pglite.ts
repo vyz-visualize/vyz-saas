@@ -130,6 +130,13 @@ export async function fullWorkspace(db: PGlite, ins: Ins, { userId, name, slug }
   const acc = await ins("ad_accounts", { workspace_id: w.id, connection_id: conn.id, project_id: proj.id, platform_id: "meta", external_id: `act_${slug}`, name: "Conta", status: "active", is_enabled: true, enabled_at: "2026-11-01T00:00:00Z" });
   if (!acc.is_enabled) throw new Error("a conta de teste não ficou ativa");
   const camp = await ins("ad_campaigns", { workspace_id: w.id, ad_account_id: acc.id, external_id: `c-${slug}`, name: "Campanha" });
+  // base do MMM (schema mmm): o bruto, a mídia tratada, a base pronta, a fila, o resultado e um evento do negócio todo
+  await db.query(`insert into mmm.raw_insights (workspace_id, ad_account_id, platform_id, date_from, date_to, request_hash, payload) values ($1, $2, 'meta', '2026-10-01', '2026-10-31', 'hash-${slug}', '{}')`, [w.id, acc.id]);
+  await db.query(`insert into mmm.media_daily (workspace_id, ad_account_id, platform_id, campaign_external_id, date, canal, spend, impressions, clicks, conversions, conversion_value, origem) values ($1, $2, 'meta', 'c-${slug}', '2026-10-01', 'Meta Ads', 10, 100, 5, 1, 50, 'backfill')`, [w.id, acc.id]);
+  await db.query(`select mmm.rollup_daily($1, '2026-10-01', '2026-10-31')`, [w.id]);
+  await db.query(`insert into mmm.backfill_jobs (workspace_id, ad_account_id, platform_id, mes) values ($1, $2, 'meta', '2026-10-01')`, [w.id, acc.id]);
+  await db.query(`insert into mmm.outcomes_daily (workspace_id, ad_account_id, fonte, date, receita) values ($1, $2, 'planilha', '2026-10-01', 80)`, [w.id, acc.id]);
+  await db.query(`insert into mmm.eventos (workspace_id, inicio, fim, tipo, descricao) values ($1, '2026-11-01', '2026-11-05', 'promocao', 'Promoção de novembro')`, [w.id]);
   await ins("insights_account_daily", { workspace_id: w.id, ad_account_id: acc.id, date: "2026-11-01" });
   const dash = await ins("dashboards", { workspace_id: w.id, template_id: "t1", name: "Dash", created_by: userId });
   await ins("share_links", { workspace_id: w.id, dashboard_id: dash.id, token_hash: Buffer.from(slug.padEnd(32, "0").slice(0, 32)).toString("hex"), token_hint: "abcd" });

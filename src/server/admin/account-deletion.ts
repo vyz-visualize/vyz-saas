@@ -63,6 +63,9 @@ export const SHELL_PURGE_ORDER = [
   "landing_waitlist_visits",
   "landing_pages",
   "sync_runs",
+  // MMM: eventos e resultados ficam pendurados no workspace (o resto do mmm sai com ad_accounts)
+  "mmm.eventos",
+  "mmm.outcomes_daily",
   "connections",
   "ad_accounts",
   "projects",
@@ -85,6 +88,7 @@ export const CATEGORY: Record<string, string> = {
   ad_accounts: "Métricas e contas de anúncio", ad_campaigns: "Métricas e contas de anúncio", ads: "Métricas e contas de anúncio", ad_products: "Métricas e contas de anúncio", sync_runs: "Métricas e contas de anúncio", insights_account_daily: "Métricas e contas de anúncio", insights_ad_daily: "Métricas e contas de anúncio", insights_breakdown_daily: "Métricas e contas de anúncio", insights_campaign_daily: "Métricas e contas de anúncio", insights_product_daily: "Métricas e contas de anúncio", insights_search_term_daily: "Métricas e contas de anúncio", organic_daily: "Métricas e contas de anúncio", organic_posts: "Métricas e contas de anúncio", analytics_daily: "Métricas e contas de anúncio", crm_daily: "Métricas e contas de anúncio",
   dashboards: "Dashboards", dashboard_pages: "Dashboards", dashboard_sources: "Dashboards", dashboard_exports: "Dashboards", share_links: "Dashboards", scheduled_reports: "Dashboards", scheduled_report_recipients: "Dashboards", report_deliveries: "Dashboards",
   projects: "Projetos",
+  "mmm.raw_insights": "Base de MMM", "mmm.media_daily": "Base de MMM", "mmm.outcomes_daily": "Base de MMM", "mmm.eventos": "Base de MMM", "mmm.daily": "Base de MMM", "mmm.backfill_jobs": "Base de MMM",
   optimization_runs: "Otimizações", optimization_autopilot: "Otimizações",
   tasks: "Tarefas", task_groups: "Tarefas", task_automation_runs: "Tarefas",
   whatsapp_subscriptions: "WhatsApp", whatsapp_messages: "WhatsApp", whatsapp_verification_codes: "WhatsApp",
@@ -111,9 +115,11 @@ export const KEPT_REASON: Record<string, string> = {
 const LIVE_STATUSES = ["active", "trialing", "past_due", "unpaid", "incomplete", "paused"];
 
 /** Só entra em SQL dinâmico o que veio do catálogo do banco e tem cara de nome de tabela. */
+/** "tabela" (public) ou "mmm.tabela": só os schemas de dados de cliente. */
 const ident = (name: string) => {
-  if (!/^[a-z_][a-z0-9_]*$/.test(name)) throw new Error(`Nome de tabela inesperado: ${name}`);
-  return `public."${name}"`;
+  const [schema, table] = name.includes(".") ? name.split(".") : ["public", name];
+  if (!["public", "mmm"].includes(schema) || !/^[a-z_][a-z0-9_]*$/.test(table)) throw new Error(`Nome de tabela inesperado: ${name}`);
+  return `${schema}."${table}"`;
 };
 
 export const normalizeEmail = (email: string) => email.trim().toLowerCase();
@@ -151,11 +157,12 @@ export function refuseReason(plan: DeletionPlan, confirm: Confirmation): string 
 
 async function tablesWith(db: Db, column: string): Promise<string[]> {
   const rows = await db.query<{ name: string }>(
-    `select c.relname as name
+    // public e mmm (a base do MMM também é dado do cliente); no mmm, o nome vem com o schema
+    `select case when n.nspname = 'public' then c.relname else n.nspname || '.' || c.relname end as name
        from pg_catalog.pg_class c
        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
        join pg_catalog.pg_attribute a on a.attrelid = c.oid and a.attname = $1 and not a.attisdropped
-      where n.nspname = 'public' and c.relkind in ('r', 'p') and not c.relispartition
+      where n.nspname in ('public', 'mmm') and c.relkind in ('r', 'p') and not c.relispartition
       order by 1`,
     [column],
   );

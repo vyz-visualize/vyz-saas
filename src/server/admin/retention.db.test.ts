@@ -7,7 +7,9 @@ import { count, freshDb } from "./testing/pglite";
 
 let db: PGlite;
 const n = (from: string) => count(db, from);
-const runs = async () => (await db.query<{ table_name: string; mode: string; rows_found: number; error: string | null }>(`select table_name, mode, rows_found, error from private.retention_runs order by id`)).rows;
+// só as regras de 5 anos (as do MMM têm teste próprio: src/server/mmm/mmm.db.test.ts)
+const FIVE = "table_name in ('legal_acceptances', 'activity_events', 'audit_events')";
+const runs = async () => (await db.query<{ table_name: string; mode: string; rows_found: number; error: string | null }>(`select table_name, mode, rows_found, error from private.retention_runs where ${FIVE} order by id`)).rows;
 const housekeeping = async () => (await db.query<{ out: Record<string, unknown> }>(`select private.housekeeping() as out`)).rows[0].out;
 
 const OLD = "now() - interval '5 years 1 day'";
@@ -33,7 +35,7 @@ describe("retenção de 5 anos", () => {
   });
 
   it("começa em simulação: conta e registra, sem apagar nada", async () => {
-    const policy = (await db.query<{ table_name: string; apply: boolean; keep: string }>(`select table_name, apply, keep::text as keep from private.retention_policy order by 1`)).rows;
+    const policy = (await db.query<{ table_name: string; apply: boolean; keep: string }>(`select table_name, apply, keep::text as keep from private.retention_policy where ${FIVE} order by 1`)).rows;
     expect(policy).toEqual([
       { table_name: "activity_events", apply: false, keep: "5 years" },
       { table_name: "audit_events", apply: false, keep: "5 years" },
@@ -41,7 +43,7 @@ describe("retenção de 5 anos", () => {
     ]);
     const before = { legal: await n("public.legal_acceptances"), activity: await n("public.activity_events"), audit: await n("public.audit_events") };
     const out = await housekeeping();
-    expect(out.retention_5y).toEqual({
+    expect(Object.fromEntries(Object.entries(out.retention_5y as Record<string, unknown>).filter(([k]) => !k.startsWith("mmm.")))).toEqual({
       activity_events: { mode: "simulacao", rows: 1 },
       audit_events: { mode: "simulacao", rows: 1 },
       legal_acceptances: { mode: "simulacao", rows: 1 },
@@ -55,7 +57,7 @@ describe("retenção de 5 anos", () => {
   });
 
   it("liberada, apaga só o que passou de 5 anos e registra", async () => {
-    await db.exec(`update private.retention_policy set apply = true, updated_at = now()`);
+    await db.exec(`update private.retention_policy set apply = true, updated_at = now() where ${FIVE}`);
     await housekeeping();
     expect((await runs()).slice(-3).map((r) => [r.table_name, r.mode, r.rows_found])).toEqual([
       ["activity_events", "exclusao", 1],
