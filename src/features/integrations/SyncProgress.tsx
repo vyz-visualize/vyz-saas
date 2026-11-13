@@ -38,12 +38,12 @@ export function SyncProgress({ account }: { account: Pick<AdAccountDTO, "platfor
   const pct = Math.min(95, (elapsed / total) * 100);
   const left = Math.max(0, Math.ceil(total - elapsed));
   return (
-    <div className="w-full min-w-[220px] space-y-1" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label="Importação dos dados">
+    <div className="w-full min-w-[200px] space-y-1.5 sm:w-[280px]" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label="Importação dos dados">
       <div className="flex justify-between gap-3 text-[12px] text-fg-2">
         <span>{initial ? "Importando os últimos 90 dias" : "Sincronizando os últimos 7 dias"}</span>
-        <span className="tabular-nums">{left > 0 ? `~${left} s` : "quase lá…"}</span>
+        <span className="shrink-0 whitespace-nowrap tabular-nums">{left > 0 ? `~${left} s` : "quase lá…"}</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-line">
+      <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
         <div className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out" style={{ width: `${pct}%` }} />
       </div>
     </div>

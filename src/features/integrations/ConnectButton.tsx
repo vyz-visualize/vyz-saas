@@ -22,19 +22,22 @@ type ConnectButtonProps = {
   variant?: "primary" | "secondary";
   /** Texto próprio (ex.: "Conectar outro login"). */
   label?: string;
+  /** Só "Conectar" no botão (cartões da tela de contas, onde o nome da ferramenta já está ao lado); o nome inteiro vai no rótulo acessível. */
+  compact?: boolean;
   className?: string;
 };
 
-export function ConnectButton({ provider, next = "/painel/contas", connected = false, canManage = true, variant = "primary", label, className = "" }: ConnectButtonProps) {
+export function ConnectButton({ provider, next = "/painel/contas", connected = false, canManage = true, variant = "primary", label, compact = false, className = "" }: ConnectButtonProps) {
   const { leaving, leave } = useLeaving<ProviderId>();
   const opening = leaving !== null;
   const name = PROVIDERS[provider].name;
-  const text = label ?? (connected ? "Reconectar" : `Conectar ${name}`);
+  const full = connected ? `Reconectar ${name}` : `Conectar ${name}`;
+  const text = label ?? (connected ? "Reconectar" : compact ? "Conectar" : full);
   const look = `${variant === "primary" ? btn.small : btnSmallOutline} ${className}`;
 
   if (!canManage) {
     return (
-      <span className={`${look} cursor-not-allowed opacity-50`} aria-disabled="true" title="Só administradores do workspace conectam contas.">
+      <span className={`${look} cursor-not-allowed opacity-50`} aria-disabled="true" aria-label={label ? undefined : full} title="Só administradores do workspace conectam contas.">
         <Lock size={15} aria-hidden /> {text}
       </span>
     );
@@ -45,7 +48,7 @@ export function ConnectButton({ provider, next = "/painel/contas", connected = f
       href={connectHref(provider, next)}
       onClick={leave(provider)}
       aria-busy={opening}
-      aria-label={connected && !label ? `Reconectar ${name}` : undefined}
+      aria-label={!label && (connected || compact) ? full : undefined}
       className={look}
     >
       {opening ? <LoaderCircle size={15} aria-hidden className="animate-spin motion-reduce:animate-none" /> : connected ? <RefreshCw size={15} aria-hidden /> : <PlugZap size={15} aria-hidden />}

@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleCheck } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Modal, PendingChip, SelectField, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
@@ -38,7 +39,7 @@ export function ReportModal({ open, onClose, dashboard }: { open: boolean; onClo
   return (
     <Modal open={open} onClose={close} title="Agendar relatório">
       <div className="space-y-4 text-[14px]">
-        <p className="text-fg-2">
+        <p className="leading-relaxed text-fg-2">
           Envio periódico de <strong className="text-fg">{dashboard.name}</strong>.
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -76,17 +77,21 @@ export function ReportModal({ open, onClose, dashboard }: { open: boolean; onClo
           placeholder={format === "pdf" ? "cliente@empresa.com, gestor@agencia.com" : "71 99999-0000"}
           hint={format === "pdf" ? "E-mails separados por vírgula (até 10)." : "WhatsApp com DDD, separados por vírgula (até 10)."}
         />
-        <div className="flex flex-wrap items-center gap-3">
+        <PendingChip label="Envio automático pendente" detail="O agendamento fica salvo e aparece em Compartilhar. O envio por e-mail e WhatsApp entra quando o serviço de envio estiver ligado." />
+        {saved && (
+          <p role="status" className="flex items-start gap-2 rounded-control border border-accent/40 bg-accent-soft px-3 py-2.5 text-[13px] leading-snug">
+            <CircleCheck size={15} aria-hidden className="mt-px shrink-0 text-accent" />
+            <span>Agendado · {saved}</span>
+          </p>
+        )}
+        <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end max-sm:[&>*]:w-full">
+          <button type="button" onClick={close} disabled={pending} className={btn.ghost.replace("h-10 px-3", "h-9 px-3 text-[13.5px]")}>
+            {saved ? "Fechar" : "Cancelar"}
+          </button>
           <button type="button" onClick={save} disabled={pending || !recipients.trim()} className={btn.small}>
             {pending ? "Salvando…" : "Salvar agendamento"}
           </button>
-          {saved && (
-            <span className="text-[13px] text-accent" role="status">
-              Agendado · {saved}
-            </span>
-          )}
         </div>
-        <PendingChip label="Envio automático pendente" detail="O agendamento fica salvo e aparece em Compartilhar. O envio por e-mail e WhatsApp entra quando o serviço de envio estiver ligado." />
       </div>
     </Modal>
   );

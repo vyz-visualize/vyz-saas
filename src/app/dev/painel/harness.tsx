@@ -4,7 +4,6 @@
 // ?papel=viewer troca o papel e ?plano=base|pro|avancado troca o plano.
 
 import { useSearchParams } from "next/navigation";
-import type { ReactNode } from "react";
 import { AdminDashboard } from "@/features/admin/AdminDashboard";
 import type { AdminReport, RevenueBlock } from "@/features/admin/types";
 import type { AdminUserRow } from "@/features/admin/users";
@@ -22,7 +21,13 @@ import { HomePage } from "@/features/workspace/HomePage";
 import type { MemberRole, WorkspaceSession } from "@/features/workspace/session";
 import { SettingsPage } from "@/features/workspace/SettingsPage";
 import { Upsell } from "@/features/workspace/Upsell";
+import { PlanPage } from "@/features/workspace/PlanPage";
 import { WorkspaceProvider } from "@/features/workspace/WorkspaceProvider";
+import type { BillingOverview } from "@/server/billing/queries";
+import { DataHarness } from "../dados/harness";
+import { SCREENS_DADOS } from "./screens-dados";
+import { SCREENS_TAREFAS } from "./screens-tarefas";
+import type { Screen } from "./types";
 
 const NOW = "2026-11-13T15:00:00.000Z";
 const at = (min: number) => new Date(Date.parse(NOW) - min * 60_000).toISOString();
@@ -170,9 +175,49 @@ const SETTINGS: SettingsData = {
   activity: EVENTS.map((e, i) => ({ id: `a${i}`, at: at(i * 47 + 2), label: activityLabel(e, e.startsWith("integration.") ? { provider: "meta" } : {}), tone: "neutral" as const, actorName: i % 3 === 2 ? null : "Pedro Freitas" })),
 };
 
-type Screen = { path: string; node: (tier: Exclude<Tier, "personalizado">, role: MemberRole) => ReactNode };
+const BILLING: BillingOverview = {
+  workspaceId: "ws1",
+  provider: "mock",
+  canManage: true,
+  subscription: {
+    id: "s1",
+    tier: "pro",
+    product: "dash",
+    status: "active",
+    interval: "year",
+    accountsQuantity: 15,
+    currentPeriodStart: day(165),
+    currentPeriodEnd: day(-200),
+    cancelAtPeriodEnd: false,
+    createdAt: day(165),
+    items: [{ id: "i1", kind: "plan", label: "Plano Padrão · até 15 projetos", quantity: 1, monthlyCents: 18325 }],
+    monthlyCents: 18325,
+    extrasMonthlyCents: 0,
+    recurringCents: 219900,
+  },
+  customer: { email: "pedro@exemplo.com", legalName: "Agência Exemplo Ltda", taxId: null, phone: null },
+  invoices: [
+    { id: "f1", status: "paid", description: null, totalCents: 219900, amountPaidCents: 219900, currency: "BRL", lines: [{ label: "Plano Padrão anual", quantity: 1, amountCents: 219900 }], periodStart: day(165), periodEnd: day(-200), paidAt: day(165), createdAt: day(165), hostedUrl: null, pdfUrl: null },
+    { id: "f2", status: "paid", description: null, totalCents: 5990, amountPaidCents: 5990, currency: "BRL", lines: [{ label: "Plano Básico mensal", quantity: 1, amountCents: 5990 }], periodStart: day(196), periodEnd: day(165), paidAt: day(196), createdAt: day(196), hostedUrl: null, pdfUrl: null },
+    { id: "f3", status: "open", description: null, totalCents: 190000, amountPaidCents: 0, currency: "BRL", lines: [{ label: "Dashboard sob medida", quantity: 1, amountCents: 190000 }], periodStart: null, periodEnd: null, paidAt: null, createdAt: day(3), hostedUrl: null, pdfUrl: null },
+  ],
+  transactions: [
+    { id: "t1", kind: "charge", status: "succeeded", amountCents: 219900, currency: "BRL", method: "card", cardBrand: "visa", cardLast4: "4242", failureMessage: null, processedAt: day(165), createdAt: day(165) },
+    { id: "t2", kind: "charge", status: "failed", amountCents: 219900, currency: "BRL", method: "card", cardBrand: "mastercard", cardLast4: "5100", failureMessage: "Cartão recusado pelo banco", processedAt: day(166), createdAt: day(166) },
+    { id: "t3", kind: "charge", status: "succeeded", amountCents: 5990, currency: "BRL", method: "pix", cardBrand: null, cardLast4: null, failureMessage: null, processedAt: day(196), createdAt: day(196) },
+  ],
+  timeline: [
+    { id: 3, change: "plan_changed" as BillingOverview["timeline"][number]["change"], label: "Plano trocado de Básico para Padrão", actorName: "Pedro Freitas", createdAt: day(165) },
+    { id: 2, change: "plan_changed" as BillingOverview["timeline"][number]["change"], label: "Período trocado de mensal para anual", actorName: "Pedro Freitas", createdAt: day(165) },
+    { id: 1, change: "plan_changed" as BillingOverview["timeline"][number]["change"], label: "Assinatura criada no Básico", actorName: null, createdAt: day(196) },
+  ],
+  serviceOrders: [{ id: "o1", itemId: "dash_custom", label: "Dashboard sob medida", quantity: 1, status: "in_progress", createdAt: day(3), deliveredAt: null }],
+};
+const PLAN_USAGE = { projects: 3, dashboards: 4, publishedLandingPages: 0, enabledPlatforms: ["meta", "google"] };
 
 const SCREENS: Record<string, Screen> = {
+  ...SCREENS_DADOS,
+  ...SCREENS_TAREFAS,
   inicio: {
     path: "/painel",
     node: () => (
@@ -191,7 +236,10 @@ const SCREENS: Record<string, Screen> = {
       <DashboardsList items={DASHBOARDS} limit={ENTITLEMENTS[tier].maxDashboards} planLabel={TIER_LABEL[tier]} canEdit={role !== "viewer"} sources={[]} tier={tier} pagesTier={ENTITLEMENTS[tier].pages} hasProject brand={{ color: "#4B5320", logoUrl: null, canEdit: true }} />
     ),
   },
+  plano: { path: "/painel/plano", node: () => <PlanPage overview={BILLING} usage={PLAN_USAGE} now={NOW} /> },
   configuracoes: { path: "/painel/configuracoes", node: () => <SettingsPage data={SETTINGS} /> },
+  // tela cheia do dashboard (FocusShell): o conteúdo é o da bancada /dev/dados
+  dashboard: { path: "/painel/dashboards/d1", node: () => <DataHarness /> },
   interno: { path: "/painel/interno", node: () => <AdminDashboard report={REPORT} /> },
   usuarios: { path: "/painel/interno/usuarios", node: () => <UsersManager users={USERS} /> },
 };

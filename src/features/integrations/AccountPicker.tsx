@@ -6,10 +6,11 @@
 // Reaproveitado no onboarding (/comecar): passe onSaved para seguir o fluxo e
 // onSelectionChange para o Continuar salvar a escolha que ficou pendente.
 
-import { CircleAlert, CircleCheck, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
+import { CircleAlert, CircleCheck, Info, LoaderCircle, RefreshCw, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Switch } from "@/components/ui/controls";
+import { Select } from "@/components/ui/Select";
 import { btn } from "@/components/ui/styles";
 import { resyncAccount, setEnabledAccounts, type EnabledAccountsResult } from "@/server/integrations/actions";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
@@ -19,7 +20,7 @@ import { accountStatusLabel, syncSummary, type SyncSummary } from "./sync-label"
 import { SyncProgress, useRefreshWhile } from "./SyncProgress";
 import { FirstProject } from "@/features/projects/FirstProject";
 import type { AdAccountDTO } from "./types";
-import { btnSmallOutline } from "./ui";
+import { btnSmallGhost, iconBtn, iconBtnDanger } from "./ui";
 
 type AccountPickerProps = {
   provider: ProviderId;
@@ -82,18 +83,18 @@ function groupsOf(provider: ProviderId, accounts: AdAccountDTO[], platformId?: P
 }
 
 const TONE: Record<SyncSummary["tone"], string> = {
-  ok: "border-line text-fg-2",
-  running: "border-accent text-accent",
-  error: "border-error/60 bg-error-soft text-error-fg",
-  idle: "border-dashed border-line text-fg-2",
+  ok: "text-fg-2",
+  running: "rounded-chip bg-accent-soft px-2.5 py-0.5 text-accent",
+  error: "rounded-chip bg-error-soft px-2.5 py-0.5 text-error-fg",
+  idle: "rounded-chip border border-dashed border-line px-2.5 py-0.5 text-fg-2",
 };
 
 export function SyncBadge({ summary }: { summary: SyncSummary }) {
   return (
-    <span title={summary.detail} className={`inline-flex max-w-full items-center gap-1.5 rounded-chip border px-2.5 py-0.5 text-[12px] ${TONE[summary.tone]}`}>
+    <span title={summary.detail} className={`inline-flex max-w-full items-center gap-1.5 text-[12.5px] leading-snug ${TONE[summary.tone]}`}>
       {summary.tone === "running" && <LoaderCircle size={12} aria-hidden className="shrink-0 animate-spin motion-reduce:animate-none" />}
       {summary.tone === "error" && <CircleAlert size={12} aria-hidden className="shrink-0" />}
-      {summary.tone === "ok" && <CircleCheck size={12} aria-hidden className="shrink-0" />}
+      {summary.tone === "ok" && <CircleCheck size={13} aria-hidden className="shrink-0 text-accent" />}
       <span className="truncate">{summary.label}</span>
     </span>
   );
@@ -232,17 +233,26 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
   return (
     <div className="space-y-4">
       {searchable && (
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Buscar entre ${accounts.length} contas (nome, ID ou Business)`}
-            aria-label="Buscar contas"
-            className="h-10 min-w-0 flex-1 rounded-control border border-line bg-field px-3 text-[14px] outline-none focus:border-accent"
-          />
-          <button type="button" aria-pressed={onlyOn} onClick={() => setOnlyOn((v) => !v)} className={`h-10 rounded-control border px-3 text-[13px] ${onlyOn ? "border-accent bg-accent-soft text-fg" : "border-line text-fg-2 hover:text-fg"}`}>
-            Só as ligadas · {selected.length}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-control border border-line bg-field px-3 text-[14px] transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent hover:border-fg-2/50 max-sm:h-11 max-sm:text-[16px]">
+            <Search size={16} aria-hidden className="shrink-0 text-fg-2" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Buscar entre ${accounts.length} contas (nome, ID ou Business)`}
+              aria-label="Buscar contas"
+              className="h-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-fg-2/70"
+            />
+          </label>
+          <button
+            type="button"
+            aria-pressed={onlyOn}
+            onClick={() => setOnlyOn((v) => !v)}
+            className={`inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-control border px-3.5 text-[13px] font-medium transition-colors max-sm:h-11 ${onlyOn ? "border-accent bg-accent-soft text-fg" : "border-line bg-card text-fg-2 hover:bg-surface-2 hover:text-fg"}`}
+          >
+            Só as ligadas
+            <span className="tnum">· {selected.length}</span>
           </button>
         </div>
       )}
@@ -250,9 +260,15 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
         const q = norm(query.trim());
         const shown = g.accounts.filter((a) => (!onlyOn || isOn(a)) && (!q || norm(`${a.name} ${a.externalId} ${a.businessName ?? ""}`).includes(q)));
         if (!shown.length) return null;
+        const onCount = g.accounts.filter(isOn).length;
         return (
         <div key={g.key}>
-          <h3 className="mb-2 text-[13px] font-medium text-fg-2">{g.title}</h3>
+          <h3 className="mb-2 flex items-baseline justify-between gap-3 text-[12.5px] font-medium text-fg-2">
+            <span className="min-w-0 truncate">{g.title}</span>
+            <span className="shrink-0 tnum">
+              {onCount} de {g.accounts.length} {g.accounts.length === 1 ? "ligada" : "ligadas"}
+            </span>
+          </h3>
           <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-card">
             {shown.map((a) => {
               const on = isOn(a);
@@ -262,9 +278,12 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
               const why = !connected ? "Sem conexão: reconecte o login para ativar." : a.status === "disabled" ? "O login conectado não dá mais acesso a esta conta. Reconecte para atualizar." : a.status !== "active" ? `${accountStatusLabel(a.status)}.` : !fits ? "O projeto já tem o máximo de contas desta plataforma no seu plano." : null;
               const summary = a.isEnabled ? syncSummary(a, now, timeZone) : null;
               const rowSyncing = syncing && syncingId === a.id;
+              const canResync = canSync && a.isEnabled && connected;
+              const canDrop = !!onRemove && canManage && !connected;
+              const status = summary?.tone === "running" ? <SyncProgress account={a} /> : rowSyncing ? <SyncBadge summary={{ tone: "running", label: "Sincronizando…" }} /> : summary ? <SyncBadge summary={summary} /> : null;
               return (
-                <li key={a.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
+                <li key={a.id} className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <div className="min-w-0 flex-1">
                     <Switch
                       label={<span className="font-semibold break-words">{a.name}</span>}
                       hint={
@@ -278,48 +297,45 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
                       onChange={(v) => toggle(a, v)}
                     />
                     {on && projects.length > 0 && (
-                      <label className="mt-2 flex flex-wrap items-center gap-2 pl-[52px] text-[12.5px] text-fg-2">
-                        Projeto
-                        <select
-                          value={projectOf(a)}
-                          onChange={(e) => setProject(a, e.target.value)}
-                          disabled={!canManage || busy}
-                          className="h-8 max-w-[220px] rounded-control border border-line bg-bg px-2 text-[13px] text-fg"
-                        >
-                          {projects.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      <div className="mt-2.5 flex items-center gap-2 pl-[52px] text-[12.5px] text-fg-2">
+                        <span aria-hidden className="shrink-0">Projeto</span>
+                        <div className="min-w-0 flex-1 sm:w-[220px] sm:flex-none">
+                          <Select
+                            size="sm"
+                            ariaLabel={`Projeto de ${a.name}`}
+                            value={projectOf(a)}
+                            onChange={(v) => setProject(a, v)}
+                            disabled={!canManage || busy}
+                            placeholder="Escolha o projeto"
+                            options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                          />
+                        </div>
+                      </div>
                     )}
-                    {a.dashboards.length > 0 && <p className="mt-1.5 pl-[52px] text-[12.5px] text-fg-2">Em: {a.dashboards.map((d) => d.name).join(", ")}</p>}
+                    {a.dashboards.length > 0 && <p className="mt-1.5 pl-[52px] text-[12.5px] leading-snug text-fg-2">Em: {a.dashboards.map((d) => d.name).join(", ")}</p>}
                     {autoSave && touched === a.id && (saving || message) && (
-                      <p role="status" className={`mt-1.5 pl-[52px] text-[12.5px] ${!saving && message?.tone === "error" ? "text-error-fg" : "text-fg-2"}`}>
+                      <p role="status" className={`mt-1.5 pl-[52px] text-[12.5px] leading-snug ${!saving && message?.tone === "error" ? "text-error-fg" : "text-fg-2"}`}>
                         {saving ? "Salvando…" : message?.text}
                       </p>
                     )}
                   </div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2 pl-[52px] sm:pl-0">
-                    {summary?.tone === "running" ? <SyncProgress account={a} /> : rowSyncing ? <SyncBadge summary={{ tone: "running", label: "Sincronizando…" }} /> : summary && <SyncBadge summary={summary} />}
-                    {canSync && a.isEnabled && connected && (
-                      <button type="button" onClick={() => resync(a)} disabled={busy || dirty} className={btnSmallOutline} aria-label={`Sincronizar ${a.name}`}>
-                        <RefreshCw size={14} aria-hidden className={rowSyncing ? "animate-spin motion-reduce:animate-none" : ""} />
-                        <span className="hidden sm:inline">Sincronizar</span>
-                      </button>
-                    )}
-                    {onRemove && canManage && !connected && (
-                      <button
-                        type="button"
-                        aria-label={`Remover ${a.name}`}
-                        onClick={() => onRemove(a)}
-                        className="inline-flex size-9 items-center justify-center rounded-control border border-line hover:border-error"
-                      >
-                        <Trash2 size={15} aria-hidden />
-                      </button>
-                    )}
-                  </div>
+                  {(status || canResync || canDrop) && (
+                    <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 pl-[52px] sm:justify-end sm:pl-0">
+                      <span className="min-w-0">{status}</span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {canResync && (
+                          <button type="button" onClick={() => resync(a)} disabled={busy || dirty} className={iconBtn} aria-label={`Sincronizar ${a.name}`} title="Sincronizar agora">
+                            <RefreshCw size={15} aria-hidden className={rowSyncing ? "animate-spin motion-reduce:animate-none" : ""} />
+                          </button>
+                        )}
+                        {canDrop && (
+                          <button type="button" aria-label={`Remover ${a.name}`} title="Remover" onClick={() => onRemove?.(a)} className={iconBtnDanger}>
+                            <Trash2 size={15} aria-hidden />
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -329,28 +345,31 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
       })}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-[13px]">
-          <p className={`font-semibold ${overLimit ? "text-error-fg" : "text-fg"}`}>
-            Até {maxPerProject} {maxPerProject === 1 ? "conta" : "contas"} de {PROVIDERS[provider].name} por projeto
-          </p>
-          {provider === "meta" && <p className="text-fg-2">Contas da mesma BM contam como uma.</p>}
-          {blockedByPlan && canManage && (
-            <p className="text-fg-2">
-              Para ativar mais, coloque a conta em outro projeto em{" "}
-              <Link href="/painel/projetos" className="font-semibold text-accent underline-offset-4 hover:underline">
-                Projetos
-              </Link>{" "}
-              ou mude o plano em{" "}
-              <Link href="/painel/plano" className="font-semibold text-accent underline-offset-4 hover:underline">
-                Plano
-              </Link>
-              .
+        <div className="flex min-w-0 items-start gap-2.5 text-[13px] leading-snug">
+          <Info size={15} aria-hidden className={`mt-0.5 shrink-0 ${overLimit ? "text-error-fg" : "text-fg-2"}`} />
+          <div className="min-w-0">
+            <p className={`font-semibold ${overLimit ? "text-error-fg" : "text-fg"}`}>
+              Até {maxPerProject} {maxPerProject === 1 ? "conta" : "contas"} de {PROVIDERS[provider].name} por projeto
             </p>
-          )}
-          {!canManage && <p className="text-fg-2">Só administradores escolhem as contas.</p>}
+            {provider === "meta" && <p className="text-fg-2">Contas da mesma BM contam como uma.</p>}
+            {blockedByPlan && canManage && (
+              <p className="text-fg-2">
+                Para ativar mais, coloque a conta em outro projeto em{" "}
+                <Link href="/painel/projetos" className="font-semibold text-accent underline-offset-4 hover:underline">
+                  Projetos
+                </Link>{" "}
+                ou mude o plano em{" "}
+                <Link href="/painel/plano" className="font-semibold text-accent underline-offset-4 hover:underline">
+                  Plano
+                </Link>
+                .
+              </p>
+            )}
+            {!canManage && <p className="text-fg-2">Só administradores escolhem as contas.</p>}
+          </div>
         </div>
         {canManage && !autoSave && (dirty || onSaved) && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2 max-sm:[&>*]:flex-1">
             {dirty && !saving && (
               <button
                 type="button"
@@ -358,7 +377,7 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
                   setDraft({});
                   setProjectDraft({});
                 }}
-                className={`${btn.ghost} h-9`}
+                className={btnSmallGhost}
               >
                 Desfazer
               </button>
@@ -371,7 +390,7 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
         )}
       </div>
 
-      <p role="status" aria-live="polite" className="min-h-0 text-[13.5px]">
+      <p role="status" aria-live="polite" className="min-h-0 text-[13.5px] leading-snug">
         {saving && <span className="text-fg-2">Ativando as contas e importando os últimos 90 dias. Leva alguns segundos.</span>}
         {!saving && message && (
           <span className={`inline-flex items-start gap-1.5 ${message.tone === "error" ? "text-error-fg" : "text-fg"}`}>

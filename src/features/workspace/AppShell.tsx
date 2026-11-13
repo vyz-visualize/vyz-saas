@@ -540,7 +540,7 @@ function SectionCrumb({ path }: { path: string | null }) {
     <p className="flex min-w-0 items-center gap-1.5 text-[13.5px]">
       <span className="hidden truncate text-fg-2 lg:inline">{workspace.name}</span>
       <ChevronRight size={14} aria-hidden className="hidden shrink-0 text-fg-2/60 lg:inline" />
-      <span className="truncate font-semibold text-fg">{current?.label ?? "Painel"}</span>
+      <span className="truncate font-semibold text-fg">{current?.label ?? (path?.startsWith("/painel/whatsapp") ? "Relatórios no WhatsApp" : "Painel")}</span>
     </p>
   );
 }

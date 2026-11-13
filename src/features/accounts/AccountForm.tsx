@@ -9,6 +9,7 @@ import { useState, useTransition } from "react";
 import { LockBadge, PendingChip, SelectField, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { ConnectButton } from "@/features/integrations/ConnectButton";
+import { btnSmallGhost, errorBox, modalFooter } from "@/features/integrations/ui";
 import { CORE_PROVIDER_IDS, isProviderId, loginVia, PROVIDERS } from "@/features/integrations/providers";
 import { availableIn, canUse, TIER_LABEL } from "@/features/pricing/entitlements";
 import type { Account } from "@/features/workspace/types";
@@ -45,7 +46,7 @@ export function AccountForm({ platform: fixed, onSaved, onCancel, next }: Accoun
 
   if (isProviderId(platform) && (CORE_PROVIDER_IDS as readonly string[]).includes(platform)) {
     return (
-      <div className="space-y-3 rounded-card border border-line bg-card p-4 text-[14px]">
+      <div className="space-y-3 rounded-card border border-line bg-card p-4 text-[14px] leading-snug">
         <p>
           {PROVIDERS[platform].name} entra {loginVia(platform)}: o VYZ encontra as contas e importa os dados sozinho.
         </p>
@@ -90,11 +91,11 @@ export function AccountForm({ platform: fixed, onSaved, onCancel, next }: Accoun
           }))}
         />
       )}
-      <p className="rounded-control bg-field px-3 py-2 text-[13px] text-fg-2">
+      <p className="rounded-control bg-surface-2 px-3 py-2.5 text-[13px] leading-snug text-fg-2">
         <span className="font-medium text-fg">{MODE_LABEL[CONNECTIONS[platform].mode]}.</span> {CONNECTIONS[platform].note}
       </p>
       {locked ? (
-        <div className="rounded-card border border-line bg-card p-4 text-[14px]">
+        <div className="rounded-card border border-line bg-card p-4 text-[14px] leading-snug">
           <LockBadge label={availableIn(def.tier)} />
           <p className="mt-2 text-fg-2">
             {def.name} entra a partir do {TIER_LABEL[def.tier]}.{" "}
@@ -134,21 +135,21 @@ export function AccountForm({ platform: fixed, onSaved, onCancel, next }: Accoun
             detail="A conta fica como “Aguardando conexão”: não sincroniza nem ocupa o limite do plano. Os dashboards dela usam dados de amostra até a conexão chegar."
           />
           {formError && (
-            <p role="alert" className="rounded-control border border-error/60 bg-error-soft p-3 text-[13.5px] text-error-fg">
+            <p role="alert" className={errorBox}>
               {formError}
             </p>
           )}
-          <div className="flex gap-2 pt-1">
-            <button type="submit" disabled={pending || !canManage} className={btn.small}>
-              {pending ? "Salvando…" : "Adicionar conta"}
-            </button>
+          {!canManage && <p className="text-[12px] text-fg-2">Só administradores do workspace cadastram contas.</p>}
+          <div className={modalFooter}>
             {onCancel && (
-              <button type="button" onClick={onCancel} disabled={pending} className={`${btn.ghost} h-9`}>
+              <button type="button" onClick={onCancel} disabled={pending} className={btnSmallGhost}>
                 Cancelar
               </button>
             )}
+            <button type="submit" disabled={pending || !canManage} className={btn.small}>
+              {pending ? "Salvando…" : "Adicionar conta"}
+            </button>
           </div>
-          {!canManage && <p className="text-[12px] text-fg-2">Só administradores do workspace cadastram contas.</p>}
         </form>
       )}
     </div>

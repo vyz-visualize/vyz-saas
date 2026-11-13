@@ -38,15 +38,28 @@ async function Contas({ searchParams }: { searchParams: PageProps<"/painel/conta
 }
 
 function AccountsSkeleton() {
+  const block = "animate-pulse bg-surface-2 motion-reduce:animate-none";
   return (
-    <div className="space-y-8" aria-busy="true" aria-label="Carregando as contas">
-      <div className="space-y-2">
-        <div className="h-4 w-20 animate-pulse rounded-control bg-card motion-reduce:animate-none" />
-        <div className="h-10 w-72 max-w-full animate-pulse rounded-control bg-card motion-reduce:animate-none" />
+    <div className="space-y-6 lg:space-y-8" aria-busy="true" aria-label="Carregando as contas">
+      <div className="space-y-3">
+        <div className={`h-8 w-64 max-w-full rounded-control ${block}`} />
+        <div className={`h-4 w-[32rem] max-w-full rounded-control ${block}`} />
       </div>
-      <div className="h-16 animate-pulse rounded-card bg-card motion-reduce:animate-none" />
-      <div className="h-44 animate-pulse rounded-card bg-card motion-reduce:animate-none" />
-      <div className="h-44 animate-pulse rounded-card bg-card motion-reduce:animate-none" />
+      <div className={`h-28 rounded-card ${block}`} />
+      <div className="space-y-3.5">
+        <div className={`h-5 w-32 rounded-control ${block}`} />
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className={`h-36 rounded-card ${block}`} />
+          ))}
+        </div>
+      </div>
+      <div className="space-y-3.5">
+        <div className={`h-5 w-24 rounded-control ${block}`} />
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+          <div className={`h-36 rounded-card ${block}`} />
+        </div>
+      </div>
     </div>
   );
 }

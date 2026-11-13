@@ -10,9 +10,28 @@ export const metadata: Metadata = { title: "Compartilhar" };
 
 export default function Page() {
   return (
-    <Suspense fallback={<div className="h-72 animate-pulse rounded-card bg-card motion-reduce:animate-none" aria-busy="true" aria-label="Carregando" />}>
+    <Suspense fallback={<ShareSkeleton />}>
       <Compartilhar />
     </Suspense>
+  );
+}
+
+function ShareSkeleton() {
+  const block = "animate-pulse bg-surface-2 motion-reduce:animate-none";
+  return (
+    <div className="space-y-6 lg:space-y-8" aria-busy="true" aria-label="Carregando">
+      <div className="space-y-3">
+        <div className={`h-8 w-80 max-w-full rounded-control ${block}`} />
+        <div className={`h-4 w-72 max-w-full rounded-control ${block}`} />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className={`h-28 rounded-card ${block}`} />
+        ))}
+      </div>
+      <div className={`h-11 w-72 max-w-full rounded-control ${block}`} />
+      <div className={`h-64 rounded-card ${block}`} />
+    </div>
   );
 }
 

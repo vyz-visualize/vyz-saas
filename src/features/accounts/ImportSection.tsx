@@ -6,10 +6,12 @@
 // de enviar (mesma regra do servidor); o link é lido pelo servidor e, salvo na
 // conta, atualiza sozinho todo dia.
 
-import { FileSpreadsheet, Link2, RefreshCw, Trash2, Upload } from "lucide-react";
+import { CircleCheck, FileSpreadsheet, Link2, RefreshCw, Trash2, Upload } from "lucide-react";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { EmptyState, Modal, SelectField, TextField } from "@/components/ui/kit";
+import { PlatformIcon } from "@/components/brand/PlatformIcon";
 import { btn } from "@/components/ui/styles";
+import { btnSmallGhost, errorBox, iconBtnDanger, modalFooter } from "@/features/integrations/ui";
 import { IMPORT_MAX_BYTES, IMPORT_TEMPLATE_CSV, readSpreadsheet, sheetsCsvUrl, type ImportResult, type ImportSummary } from "@/features/import/spreadsheet";
 import { relativeTime } from "@/features/integrations/sync-label";
 import type { AdAccountDTO } from "@/features/integrations/types";
@@ -63,21 +65,22 @@ export function ImportSection({ accounts, canManage, now, timeZone, onRemove }: 
   ) : undefined;
 
   return (
-    <section aria-labelledby="pl-import" className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 id="pl-import" className="title text-xl">
+    <section aria-labelledby="pl-import" className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h2 id="pl-import" className="text-[17px] font-semibold tracking-[-0.015em]">
             Importação por planilha
           </h2>
-          <p className="text-[13.5px] text-fg-2">
+          <p className="mt-0.5 text-[13.5px] leading-snug text-fg-2">
             Para {IMPORT_PLATFORMS.map((p) => PLATFORMS[p].short).join(", ")}, que não têm conexão direta. Suba um CSV ou cole o link de uma planilha do Google Sheets. Cada conta entra no limite do plano.
           </p>
         </div>
-        {add}
+        {add && <div className="shrink-0 max-sm:[&>*]:w-full">{add}</div>}
       </div>
 
       {notice && (
-        <p role="status" className="rounded-control border border-line bg-card p-3 text-[13.5px]">
+        <p role="status" className="flex items-start gap-2 rounded-control border border-accent/40 bg-accent-soft px-3 py-2.5 text-[13.5px] leading-snug">
+          <CircleCheck size={15} aria-hidden className="mt-0.5 shrink-0 text-accent" />
           {notice}
         </p>
       )}
@@ -88,38 +91,40 @@ export function ImportSection({ accounts, canManage, now, timeZone, onRemove }: 
         <div className="space-y-5">
           {byPlatform.map((p) => (
             <div key={p}>
-              <h3 className="mb-2 text-[13px] font-medium text-fg-2">{PLATFORMS[p].name}</h3>
+              <h3 className="mb-2 flex items-center gap-2 text-[12.5px] font-medium text-fg-2">
+                <PlatformIcon id={p} size={18} /> {PLATFORMS[p].name}
+              </h3>
               <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-card">
                 {accounts
                   .filter((a) => a.platformId === p)
                   .map((a) => {
                     const failed = a.lastSync?.status === "failed" ? a.lastSync.error : null;
                     return (
-                      <li key={a.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <li key={a.id} className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         <div className="min-w-0">
-                          <p className="font-semibold break-words">{a.name}</p>
-                          <p className="text-[13px] text-fg-2">
+                          <p className="text-[14px] leading-snug font-semibold break-words">{a.name}</p>
+                          <p className="mt-0.5 text-[12.5px] leading-snug text-fg-2">
                             {a.imported?.sheet ? "Google Sheets, atualiza todo dia" : "Arquivo CSV"}
                             {a.lastSyncedAt ? ` · última importação ${relativeTime(a.lastSyncedAt, now, timeZone)}` : ""}
                           </p>
-                          <p className="mt-1 text-[12.5px] text-fg-2">{a.dashboards.length ? `Usada em: ${a.dashboards.map((d) => d.name).join(", ")}` : "Não usada em nenhum dashboard"}</p>
+                          <p className="mt-0.5 text-[12.5px] leading-snug text-fg-2">{a.dashboards.length ? `Usada em: ${a.dashboards.map((d) => d.name).join(", ")}` : "Não usada em nenhum dashboard"}</p>
                           {(failure?.id === a.id || failed) && (
-                            <p role="alert" className="mt-1 text-[12.5px] whitespace-pre-line text-error-fg">
+                            <p role="alert" className="mt-1.5 text-[12.5px] leading-snug whitespace-pre-line text-error-fg">
                               {failure?.id === a.id ? failure.message : `Última atualização falhou: ${failed}`}
                             </p>
                           )}
                         </div>
                         {canManage && (
-                          <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          <div className="flex shrink-0 items-center gap-1.5">
                             {a.imported?.sheet && (
-                              <button type="button" onClick={() => refreshFromLink(a)} disabled={refreshing} className={`${btn.ghost} h-9 text-sm`}>
-                                <RefreshCw size={15} className={busyId === a.id ? "animate-spin" : ""} aria-hidden /> Atualizar
+                              <button type="button" onClick={() => refreshFromLink(a)} disabled={refreshing} className={`${btnSmallGhost} max-sm:h-10 max-sm:flex-1`}>
+                                <RefreshCw size={15} className={busyId === a.id ? "animate-spin motion-reduce:animate-none" : ""} aria-hidden /> Atualizar
                               </button>
                             )}
-                            <button type="button" onClick={() => setForm({ account: a })} disabled={refreshing} className={`${btn.ghost} h-9 text-sm`}>
+                            <button type="button" onClick={() => setForm({ account: a })} disabled={refreshing} className={`${btnSmallGhost} max-sm:h-10 max-sm:flex-1`}>
                               <Upload size={15} aria-hidden /> Nova planilha
                             </button>
-                            <button type="button" aria-label={`Remover ${a.name}`} onClick={() => onRemove(a)} className="inline-flex size-9 items-center justify-center rounded-control border border-line hover:border-error">
+                            <button type="button" aria-label={`Remover ${a.name}`} title="Remover" onClick={() => onRemove(a)} className={iconBtnDanger}>
                               <Trash2 size={15} aria-hidden />
                             </button>
                           </div>
@@ -222,12 +227,12 @@ function ImportForm({ account, tier, onDone, onCancel }: { account?: AdAccountDT
       )}
 
       {!allowed ? (
-        <p className="rounded-card border border-line bg-card p-4 text-[14px]">
+        <p className="rounded-card border border-line bg-card p-4 text-[14px] leading-snug">
           {PLATFORMS[platform].name} está {availableIn(PLATFORMS[platform].tier).toLowerCase()}.
         </p>
       ) : (
         <>
-          <div role="group" aria-label="De onde vem a planilha" className="flex gap-1 rounded-control border border-line p-1 text-[13px] font-medium">
+          <div role="group" aria-label="De onde vem a planilha" className="flex gap-1 rounded-[calc(var(--r-control)+4px)] bg-surface-2 p-1 text-[13.5px] font-medium">
             {(
               [
                 ["csv", "Arquivo CSV", FileSpreadsheet],
@@ -242,7 +247,7 @@ function ImportForm({ account, tier, onDone, onCancel }: { account?: AdAccountDT
                   setSource(id);
                   setError(null);
                 }}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-[6px] px-3 py-1.5 ${source === id ? "bg-accent text-on-accent" : "text-fg-2 hover:text-fg"}`}
+                className={`flex h-9 flex-1 items-center justify-center gap-1.5 rounded-control px-3 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-accent ${source === id ? "bg-card text-fg shadow-card" : "text-fg-2 hover:text-fg"}`}
               >
                 <Icon size={15} aria-hidden /> {label}
               </button>
@@ -252,8 +257,15 @@ function ImportForm({ account, tier, onDone, onCancel }: { account?: AdAccountDT
           {source === "csv" ? (
             <div className="space-y-2">
               <input ref={input} type="file" accept=".csv,text/csv,text/plain" className="sr-only" onChange={(e) => void pick(e.target.files?.[0])} aria-label="Arquivo CSV" />
-              <button type="button" onClick={() => input.current?.click()} disabled={pending} className="flex w-full items-center justify-center gap-2 rounded-card border border-dashed border-line px-4 py-6 text-[14px] hover:border-accent">
-                <Upload size={17} aria-hidden /> {file ? file.name : "Escolher arquivo CSV"}
+              <button
+                type="button"
+                onClick={() => input.current?.click()}
+                disabled={pending}
+                className={`flex w-full flex-col items-center justify-center gap-2 rounded-card border border-dashed px-4 py-6 text-[14px] outline-none transition-colors duration-150 hover:border-accent hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-accent ${file ? "border-accent/60 bg-accent-soft/40" : "border-line"}`}
+              >
+                <span className="inline-flex size-9 items-center justify-center rounded-full bg-surface-2 text-fg-2">{file ? <FileSpreadsheet size={17} aria-hidden /> : <Upload size={17} aria-hidden />}</span>
+                <span className="max-w-full truncate font-medium">{file ? file.name : "Escolher arquivo CSV"}</span>
+                <span className="text-[12px] text-fg-2">{file ? "Toque para trocar o arquivo" : "Até 2 MB"}</span>
               </button>
               <p className="text-[12.5px] text-fg-2">
                 Colunas: data, campanha e investimento (obrigatórias); impressões, cliques, conversões e receita (opcionais).{" "}
@@ -262,14 +274,14 @@ function ImportForm({ account, tier, onDone, onCancel }: { account?: AdAccountDT
                 </button>
               </p>
               {check?.ok && (
-                <p role="status" className="rounded-control bg-field px-3 py-2 text-[13px]">
+                <p role="status" className="rounded-control bg-surface-2 px-3 py-2.5 text-[13px] leading-snug">
                   {summaryText(check.summary)}
                   {check.summary.missing.length > 0 && " Colunas opcionais ausentes entram zeradas."}
                   {check.summary.merged > 0 && ` ${int(check.summary.merged)} ${check.summary.merged === 1 ? "linha repetida foi somada" : "linhas repetidas foram somadas"}.`}
                 </p>
               )}
               {check && !check.ok && (
-                <ul role="alert" className="space-y-0.5 rounded-control border border-error/60 bg-error-soft p-3 text-[13px] text-error-fg">
+                <ul role="alert" className={`space-y-0.5 ${errorBox} text-[13px]`}>
                   {check.errors.map((e, i) => (
                     <li key={i}>{e.line > 0 ? `Linha ${e.line}: ${e.message}` : e.message}</li>
                   ))}
@@ -290,20 +302,20 @@ function ImportForm({ account, tier, onDone, onCancel }: { account?: AdAccountDT
       )}
 
       {error && (
-        <p role="alert" className="rounded-control border border-error/60 bg-error-soft p-3 text-[13.5px] whitespace-pre-line text-error-fg">
+        <p role="alert" className={`${errorBox} whitespace-pre-line`}>
           {error}
         </p>
       )}
 
-      <div className="flex gap-2 pt-1">
+      <p className="text-[12px] leading-snug text-fg-2">A planilha substitui os dados da conta no período que ela cobre. Dias fora dela ficam como estão.</p>
+      <div className={modalFooter}>
+        <button type="button" onClick={onCancel} disabled={pending} className={btnSmallGhost}>
+          Cancelar
+        </button>
         <button type="submit" disabled={!ready || pending} className={btn.small}>
           {pending ? "Importando..." : "Importar"}
         </button>
-        <button type="button" onClick={onCancel} disabled={pending} className={`${btn.ghost} h-9`}>
-          Cancelar
-        </button>
       </div>
-      <p className="text-[12px] text-fg-2">A planilha substitui os dados da conta no período que ela cobre. Dias fora dela ficam como estão.</p>
     </form>
   );
 }

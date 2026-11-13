@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Check, Copy, ExternalLink, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Checkbox, Modal, SelectField } from "@/components/ui/kit";
@@ -8,6 +8,10 @@ import { btn } from "@/components/ui/styles";
 import { ddmmyyyy } from "@/lib/format";
 import { createShareLink, type CreatedShareLink } from "@/server/share/actions";
 import { EXPIRY_OPTIONS, type ExpiryOption } from "./links";
+
+// rodapé dos modais de compartilhar: o principal por último no código; à direita no computador e, no celular, em cima e na largura toda
+const footer = "flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end max-sm:[&>*]:w-full";
+const ghost = btn.ghost.replace("h-10 px-3", "h-9 px-3 text-[13.5px]");
 
 export async function copyText(text: string) {
   try {
@@ -55,31 +59,47 @@ export function ShareModal({ open, onClose, dashboard }: { open: boolean; onClos
   return (
     <Modal open={open} onClose={close} title="Compartilhar dashboard">
       <div className="space-y-4 text-[14px]">
-        <p className="text-fg-2">
+        <p className="leading-relaxed text-fg-2">
           Quem tiver o link vê <strong className="text-fg">{dashboard.name}</strong> só para leitura, sem entrar no VYZ{dashboard.live ? ", com os números das contas ligadas" : ", com os dados de exemplo"}.
         </p>
         {!link ? (
           <>
             <SelectField label="Expira em" value={expires} onChange={(v) => setExpires(v as ExpiryOption)} options={EXPIRY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} />
-            <Checkbox label="Esconder os valores de investimento" hint={hideSpend ? "Métricas de custo e ROAS também ficam ocultas, para o valor investido não poder ser recalculado." : undefined} checked={hideSpend} onChange={setHideSpend} />
+            <div className="rounded-control bg-surface-2 px-3.5 py-3">
+              <Checkbox label="Esconder os valores de investimento" hint={hideSpend ? "Métricas de custo e ROAS também ficam ocultas, para o valor investido não poder ser recalculado." : undefined} checked={hideSpend} onChange={setHideSpend} />
+            </div>
             {error && (
-              <p role="alert" className="rounded-control bg-error-soft px-3 py-2 text-[13px] text-error-fg">
+              <p role="alert" className="rounded-control border border-error/40 bg-error-soft px-3 py-2.5 text-[13px] text-error-fg">
                 {error}
               </p>
             )}
-            <button type="button" onClick={create} disabled={pending} className={btn.small}>
-              {pending ? "Gerando…" : "Gerar link"}
-            </button>
+            <div className={footer}>
+              <button type="button" onClick={close} disabled={pending} className={ghost}>
+                Cancelar
+              </button>
+              <button type="button" onClick={create} disabled={pending} className={btn.small}>
+                {pending ? "Gerando…" : "Gerar link"}
+              </button>
+            </div>
           </>
         ) : (
-          <div className="space-y-3 rounded-control border border-line bg-card p-3">
-            <p className="text-[12.5px] font-medium text-fg">Copie agora: por segurança, o link completo não aparece de novo.</p>
-            <p className="break-all rounded-control bg-bg px-2.5 py-2 text-[12.5px] text-fg-2 tnum">{link.url}</p>
+          <div className="space-y-3 rounded-card border border-line bg-card p-4">
+            <p className="flex items-start gap-2 text-[13px] leading-snug font-medium text-fg">
+              <ShieldCheck size={16} aria-hidden className="mt-px shrink-0 text-accent" />
+              Copie agora: por segurança, o link completo não aparece de novo.
+            </p>
+            <p className="break-all rounded-control bg-surface-2 px-3 py-2.5 text-[12.5px] leading-relaxed text-fg tnum select-all">{link.url}</p>
             <p className="text-[12.5px] text-fg-2">
               {link.expiresAt ? `Vale até ${ddmmyyyy(new Date(link.expiresAt))}` : "Não expira"}
               {link.hideSpend ? " · investimento oculto" : ""}
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className={footer}>
+              <button type="button" className={ghost} onClick={() => setLink(null)}>
+                Gerar outro
+              </button>
+              <a href={link.url} target="_blank" rel="noopener noreferrer" className={ghost}>
+                <ExternalLink size={15} aria-hidden /> Abrir
+              </a>
               <button
                 type="button"
                 className={btn.small}
@@ -90,21 +110,15 @@ export function ShareModal({ open, onClose, dashboard }: { open: boolean; onClos
               >
                 {copied ? <Check size={15} aria-hidden /> : <Copy size={15} aria-hidden />} {copied ? "Copiado" : "Copiar link"}
               </button>
-              <a href={link.url} target="_blank" rel="noopener noreferrer" className={`${btn.ghost} h-9`}>
-                <ExternalLink size={15} aria-hidden /> Abrir
-              </a>
-              <button type="button" className={`${btn.ghost} h-9`} onClick={() => setLink(null)}>
-                Gerar outro
-              </button>
             </div>
             <span className="sr-only" aria-live="polite">
               {copied ? "Link copiado" : ""}
             </span>
           </div>
         )}
-        <p className="text-[12.5px] text-fg-2">
+        <p className="text-[12.5px] leading-snug text-fg-2">
           Para revogar ou ver as visitas, use{" "}
-          <Link href="/painel/compartilhar" className="text-accent underline-offset-2 hover:underline">
+          <Link href="/painel/compartilhar" className="font-semibold text-accent underline-offset-4 hover:underline">
             Compartilhar
           </Link>
           .
