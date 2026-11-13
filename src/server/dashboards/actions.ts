@@ -132,6 +132,39 @@ export async function createDashboard(input: CreateDashboardInput): Promise<Acti
   redirect(`/painel/dashboards/${id}?novo=1`);
 }
 
+/**
+ * Troca o modelo (visual e objetivo) de um dashboard que já existe (member). Só entre os
+ * modelos compostos, que têm as mesmas páginas: contas, metas, métricas, marca e filtros
+ * ficam. Com outro visual, a arrumação da Visão geral volta ao padrão dele (os blocos são
+ * outros). O banco confere de novo o plano e se o modelo está ativo (gatilho).
+ */
+export async function changeDashboardTemplate(dashboardId: string, templateId: string): Promise<ActionResult> {
+  try {
+    if (!Id.safeParse(dashboardId).success) throw appError("dashboard:not_found");
+    const session = await authorize("member");
+    const target = templateFor(z.string().max(60).parse(templateId), session);
+    if (!target.composed) throw appError("dashboard:template_unavailable");
+    const current = await getDashboard(dashboardId);
+    if (!current) throw appError("dashboard:not_found");
+    if (current.templateId === target.id) return { ok: true, data: undefined };
+    const before = anyDashboardTemplate(current.templateId);
+    const db = await createServerSupabase();
+    // páginas que o modelo novo não tem (modelo antigo, fora dos compostos): ficam as que valem
+    const keep = current.pages.every((p) => (target.pages as readonly string[]).includes(p));
+    const layout: DashboardLayout = { ...current.layout };
+    if (before?.skin !== target.skin) delete layout["visao-geral"];
+    unwrap(await db.from("dashboards").update({ template_id: target.id, layout: layout as Json }).eq("id", dashboardId));
+    if (!keep) unwrap(await db.rpc("set_dashboard_pages", { p_dashboard_id: dashboardId, p_page_type_ids: pagesFor(target, session, current.pages.filter((p) => (target.pages as readonly string[]).includes(p))) }));
+    updateTag(dashboardTag(dashboardId));
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "dashboard.template_changed", entityType: "dashboard", entityId: dashboardId, metadata: { from: current.templateId, to: target.id } });
+    refresh();
+    return { ok: true, data: undefined };
+  } catch (err) {
+    unstable_rethrow(err);
+    return toActionError(err);
+  }
+}
+
 /** Edita nome, cliente, metas, período, páginas e contas (member). */
 export async function updateDashboard(dashboardId: string, input: DashboardFields): Promise<ActionResult> {
   try {

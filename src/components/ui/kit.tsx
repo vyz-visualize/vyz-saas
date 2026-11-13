@@ -79,7 +79,8 @@ export function Modal({
       className={`m-auto max-h-[calc(100dvh-2rem)] overflow-hidden rounded-card border border-line bg-bg p-0 text-fg backdrop:bg-black/55 ${size}`}
     >
       {open && (
-        <div className="flex h-full max-h-[calc(100dvh-2rem)] flex-col">
+        // altura cheia só no modal de tela cheia: num <dialog> de altura automática, o WebKit lê 100% como 0 e o modal some
+        <div className={`flex max-h-[calc(100dvh-2rem)] flex-col ${full ? "h-full" : ""}`}>
           <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
             <h2 className="title text-lg">{title}</h2>
             <button type="button" onClick={onClose} aria-label="Fechar" className="inline-flex size-9 items-center justify-center rounded-control border border-line hover:border-accent">

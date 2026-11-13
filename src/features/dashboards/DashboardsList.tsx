@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus, Radio, Trash2 } from "lucide-react";
+import { Plus, Radio, Shuffle, Trash2 } from "lucide-react";
+import { ChangeTemplateModal, type ChangeTemplateTarget } from "./ChangeTemplateModal";
 import { NewDashboardDialog } from "./NewDashboardDialog";
 import type { SourceOption } from "./model";
 import type { Tier } from "@/features/pricing/entitlements";
@@ -82,6 +83,7 @@ type Props = {
 export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier, pagesTier, openNew = false, brand, hasProject }: Props) {
   const [creating, setCreating] = useState(openNew && canEdit);
   const [removing, setRemoving] = useState<DashboardListItem | null>(null);
+  const [switching, setSwitching] = useState<ChangeTemplateTarget | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const atLimit = items.length >= limit;
@@ -145,6 +147,18 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
                     </p>
                   </div>
                 </Link>
+                {canEdit && t?.composed && (
+                  <button
+                    type="button"
+                    aria-label={`Trocar modelo de ${d.name}`}
+                    title="Trocar modelo"
+                    onClick={() => setSwitching({ id: d.id, name: d.name, visual: t.composed!.visual as ChangeTemplateTarget["visual"], objective: t.composed!.objective as ChangeTemplateTarget["objective"] })}
+                    className="absolute top-2 right-12 inline-flex size-8 items-center justify-center rounded-control border border-line bg-card/90 text-fg-2 backdrop-blur transition-colors hover:border-accent hover:text-fg"
+                    data-change-template-open
+                  >
+                    <Shuffle size={14} aria-hidden />
+                  </button>
+                )}
                 {canEdit && (
                   <button
                     type="button"
@@ -164,6 +178,7 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
         </ul>
       )}
       {canEdit && <NewDashboardDialog open={creating} onClose={() => setCreating(false)} sources={sources} tier={tier} pagesTier={pagesTier} brand={brand} hasProject={hasProject} />}
+      <ChangeTemplateModal dashboard={switching} tier={tier} onClose={() => setSwitching(null)} />
       <DeleteDashboardModal dashboard={removing} pending={pending} error={error} onConfirm={remove} onClose={() => setRemoving(null)} />
     </div>
   );
