@@ -9,15 +9,15 @@ import { Image } from "expo-image";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
 import { Pressable, RefreshControl, ScrollView, Share, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
 import { ENV } from "@/lib/env";
 import { IconBack, IconClose, IconShare, IconSpark } from "@/ui/icons";
 import { InsightCard } from "@/ui/insight";
 import { AreaChart, ShareBar, Sparkline } from "@/ui/charts";
 import { formatKpi, deltaTone, int, money, pct, shortDate } from "@/ui/format";
-import { Card, Chip, DeltaPill, Notice, SectionHeader, Segmented, Skeleton, tap } from "@/ui/kit";
-import { radius, useTheme } from "@/ui/theme";
+import { Card, Chip, DeltaPill, IconButton, NavHeader, Notice, SectionHeader, Segmented, Skeleton, SkeletonCard, tap } from "@/ui/kit";
+import { useLayout } from "@/ui/layout";
+import { elevation, radius, type, useTheme } from "@/ui/theme";
 
 type Data = DashboardDataResponse["dashboard"];
 type Period = "7d" | "30d" | "mes";
@@ -40,13 +40,15 @@ function Hero({ data, kpi }: { data: Data; kpi: ApiKpi }) {
   const shown = at !== null && series[at] !== undefined ? { ...kpi, value: series[at] } : kpi;
 
   return (
-    <Card style={{ paddingBottom: 8, overflow: "hidden" }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ color: t.fg2, fontSize: 13.5, fontWeight: "600" }}>{kpi.label}</Text>
+    <Card style={[{ paddingBottom: 8, overflow: "hidden" }, elevation(t, 2)]}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <Text style={{ color: t.fg2, ...type.overline, flexShrink: 1 }} numberOfLines={1}>
+          {kpi.label}
+        </Text>
         <Text style={{ color: t.fg3, fontSize: 12.5, fontVariant: ["tabular-nums"] }}>{at !== null ? labels[at] : `${shortDate(data.current.from)} – ${shortDate(data.current.to)}`}</Text>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Text style={{ color: t.fg, fontSize: 38, fontWeight: "800", letterSpacing: -1.2, fontVariant: ["tabular-nums"] }} adjustsFontSizeToFit numberOfLines={1}>
+        <Text style={{ color: t.fg, ...type.hero, flexShrink: 1 }} adjustsFontSizeToFit numberOfLines={1}>
           {formatKpi(shown, data.currency, false)}
         </Text>
         {at === null && <DeltaPill delta={kpi.delta} tone={deltaTone(kpi)} size="md" />}
@@ -61,7 +63,7 @@ function Hero({ data, kpi }: { data: Data; kpi: ApiKpi }) {
   );
 }
 
-function KpiTile({ kpi, currency, active, onPress }: { kpi: ApiKpi; currency: string; active: boolean; onPress: () => void }) {
+function KpiTile({ kpi, currency, active, onPress, width }: { kpi: ApiKpi; currency: string; active: boolean; onPress: () => void; width: number }) {
   const t = useTheme();
   return (
     <Pressable
@@ -72,7 +74,8 @@ function KpiTile({ kpi, currency, active, onPress }: { kpi: ApiKpi; currency: st
         onPress();
       }}
       style={({ pressed }) => ({
-        width: "48.5%",
+        width,
+        ...(active ? {} : elevation(t, 1)),
         borderRadius: radius.lg,
         borderWidth: active ? 1.5 : 1,
         borderColor: active ? t.accent : t.line,
@@ -82,10 +85,10 @@ function KpiTile({ kpi, currency, active, onPress }: { kpi: ApiKpi; currency: st
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
-      <Text style={{ color: t.fg2, fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.4 }} numberOfLines={1}>
+      <Text style={{ color: active ? t.accent : t.fg2, ...type.overline }} numberOfLines={1}>
         {kpi.label}
       </Text>
-      <Text style={{ color: t.fg, fontSize: 22, fontWeight: "800", letterSpacing: -0.5, fontVariant: ["tabular-nums"] }} numberOfLines={1} adjustsFontSizeToFit>
+      <Text style={{ color: t.fg, ...type.stat }} numberOfLines={1} adjustsFontSizeToFit>
         {formatKpi(kpi, currency)}
       </Text>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -354,9 +357,9 @@ function Creatives({ data }: { data: Data }) {
   return (
     <>
       <SectionHeader title="Criativos" caption="Arraste para o lado" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 16 }} style={{ marginRight: -16 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 16 }} style={{ marginRight: -16 }} accessibilityLabel="Criativos, arraste para o lado">
         {list.map((c) => (
-          <View key={c.id} style={{ width: 168, borderRadius: radius.lg, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, overflow: "hidden" }}>
+          <View key={c.id} style={[{ width: 168, borderRadius: radius.lg, borderWidth: 1, borderColor: t.line, backgroundColor: t.surface, overflow: "hidden" }, elevation(t, 1)]}>
             <View style={{ height: 168, backgroundColor: t.surface2 }}>
               {c.thumbnailUrl ? <Image source={{ uri: c.thumbnailUrl }} style={{ flex: 1 }} contentFit="cover" transition={200} /> : null}
               <View style={{ position: "absolute", left: 8, top: 8 }}>
@@ -405,22 +408,25 @@ function Channels({ data }: { data: Data }) {
   );
 }
 
-function Loading() {
+/** Esqueleto no formato da tela: cartão do gráfico, grade de indicadores e uma lista. */
+function Loading({ tile, columns }: { tile: number; columns: number }) {
   return (
-    <View style={{ gap: 12 }}>
-      <Skeleton height={280} />
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        <Skeleton height={110} width="48.5%" />
-        <Skeleton height={110} width="48.5%" />
+    <View style={{ gap: 12 }} accessibilityLabel="Carregando o dashboard" accessibilityState={{ busy: true }}>
+      <Skeleton height={280} round={radius.lg} />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+        {Array.from({ length: columns * 2 }, (_, i) => (
+          <Skeleton key={i} height={104} width={tile} round={radius.lg} />
+        ))}
       </View>
-      <Skeleton height={220} />
+      <SkeletonCard lines={3} />
     </View>
   );
 }
 
 export default function DashboardScreen() {
   const t = useTheme();
-  const insets = useSafeAreaInsets();
+  const { insets, gutter, contentWidth, statColumns } = useLayout();
+  const tile = Math.floor((contentWidth - 10 * (statColumns - 1)) / statColumns);
   const params = useLocalSearchParams<{ id: string; campanha?: string; metrica?: string }>();
   const id = params.id;
   const [period, setPeriod] = useState<Period>("30d");
@@ -482,32 +488,24 @@ export default function DashboardScreen() {
   const askVyz = () =>
     router.navigate({ pathname: "/vyz", params: { dashboardId: id, search, nome: campaignName ?? data?.dashboard.name ?? "", q: "Quanto investi esse mês?" } });
 
-  const round = { width: 38, height: 38, borderRadius: 19, backgroundColor: t.surface2, alignItems: "center", justifyContent: "center" } as const;
-
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         ref={scroll}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: 16, paddingBottom: insets.bottom + 32, gap: 12 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingHorizontal: gutter, paddingBottom: insets.bottom + 32, gap: 12, width: "100%", maxWidth: contentWidth + gutter * 2, alignSelf: "center" }}
         refreshControl={<RefreshControl refreshing={loading && !!data} onRefresh={load} tintColor={t.accent} />}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} hitSlop={10} style={round}>
-            <IconBack color={t.fg} size={20} />
-          </Pressable>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: t.fg, fontSize: 18, fontWeight: "800", letterSpacing: -0.3 }} numberOfLines={1}>
-              {data?.dashboard.name ?? " "}
-            </Text>
-            <Text style={{ color: t.fg2, fontSize: 13 }} numberOfLines={1}>
-              {data ? [data.dashboard.clientName, available.length > 1 && platform === "all" ? "Meta Ads + Google Ads" : PLATFORM[data.platform]].filter(Boolean).join(" · ") : " "}
-            </Text>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Compartilhar" onPress={share} hitSlop={10} style={round}>
-            <IconShare color={t.fg} size={19} />
-          </Pressable>
-        </View>
+        <NavHeader
+          title={data?.dashboard.name ?? " "}
+          caption={data ? [data.dashboard.clientName, available.length > 1 && platform === "all" ? "Meta Ads + Google Ads" : PLATFORM[data.platform]].filter(Boolean).join(" · ") : " "}
+          onBack={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+          right={
+            <IconButton label="Compartilhar" onPress={share}>
+              <IconShare color={t.fg} size={19} />
+            </IconButton>
+          }
+        />
 
         <Segmented options={PERIODS} value={period} onChange={setPeriod} />
         {available.length > 1 && (
@@ -536,18 +534,18 @@ export default function DashboardScreen() {
             <IconClose color={t.accent} size={16} />
           </Pressable>
         )}
-        <Notice text={error} />
+        <Notice text={error} onRetry={error ? () => void load() : undefined} />
 
-        {!data && loading ? <Loading /> : null}
+        {!data && loading ? <Loading tile={tile} columns={statColumns} /> : null}
         {data?.status === "no_accounts" && <Notice tone="info" text="Nenhuma conta ativa neste dashboard. Ligue uma conta no painel para ver os números." />}
         {data?.status === "no_data" && <Notice tone="info" text="Os dados deste período ainda estão chegando." />}
 
         {data && hero && (
           <View style={{ opacity: loading ? 0.6 : 1, gap: 12 }}>
             <Hero key={`${hero.id}:${period}:${campaign}`} data={data} kpi={hero} />
-            <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 10 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
               {kpis.map((k) => (
-                <KpiTile key={k.id} kpi={k} currency={data.currency} active={k.id === hero.id} onPress={() => setMetric(k.id)} />
+                <KpiTile key={k.id} kpi={k} currency={data.currency} width={tile} active={k.id === hero.id} onPress={() => setMetric(k.id)} />
               ))}
             </View>
             <Pressable
