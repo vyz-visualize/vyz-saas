@@ -12,7 +12,7 @@ import { cache } from "react";
 import { parsePlanDbId } from "@/features/pricing/pricing";
 import { ENTITLEMENTS, TIERS, type Entitlements, type Tier } from "@/features/pricing/entitlements";
 import { hasRole, type MemberRole, type OnboardingStep, type SubscriptionStatus, type WorkspaceSession } from "@/features/workspace/session";
-import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
+import { ACTIVE_PROJECT_COOKIE, ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
 import type { Tables } from "@/lib/supabase/database.types";
 import { publicAssetUrl } from "@/lib/supabase/storage";
 import { appError } from "@/server/supabase/errors";
@@ -88,23 +88,29 @@ function toEntitlements(row: Tables<"workspace_access"> | null): Entitlements | 
 export const getWorkspaceSession = cache(async (): Promise<WorkspaceSession | null> => {
   const viewer = await getViewer();
   if (!viewer) return null;
-  return composeWorkspaceSession(await createServerSupabase(), viewer, (await cookies()).get(ACTIVE_WORKSPACE_COOKIE)?.value);
+  const jar = await cookies();
+  return composeWorkspaceSession(await createServerSupabase(), viewer, jar.get(ACTIVE_WORKSPACE_COOKIE)?.value, jar.get(ACTIVE_PROJECT_COOKIE)?.value);
 });
 
 /** Monta a sessão do workspace preferido (ou do padrão do perfil). null = sem workspace. */
-export async function composeWorkspaceSession(supabase: DB, viewer: Viewer, preferred?: string | null): Promise<WorkspaceSession | null> {
+export async function composeWorkspaceSession(supabase: DB, viewer: Viewer, preferred?: string | null, preferredProject?: string | null): Promise<WorkspaceSession | null> {
   if (viewer.memberships.length === 0) return null;
   const current =
     viewer.memberships.find((m) => m.workspace.id === preferred) ??
     viewer.memberships.find((m) => m.workspace.id === viewer.profile?.default_workspace_id) ??
     viewer.memberships[0];
 
-  const [access, usage] = await Promise.all([
+  const [access, usage, projects] = await Promise.all([
     supabase.from("workspace_access").select("*").eq("workspace_id", current.workspace.id).maybeSingle(),
     supabase.from("workspace_usage").select("*").eq("workspace_id", current.workspace.id).maybeSingle(),
+    // os workspaces (projetos) que a pessoa acessa: o RLS já corta os de outros
+    supabase.from("projects").select("id, name").eq("workspace_id", current.workspace.id).is("archived_at", null).order("created_at").limit(500),
   ]);
   if (access.error) console.error("[vyz] acesso do workspace", access.error);
   if (usage.error) console.error("[vyz] uso do workspace", usage.error);
+  if (projects.error) console.error("[vyz] workspaces da organização", projects.error);
+  const projectList = (projects.data ?? []).map((p) => ({ id: p.id, name: p.name }));
+  const openProject = projectList.find((p) => p.id === preferredProject)?.id ?? projectList[0]?.id ?? null;
   const a = access.data;
   const u = usage.data;
   const w = current.workspace;
@@ -151,6 +157,8 @@ export async function composeWorkspaceSession(supabase: DB, viewer: Viewer, pref
       projects: u?.projects ?? 0,
     },
     memberships: viewer.memberships.map((m) => ({ id: m.workspace.id, name: m.workspace.name, role: m.role })),
+    projects: projectList,
+    currentProjectId: openProject,
   };
 }
 

@@ -23,6 +23,8 @@ const EXEMPT: Record<string, string> = {
   "billing/actions.ts:resumeSubscription": "registrado pelo auxiliar de cancelamento",
   // runSync grava sync.finished / sync.failed com quem pediu
   "integrations/actions.ts:resyncAccount": "registrado em sync/run",
+  // liga/desliga pela ação de Conexões, que grava ad_accounts.selection_changed
+  "projects/accounts.ts:setAccountActive": "registrado por setEnabledAccounts",
   "billing/actions.ts:startCheckout": "checkout_sessions auditado; aceite em legal_acceptances",
   "billing/actions.ts:payWithStripe": "redireciona para a Stripe; o webhook registra",
   // salvar rascunho e logo de LP: versões em landing_page_versions e auditoria de landing_pages

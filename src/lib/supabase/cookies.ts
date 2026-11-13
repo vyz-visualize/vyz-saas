@@ -12,6 +12,8 @@ export const AUTH_COOKIE_OPTIONS = {
 
 /** Workspace aberto (quando o usuário participa de mais de um). */
 export const ACTIVE_WORKSPACE_COOKIE = "vyz-ws";
+/** Workspace (cliente; na tabela, projeto) aberto por último: o painel abre nele e o "Novo dashboard" sem conta nasce nele. */
+export const ACTIVE_PROJECT_COOKIE = "vyz-project";
 
 /** Cookie do workspace aberto: mesmo domínio da sessão, por um ano. */
 export const WORKSPACE_COOKIE_OPTIONS = { ...AUTH_COOKIE_OPTIONS, maxAge: 60 * 60 * 24 * 365 };

@@ -10,8 +10,10 @@ import {
   Pencil,
   Plug,
   Plus,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   EmptyState,
@@ -24,6 +26,7 @@ import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/Menu";
 import { btn } from "@/components/ui/styles";
 import { useToast } from "@/components/ui/Toast";
 import { shortDate } from "@/features/integrations/sync-label";
+import { projectHref, rememberProject } from "@/features/workspace/nav";
 import { useWorkspaceSession } from "@/features/workspace/WorkspaceProvider";
 import {
   archiveProject,
@@ -77,10 +80,12 @@ function Metric({
   );
 }
 
-export function ProjectsPage({ state }: { state: ProjectsState }) {
+export function ProjectsPage({ state, openNew = false }: { state: ProjectsState; /** Abre o "Novo workspace" (?novo=1, do seletor da sidebar). */ openNew?: boolean }) {
   const toast = useToast();
+  const router = useRouter();
   const { workspace } = useWorkspaceSession();
-  const [editing, setEditing] = useState<Editing>(null);
+  const [editing, setEditing] = useState<Editing>(openNew && state.canEdit && state.projects.length < state.quantity ? { mode: "new" } : null);
+  const [q, setQ] = useState("");
   const [archiving, setArchiving] = useState<ProjectDTO | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -106,9 +111,13 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
         setError(res.error.fields?.name ?? res.error.message);
         return;
       }
-      toast.show(
-        editing.mode === "new" ? "Workspace criado." : "Nome atualizado.",
-      );
+      // workspace novo: entra nele (é lá que se ligam as contas e se criam os dashboards)
+      if (editing.mode === "new" && res.data && "id" in res.data) {
+        rememberProject(res.data.id);
+        router.push(projectHref(res.data.id, "contas"));
+        return;
+      }
+      toast.show("Nome atualizado.");
       setEditing(null);
     });
   }
@@ -205,8 +214,24 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
           }
         />
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {state.projects.map((p) => (
+        <>
+        {state.projects.length > 8 && (
+          <label className="relative block sm:max-w-sm">
+            <span className="sr-only">Buscar workspace</span>
+            <Search size={16} aria-hidden className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-2" />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={`Buscar entre ${state.projects.length} workspaces`}
+              className="h-10 w-full rounded-control border border-line bg-field pr-3 pl-9 text-[14px] outline-none transition-colors hover:border-fg-2/50 focus:border-accent focus:ring-1 focus:ring-accent max-sm:h-11 max-sm:text-[16px]"
+            />
+          </label>
+        )}
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4">
+          {state.projects
+            .filter((p) => !q.trim() || p.name.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().includes(q.trim().normalize("NFD").replace(/\p{M}/gu, "").toLowerCase()))
+            .map((p) => (
             <li
               key={p.id}
               className="relative flex flex-col rounded-card border border-line bg-card p-4 transition-colors hover:border-fg-2/40 sm:p-5"
@@ -267,7 +292,7 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
               </div>
               <div className="relative z-10 mt-4 grid grid-cols-2 gap-2">
                 <Metric
-                  href="/painel/contas"
+                  href={projectHref(p.id, "contas")}
                   icon={<Plug size={16} aria-hidden />}
                   value={p.enabledAccounts}
                   label={
@@ -275,7 +300,7 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
                   }
                 />
                 <Metric
-                  href="/painel/dashboards"
+                  href={projectHref(p.id, "dashboards")}
                   icon={<BarChart3 size={16} aria-hidden />}
                   value={p.dashboards}
                   label={p.dashboards === 1 ? "dashboard" : "dashboards"}
@@ -284,6 +309,7 @@ export function ProjectsPage({ state }: { state: ProjectsState }) {
             </li>
           ))}
         </ul>
+        </>
       )}
 
       <Modal

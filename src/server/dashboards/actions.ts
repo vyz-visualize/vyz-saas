@@ -8,6 +8,7 @@
 
 import { showsSampleData } from "@/features/dashboards/sample-gate";
 import { refresh, updateTag } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { catalogForTemplate } from "@/features/dashboards/data";
@@ -19,6 +20,7 @@ import { allowedPages, copyName, defaultPages, settingsToDb, type DashboardDetai
 import { createDashboardSchema, dashboardFieldsSchema, type CreateDashboardInput, type DashboardFields } from "@/features/dashboards/schema";
 import { canUse } from "@/features/pricing/entitlements";
 import type { Json } from "@/lib/supabase/database.types";
+import { ACTIVE_PROJECT_COOKIE } from "@/lib/supabase/cookies";
 import { isImportPlatform } from "@/features/accounts/connection-modes";
 import { isCrmSyncPlatform } from "@/features/sync/crm";
 import { anyDashboardTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
@@ -105,6 +107,9 @@ async function insertDashboard(db: DB, session: WorkspaceSession, input: { templ
     }),
   );
   if (!id) throw appError("unknown");
+  // sem conta ligada, o banco poria no workspace mais antigo: vai para o workspace aberto (o RLS confere o acesso)
+  const open = (await cookies()).get(ACTIVE_PROJECT_COOKIE)?.value;
+  if (!input.accountIds.length && open && session.projects?.some((p) => p.id === open)) await db.from("dashboards").update({ project_id: open }).eq("id", id);
   return id;
 }
 

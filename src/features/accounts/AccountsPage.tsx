@@ -288,8 +288,8 @@ export function AccountsPage({ state, manual, imported, result, now, timeZone, s
   return (
     <div className="@container space-y-6 lg:space-y-8">
       <PageHeader
-        title="Contas e conexões"
-        text="Conecte suas ferramentas e ligue as contas que alimentam os dashboards. Cada ferramenta tem o seu cartão: clique em Gerenciar para escolher as contas."
+        title="Conexões"
+        text="Os logins da organização e todas as contas que eles enxergam. Cada conta entra num workspace (cliente): em Gerenciar, escolha as contas e o workspace de cada uma. Dentro de cada workspace, a aba Contas mostra só as dele."
       />
 
       {banner && <ResultBanner result={banner} onClose={() => setBanner(null)} />}

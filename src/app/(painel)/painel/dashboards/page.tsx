@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { DashboardsList } from "@/features/dashboards/DashboardsList";
 import { TIER_LABEL } from "@/features/pricing/entitlements";
+import { projectHref } from "@/features/workspace/nav";
 import { hasRole } from "@/features/workspace/session";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { listDashboards, listSourceOptions } from "@/server/dashboards/queries";
@@ -22,7 +24,12 @@ export default function Page({ searchParams }: PageProps<"/painel/dashboards">) 
 async function Lista({ searchParams }: Pick<PageProps<"/painel/dashboards">, "searchParams">) {
   await connection();
   const session = await requireWorkspace({ next: "/painel/dashboards" });
-  const [items, sources, query, projects] = await Promise.all([listDashboards(), listSourceOptions(), searchParams, listProjects()]);
+  // os dashboards moram no workspace: abre os do workspace aberto. A lista da organização inteira
+  // fica em ?todos=1 (inclui os de workspaces arquivados, que ainda contam no limite do plano) e
+  // aparece direto quando ainda não há workspace (com o "crie o primeiro").
+  const q = await searchParams;
+  if (session.currentProjectId && q.todos !== "1") redirect(`${projectHref(session.currentProjectId, "dashboards")}${q.novo === "1" ? "?novo=1" : ""}`);
+  const [items, sources, projects] = await Promise.all([listDashboards(), listSourceOptions(), listProjects()]);
   const tier = session.access.tier ?? "base";
   return (
     <DashboardsList
@@ -33,7 +40,7 @@ async function Lista({ searchParams }: Pick<PageProps<"/painel/dashboards">, "se
       sources={sources}
       tier={tier}
       pagesTier={session.access.entitlements?.pages ?? "base"}
-      openNew={query.novo === "1"}
+      openNew={q.novo === "1"}
       hasProject={projects.length > 0}
       brand={{ color: session.workspace.brandColor, logoUrl: session.workspace.brandLogoUrl ?? null, canEdit: hasRole(session.role, "admin") }}
     />

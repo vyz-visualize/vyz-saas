@@ -7,18 +7,19 @@ import { getProjectsState } from "@/server/projects/queries";
 
 export const metadata: Metadata = { title: "Workspaces" };
 
-export default function Page() {
+export default function Page({ searchParams }: PageProps<"/painel/workspaces">) {
   return (
     <Suspense fallback={<ProjectsSkeleton />}>
-      <Workspaces />
+      <Workspaces searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Workspaces() {
+async function Workspaces({ searchParams }: Pick<PageProps<"/painel/workspaces">, "searchParams">) {
   await connection();
   await requireWorkspace({ next: "/painel/workspaces" });
-  return <ProjectsPage state={await getProjectsState()} />;
+  const [state, query] = await Promise.all([getProjectsState(), searchParams]);
+  return <ProjectsPage state={state} openNew={query.novo === "1"} />;
 }
 
 function ProjectsSkeleton() {

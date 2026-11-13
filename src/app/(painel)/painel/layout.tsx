@@ -38,11 +38,10 @@ async function PainelSession({ children }: { children: React.ReactNode }) {
 
 function ShellFallback() {
   return (
-    <div data-ui="app" className="min-h-dvh bg-bg" aria-busy="true">
-      <div className="vidro-trilho fixed top-3 left-3 hidden h-[calc(100dvh-24px)] w-[280px] rounded-[22px] sb-closed:w-[76px] md:block" />
-      <div className="min-h-dvh md:pl-[100px] lg:pl-[300px] lg:sb-closed:pl-[100px]">
-        <div className="h-14 border-b border-line" />
-        <div className="mx-auto max-w-[1280px] space-y-4 px-4 pt-6 sm:px-6 lg:px-10 lg:pt-9">
+    <div data-ui="app" className="min-h-dvh bg-bg md:flex md:h-dvh md:overflow-hidden md:bg-[var(--frame)]" aria-busy="true">
+      <div className="hidden h-dvh w-[252px] shrink-0 sb-closed:w-[76px] md:block" />
+      <div className="min-h-dvh flex-1 bg-bg md:my-2 md:mr-2 md:h-[calc(100dvh-16px)] md:min-h-0 md:rounded-[20px]">
+        <div className="space-y-4 px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8 2xl:px-10">
           <div className="h-8 w-56 animate-pulse rounded-control bg-surface-2 motion-reduce:animate-none" />
           <div className="h-40 animate-pulse rounded-card bg-surface-2 motion-reduce:animate-none" />
         </div>

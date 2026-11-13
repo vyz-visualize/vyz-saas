@@ -6,6 +6,7 @@ import { Upsell } from "@/features/workspace/Upsell";
 import { PageSkeleton } from "@/features/workspace/PageSkeleton";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { getHomeData } from "@/server/workspace/queries";
+import { listProjects } from "@/server/projects/queries";
 
 export const metadata: Metadata = { title: "Início" };
 
@@ -24,7 +25,7 @@ async function Inicio() {
   if (session.workspace.product === "lp") redirect("/painel/landing-pages");
   return (
     <div className="space-y-10">
-      <HomePage data={await getHomeData()} />
+      <HomePage data={await getHomeData()} projects={await listProjects()} />
       <Upsell />
     </div>
   );

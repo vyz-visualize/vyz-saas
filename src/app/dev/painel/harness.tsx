@@ -12,9 +12,7 @@ import { DEFAULT_SETTINGS } from "@/features/dashboards/data";
 import { DashboardsList } from "@/features/dashboards/DashboardsList";
 import type { DashboardListItem } from "@/features/dashboards/model";
 import { ENTITLEMENTS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
-import { ProjectDetailPage } from "@/features/projects/ProjectDetailPage";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
-import type { ProjectDetail } from "@/features/projects/types";
 import type { ProjectsState } from "@/features/projects/types";
 import { AppShell } from "@/features/workspace/AppShell";
 import type { HomeData, SettingsData } from "@/features/workspace/dto";
@@ -29,6 +27,7 @@ import type { BillingOverview } from "@/server/billing/queries";
 import { DataHarness } from "../dados/harness";
 import { SCREENS_DADOS } from "./screens-dados";
 import { SCREENS_TAREFAS } from "./screens-tarefas";
+import { BENCH_PROJECTS, P1, P2, P3, SCREENS_WORKSPACE } from "./screens-workspace";
 import type { Screen } from "./types";
 
 const NOW = "2026-11-13T15:00:00.000Z";
@@ -44,8 +43,10 @@ function session(tier: Exclude<Tier, "personalizado">, role: MemberRole): Worksp
     usage: { dashboards: 4, landingPages: 0, publishedLandingPages: 0, enabledAdAccounts: 5, billableAccounts: 5, activeConnections: 2, projects: 3 },
     memberships: [
       { id: "ws1", name: "Agência Exemplo", role },
-      { id: "ws2", name: "Loja Aurora", role: "admin" },
+      { id: "ws2", name: "Estúdio Norte", role: "admin" },
     ],
+    projects: BENCH_PROJECTS,
+    currentProjectId: P1,
   };
 }
 
@@ -83,9 +84,9 @@ const HOME_NEW: HomeData = {
 
 const PROJECTS: ProjectsState = {
   projects: [
-    { id: "p1", name: "Loja Aurora", createdAt: day(90), enabledAccounts: 3, dashboards: 2 },
-    { id: "p2", name: "Clínica Sol", createdAt: day(40), enabledAccounts: 1, dashboards: 1 },
-    { id: "p3", name: "Imobiliária Vista do Parque Empreendimentos", createdAt: day(8), enabledAccounts: 1, dashboards: 1 },
+    { id: P1, name: "Loja Aurora", createdAt: day(90), enabledAccounts: 5, dashboards: 2 },
+    { id: P2, name: "Clínica Sol", createdAt: day(40), enabledAccounts: 1, dashboards: 1 },
+    { id: P3, name: "Imobiliária Vista do Parque Empreendimentos", createdAt: day(8), enabledAccounts: 1, dashboards: 1 },
   ],
   quantity: 15,
   maxAccountsPerPlatform: 3,
@@ -217,40 +218,15 @@ const BILLING: BillingOverview = {
 };
 const PLAN_USAGE = { projects: 3, dashboards: 4, publishedLandingPages: 0, enabledPlatforms: ["meta", "google"] };
 
-const DETAIL: ProjectDetail = {
-  id: "p1",
-  name: "Loja Aurora",
-  createdAt: day(90),
-  accounts: [
-    { id: "c1", name: "Loja Aurora · BM principal", platformId: "meta", isEnabled: true, lastSyncedAt: at(42) },
-    { id: "c2", name: "Aurora Search", platformId: "google", isEnabled: true, lastSyncedAt: at(180) },
-    { id: "c3", name: "lojaaurora.com.br", platformId: "ga4", isEnabled: true, lastSyncedAt: at(60) },
-    { id: "c4", name: "Aurora Outlet", platformId: "meta", isEnabled: false, lastSyncedAt: null },
-  ],
-  dashboards: [
-    { id: "d1", name: "Loja Aurora · Vendas", templateId: "vyz-ecommerce", updatedAt: at(12) },
-    { id: "d4", name: "Aurora · Black Friday", templateId: "vyz-ecommerce", updatedAt: at(60 * 24 * 4) },
-  ],
-  people: [
-    { userId: "u1", name: "Pedro Freitas", email: "pedro@exemplo.com", role: "owner", allAccess: true, inProject: true, isYou: true },
-    { userId: "u2", name: "Marina Alves", email: "marina@exemplo.com", role: "member", allAccess: false, inProject: true, isYou: false },
-    { userId: "u3", name: "Rafael Costa", email: "rafael@exemplo.com", role: "viewer", allAccess: false, inProject: false, isYou: false },
-  ],
-  invitations: [{ id: "i1", email: "cliente@lojaaurora.com.br", role: "viewer", expiresAt: day(-5) }],
-  seats: { used: 4, limit: 5 },
-  maxAccountsPerPlatform: 3,
-  canEdit: true,
-  canManage: true,
-};
-
 const SCREENS: Record<string, Screen> = {
   ...SCREENS_DADOS,
   ...SCREENS_TAREFAS,
+  ...SCREENS_WORKSPACE,
   inicio: {
     path: "/painel",
     node: () => (
       <div className="space-y-10">
-        <HomePage data={HOME} />
+        <HomePage data={HOME} projects={PROJECTS.projects} />
         <Upsell />
       </div>
     ),
@@ -258,7 +234,6 @@ const SCREENS: Record<string, Screen> = {
   "inicio-novo": { path: "/painel", node: () => <HomePage data={HOME_NEW} /> },
   workspaces: { path: "/painel/workspaces", node: () => <ProjectsPage state={PROJECTS} /> },
   "workspaces-vazio": { path: "/painel/workspaces", node: () => <ProjectsPage state={{ ...PROJECTS, projects: [] }} /> },
-  workspace: { path: "/painel/workspaces/p1", node: () => <ProjectDetailPage detail={DETAIL} /> },
   dashboards: {
     path: "/painel/dashboards",
     node: (tier, role) => (

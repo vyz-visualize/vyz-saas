@@ -15,7 +15,9 @@ import { relativeTime } from "@/features/integrations/sync-label";
 import { ConnectNudge } from "@/features/onboarding/Nudge";
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
 import { useHydrated } from "@/lib/hooks";
+import type { ProjectDTO } from "@/features/projects/types";
 import type { HomeConnection, HomeData } from "./dto";
+import { projectHref } from "./nav";
 import { homeCta, homeSteps, nextStep, planBadge } from "./home-steps";
 import { useWorkspaceSession } from "./WorkspaceProvider";
 
@@ -85,8 +87,69 @@ function StatLink({ href, icon, label, value, hint, limit, tone = "normal" }: { 
   );
 }
 
-export function HomePage({ data }: { data: HomeData }) {
-  const { user, workspace, access, usage } = useWorkspaceSession();
+/** Os workspaces (clientes) da organização: cada cartão abre a tela do workspace. */
+function Workspaces({ projects, canCreate }: { projects: ProjectDTO[]; canCreate: boolean }) {
+  const shown = projects.slice(0, 6);
+  return (
+    <section aria-labelledby="h-workspaces" className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 id="h-workspaces" className="text-[17px] font-semibold tracking-[-0.015em]">
+            Workspaces
+          </h2>
+          <p className="mt-0.5 text-[13.5px] text-fg-2">Cada cliente com as contas, os dashboards e a equipe dele.</p>
+        </div>
+        <span className="flex items-center gap-4">
+          {canCreate && (
+            <Link href="/painel/workspaces?novo=1" className={cardLink}>
+              Novo workspace
+            </Link>
+          )}
+          <Link href="/painel/workspaces" className={cardLink}>
+            Ver todos{projects.length > shown.length ? ` (${projects.length})` : ""}
+          </Link>
+        </span>
+      </div>
+      {shown.length ? (
+        <ul className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 min-[1800px]:grid-cols-4">
+          {shown.map((p) => (
+            <li key={p.id}>
+              <Link href={projectHref(p.id)} className={`group flex items-center gap-3 rounded-card border border-line bg-card p-4 shadow-card transition-colors hover:border-fg-2/40 ${ring}`}>
+                <span aria-hidden className="inline-flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-accent text-[14px] font-bold text-on-accent">
+                  {p.name
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((w) => w[0]?.toUpperCase())
+                    .join("")}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold group-hover:text-accent">{p.name}</span>
+                  <span className="block truncate text-[12.5px] text-fg-2">
+                    {plural(p.enabledAccounts, "conta ativa", "contas ativas")} · {plural(p.dashboards, "dashboard", "dashboards")}
+                  </span>
+                </span>
+                <ChevronRight size={16} aria-hidden className="shrink-0 text-fg-2/50 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-fg" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="flex flex-col items-start gap-3 rounded-card border border-dashed border-line p-5">
+          <p className="text-[14px] text-fg-2">Crie um workspace para cada cliente ou marca. As contas, os dashboards e a equipe ficam dentro dele.</p>
+          {canCreate && (
+            <Link href="/painel/workspaces?novo=1" className={`inline-flex items-center gap-1.5 ${cardLink}`}>
+              Criar o primeiro workspace <ArrowRight size={15} aria-hidden />
+            </Link>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function HomePage({ data, projects = [] }: { data: HomeData; projects?: ProjectDTO[] }) {
+  const { user, workspace, access, usage, role } = useWorkspaceSession();
   const hydrated = useHydrated();
   const tier = access.tier ?? "base";
   const ent = access.entitlements ?? ENTITLEMENTS[tier];
@@ -213,7 +276,7 @@ export function HomePage({ data }: { data: HomeData }) {
 
       <section aria-label="Números da organização" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatLink href="/painel/workspaces" icon={<FolderKanban size={16} aria-hidden />} label="Workspaces" value={usage.projects} limit={access.accountsQuantity} hint="Clientes ou marcas" />
-        <StatLink href="/painel/dashboards" icon={<BarChart3 size={16} aria-hidden />} label="Dashboards" value={usage.dashboards} limit={ent.maxDashboards} hint={`Limite do ${TIER_LABEL[tier]}`} />
+        <StatLink href="/painel/dashboards?todos=1" icon={<BarChart3 size={16} aria-hidden />} label="Dashboards" value={usage.dashboards} limit={ent.maxDashboards} hint={`Limite do ${TIER_LABEL[tier]}`} />
         <StatLink
           href="/painel/contas"
           icon={<Plug size={16} aria-hidden />}
@@ -228,6 +291,8 @@ export function HomePage({ data }: { data: HomeData }) {
       {/* enquanto houver passo pendente, o checklist fica logo abaixo dos números */}
       {pending && checklist}
 
+      <Workspaces projects={projects} canCreate={role !== "viewer"} />
+
       <div className={`grid grid-cols-[minmax(0,1fr)] gap-5 lg:gap-6 ${pending ? "" : "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"}`}>
         <section className="rounded-card border border-line bg-card p-5 shadow-card sm:p-6" aria-labelledby="h-recentes">
           <SectionHeader
@@ -235,7 +300,7 @@ export function HomePage({ data }: { data: HomeData }) {
             title="Recentes"
             action={
               data.recent.length > 0 && (
-                <Link href="/painel/dashboards" className={cardLink}>
+                <Link href="/painel/dashboards?todos=1" className={cardLink}>
                   Ver todos
                 </Link>
               )

@@ -1,62 +1,45 @@
 "use client";
 
-// Moldura do painel. No computador: o menu lateral de vidro (GlassSidebar: trilho que abre no
-// hover, alfinete para fixar), o topo com a seção aberta e o conteúdo num fundo neutro com
-// cartões brancos; o conteúdo reflui junto com o menu (padding no CSS, mesma curva). No
-// celular: topo curto, barra flutuante embaixo e "Mais" numa folha que sobe (o resto do menu,
-// a troca de organização e a conta).
+// Moldura do painel. No computador: a sidebar integrada (Sidebar: moldura oliva, seletor de
+// workspaces, a aba ativa que se funde no painel) e o conteúdo num painel arredondado encaixado
+// nela, sem barra no topo e com a largura toda da tela. No celular: topo curto com o workspace
+// aberto, barra flutuante embaixo e "Mais" numa folha que sobe (o resto do menu, a troca de
+// workspace e de organização, o tema e a conta).
 // A moldura marca [data-ui="app"]: é o que liga os tokens do painel (globals.css).
 // O dashboard (ver, editar e montar) abre em tela cheia: sem o menu do produto, só uma barra
 // fina com o botão de voltar (isFocusPath), e o conteúdo dele fica nos tokens da marca.
 
-import { AlertTriangle, ArrowLeft, ArrowUpRight, Check, ChevronRight, Info, LogOut, Menu, Moon, Sun } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowUpRight, Check, ChevronRight, ChevronsUpDown, Info, LogOut, Menu, Moon, Sun } from "lucide-react";
 import { LazyMotion, MotionConfig } from "motion/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Suspense, useState, useTransition, type ReactNode } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
-import { Modal, PendingChip } from "@/components/ui/kit";
+import { Modal } from "@/components/ui/kit";
 import { setTheme, ThemeToggle, useTheme } from "@/components/ui/ThemeToggle";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 import { AgentDrawer } from "@/features/agent/AgentDrawer";
-import { AgentBar, AgentFab } from "@/features/agent/AgentEntry";
+import { AgentFab } from "@/features/agent/AgentEntry";
 import { AgentProvider } from "@/features/agent/AgentProvider";
 import { Caption } from "@/features/agent/Caption";
-import { TIER_LABEL } from "@/features/pricing/entitlements";
-import type { Product } from "@/features/pricing/pricing";
 import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
 import { FOCUS_ACTIONS_ID, isFocusPath } from "./focus";
-import { GlassSidebar } from "./GlassSidebar";
-import { planBadge } from "./home-steps";
-import { activeHref, AdminContext, flat, isActive, PreviewPathContext, useNavGroups, usePanelPath, type NavIcon } from "./nav";
+import { AdminContext, flat, isActive, mobilePrimary, PreviewPathContext, projectHref, rememberProject, useNavGroups, useOpenProject, usePanelPath, type NavIcon } from "./nav";
 import { subscriptionNotice } from "./notice";
 import { ROLE_LABEL } from "./session";
+import { initials, planLine, Sidebar } from "./Sidebar";
 import { useWorkspaceSession } from "./WorkspaceProvider";
 
 // layoutId precisa das features de layout; chegam depois da primeira pintura
 const loadFeatures = () => import("motion/react").then((r) => r.domMax);
 
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("") || "V";
-
-/** "Avançado · 1 de 2 workspaces" (o limite do plano, com o que já está em uso) ou "Sem plano ativo". */
-function planLine(session: Pick<ReturnType<typeof useWorkspaceSession>, "access" | "usage">, product: Product) {
-  const { access, usage } = session;
-  if (!access.hasAccess || !access.tier) return "Sem plano ativo";
-  if (product === "lp") return `${TIER_LABEL[access.tier]} · Landing pages`;
-  return planBadge(TIER_LABEL[access.tier], usage.projects, access.accountsQuantity);
-}
-
 const ring = "outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 
-function WorkspaceAvatar({ name, size = "md" }: { name: string; size?: "md" | "lg" }) {
+function Avatar({ name, size = "md", tone = "accent" }: { name: string; size?: "sm" | "md" | "lg"; tone?: "accent" | "soft" }) {
+  const box = size === "lg" ? "size-11 rounded-[13px] text-[14px]" : size === "sm" ? "size-7 rounded-[8px] text-[11px]" : "size-9 rounded-[11px] text-[12.5px]";
   return (
-    <span aria-hidden className={`inline-flex shrink-0 items-center justify-center bg-accent font-bold text-on-accent ${size === "lg" ? "size-11 rounded-[13px] text-[14px]" : "size-9 rounded-[11px] text-[12.5px]"}`}>
+    <span aria-hidden className={`inline-flex shrink-0 items-center justify-center font-bold ${box} ${tone === "accent" ? "bg-accent text-on-accent" : "bg-surface-2 text-fg-2"}`}>
       {initials(name)}
     </span>
   );
@@ -66,9 +49,10 @@ function WorkspaceAvatar({ name, size = "md" }: { name: string; size?: "md" | "l
 
 function BottomNav({ path, onMore }: { path: string | null; onMore: () => void }) {
   const groups = useNavGroups();
-  const all = flat(groups);
-  const items = all.slice(0, 4);
-  const moreActive = all.slice(4).some((n) => isActive(groups, path, n.href));
+  const items = mobilePrimary(groups);
+  const moreActive = flat(groups)
+    .filter((i) => !items.includes(i))
+    .some((n) => isActive(groups, path, n.href));
   const cell = (active: boolean, I: NavIcon, label: string) => (
     <>
       <span className={`inline-flex h-8 w-12 items-center justify-center rounded-chip transition-colors duration-200 ${active ? "bg-accent-soft text-accent" : ""}`}>
@@ -105,74 +89,105 @@ function ActiveBottomNav({ onMore }: { onMore: () => void }) {
 
 /** Linha da folha "Mais". */
 const sheetRow = `flex min-h-12 w-full items-center gap-3 rounded-control px-3 text-left text-[15px] font-medium transition-colors hover:bg-surface-2 ${ring}`;
+const sheetLabel = "px-3 pt-4 pb-1 text-[11px] font-semibold tracking-[0.07em] text-fg-2 uppercase";
 
-/** No celular não há menu lateral: a troca de workspace fica no "Mais". */
-function MobileWorkspaces() {
-  const { workspace: ws, memberships } = useWorkspaceSession();
-  const [switching, startSwitch] = useTransition();
-  if (memberships.length < 2) return null;
-  return (
-    <section aria-label="Organizações" className="mt-4">
-      <p className="px-3 pb-1 text-[11px] font-semibold tracking-[0.07em] text-fg-2 uppercase">Trocar de organização</p>
-      <ul>
-        {memberships.map((mb) => (
-          <li key={mb.id}>
-            <button
-              type="button"
-              disabled={switching}
-              aria-current={mb.id === ws.id ? "true" : undefined}
-              onClick={(e) => {
-                if (mb.id === ws.id) return;
-                e.stopPropagation();
-                startSwitch(() => switchWorkspace(mb.id));
-              }}
-              className={`${sheetRow} disabled:opacity-50`}
-            >
-              <WorkspaceAvatar name={mb.name} />
-              <span className="min-w-0 flex-1 truncate">{mb.name}</span>
-              <span className="text-[12px] font-normal text-fg-2">{switching && mb.id !== ws.id ? "…" : ROLE_LABEL[mb.role]}</span>
-              {mb.id === ws.id && <Check size={17} aria-hidden className="text-accent" />}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-/** A folha "Mais" do celular: o resto do menu, os workspaces, o tema e a conta. */
+/** A folha "Mais" do celular: os workspaces, o resto do menu, as organizações, o tema e a conta. */
 function MoreSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { workspace: ws, access, usage, user } = useWorkspaceSession();
-  const rest = flat(useNavGroups()).slice(4);
+  const session = useWorkspaceSession();
+  const { workspace: org, memberships, user } = session;
+  const projects = session.projects ?? [];
+  const groups = useNavGroups();
+  const primary = mobilePrimary(groups);
+  const rest = flat(groups).filter((i) => !primary.includes(i));
+  const current = useOpenProject();
   const dark = useTheme() === "dark";
+  const router = useRouter();
+  const [switching, startSwitch] = useTransition();
   return (
     <Modal open={open} onClose={onClose} title="Mais">
       <div onClick={onClose}>
-        <Link href="/painel/plano" className={`flex items-center gap-3 rounded-[14px] border border-line bg-card p-3 shadow-card ${ring}`}>
-          <WorkspaceAvatar name={ws.name} size="lg" />
+        {org.product === "dash" && projects.length > 0 && (
+          <section aria-label="Workspaces">
+            <p className={`${sheetLabel} pt-0`}>Workspaces · {projects.length}</p>
+            <ul className="max-h-56 overflow-y-auto">
+              {projects.map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    aria-current={p.id === current?.id ? "true" : undefined}
+                    onClick={() => {
+                      rememberProject(p.id);
+                      router.push(projectHref(p.id));
+                    }}
+                    className={sheetRow}
+                  >
+                    <Avatar name={p.name} size="sm" tone={p.id === current?.id ? "accent" : "soft"} />
+                    <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                    {p.id === current?.id && <Check size={17} aria-hidden className="text-accent" />}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* o resto do menu, nos mesmos grupos do menu lateral (o workspace aberto, Rotina, Organização) */}
+        {groups.map((g) => {
+          const items = g.items.filter((i) => rest.includes(i));
+          if (!items.length) return null;
+          return (
+            <section key={g.id} aria-label={g.workspace ? `Workspace ${g.label}` : g.label}>
+              <p className={`${sheetLabel} truncate`}>{g.label}</p>
+              <ul>
+                {items.map(({ href, label, icon: I, soon }) => (
+                  <li key={href}>
+                    <Link href={href} className={sheetRow}>
+                      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-surface-2 text-fg">
+                        <I size={18} aria-hidden />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
+                      {soon && <span className="rounded-chip border border-line px-1.5 py-px text-[11px] font-normal text-fg-2">Em breve</span>}
+                      <ChevronRight size={17} aria-hidden className="shrink-0 text-fg-2" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+
+        <p className={sheetLabel}>Sua organização</p>
+        <Link href="/painel/plano" className={`mx-1 flex items-center gap-3 rounded-[14px] border border-line bg-card p-3 shadow-card ${ring}`}>
+          <Avatar name={org.name} size="lg" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[15px] font-semibold">{ws.name}</span>
-            <span className="block truncate text-[13px] text-fg-2">{planLine({ access, usage }, ws.product)}</span>
+            <span className="block truncate text-[15px] font-semibold">{org.name}</span>
+            <span className="block truncate text-[13px] text-fg-2">{planLine(session, org.product)}</span>
           </span>
           <ChevronRight size={18} aria-hidden className="shrink-0 text-fg-2" />
         </Link>
-
-        <ul className="mt-3">
-          {rest.map(({ href, label, icon: I, soon }) => (
-            <li key={href}>
-              <Link href={href} className={sheetRow}>
-                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-surface-2 text-fg">
-                  <I size={18} aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1 truncate">{label}</span>
-                {soon && <span className="rounded-chip border border-line px-1.5 py-px text-[11px] font-normal text-fg-2">Em breve</span>}
-                <ChevronRight size={17} aria-hidden className="shrink-0 text-fg-2" />
-              </Link>
-            </li>
-          ))}
-        </ul>
-
-        <MobileWorkspaces />
+        {memberships.length > 1 && (
+          <ul className="mt-1">
+            {memberships
+              .filter((mb) => mb.id !== org.id)
+              .map((mb) => (
+                <li key={mb.id}>
+                  <button
+                    type="button"
+                    disabled={switching}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startSwitch(() => switchWorkspace(mb.id));
+                    }}
+                    className={`${sheetRow} disabled:opacity-50`}
+                  >
+                    <Avatar name={mb.name} size="sm" tone="soft" />
+                    <span className="min-w-0 flex-1 truncate">Trocar para {mb.name}</span>
+                    <span className="text-[12px] font-normal text-fg-2">{switching ? "…" : ROLE_LABEL[mb.role]}</span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        )}
 
         <div className="mt-4 border-t border-line pt-3">
           <p className="truncate px-3 pb-1 text-[12.5px] text-fg-2">{user.email}</p>
@@ -199,26 +214,7 @@ function MoreSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-// ---- topo do painel ------------------------------------------------------------
-
-/** A seção aberta, no topo: orienta quando o título da página já rolou para fora. */
-function SectionCrumb({ path }: { path: string | null }) {
-  const { workspace } = useWorkspaceSession();
-  const groups = useNavGroups();
-  const href = activeHref(groups, path);
-  const current = flat(groups).find((n) => n.href === href);
-  return (
-    <p className="flex min-w-0 items-center gap-1.5 text-[13.5px]">
-      <span className="hidden truncate text-fg-2 lg:inline">{workspace.name}</span>
-      <ChevronRight size={14} aria-hidden className="hidden shrink-0 text-fg-2/60 lg:inline" />
-      <span className="truncate font-semibold text-fg">{current?.label ?? (path?.startsWith("/painel/whatsapp") ? "Relatórios no WhatsApp" : "Painel")}</span>
-    </p>
-  );
-}
-
-function ActiveSectionCrumb() {
-  return <SectionCrumb path={usePanelPath()} />;
-}
+// ---- avisos e topo do celular ---------------------------------------------------------------
 
 const NOTICE_STYLE = {
   error: "bg-error-soft text-fg [&_svg]:text-error-fg",
@@ -233,7 +229,7 @@ function SubscriptionBanner({ wide = false }: { wide?: boolean }) {
   if (!notice) return null;
   const Icon = notice.tone === "info" ? Info : AlertTriangle;
   return (
-    <div role={notice.tone === "info" ? "status" : "alert"} className={`px-4 py-2.5 text-[13px] sm:px-6 ${wide ? "" : "lg:px-10"} ${NOTICE_STYLE[notice.tone]}`}>
+    <div role={notice.tone === "info" ? "status" : "alert"} className={`px-4 py-2.5 text-[13px] sm:px-6 ${wide ? "" : "lg:px-8 2xl:px-10"} ${NOTICE_STYLE[notice.tone]}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <Icon size={15} aria-hidden className="shrink-0" />
         <p className="min-w-0 flex-1">{notice.text}</p>
@@ -245,13 +241,30 @@ function SubscriptionBanner({ wide = false }: { wide?: boolean }) {
   );
 }
 
-const topBar = "sticky top-0 z-30 border-b border-line bg-[var(--nav-bg)] backdrop-blur-md print:hidden";
+/** Topo do celular (no computador a sidebar faz esse papel): a marca e o workspace aberto, que abre o "Mais". */
+function MobileTop({ onMore }: { onMore: () => void }) {
+  const session = useWorkspaceSession();
+  const open = useOpenProject();
+  const title = session.workspace.product === "lp" || !open ? session.workspace.name : open.name;
+  return (
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-line bg-[var(--nav-bg)] px-4 backdrop-blur-md md:hidden print:hidden">
+      <Link href="/painel" aria-label="VYZ, início do painel" className={`block w-[52px] shrink-0 rounded-[6px] ${ring}`}>
+        <Wordmark decorative />
+      </Link>
+      <button type="button" onClick={onMore} className={`flex min-w-0 items-center gap-2 rounded-chip border border-line bg-card py-1 pr-2.5 pl-1 text-[13px] font-semibold shadow-card ${ring}`}>
+        <Avatar name={title} size="sm" />
+        <span className="max-w-[46vw] truncate">{title}</span>
+        <ChevronsUpDown size={14} aria-hidden className="shrink-0 text-fg-2" />
+      </button>
+    </header>
+  );
+}
 
-export function AppShell({ children, simulatedBilling = false, isAdmin = false, previewPath = null }: { children: ReactNode; simulatedBilling?: boolean; isAdmin?: boolean; /** Só na bancada: endereço simulado. */ previewPath?: string | null }) {
+export function AppShell({ children, isAdmin = false, previewPath = null }: { children: ReactNode; simulatedBilling?: boolean; isAdmin?: boolean; /** Só na bancada: endereço simulado. */ previewPath?: string | null }) {
   return (
     <AdminContext value={isAdmin}>
       <PreviewPathContext value={previewPath}>
-        <Shell simulatedBilling={simulatedBilling}>{children}</Shell>
+        <Shell>{children}</Shell>
       </PreviewPathContext>
     </AdminContext>
   );
@@ -262,15 +275,20 @@ export function AppShell({ children, simulatedBilling = false, isAdmin = false, 
  * O modelo com visual próprio vai de ponta a ponta e traz o voltar dentro dele, nas cores dele:
  * a barra (.focus-bar) e o respiro do <main> somem pelo globals.css ([data-skin-screen]).
  * O <main> fica nos tokens da marca (.tokens-brand): o dashboard é o mesmo que o cliente vê no link.
+ * O voltar leva aos dashboards do workspace aberto.
  */
-function FocusShell({ children }: { children: ReactNode }) {
+export function FocusShell({ children }: { children: ReactNode }) {
+  const open = useOpenProject();
   return (
     <div data-ui="app" className="shell-content min-h-dvh bg-bg md:h-dvh md:overflow-y-auto print:block print:h-auto print:overflow-visible print:bg-white">
-      <header className={`focus-header ${topBar}`}>
+      <header className="focus-header sticky top-0 z-30 border-b border-line bg-[var(--nav-bg)] backdrop-blur-md print:hidden">
         <div className="focus-bar flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
-          <Link href="/painel/dashboards" className={`-ml-2.5 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control px-2.5 text-[13.5px] font-medium text-fg-2 transition-colors hover:bg-surface-2 hover:text-fg ${ring}`}>
-            <ArrowLeft size={16} aria-hidden />
-            Dashboards
+          <Link
+            href={open ? projectHref(open.id, "dashboards") : "/painel/dashboards"}
+            className={`-ml-2.5 inline-flex h-9 min-w-0 shrink items-center gap-1.5 rounded-control px-2.5 text-[13.5px] font-medium text-fg-2 transition-colors hover:bg-surface-2 hover:text-fg ${ring}`}
+          >
+            <ArrowLeft size={16} aria-hidden className="shrink-0" />
+            <span className="truncate">{open ? `Dashboards · ${open.name}` : "Dashboards"}</span>
           </Link>
           {/* as ações do dashboard (editar, compartilhar, exportar) entram aqui: FocusBarActions */}
           <div id={FOCUS_ACTIONS_ID} data-actions-slot className="flex min-w-10 flex-1 items-center justify-end" />
@@ -285,7 +303,7 @@ function FocusShell({ children }: { children: ReactNode }) {
   );
 }
 
-function Shell({ children, simulatedBilling }: { children: ReactNode; simulatedBilling: boolean }) {
+function Shell({ children }: { children: ReactNode }) {
   const [more, setMore] = useState(false);
   const focus = isFocusPath(usePanelPath());
   if (focus)
@@ -308,36 +326,17 @@ function Shell({ children, simulatedBilling }: { children: ReactNode; simulatedB
       <MotionConfig reducedMotion="user">
         <TooltipProvider>
           <AgentProvider>
-            <div data-ui="app" className="min-h-dvh bg-bg md:h-dvh md:overflow-hidden print:block print:h-auto print:bg-white">
+            <div data-ui="app" className="min-h-dvh bg-bg md:flex md:h-dvh md:overflow-hidden md:bg-[var(--frame)] print:block print:h-auto print:bg-white">
               <a href="#conteudo" className="sr-only rounded-control bg-accent px-4 py-2 text-[14px] font-semibold text-on-accent focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100]">
                 Pular para o conteúdo
               </a>
-              <GlassSidebar />
+              <Sidebar />
 
-              {/* o conteúdo reflui com o menu: 100 px recolhido, 300 px aberto (só a partir de lg; antes, o menu passa por cima) */}
-              <div className="shell-content min-h-dvh min-w-0 transition-[padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] md:h-dvh md:min-h-0 md:overflow-y-auto md:pl-[100px] lg:pl-[300px] lg:sb-closed:pl-[100px] print:h-auto print:overflow-visible print:pl-0">
-                <header className={`@container ${topBar}`}>
-                  <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Link href="/painel" aria-label="VYZ, início do painel" className={`mr-1 block w-[52px] shrink-0 rounded-[6px] md:hidden ${ring}`}>
-                        <Wordmark decorative />
-                      </Link>
-                      <span aria-hidden className="h-5 w-px shrink-0 bg-line md:hidden" />
-                      <Suspense fallback={<SectionCrumb path={null} />}>
-                        <ActiveSectionCrumb />
-                      </Suspense>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {simulatedBilling && <PendingChip className="max-lg:hidden" label="Pagamento simulado" detail="A cobrança ainda é simulada: nenhum valor é cobrado. A cobrança real entra com a Stripe." />}
-                      <div className="hidden @[760px]:block">
-                        <AgentBar />
-                      </div>
-                      <ThemeToggle ghost className="size-9 shrink-0" />
-                    </div>
-                  </div>
-                  <SubscriptionBanner />
-                </header>
-                <main id="conteudo" className="mx-auto w-full max-w-[1280px] px-4 pt-6 pb-36 sm:px-6 md:pb-28 lg:px-10 lg:pt-9 print:max-w-none print:p-0">
+              {/* o painel do conteúdo, encaixado na moldura: a aba ativa da sidebar se funde nele */}
+              <div className="shell-content min-h-dvh min-w-0 flex-1 bg-bg md:my-2 md:mr-2 md:h-[calc(100dvh-16px)] md:min-h-0 md:overflow-y-auto md:rounded-[20px] md:shadow-[0_0_0_1px_var(--frame-line)] print:m-0 print:h-auto print:overflow-visible print:rounded-none print:shadow-none">
+                <MobileTop onMore={() => setMore(true)} />
+                <SubscriptionBanner />
+                <main id="conteudo" className="w-full px-4 pt-5 pb-36 sm:px-6 md:pb-16 lg:px-8 lg:pt-8 2xl:px-10 print:max-w-none print:p-0">
                   {children}
                 </main>
               </div>

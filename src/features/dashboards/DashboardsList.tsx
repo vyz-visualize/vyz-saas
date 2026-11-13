@@ -1,11 +1,12 @@
 "use client";
 
-import { MoreHorizontal, Plus, Radio, Shuffle, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, Pencil, Plus, Radio, Shuffle, Trash2 } from "lucide-react";
 import { ChangeTemplateModal, type ChangeTemplateTarget } from "./ChangeTemplateModal";
 import { NewDashboardDialog } from "./NewDashboardDialog";
 import type { SourceOption } from "./model";
 import type { Tier } from "@/features/pricing/entitlements";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge, EmptyState, Modal, ModalActions, PageHeader } from "@/components/ui/kit";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/Menu";
@@ -14,7 +15,7 @@ import { btn } from "@/components/ui/styles";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { anyDashboardTemplate } from "@/features/templates/live";
-import { deleteDashboard } from "@/server/dashboards/actions";
+import { deleteDashboard, duplicateDashboard } from "@/server/dashboards/actions";
 import { datasetFor, pageLayout } from "./data";
 import type { DashboardListItem } from "./model";
 import { SkinView } from "./skins";
@@ -79,15 +80,19 @@ type Props = {
   openNew?: boolean;
   brand: { color: string; logoUrl: string | null; canEdit: boolean };
   hasProject: boolean;
+  /** Dentro de um workspace: o nome dele (cabeçalho da aba) e o total da organização (o limite do plano conta todos). */
+  workspaceName?: string;
+  used?: number;
 };
 
-export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier, pagesTier, openNew = false, brand, hasProject }: Props) {
-  const [creating, setCreating] = useState(openNew && canEdit);
+export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier, pagesTier, openNew = false, brand, hasProject, workspaceName, used = items.length }: Props) {
+  const router = useRouter();
+  const [creating, setCreating] = useState(openNew && canEdit && used < limit);
   const [removing, setRemoving] = useState<DashboardListItem | null>(null);
   const [switching, setSwitching] = useState<ChangeTemplateTarget | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const atLimit = items.length >= limit;
+  const atLimit = used >= limit;
 
   function remove() {
     if (!removing) return;
@@ -105,22 +110,39 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
     </button>
   );
 
-  const ratio = Math.min(1, items.length / Math.max(1, limit));
+  const ratio = Math.min(1, used / Math.max(1, limit));
+  const duplicate = (d: DashboardListItem) =>
+    start(async () => {
+      setError(null);
+      const r = await duplicateDashboard(d.id);
+      if (r && !r.ok) setError(r.error.message);
+      router.refresh();
+    });
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Dashboards" text="Cada dashboard tem um visual, um objetivo e as contas que você ligou a ele." actions={newButton} />
+      <PageHeader
+        title="Dashboards"
+        text={workspaceName ? `Os dashboards de ${workspaceName}: cada um usa as contas deste workspace, e o novo nasce aqui.` : "Todos os dashboards da organização, de todos os workspaces. Cada um tem um visual, um objetivo e as contas ligadas a ele."}
+        actions={newButton}
+      />
 
       {/* uso do plano, numa linha */}
       <div className="flex flex-col gap-2 rounded-card border border-line bg-card p-4 sm:flex-row sm:items-center sm:gap-5 sm:px-5">
-        <p className="flex shrink-0 items-baseline gap-2 text-[13px]">
-          <span className="font-medium text-fg-2">Dashboards do {planLabel}</span>
-          <span className={`font-semibold tnum ${atLimit ? "text-error-fg" : "text-fg"}`}>
-            {items.length} de {limit}
+        <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[13px] sm:shrink-0">
+          <span className="font-medium text-fg-2">Dashboards do {planLabel}{workspaceName ? " na organização" : ""}</span>
+          <span className={`font-semibold whitespace-nowrap tnum ${atLimit ? "text-error-fg" : "text-fg"}`}>
+            {used} de {limit}
           </span>
+          {/* os outros contam no limite: dá para ver (e apagar) todos, inclusive os de workspaces arquivados */}
+          {workspaceName && used > items.length && (
+            <Link href="/painel/dashboards?todos=1" className="font-semibold whitespace-nowrap text-accent underline-offset-4 hover:underline">
+              Ver todos
+            </Link>
+          )}
         </p>
-        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-2" role="img" aria-label={`${items.length} de ${limit} dashboards`}>
-          <div className={`h-full rounded-full transition-[width] duration-500 ease-brand ${atLimit ? "bg-error" : ratio >= 0.8 ? "bg-warning" : "bg-accent"}`} style={{ width: `${Math.max(items.length ? 3 : 0, ratio * 100)}%` }} />
+        <div className="h-1.5 w-full min-w-0 overflow-hidden rounded-full bg-surface-2 sm:flex-1" role="img" aria-label={`${used} de ${limit} dashboards`}>
+          <div className={`h-full rounded-full transition-[width] duration-500 ease-brand ${atLimit ? "bg-error" : ratio >= 0.8 ? "bg-warning" : "bg-accent"}`} style={{ width: `${Math.max(used ? 3 : 0, ratio * 100)}%` }} />
         </div>
         {atLimit && canEdit && (
           <p className="text-[13px] text-fg-2">
@@ -132,6 +154,12 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
         )}
       </div>
 
+      {error && !removing && (
+        <p role="alert" className="rounded-control bg-error-soft px-3 py-2 text-[13px] text-error-fg">
+          {error}
+        </p>
+      )}
+
       {items.length === 0 ? (
         <EmptyState
           title="Nenhum dashboard ainda"
@@ -139,7 +167,7 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
           action={newButton || undefined}
         />
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 min-[1800px]:grid-cols-4">
           {items.map((d) => {
             const t = anyDashboardTemplate(d.templateId);
             const enabled = d.sources.filter((s) => s.isEnabled);
@@ -182,6 +210,12 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
                       <MoreHorizontal size={18} aria-hidden />
                     </MenuTrigger>
                     <MenuContent align="end">
+                      <MenuItem icon={<Pencil size={15} />} onSelect={() => router.push(`/painel/dashboards/${d.id}/editar`)}>
+                        Editar
+                      </MenuItem>
+                      <MenuItem icon={<Copy size={15} />} disabled={atLimit} onSelect={() => duplicate(d)}>
+                        Duplicar
+                      </MenuItem>
                       {t?.composed && (
                         <>
                           <MenuItem
