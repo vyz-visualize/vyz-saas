@@ -24,7 +24,7 @@ import { useMascotTransition } from "./stage/useMascotTransition";
 import { ONBOARDING_STEPS, stepIndex, type ActiveStep } from "./steps";
 import type { OnboardingState } from "./types";
 import { NUDGE_SESSION_KEY } from "./guides";
-import { useStepAction } from "./ui";
+import { STEP_BODY, useStepAction } from "./ui";
 
 /** O que todo passo recebe para o rodapé: pular e voltar. */
 export type StepNav = { onSkip: () => void; skipping: boolean; onBack?: () => void; backing?: boolean; error: string | null };
@@ -60,6 +60,8 @@ function useStepTracking(step: ActiveStep) {
 type FlowScreenProps = {
   step: ActiveStep;
   building: boolean;
+  /** O passo ainda vem do servidor: a tela mostra o esqueleto dele. */
+  loading?: boolean;
   stage: StageInfo;
   summaries: TrailSummaries;
   transition: ReturnType<typeof useMascotTransition>;
@@ -72,7 +74,7 @@ type FlowScreenProps = {
  * conteúdo à direita, a trilha dos passos no topo. No celular, o palco vira um banner.
  * É um <dialog> modal: o foco fica dentro, e Esc não fecha (a saída é "Pular por agora").
  */
-function FlowScreen({ step, building, stage, summaries, transition, content, children }: FlowScreenProps) {
+function FlowScreen({ step, building, loading = false, stage, summaries, transition, content, children }: FlowScreenProps) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -82,21 +84,27 @@ function FlowScreen({ step, building, stage, summaries, transition, content, chi
   // o primeiro botão (o "Pular por agora") nem para uma dica que abriria sozinha
   useEffect(() => {
     const d = ref.current;
-    const raf = requestAnimationFrame(() => (d?.querySelector<HTMLElement>("[data-autofocus]") ?? d?.querySelector<HTMLElement>("#passo-titulo"))?.focus());
+    // passo novo começa do topo (no celular a tela rola inteira)
+    content.current?.scrollTo({ top: 0 });
+    const raf = requestAnimationFrame(() => (d?.querySelector<HTMLElement>("[data-autofocus]") ?? d?.querySelector<HTMLElement>("#passo-titulo"))?.focus({ preventScroll: true }));
     return () => cancelAnimationFrame(raf);
-  }, [step, building]);
+  }, [step, building, content]);
   return (
     <dialog
       ref={ref}
       onCancel={(e) => e.preventDefault()}
       aria-labelledby="passo-titulo"
       aria-busy={transition.active || undefined}
-      data-onboarding-step={building ? "building" : step}
+      data-onboarding-step={building ? "building" : loading ? `${step}-carregando` : step}
       className="m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden bg-bg p-0 text-fg backdrop:bg-bg"
     >
-      <div ref={content} className="grid h-full grid-rows-[minmax(170px,30dvh)_1fr] lg:grid-cols-[1.1fr_1fr] lg:grid-rows-1">
-        <StageVisual info={stage} />
-        <div className="flex min-h-0 flex-col border-line lg:border-l">
+      {/* celular: a tela rola inteira (o banner do palco vai junto) e o rodapé fica preso embaixo;
+          desktop: palco e conteúdo lado a lado, cada um com a sua rolagem */}
+      <div ref={content} data-flow-scroll className="h-full overflow-y-auto overscroll-contain lg:grid lg:grid-cols-[1.1fr_1fr] lg:overflow-hidden">
+        <div className="h-[clamp(160px,26dvh,220px)] lg:h-full">
+          <StageVisual info={stage} />
+        </div>
+        <div className="flex min-h-[calc(100%-clamp(160px,26dvh,220px))] flex-col border-line lg:min-h-0 lg:border-l">
           {/* nas boas-vindas, a jornada 01/02/03 já faz o papel da trilha: ela aparece a partir do passo 01 */}
           {(step !== "welcome" || building) && (
             <div className="px-5 pt-4 sm:px-8 lg:px-10 lg:pt-8">
@@ -104,7 +112,7 @@ function FlowScreen({ step, building, stage, summaries, transition, content, chi
             </div>
           )}
           {/* key: cada passo entra com uma animação curta (sem movimento se o sistema pede) */}
-          <div key={building ? "building" : step} className="fa-in flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div key={building ? "building" : step} className="fa-in flex flex-1 flex-col lg:min-h-0 lg:overflow-hidden">
             {children}
           </div>
         </div>
@@ -132,6 +140,8 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
   const back = useStepAction();
   const [building, setBuilding] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
+  // para onde a ação em andamento leva: se o servidor demorar, a tela abre com esse passo em esqueleto
+  const [pending, setPending] = useState<ActiveStep | null>(null);
   // o que a pessoa escolhe e o palco mostra: o nome digitado, o segmento e o modelo
   const [typedName, setTypedName] = useState(state.project?.named ? state.project.name : "");
   // o segmento: o salvo ou o primeiro disponível (o mesmo que o passo 1 já mostra marcado)
@@ -147,14 +157,25 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
   const { begin } = transition;
   const api = useMemo<FlowApi>(() => {
     const wrap =
-      <A extends unknown[], R>(fn: (...a: A) => Promise<ActionResult<R>>, dir: 1 | -1) =>
+      <A extends unknown[], R>(fn: (...a: A) => Promise<ActionResult<R>>, dir: 1 | -1, target: (...a: A) => ActiveStep) =>
       async (...a: A) => {
+        setPending(target(...a));
         begin(dir);
         const r = await fn(...a);
-        if (r && !r.ok) settle(); // falhou: o mascote volta e abre o mesmo passo, com o erro
+        if (r && !r.ok) {
+          // falhou: o mascote volta e abre o mesmo passo, com o erro
+          setPending(null);
+          settle();
+        }
         return r;
       };
-    return { ...baseApi, start: wrap(baseApi.start, 1), saveProject: wrap(baseApi.saveProject, 1), toSetup: wrap(baseApi.toSetup, 1), back: wrap(baseApi.back, -1) };
+    return {
+      ...baseApi,
+      start: wrap(baseApi.start, 1, () => "project"),
+      saveProject: wrap(baseApi.saveProject, 1, () => "connect"),
+      toSetup: wrap(baseApi.toSetup, 1, () => "setup"),
+      back: wrap(baseApi.back, -1, (to) => to),
+    };
   }, [baseApi, begin, settle]);
 
   const at = stepIndex(step);
@@ -204,6 +225,9 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
     }
   }
 
+  // o passo que a tela mostra: o do servidor ou, enquanto ele não chega, o esqueleto do próximo
+  const waiting = !!pending && pending !== step && !building;
+  const view = waiting ? pending : step;
   const connect = state.connect;
   const connected = connect ? CORE_PROVIDER_IDS.filter((p) => connect.platforms[p].connected) : [];
   const projectName = step === "welcome" ? "" : step === "project" ? typedName : (state.project?.name ?? typedName);
@@ -224,8 +248,10 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
   };
 
   return (
-    <FlowScreen step={step} building={building} stage={stage} summaries={summaries} transition={transition} content={content}>
-      {building ? (
+    <FlowScreen step={view} building={building} loading={waiting} stage={{ ...stage, step: view }} summaries={summaries} transition={transition} content={content}>
+      {waiting ? (
+        <StepSkeleton />
+      ) : building ? (
         <BuildingView />
       ) : step === "welcome" ? (
         <WelcomeStep firstName={state.firstName} api={api} nav={nav} />
@@ -237,6 +263,22 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
         <SetupStep state={state.connect} businessTypeId={state.businessTypeId} tier={state.tier} now={now} timeZone={timeZone} api={api} nav={nav} onBuild={onBuild} client={client} suggestion={state.suggestion} onTemplateChange={setTemplateId} />
       ) : null}
     </FlowScreen>
+  );
+}
+
+/** O próximo passo enquanto o servidor responde: título, fala e blocos, sem conteúdo. */
+function StepSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Carregando o próximo passo" data-step-skeleton className={STEP_BODY}>
+      <span id="passo-titulo" tabIndex={-1} className="block h-9 w-3/4 rounded-control bg-line/70 outline-none" />
+      <div className="flex items-start gap-3">
+        <span className="size-[46px] shrink-0 rounded-full bg-accent/40" />
+        <span className="h-14 flex-1 rounded-[18px] bg-line/50" />
+      </div>
+      {[0, 1, 2].map((i) => (
+        <span key={i} className="block h-20 rounded-card bg-line/40" />
+      ))}
+    </div>
   );
 }
 

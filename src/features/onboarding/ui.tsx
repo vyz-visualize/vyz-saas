@@ -10,7 +10,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import type { ActionResult } from "@/server/supabase/errors";
 
 /** Corpo de um passo: rola dentro do modal; o rodapé (Pular, Voltar e o botão principal) fica sempre à vista. */
-export const STEP_BODY = "min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5 sm:px-8 lg:px-10 lg:py-7";
+export const STEP_BODY = "flex-1 space-y-5 px-5 py-5 sm:px-8 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-10 lg:py-7";
 
 /** Roda a ação do passo; sucesso vira redirect no servidor (ou a tela segue), erro fica na tela. */
 export function useStepAction() {
@@ -110,7 +110,7 @@ type FlowFooterProps = {
 export function FlowFooter({ onSkip, skipping, onBack, backing, primaryLabel, pendingLabel = "Salvando…", onPrimary, pending, disabled, error, hint }: FlowFooterProps) {
   const busy = pending || skipping || !!backing;
   return (
-    <footer className="border-t border-line bg-bg px-5 py-3.5 sm:px-8 lg:px-10">
+    <footer className="sticky bottom-0 z-[1] border-t border-line bg-bg px-5 py-3.5 sm:px-8 lg:static lg:px-10">
       <ErrorLine message={error} />
       {hint && !error && <p className="text-[13px] text-fg-2">{hint}</p>}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">

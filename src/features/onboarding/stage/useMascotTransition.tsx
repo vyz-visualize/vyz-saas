@@ -13,7 +13,10 @@ import { flushSync } from "react-dom";
 import { Mascot } from "@/features/agent/Mascot";
 import { useReducedMotionPref } from "./motion";
 
-export const TRANSITION_MS = { collapse: 200, spin: 300, squash: 120, expand: 240 } as const;
+export const TRANSITION_MS = { collapse: 200, spin: 360, squash: 120, expand: 240 } as const;
+/** O mascote nunca fica sozinho mais que isto: depois, a tela abre (com o próximo passo em esqueleto, se ele ainda não chegou). */
+export const MAX_ALONE_MS = 620;
+const sleep = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
 const OPEN = "circle(150% at 50% 50%)";
 const DOT = "circle(30px at 50% 50%)";
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
@@ -40,7 +43,7 @@ export function useMascotTransition(content: RefObject<HTMLElement | null>) {
         if (reduced) {
           const out = el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: "forwards" });
           await out.finished;
-          await arrive;
+          await Promise.race([arrive, sleep(MAX_ALONE_MS)]);
           const back = el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
           out.cancel();
           await back.finished.catch(() => {});
@@ -55,17 +58,20 @@ export function useMascotTransition(content: RefObject<HTMLElement | null>) {
           await collapse.finished;
           // o mascote precisa estar na tela agora (não no próximo render do React) para girar
           flushSync(() => setMascot(true));
+          const shownAt = performance.now();
           await nextFrame();
           const m = spinner.current;
+          // giro em pé, em torno do eixo vertical (como uma moeda): o rosto vai para a lateral, passa
+          // pelas costas (a esfera sem rosto) e volta de frente. Ao voltar um passo, ao contrário.
           const turn = `${dir * 360}deg`;
-          await m?.animate([{ transform: "rotate(0deg) scale(0.55)" }, { transform: `rotate(${turn}) scale(1)` }], { duration: TRANSITION_MS.spin, easing: "cubic-bezier(.3,.7,.4,1)" }).finished.catch(() => {});
-          // o servidor ainda não respondeu: segue girando, devagar, até o passo chegar
+          await m?.animate([{ transform: "rotateY(0deg) scale(0.55)" }, { transform: `rotateY(${turn}) scale(1)` }], { duration: TRANSITION_MS.spin, easing: "cubic-bezier(.3,.7,.4,1)" }).finished.catch(() => {});
+          // o passo ainda não chegou: segue girando, até o limite; depois a tela abre mesmo assim
           let wait: Animation | undefined;
           let arrived = false;
           void arrive.then(() => (arrived = true));
           await Promise.resolve();
-          if (!arrived) wait = m?.animate([{ transform: "rotate(0deg)" }, { transform: `rotate(${turn})` }], { duration: 700, iterations: Infinity });
-          await arrive;
+          if (!arrived) wait = m?.animate([{ transform: "rotateY(0deg)" }, { transform: `rotateY(${turn})` }], { duration: 760, iterations: Infinity });
+          await Promise.race([arrive, sleep(Math.max(0, MAX_ALONE_MS - (performance.now() - shownAt)))]);
           wait?.cancel();
           await m?.animate([{ transform: "scale(1)" }, { transform: "scale(1.18, 0.82)" }, { transform: "scale(0.95, 1.05)" }, { transform: "scale(1)" }], { duration: TRANSITION_MS.squash, easing: "ease-out" }).finished.catch(() => {});
           setMascot(false);
@@ -93,9 +99,17 @@ export function useMascotTransition(content: RefObject<HTMLElement | null>) {
   useEffect(() => () => run.current?.resolve(), []);
 
   const overlay = mascot ? (
-    <span aria-hidden className="pointer-events-none fixed inset-0 z-10 grid place-items-center" data-transition-mascot>
-      <span ref={spinner} className="block">
-        <Mascot size={60} state="thinking" />
+    <span aria-hidden className="pointer-events-none fixed inset-0 z-10 grid place-items-center [perspective:640px]" data-transition-mascot>
+      <span ref={spinner} className="relative block size-[60px] [transform-style:preserve-3d]">
+        {/* frente: o mascote; costas: a esfera sem rosto (nunca o rosto espelhado) */}
+        <span className="absolute inset-0 [backface-visibility:hidden]">
+          <Mascot size={60} state="thinking" />
+        </span>
+        <span
+          className="absolute inset-0 rounded-full [backface-visibility:hidden]"
+          style={{ transform: "rotateY(180deg)", background: "radial-gradient(circle at 34% 30%, #e3ebb8 0%, #a7b464 24%, #6e7b37 58%, #3a431e 100%)", boxShadow: "0 6px 18px rgba(0,0,0,.35)" }}
+          data-mascot-back
+        />
       </span>
     </span>
   ) : null;

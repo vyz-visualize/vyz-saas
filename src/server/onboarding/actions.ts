@@ -6,17 +6,19 @@
 // no mesmo passo. "Pular por agora" conclui o primeiro acesso de qualquer passo,
 // sem criar nada: o que faltou fica pendente na Início.
 
+import { updateTag } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { businessType } from "@/features/catalog/business-types";
 import { allowedPages, canBuildDashboard, canGoBackTo, isActiveStep, layoutProviders, STEP_TO_DB, activeStepOf, stepIndex, type ActiveStep } from "@/features/onboarding/steps";
 import { canUse, TIER_LABEL } from "@/features/pricing/entitlements";
 import { composePages } from "@/features/templates/dashboards/composed";
+import { CORE_PROVIDER_IDS } from "@/features/integrations/providers";
 import { anyDashboardTemplate, REAL_DATA_PLATFORMS } from "@/features/templates/live";
 import type { OnboardingStep, WorkspaceSession } from "@/features/workspace/session";
 import { authorize } from "@/server/auth/workspace";
+import { dashboardTag } from "@/server/analytics/queries";
 import { logActivity } from "@/server/history/log";
-import { getConnectState } from "@/server/integrations/queries";
 import { appError, toActionError, unwrap, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 
@@ -100,9 +102,10 @@ export async function saveFirstProject(name: string, businessTypeId: string): Pr
 export async function continueToSetup(): Promise<ActionResult> {
   try {
     const session = await onboardingSession("connect");
-    const connect = await getConnectState();
-    const connected = Object.values(connect.platforms).some((p) => p.connected);
-    if (!connected) throw appError("onboarding:no_connection");
+    // só a conexão ativa da Meta ou do Google (leve: as contas e o resto vêm na página do passo)
+    const supabase = await createServerSupabase();
+    const active = unwrap(await supabase.from("connections").select("id").eq("workspace_id", session.workspace.id).eq("status", "active").in("provider", [...CORE_PROVIDER_IDS]).limit(1)) ?? [];
+    if (!active.length) throw appError("onboarding:no_connection");
     await saveStep(session.workspace.id, STEP_TO_DB.setup);
     await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "onboarding.connected" });
   } catch (err) {
@@ -112,8 +115,21 @@ export async function continueToSetup(): Promise<ActionResult> {
   redirect(HOME);
 }
 
-/** Montar de novo depois de sair no meio (aba fechada na tela "Montando") reaproveita o dashboard. */
-const REUSE_WINDOW_MS = 2 * 60 * 60 * 1000;
+/**
+ * O dashboard de um primeiro acesso anterior do mesmo projeto, com o mesmo modelo (refazer o primeiro
+ * acesso, ou sair no meio da tela "Montando"): é reaproveitado em vez de criar outro. O modelo de um
+ * dashboard não muda depois de criado; com outro modelo escolhido, sai um dashboard novo.
+ */
+async function priorOnboardingDashboard(supabase: Awaited<ReturnType<typeof createServerSupabase>>, workspaceId: string, projectId: string | null, templateId: string): Promise<string | null> {
+  if (!projectId) return null;
+  const events =
+    unwrap(await supabase.from("activity_events").select("entity_id").eq("workspace_id", workspaceId).eq("event", "dashboard.created").eq("metadata->>source", "onboarding").order("created_at", { ascending: false }).limit(20)) ?? [];
+  const ids = [...new Set(events.map((e) => e.entity_id).filter((v): v is string => !!v))];
+  if (!ids.length) return null;
+  const [d] =
+    unwrap(await supabase.from("dashboards").select("id").eq("workspace_id", workspaceId).in("id", ids).eq("project_id", projectId).eq("template_id", templateId).order("created_at", { ascending: false }).limit(1)) ?? [];
+  return d?.id ?? null;
+}
 
 /**
  * Passo 4 → "Montando seu dashboard…" (fase 1): cria o dashboard do modelo
@@ -154,11 +170,17 @@ export async function buildFirstDashboard(templateId: string): Promise<ActionRes
     if (pages.length === 0) throw appError("dashboard:no_pages");
     const [projectRow] = project ? (unwrap(await supabase.from("projects").select("name").eq("id", project).limit(1)) ?? []) : [];
 
-    // já montou e saiu no meio: o mesmo dashboard (do mesmo modelo, desta pessoa, há pouco)
-    const since = new Date(Date.now() - REUSE_WINDOW_MS).toISOString();
-    const [recent] =
-      unwrap(await supabase.from("dashboards").select("id").eq("workspace_id", workspaceId).eq("created_by", session.user.id).eq("template_id", template.id).gte("created_at", since).order("created_at", { ascending: false }).limit(1)) ?? [];
-    if (recent) return { ok: true, data: { id: recent.id } };
+    // primeiro acesso refeito (ou interrompido): o mesmo dashboard, com as contas e as páginas de agora
+    const prior = await priorOnboardingDashboard(supabase, workspaceId, project, template.id);
+    if (prior) {
+      unwrap(await supabase.rpc("set_dashboard_sources", { p_dashboard_id: prior, p_ad_account_ids: sources.map((a) => a.id) }));
+      unwrap(await supabase.rpc("set_dashboard_pages", { p_dashboard_id: prior, p_page_type_ids: pages }));
+      unwrap(await supabase.from("dashboards").update({ client_name: projectRow?.name ?? session.workspace.name }).eq("id", prior));
+      // contas trocadas: a próxima leitura do dashboard já vem com elas
+      updateTag(dashboardTag(prior));
+      await logActivity({ workspaceId, actorId: session.user.id, event: "dashboard.updated", entityType: "dashboard", entityId: prior, metadata: { template_id: template.id, pages, accounts: sources.length, source: "onboarding_reused" } });
+      return { ok: true, data: { id: prior } };
+    }
 
     const id = unwrap(
       await supabase.rpc("create_dashboard", {

@@ -13,6 +13,7 @@ import { TemplatePreview } from "@/features/dashboards/TemplatePreview";
 import { TIER_LABEL } from "@/features/pricing/entitlements";
 import { PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
+import { useDeferred } from "./stage/useDeferred";
 import type { LayoutOption } from "./steps";
 
 const CYCLE_MS = 1800;
@@ -43,6 +44,21 @@ function Preview({ t, live, page, width, client }: { t: DashboardTemplate; live:
   );
 }
 
+/** O lugar da prévia enquanto ela não entra: blocos no formato do dashboard, sem números. */
+function PreviewSkeleton() {
+  return (
+    <div aria-hidden data-preview-skeleton className="h-[210px] space-y-2 bg-bg/40 p-3">
+      <span className="block h-3 w-2/5 rounded-full bg-line/80" />
+      <div className="grid grid-cols-4 gap-2">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className={`block h-12 rounded-[8px] ${i === 2 ? "bg-accent/35" : "bg-line/60"}`} />
+        ))}
+      </div>
+      <span className="block h-[104px] rounded-[8px] bg-line/40" />
+    </div>
+  );
+}
+
 export function LayoutCard({
   option,
   selected,
@@ -50,6 +66,7 @@ export function LayoutCard({
   onSelect,
   onOpen,
   client,
+  defer,
 }: {
   option: LayoutOption;
   selected: boolean;
@@ -60,7 +77,12 @@ export function LayoutCard({
   onOpen?: () => void;
   /** Nome do cliente na prévia (primeiro acesso). */
   client?: string;
+  /** Prévia adiada (primeiro acesso): o cartão aparece na hora com esqueleto e a prévia entra na ordem dada. */
+  defer?: number;
 }) {
+  // sem defer: na hora; com defer, depois do primeiro desenho (o passo abre sem esperar as prévias)
+  const deferred = useDeferred(defer ?? 0);
+  const ready = defer === undefined || deferred;
   const { template: t, allowed, lockLabel, live } = option;
   const [hover, setHover] = useState(false);
   const page = useCycle(t.pages, hover);
@@ -91,11 +113,15 @@ export function LayoutCard({
         }}
         className="relative block cursor-pointer border-b border-line text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
       >
-        <ScaledPreview height={210} width={width}>
-          <div inert className={`transition-opacity duration-300 ${hover ? "opacity-100" : "opacity-95"}`}>
-            <Preview t={t} live={live} page={page} width={width} client={client} />
-          </div>
-        </ScaledPreview>
+        {ready ? (
+          <ScaledPreview height={210} width={width}>
+            <div inert className={`transition-opacity duration-300 ${hover ? "opacity-100" : "opacity-95"}`}>
+              <Preview t={t} live={live} page={page} width={width} client={client} />
+            </div>
+          </ScaledPreview>
+        ) : (
+          <PreviewSkeleton />
+        )}
         {hover && t.pages.length > 1 && (
           <span className="absolute top-2 left-2 rounded-chip bg-bg/90 px-2 py-0.5 text-[11.5px] font-medium text-fg backdrop-blur">{PAGES[page].name}</span>
         )}

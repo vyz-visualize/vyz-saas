@@ -20,11 +20,15 @@ export async function getOnboardingState(session: WorkspaceSession): Promise<Onb
   const step = activeStepOf(session.workspace.onboardingStep);
   const supabase = await createServerSupabase();
   const late = step === "connect" || step === "setup";
-  const [projects, connect, signals] = await Promise.all([
-    supabase.from("projects").select("id, name").eq("workspace_id", session.workspace.id).is("archived_at", null).order("created_at").limit(1),
-    late ? getConnectState() : Promise.resolve(null),
-    step === "setup" ? campaignSignals(session.workspace.id) : Promise.resolve([]),
+  // tempos de cada leitura no log (o passo de contas e modelo precisa abrir rápido)
+  const t0 = performance.now();
+  const timed = <T,>(p: PromiseLike<T>) => Promise.resolve(p).then((v) => [v, Math.round(performance.now() - t0)] as const);
+  const [[projects], [connect, connectMs], [signals, signalsMs]] = await Promise.all([
+    timed(supabase.from("projects").select("id, name").eq("workspace_id", session.workspace.id).is("archived_at", null).order("created_at").limit(1)),
+    timed(late ? getConnectState() : Promise.resolve(null)),
+    timed(step === "setup" ? campaignSignals(session.workspace.id) : Promise.resolve([] as CampaignSignal[])),
   ]);
+  if (late) console.info(`[vyz] primeiro acesso (${step}): ${Math.round(performance.now() - t0)} ms · contas ${connectMs} ms · sugestão ${signalsMs} ms`);
   const first = unwrap(projects)?.[0] ?? null;
   const project = first ? { ...first, named: isNamedProject(first.name, [session.workspace.name, session.user.fullName]) } : null;
   return {

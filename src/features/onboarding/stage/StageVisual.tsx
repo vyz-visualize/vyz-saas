@@ -12,6 +12,7 @@ import type { ProviderId } from "@/features/integrations/providers";
 import type { DashboardTemplate } from "@/features/templates/types";
 import type { ActiveStep } from "../steps";
 import { BuildPreview } from "./BuildPreview";
+import { useDeferred } from "./useDeferred";
 
 export type StageInfo = {
   step: ActiveStep;
@@ -118,8 +119,26 @@ function Visual({ info, compact }: { info: StageInfo; compact: boolean }) {
     );
   if (step === "project") return <ClientCard client={client} segment={segment} compact={compact} />;
   if (step === "connect") return <Hub connected={connected} justConnected={justConnected} compact={compact} />;
-  if (step === "setup" && template)
+  if (step === "setup" && template) return <SetupPreview template={template} client={client} compact={compact} />;
+  return null;
+}
+
+/** A prévia grande do modelo escolhido: pesada, entra depois de o passo aparecer (esqueleto até lá). */
+function SetupPreview({ template, client, compact }: { template: DashboardTemplate; client: string; compact: boolean }) {
+  const ready = useDeferred(0);
+  if (!ready)
     return (
+      <div aria-hidden data-preview-skeleton className={`w-full max-w-[640px] rounded-[16px] border border-line bg-card p-4 ${compact ? "h-[150px]" : "h-[430px]"}`}>
+        <span className="block h-3 w-1/3 rounded-full bg-line/80" />
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} className={`block h-14 rounded-[8px] ${i === 2 ? "bg-accent/35" : "bg-line/60"}`} />
+          ))}
+        </div>
+        {!compact && <span className="mt-3 block h-[300px] rounded-[10px] bg-line/40" />}
+      </div>
+    );
+  return (
       <div className="relative w-full max-w-[640px]">
         <div className="overflow-hidden rounded-[16px] border border-line bg-card shadow-[0_30px_70px_rgba(0,0,0,0.3)]">
           {compact ? (
@@ -134,8 +153,7 @@ function Visual({ info, compact }: { info: StageInfo; compact: boolean }) {
         </div>
         <span className="absolute top-2 right-2 rounded-chip bg-bg/90 px-2 py-0.5 text-[11px] text-fg-2 backdrop-blur">Prévia com dados de exemplo</span>
       </div>
-    );
-  return null;
+  );
 }
 
 const LG = "(min-width: 1024px)";

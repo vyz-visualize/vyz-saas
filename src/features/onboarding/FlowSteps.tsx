@@ -27,7 +27,8 @@ export function WelcomeStep({ firstName, api, nav }: { firstName: string; api: F
   const action = useStepAction();
   return (
     <>
-      <div className={BODY}>
+      {/* no desktop, o conteúdo fica no meio da altura (sem vazio entre os cards e o botão) */}
+      <div className={`${BODY} lg:flex lg:flex-col lg:justify-center`}>
         <StepTitle
           title={firstName ? `Boas-vindas, ${firstName}.` : "Boas-vindas ao VYZ."}
           text={`Oi${firstName ? `, ${firstName}` : ""}! Eu sou o VYZ. Em 3 passos o seu cliente recebe o mês dele num link.`}
@@ -209,8 +210,8 @@ export function SetupStep({ state, businessTypeId, tier, now, timeZone, api, nav
             </p>
           )}
           <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {options.map((o) => (
-              <LayoutCard key={o.template.id} option={o} selected={chosen === o.template.id} nicheName={null} onSelect={() => setChosen(o.template.id)} client={client} />
+            {options.map((o, i) => (
+              <LayoutCard key={o.template.id} option={o} selected={chosen === o.template.id} nicheName={null} onSelect={() => setChosen(o.template.id)} client={client} defer={i + 1} />
             ))}
           </ul>
         </section>
@@ -254,7 +255,7 @@ export function BuildingView() {
   }, [shown]);
   return (
     <div role="status" aria-live="polite" className={BODY}>
-      <StepTitle title="Montando seu dashboard…" text="Montando o seu primeiro dashboard. Em segundos ele abre com os números de verdade." />
+      <StepTitle title="Montando seu dashboard…" text="Já já ele abre com os números de verdade." />
       <ul className="space-y-2.5" data-building-lines={shown}>
         {BUILDING_LINES.map((l, i) => {
           const done = i < shown - 1;

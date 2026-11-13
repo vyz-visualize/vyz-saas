@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn(), updateTag: vi.fn() }));
+vi.mock("@/server/analytics/queries", () => ({ dashboardTag: (id: string) => `dashboard:${id}` }));
 
 class Redirect extends Error {
   constructor(public to: string) {
@@ -116,12 +117,22 @@ describe("montar o primeiro dashboard", () => {
     expect(workspaceUpdates()).toEqual([]);
   });
 
-  it("montar de novo depois de sair no meio reaproveita o dashboard", async () => {
+  it("refazer o primeiro acesso reaproveita o dashboard do primeiro acesso anterior do projeto (contas e páginas de agora)", async () => {
     const { buildFirstDashboard } = await import("./actions");
     fixtures.ad_accounts = [{ id: "a1", platform_id: "meta", project_id: "p1" }];
+    fixtures.activity_events = [{ entity_id: "dash-antigo" }];
     fixtures.dashboards = [{ id: "dash-antigo" }];
     expect(await buildFirstDashboard(TEMPLATE)).toEqual({ ok: true, data: { id: "dash-antigo" } });
-    expect(rpcs).toEqual([]);
+    expect(rpcs.map((r) => r.fn)).toEqual(["set_dashboard_sources", "set_dashboard_pages"]);
+    expect(rpcs[0].args).toMatchObject({ p_dashboard_id: "dash-antigo", p_ad_account_ids: ["a1"] });
+  });
+
+  it("sem primeiro acesso anterior no projeto, cria um novo", async () => {
+    const { buildFirstDashboard } = await import("./actions");
+    fixtures.ad_accounts = [{ id: "a1", platform_id: "meta", project_id: "p1" }];
+    fixtures.activity_events = [];
+    expect(await buildFirstDashboard(TEMPLATE)).toEqual({ ok: true, data: { id: "dash-1" } });
+    expect(rpcs.map((r) => r.fn)).toEqual(["create_dashboard"]);
   });
 
   it("fase 2: conclui o primeiro acesso e abre o dashboard com o tour", async () => {
@@ -160,8 +171,9 @@ describe("pular e conectar", () => {
   it("do conectar só segue com uma plataforma conectada", async () => {
     const { continueToSetup } = await import("./actions");
     session.workspace.onboardingStep = "connect";
+    fixtures.connections = [];
     expect(await continueToSetup()).toMatchObject({ ok: false, error: { code: "onboarding:no_connection" } });
-    connect.platforms.meta.connected = true;
+    fixtures.connections = [{ id: "c1" }];
     await expect(continueToSetup()).rejects.toThrow("redirect:/comecar");
     expect(workspaceUpdates().map((u) => u.onboarding_step)).toEqual(["dashboard"]);
   });
