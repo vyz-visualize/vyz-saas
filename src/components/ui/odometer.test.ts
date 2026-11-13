@@ -13,5 +13,8 @@ describe("número animado (Odometer) para leitor de tela", () => {
     const track = html.slice(html.indexOf("<span class=\"odo-track\""));
     // sem nenhum dígito como texto: nem a fita 0 a 9, nem os zeros da contagem
     expect(track.replace(/<[^>]+>/g, "")).not.toMatch(/\d/);
+    // nem "R $ , m i l": os outros caracteres também vêm do CSS
+    expect(track.replace(/<[^>]+>/g, "").trim()).toBe("");
+    expect(html).toContain('data-c="R"');
   });
 });

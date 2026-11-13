@@ -3,6 +3,8 @@
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ChangeTemplateModal, type ChangeTemplateTarget } from "@/features/dashboards/ChangeTemplateModal";
+import { DEFAULT_SETTINGS } from "@/features/dashboards/data";
+import { DashboardThumb } from "@/features/dashboards/DashboardsList";
 import { activityLabel } from "@/features/workspace/history";
 import type { SettingsData } from "@/features/workspace/dto";
 import type { WorkspaceSession } from "@/features/workspace/session";
@@ -35,8 +37,16 @@ const DATA: SettingsData = {
 
 export function SettingsHarness() {
   // ?modelo=1: o modal "Trocar modelo" da página Dashboards, aberto
-  const modelo = useSearchParams().get("modelo") === "1";
+  const params = useSearchParams();
+  const modelo = params.get("modelo") === "1";
   const [target, setTarget] = useState<ChangeTemplateTarget | null>(modelo ? { id: "d1", name: "Vendas da loja", visual: "vyz", objective: "ecommerce" } : null);
+  // ?miniatura=1: a miniatura da página Dashboards de um dashboard de amostra com verba pequena (o "Teste")
+  if (params.get("miniatura") === "1")
+    return (
+      <div className="w-[360px] overflow-hidden rounded-card border border-line bg-card p-0" data-thumb-harness>
+        <DashboardThumb d={{ templateId: "vyz-ecommerce", name: "Teste", client: "CAP", pages: ["visao-geral", "campanhas", "funil"], settings: { ...DEFAULT_SETTINGS, goal: 5000, margin: 0.4, budget: 100000 } }} />
+      </div>
+    );
   return (
     <WorkspaceProvider session={SESSION}>
       <ChangeTemplateModal dashboard={target} tier="pro" onClose={() => setTarget(null)} />

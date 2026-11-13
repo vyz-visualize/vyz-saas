@@ -54,6 +54,8 @@ export type PickerSelection = {
   dirty: boolean;
   /** Contas ligadas, contando o que ainda não foi salvo. */
   count: number;
+  /** As contas marcadas agora (ids), com o que ainda não foi salvo: o palco do primeiro acesso mostra. */
+  ids?: string[];
   /** Salva a escolha pendente; true se salvou (ou não havia o que salvar). Erros aparecem no próprio seletor. */
   save: () => Promise<boolean>;
 };
@@ -193,13 +195,15 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
     saveRef.current = save;
   });
   const count = selected.length;
+  // texto estável (a lista é recriada a cada desenho): o efeito só avisa quando a escolha muda
+  const selectedKey = selected.map((a) => a.id).join(",");
   // salvar a cada toque: assim que a escolha muda, grava (uma de cada vez)
   useEffect(() => {
     if (autoSave && dirty && !saving) saveRef.current();
   }, [autoSave, dirty, saving]);
   useEffect(() => {
-    onSelectionChange?.({ dirty, count, save: () => (dirty ? saveRef.current() : Promise.resolve(true)) });
-  }, [onSelectionChange, dirty, count]);
+    onSelectionChange?.({ dirty, count, ids: selectedKey ? selectedKey.split(",") : [], save: () => (dirty ? saveRef.current() : Promise.resolve(true)) });
+  }, [onSelectionChange, dirty, count, selectedKey]);
 
   function resync(a: AdAccountDTO) {
     setMessage(null);

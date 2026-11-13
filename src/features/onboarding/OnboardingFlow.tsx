@@ -6,7 +6,7 @@
 // login da Meta ou do Google, o modal reabre no mesmo passo, com "Conectado ✓".
 
 import { LogOut, UserRound } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BUSINESS_TYPES, businessType } from "@/features/catalog/business-types";
 import { CORE_PROVIDER_IDS, PROVIDERS } from "@/features/integrations/providers";
 import type { ConnectResult } from "@/features/integrations/results";
@@ -17,7 +17,7 @@ import { signOut } from "@/server/auth/actions";
 import type { ActionResult } from "@/server/supabase/errors";
 import { realFlowApi, type FlowApi } from "./api";
 import { ConnectStep } from "./ConnectStep";
-import { AccountsStep, BuildingView, ModelStep, ProjectStep, WelcomeStep } from "./FlowSteps";
+import { AccountsStep, BuildingView, ModelStep, ProjectStep, WelcomeStep, type MarkedAccount } from "./FlowSteps";
 import { StageVisual, type StageInfo } from "./stage/StageVisual";
 import { Trail, type TrailSummaries } from "./stage/Trail";
 import { useStepTransition } from "./stage/useStepTransition";
@@ -38,6 +38,9 @@ export const BUILDING_MS = 1600;
  * passo seguinte abre (o servidor redireciona; a tela só sabe que andou quando o
  * próximo passo aparece). O último passo completa ao montar o dashboard.
  */
+/** O servidor demorou mais que isto: o esqueleto do próximo passo entra no lugar do botão girando. */
+const SKELETON_AFTER_MS = 150;
+
 function useStepTracking(step: ActiveStep) {
   // o modo estrito do React roda o efeito duas vezes em desenvolvimento: um evento por passo
   const seen = useRef<string | null>(null);
@@ -149,12 +152,16 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
   const [onModel, setOnModel] = useState(false);
   // quantas contas a pessoa marcou nas Contas (o resumo da trilha não espera o servidor)
   const [marked, setMarked] = useState<number | null>(null);
+  // as contas marcadas agora (o palco das Contas mostra os cartões delas)
+  const [markedAccounts, setMarkedAccounts] = useState<MarkedAccount[]>([]);
   const shown: ActiveStep = step === "setup" && onModel ? "model" : step;
   useStepTracking(shown);
 
   // o próximo passo chegou (ou a montagem começou): a tela abre
-  const { settle } = transition;
-  useEffect(() => settle(), [step, building, onModel, settle]);
+  const { settle, swap } = transition;
+  // o servidor demorou: o esqueleto do próximo passo entra (a tela nunca fica parada com o botão girando)
+  const [slow, setSlow] = useState(false);
+  const [lastDir, setLastDir] = useState<1 | -1>(1);
 
   // cada ação que troca de passo passa pela transição; a ação roda junto, sem esperar a animação
   const { begin } = transition;
@@ -163,11 +170,16 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
       <A extends unknown[], R>(fn: (...a: A) => Promise<ActionResult<R>>, dir: 1 | -1, target: (...a: A) => ActiveStep) =>
       async (...a: A) => {
         setPending(target(...a));
+        setSlow(false);
+        setLastDir(dir);
         begin(dir);
+        const timer = window.setTimeout(() => setSlow(true), SKELETON_AFTER_MS);
         const r = await fn(...a);
         if (r && !r.ok) {
-          // falhou: o mascote volta e abre o mesmo passo, com o erro
+          // falhou: abre o mesmo passo, com o erro
+          window.clearTimeout(timer);
           setPending(null);
+          setSlow(false);
           settle();
         }
         return r;
@@ -180,16 +192,19 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
       back: wrap(baseApi.back, -1, (to) => to),
     };
   }, [baseApi, begin, settle]);
+  // (o timer de cada ação é limpo na falha; no sucesso, o passo novo chega e o esqueleto some sozinho)
 
   const at = stepIndex(shown);
   const prev = at > 0 ? ONBOARDING_STEPS[at - 1] : null;
   // Contas ↔ Modelo trocam só na tela; o resto passa pelo servidor
   const toModel = (enabled: number) => {
     setMarked(enabled);
+    setLastDir(1);
     begin(1);
     setOnModel(true);
   };
   const backToAccounts = () => {
+    setLastDir(-1);
     begin(-1);
     setOnModel(false);
   };
@@ -239,8 +254,17 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
   }
 
   // o passo que a tela mostra: o do servidor ou, enquanto ele não chega, o esqueleto do próximo
-  const waiting = !!pending && pending !== step && !building;
+  const waiting = !!pending && pending !== step && !building && slow;
   const view = waiting ? pending : shown;
+  // cada troca do que está na tela (passo, esqueleto, montando) entra por cima da anterior, antes de pintar
+  const shownKey = building ? "building" : waiting ? `espera-${pending}` : shown;
+  useLayoutEffect(() => {
+    swap();
+    // o esqueleto também vira imagem: quando o passo de verdade chegar, ele entra por cima
+    if (shownKey.startsWith("espera-")) begin(lastDir);
+    // a direção só importa no momento da troca
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownKey, swap, begin]);
   const connect = state.connect;
   const connected = connect ? CORE_PROVIDER_IDS.filter((p) => connect.platforms[p].connected) : [];
   const projectName = step === "welcome" ? "" : step === "project" ? typedName : (state.project?.name ?? typedName);
@@ -260,6 +284,7 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
     connected,
     justConnected: result?.kind === "connected" && result.provider && isCore(result.provider) ? result.provider : null,
     template: templateId ? (anyDashboardTemplate(templateId) ?? null) : null,
+    marked: markedAccounts,
   };
 
   return (
@@ -277,7 +302,7 @@ export function OnboardingFlow({ state, result, now, timeZone, api: baseApi = re
       ) : shown === "model" ? (
         <ModelStep businessTypeId={state.businessTypeId} tier={state.tier} nav={nav} onBuild={onBuild} client={client} suggestion={state.suggestion} templateId={templateId} onTemplateChange={setTemplateId} />
       ) : step === "setup" && state.connect ? (
-        <AccountsStep state={state.connect} now={now} timeZone={timeZone} api={api} nav={nav} onContinue={toModel} />
+        <AccountsStep state={state.connect} now={now} timeZone={timeZone} api={api} nav={nav} onContinue={toModel} onMarkedChange={setMarkedAccounts} />
       ) : null}
     </FlowScreen>
   );

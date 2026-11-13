@@ -28,10 +28,11 @@ export function DashboardThumb({ d }: { d: Pick<DashboardListItem, "templateId" 
   const ds = datasetFor(d, 30);
   const first = d.pages[0] ?? t.pages[0];
   // modelo com visual próprio: a miniatura é o próprio visual (a primeira aba dele), não os blocos padrão
+  // a miniatura é só ilustração dentro do link (o nome do dashboard vem no texto do cartão)
   if (t.skin && first === t.pages[0]) {
     return (
       <ScaledPreview height={150} width={1100}>
-        <div inert>
+        <div inert aria-hidden>
           <SkinView skin={t.skin} ctx={makeContext(ds)} name={d.name} client={d.client} pages={d.pages.length ? d.pages : t.pages} active={first} periodLabel="Últimos 30 dias" />
         </div>
       </ScaledPreview>
@@ -39,7 +40,7 @@ export function DashboardThumb({ d }: { d: Pick<DashboardListItem, "templateId" 
   }
   return (
     <ScaledPreview height={150} width={760}>
-      <div className="bg-bg p-3">
+      <div inert aria-hidden className="bg-bg p-3">
         <PageView layout={pageLayout(t, d.pages[0] ?? t.pages[0])} ctx={makeContext(ds)} variant="compact" />
       </div>
     </ScaledPreview>

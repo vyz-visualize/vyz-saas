@@ -7,7 +7,7 @@ import { Check, LoaderCircle, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BUSINESS_TYPES } from "@/features/catalog/business-types";
 import type { PickerSelection } from "@/features/integrations/AccountPicker";
-import { PLATFORMS } from "@/features/accounts/platforms";
+import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { CORE_PROVIDER_IDS, PROVIDERS } from "@/features/integrations/providers";
 import type { ConnectState } from "@/features/integrations/types";
 import type { Tier } from "@/features/pricing/entitlements";
@@ -120,10 +120,14 @@ type AccountsProps = {
   nav: StepNav;
   /** Contas salvas: segue para o Modelo (com quantas entram, para o resumo da trilha). */
   onContinue: (enabled: number) => void;
+  /** As contas marcadas agora (o palco mostra os cartões delas entrando na prévia). */
+  onMarkedChange?: (accounts: MarkedAccount[]) => void;
 };
 
+export type MarkedAccount = { id: string; name: string; platformId: PlatformId };
+
 /** 03 Contas: as contas de anúncio, o Instagram e a Página que entram no dashboard. */
-export function AccountsStep({ state, now, timeZone, api, nav, onContinue }: AccountsProps) {
+export function AccountsStep({ state, now, timeZone, api, nav, onContinue, onMarkedChange }: AccountsProps) {
   const groups = useMemo(() => accountGroups(state), [state]);
   const [selections, setSelections] = useState<Record<string, PickerSelection>>({});
   const onSelection = useCallback((key: string, s: PickerSelection) => setSelections((prev) => ({ ...prev, [key]: s })), []);
@@ -135,6 +139,17 @@ export function AccountsStep({ state, now, timeZone, api, nav, onContinue }: Acc
   const enabled = counts.reduce((n, c) => n + c.n, 0);
   const noAccounts = triedEmpty && !canBuildDashboard(enabled) ? NO_ACCOUNTS : null;
   const { AccountsPanel } = api;
+  // as marcadas agora (com o que ainda não foi salvo), em texto estável para o efeito
+  const markedKey = groups.map((g) => (selections[g.key]?.ids ?? g.accounts.filter((a) => a.isEnabled).map((a) => a.id)).join("|")).join("·");
+  useEffect(() => {
+    const marked = groups.flatMap((g) => {
+      const ids = new Set(selections[g.key]?.ids ?? g.accounts.filter((a) => a.isEnabled).map((a) => a.id));
+      return g.accounts.filter((a) => ids.has(a.id)).map((a) => ({ id: a.id, name: a.name, platformId: g.platformId }));
+    });
+    onMarkedChange?.(marked);
+    // markedKey resume groups e selections
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markedKey, onMarkedChange]);
 
   function next() {
     if (!canBuildDashboard(enabled)) {
@@ -240,14 +255,15 @@ export function ModelStep({ businessTypeId, tier, nav, onBuild, client, suggesti
               {suggestion.reason}
             </p>
           )}
+          {/* logo abaixo da sugestão, à vista sem rolar */}
+          <p className={`text-[13px] text-fg-2 ${suggestion ? "mt-1 pl-5" : "mt-2"}`} data-model-note>
+            Você pode trocar o modelo depois, na página Dashboards.
+          </p>
           <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {options.map((o, i) => (
               <LayoutCard key={o.template.id} option={o} selected={chosen === o.template.id} nicheName={null} onSelect={() => setChosen(o.template.id)} client={client} defer={i + 1} />
             ))}
           </ul>
-          <p className="mt-3 text-[13px] text-fg-2" data-model-note>
-            Você pode trocar o modelo depois, na página Dashboards.
-          </p>
         </section>
       </div>
       <FlowFooter {...nav} primaryLabel="Montar dashboard" pendingLabel="Montando…" pending={false} disabled={!chosen} onPrimary={() => chosen && onBuild(chosen)} />

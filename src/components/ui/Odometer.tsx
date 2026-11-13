@@ -1,5 +1,6 @@
-// A fita de 0 a 9 é desenhada pelo CSS (.odo-strip::before), não é texto da página: leitor de
-// tela, seleção, cópia e "ler em voz alta" nunca encontram "0 1 2 3 4 5 6 7 8 9".
+// A fita de 0 a 9 e os outros caracteres ("R$", vírgula, "mil") são desenhados pelo CSS
+// (::before), não são texto da página: leitor de tela, seleção, cópia e "ler em voz alta" só
+// encontram o valor inteiro, uma vez ("R$ 61,0 mil"), nunca "0 1 2 3…" nem "R $ , m i l".
 
 type OdometerProps = {
   value: string;
@@ -26,9 +27,7 @@ export function Odometer({ value, label = value, className = "", stagger = 28 }:
           const fromRight = chars.length - i;
           if (!/\d/.test(c)) {
             return (
-              <span key={`c${fromRight}`} className="odo-char">
-                {c === " " ? " " : c}
-              </span>
+              <span key={`c${fromRight}`} className="odo-char" data-c={c === " " || c === "\u00a0" ? "\u00a0" : c} />
             );
           }
           return (

@@ -293,6 +293,9 @@ export const MockSource: DataSource = {
     const siteTicket = r.range(18000, 42000);
 
     const days: DayRow[] = [];
+    // vendas fracionárias passam para o dia seguinte: com verba pequena (R$ 30 por dia), o
+    // arredondamento de cada dia zerava o mês inteiro (receita, ROAS e custo por venda em 0)
+    let carry = 0;
     for (let i = HISTORY - 1; i >= 0; i--) {
       const d = emptyDay(i);
       const t = 1 - i / HISTORY; // 0 → 1 do mais antigo ao mais novo
@@ -321,8 +324,9 @@ export const MockSource: DataSource = {
         d.spend = Math.round(spend);
         d.impressions = Math.round(impressions);
         d.clicks = Math.round(clicks);
-        const conv = (spend / cpa) * noise();
-        d.conversions = Math.max(0, Math.round(conv * matured));
+        const conv = (spend / cpa) * noise() * matured + carry;
+        d.conversions = Math.max(0, Math.round(conv));
+        carry = conv - d.conversions;
         d.revenue = Math.round(d.conversions * ticket * r.range(0.92, 1.08));
         d.leads = Math.round(d.conversions * leadsPerConv * r.range(0.95, 1.05));
         if (spec.profile === "leads") {

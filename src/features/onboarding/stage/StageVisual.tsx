@@ -9,6 +9,7 @@ import { useSyncExternalStore } from "react";
 import { ScaledPreview } from "@/components/ui/ScaledPreview";
 import { TemplatePreview, TemplateThumb } from "@/features/dashboards/TemplatePreview";
 import type { ProviderId } from "@/features/integrations/providers";
+import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import type { DashboardTemplate } from "@/features/templates/types";
 import type { ActiveStep } from "../steps";
 import { BuildPreview } from "./BuildPreview";
@@ -24,6 +25,8 @@ export type StageInfo = {
   /** Acabou de voltar do login desta plataforma (o nó desenha o check). */
   justConnected: ProviderId | null;
   template: DashboardTemplate | null;
+  /** 03 Contas: as contas marcadas agora (os cartões entram na prévia). */
+  marked?: readonly { id: string; name: string; platformId: PlatformId }[];
 };
 
 function ClientCard({ client, segment, compact = false }: { client: string; segment: string | null; compact?: boolean }) {
@@ -118,9 +121,52 @@ function Visual({ info, compact }: { info: StageInfo; compact: boolean }) {
       </div>
     );
   if (step === "project") return <ClientCard client={client} segment={segment} compact={compact} />;
-  if (step === "connect" || step === "setup") return <Hub connected={connected} justConnected={step === "connect" ? justConnected : null} compact={compact} />;
+  if (step === "connect") return <Hub connected={connected} justConnected={justConnected} compact={compact} />;
+  if (step === "setup") return <AccountsPreview client={client} marked={info.marked ?? []} compact={compact} />;
   if (step === "model" && template) return <SetupPreview template={template} client={client} compact={compact} />;
   return null;
+}
+
+/**
+ * 03 Contas: a prévia do dashboard recebendo as contas marcadas. Cada cartão (plataforma e
+ * nome) entra quando a conta é marcada e sai quando é desmarcada; os números ficam em
+ * esqueleto (nada inventado no primeiro acesso).
+ */
+function AccountsPreview({ client, marked, compact }: { client: string; marked: readonly { id: string; name: string; platformId: PlatformId }[]; compact: boolean }) {
+  const shown = marked.slice(0, compact ? 3 : 6);
+  const rest = marked.length - shown.length;
+  return (
+    <div className={`w-full rounded-[18px] border border-line bg-card shadow-[0_30px_70px_rgba(0,0,0,0.3)] ${compact ? "max-w-[340px] p-2.5" : "max-w-[520px] p-4 sm:p-5"}`} aria-hidden data-stage-accounts>
+      <div className="flex items-center justify-between gap-2">
+        <p className={`label-caps text-fg-2 ${compact ? "text-[9px]" : ""}`}>Contas no dashboard</p>
+        <span className="truncate rounded-chip bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-fg">{client} · Visão geral</span>
+      </div>
+      <ul className={`mt-3 grid gap-2 ${compact ? "grid-cols-1" : "grid-cols-2"}`}>
+        {shown.map((a) => (
+          // a key é a conta: só a recém-marcada anima ao entrar
+          <li key={a.id} className="fa-pop flex min-w-0 items-center gap-2 rounded-[10px] border border-accent/60 bg-accent-soft/40 px-2.5 py-2" data-stage-account>
+            <span className="shrink-0 rounded-[6px] bg-accent px-1.5 py-0.5 text-[10px] font-bold text-on-accent">{PLATFORMS[a.platformId]?.short ?? a.platformId}</span>
+            <span className={`truncate font-medium text-fg ${compact ? "text-[11.5px]" : "text-[12.5px]"}`}>{a.name}</span>
+          </li>
+        ))}
+        {rest > 0 && <li className="rounded-[10px] border border-dashed border-line px-2.5 py-2 text-[12px] text-fg-2">+ {rest} {rest === 1 ? "conta" : "contas"}</li>}
+        {!shown.length && <li className={`rounded-[10px] border border-dashed border-line px-2.5 py-2 text-fg-2 ${compact ? "col-span-1 text-[11.5px]" : "col-span-2 text-[12.5px]"}`}>Marque as contas: elas entram aqui.</li>}
+      </ul>
+      <div className={`mt-3 grid gap-2 ${compact ? "grid-cols-4" : "grid-cols-4"}`}>
+        {["Investimento", "Receita", "ROAS", "Vendas"].map((k, i) => (
+          <div key={k} className={`rounded-[10px] border p-2 ${i === 2 ? "border-transparent bg-accent/80" : "border-line bg-bg/50"}`}>
+            <p className={`truncate text-[9px] tracking-[0.08em] uppercase ${i === 2 ? "text-on-accent" : "text-fg-2"}`}>{k}</p>
+            <span className={`mt-1.5 block h-2 rounded-full ${i === 2 ? "bg-on-accent/50" : "bg-fg-2/25"} ${marked.length ? "" : "opacity-40"}`} style={{ width: `${70 - i * 8}%` }} />
+          </div>
+        ))}
+      </div>
+      {!compact && (
+        <div className="mt-2 h-[86px] rounded-[10px] border border-line bg-bg/50 p-2.5">
+          <span className={`block h-full rounded-[6px] bg-gradient-to-t from-accent/25 to-transparent transition-opacity duration-500 ${marked.length ? "opacity-100" : "opacity-30"}`} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** A prévia grande do modelo escolhido: pesada, entra depois de o passo aparecer (esqueleto até lá). */

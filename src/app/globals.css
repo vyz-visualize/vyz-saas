@@ -394,6 +394,11 @@ html.lenis body {
   display: block;
   height: 1.15em;
   line-height: 1.15em;
+  white-space: pre;
+}
+/* "R$", vírgula e "mil" também só como desenho (o valor lido fica no sr-only) */
+.odo-char::before {
+  content: attr(data-c);
 }
 
 /* ---- Primeiro acesso: palco, agente e jornada ------------------------ */

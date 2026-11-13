@@ -130,6 +130,7 @@ function MockAccountsPanel({ group, onSelection }: AccountsPanelProps) {
     onSelection(key, {
       dirty: picked.join() !== initial,
       count: picked.length,
+      ids: picked,
       save: async () => {
         const m = load();
         save({ ...m, enabled: { ...m.enabled, [key]: picked } });
