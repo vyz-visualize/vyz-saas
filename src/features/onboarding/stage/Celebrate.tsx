@@ -1,17 +1,8 @@
 "use client";
 
-// Ao conectar: o check se desenha e um confete leve sai dele, uma vez.
+// Ao conectar: um confete leve sai do selo "Conectado ✓", uma vez (some com "reduzir movimento").
 
 import { useMemo, type CSSProperties } from "react";
-
-export function CheckDraw({ size = 40 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 44 44" aria-hidden className="fa-anim">
-      <circle cx="22" cy="22" r="20" fill="var(--accent)" className="fa-pop" />
-      <path d="M13 22.5 19.5 29 31 16" fill="none" stroke="var(--on-accent)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="30" strokeDashoffset="30" style={{ animation: "fa-draw 420ms 260ms var(--ease) forwards" }} />
-    </svg>
-  );
-}
 
 export function Confetti() {
   const bits = useMemo(
@@ -32,16 +23,6 @@ export function Confetti() {
           style={{ width: b.w, height: 4, background: b.c, ["--dx" as string]: b.dx, ["--dy" as string]: b.dy, ["--r" as string]: b.r, animation: `fa-confetti 900ms ${i * 18}ms cubic-bezier(.2,.7,.3,1) both` } as CSSProperties}
         />
       ))}
-    </span>
-  );
-}
-
-/** Check desenhado com confete em volta (a linha da plataforma que acabou de conectar). */
-export function Celebrate() {
-  return (
-    <span className="relative grid size-10 shrink-0 place-items-center" data-celebrate>
-      <Confetti />
-      <CheckDraw />
     </span>
   );
 }

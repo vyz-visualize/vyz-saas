@@ -15,7 +15,7 @@ import type { ConnectResult } from "@/features/integrations/results";
 import type { ConnectState } from "@/features/integrations/types";
 import type { FlowApi } from "./api";
 import { canContinueFromConnect } from "./steps";
-import { Celebrate } from "./stage/Celebrate";
+import { Confetti } from "./stage/Celebrate";
 import { FlowFooter, STEP_BODY, StepTitle, useStepAction } from "./ui";
 import type { StepNav } from "./OnboardingFlow";
 
@@ -107,7 +107,8 @@ function MorePlatforms({ state, api, open, onToggle }: { state: ConnectState; ap
 }
 
 export function ConnectStep({ state, result, api, nav, showTestBadges }: { state: ConnectState; result: ConnectResult | null; api: FlowApi; nav: StepNav; showTestBadges: boolean }) {
-  const [banner, setBanner] = useState(result);
+  // a faixa fica só para o erro: o "conectado" já está no título e no selo do cartão
+  const [banner, setBanner] = useState(result?.kind === "error" ? result : null);
   const action = useStepAction();
   const connected = CORE_PROVIDER_IDS.filter((p) => state.platforms[p].connected);
   const can = canContinueFromConnect(connected);
@@ -117,7 +118,9 @@ export function ConnectStep({ state, result, api, nav, showTestBadges }: { state
   const fresh = result?.kind === "connected" && result.provider && (CORE_PROVIDER_IDS as readonly string[]).includes(result.provider) && state.platforms[result.provider].connected ? result.provider : null;
   const missing = CORE_PROVIDER_IDS.find((p) => !state.platforms[p].connected);
   const speech = fresh
-    ? `Pronto! ${PROVIDERS[fresh].name} conectado. ${missing ? `Quer conectar o ${PROVIDERS[missing].name} também?` : "Agora é só escolher as contas."}`
+    ? missing
+      ? `Quer conectar o ${PROVIDERS[missing].name} também? Se não, é só continuar.`
+      : "Agora é só continuar e escolher as contas."
     : "Um login por plataforma, sem copiar ID. O VYZ lê os relatórios e só altera campanhas quando você clica em Aplicar ou liga o automático.";
 
   // volta do login: tira ?conectado=/?erro= e o "#_=_" que a Meta põe no fim, sem recarregar
@@ -141,7 +144,9 @@ export function ConnectStep({ state, result, api, nav, showTestBadges }: { state
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="title text-[17px] text-fg">{PROVIDERS[p].name}</span>
                     {s.connected ? (
-                      <span className="inline-flex items-center gap-1 rounded-chip bg-accent px-2 py-0.5 text-[12px] font-semibold text-on-accent">
+                      <span className="relative inline-flex items-center gap-1 rounded-chip bg-accent px-2 py-0.5 text-[12px] font-semibold text-on-accent" data-celebrate={fresh === p || undefined}>
+                        {/* acabou de conectar: um confete leve sai do selo, uma vez */}
+                        {fresh === p && <Confetti />}
                         <CircleCheck size={12} aria-hidden /> Conectado ✓
                       </span>
                     ) : (
@@ -150,12 +155,29 @@ export function ConnectStep({ state, result, api, nav, showTestBadges }: { state
                     {/* só para a equipe (dev ou ONBOARDING_REPLAY_EMAILS): o cliente nunca vê */}
                     {state.mock && showTestBadges && <PendingChip label="Modo de teste" detail={MOCK_NOTICE[p]} />}
                   </div>
-                  <p className="mt-1 text-[13.5px] text-fg-2">{login ? `Login: ${login.userName ?? login.userEmail ?? "conectado"}` : `Entre com ${loginThe(p)}.`}</p>
+                  <p className="mt-1 text-[13.5px] text-fg-2">
+                    {login ? (
+                      <>
+                        Login: {login.userName ?? login.userEmail ?? "conectado"}
+                        {state.canManage && (
+                          <>
+                            {" · "}
+                            <a href={api.connectHref(p)} className="underline underline-offset-2 hover:text-fg" aria-label={`Trocar o login do ${PROVIDERS[p].name}`}>
+                              Trocar login
+                            </a>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      `Entre com ${loginThe(p)}.`
+                    )}
+                  </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {fresh === p && <Celebrate />}
-                  <ConnectLink href={api.connectHref(p)} provider={p} connected={s.connected} canManage={state.canManage} />
-                </div>
+                {!s.connected && (
+                  <div className="shrink-0">
+                    <ConnectLink href={api.connectHref(p)} provider={p} connected={false} canManage={state.canManage} />
+                  </div>
+                )}
               </li>
             );
           })}

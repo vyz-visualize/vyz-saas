@@ -97,9 +97,12 @@ function FlowScreen({ step, building, stage, summaries, transition, content, chi
       <div ref={content} className="grid h-full grid-rows-[minmax(170px,30dvh)_1fr] lg:grid-cols-[1.1fr_1fr] lg:grid-rows-1">
         <StageVisual info={stage} />
         <div className="flex min-h-0 flex-col border-line lg:border-l">
-          <div className="px-5 pt-4 sm:px-8 lg:px-10 lg:pt-8">
-            <Trail step={step} building={building} summaries={summaries} />
-          </div>
+          {/* nas boas-vindas, a jornada 01/02/03 já faz o papel da trilha: ela aparece a partir do passo 01 */}
+          {(step !== "welcome" || building) && (
+            <div className="px-5 pt-4 sm:px-8 lg:px-10 lg:pt-8">
+              <Trail step={step} building={building} summaries={summaries} />
+            </div>
+          )}
           {/* key: cada passo entra com uma animação curta (sem movimento se o sistema pede) */}
           <div key={building ? "building" : step} className="fa-in flex min-h-0 flex-1 flex-col overflow-hidden">
             {children}

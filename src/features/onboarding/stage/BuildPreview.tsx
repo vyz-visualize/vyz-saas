@@ -30,17 +30,21 @@ export function BuildPreview({ client, compact = false, delay = 0 }: { client: s
         ))}
       </div>
       {!compact && (
+        // o gráfico e o funil já aparecem em esqueleto (nada de bloco vazio) e se formam por cima
         <div className="mt-2 grid grid-cols-[2fr_1fr] gap-2">
-          <div className="fa-pop rounded-[10px] border border-line bg-bg/50 p-2.5" style={{ animationDelay: at(1150) }}>
+          <div className="rounded-[10px] border border-line bg-bg/50 p-2.5" data-skeleton="linha">
             <p className="text-[10px] text-fg-2">Custo por venda · média móvel 7 dias</p>
             <svg viewBox="0 0 320 80" className="mt-1 h-[64px] w-full" preserveAspectRatio="none">
-              <path d={LINE} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeDasharray="420" strokeDashoffset="420" style={{ animation: `fa-draw 1100ms ${at(1300)} var(--ease) forwards` }} />
+              <path d={LINE} fill="none" stroke="var(--line)" strokeWidth="2.5" strokeDasharray="5 6" />
+              <path d={LINE} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeDasharray="420" strokeDashoffset="420" style={{ animation: `fa-draw 1100ms ${at(900)} var(--ease) forwards` }} />
             </svg>
           </div>
-          <div className="fa-pop space-y-1.5 rounded-[10px] border border-line bg-bg/50 p-2.5" style={{ animationDelay: at(1350) }}>
+          <div className="space-y-1.5 rounded-[10px] border border-line bg-bg/50 p-2.5" data-skeleton="funil">
             <p className="text-[10px] text-fg-2">Funil</p>
             {[100, 62, 38, 21].map((w, i) => (
-              <span key={w} className="block h-2 origin-left rounded-full bg-accent" style={{ width: `${w}%`, opacity: 1 - i * 0.18, animation: `fa-growx 600ms ${at(1500 + i * 150)} var(--ease) both` }} />
+              <span key={w} className="relative block h-2 rounded-full bg-line/70" style={{ width: `${w}%` }}>
+                <span className="absolute inset-0 origin-left rounded-full bg-accent" style={{ opacity: 1 - i * 0.18, animation: `fa-growx 600ms ${at(1100 + i * 150)} var(--ease) both` }} />
+              </span>
             ))}
           </div>
         </div>
