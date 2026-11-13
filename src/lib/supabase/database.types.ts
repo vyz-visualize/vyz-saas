@@ -2911,6 +2911,45 @@ export type Database = {
           },
         ]
       }
+      project_members: {
+        Row: {
+          workspace_id: string
+          project_id: string
+          user_id: string
+          added_by: string | null
+          created_at: string
+        }
+        Insert: {
+          workspace_id: string
+          project_id: string
+          user_id: string
+          added_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          workspace_id?: string
+          project_id?: string
+          user_id?: string
+          added_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_workspace_id_project_id_fkey"
+            columns: ["workspace_id","project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["workspace_id","id"]
+          },
+          {
+            foreignKeyName: "project_members_workspace_id_user_id_fkey"
+            columns: ["workspace_id","user_id"]
+            isOneToOne: false
+            referencedRelation: "workspace_members"
+            referencedColumns: ["workspace_id","user_id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           id: string
@@ -3958,6 +3997,7 @@ export type Database = {
           accepted_by: string | null
           revoked_at: string | null
           created_at: string
+          project_ids: string[]
         }
         Insert: {
           id?: string
@@ -3971,6 +4011,7 @@ export type Database = {
           accepted_by?: string | null
           revoked_at?: string | null
           created_at?: string
+          project_ids?: string[]
         }
         Update: {
           id?: string
@@ -3984,6 +4025,7 @@ export type Database = {
           accepted_by?: string | null
           revoked_at?: string | null
           created_at?: string
+          project_ids?: string[]
         }
         Relationships: [
           {
@@ -4390,6 +4432,13 @@ export type Database = {
           p_cancel_at_period_end: boolean
         }
         Returns: string
+      }
+      user_project_ids: {
+        Args: {
+          p_workspace_id: string
+          p_user_id: string
+        }
+        Returns: string[]
       }
     }
     Enums: {

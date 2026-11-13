@@ -53,4 +53,6 @@ export type SettingsData = {
   access: AccessEvent[];
   /** Atividade do workspace (admin): activity_events + audit_events. null = sem permissão. */
   activity: ActivityItem[] | null;
+  /** Workspaces (projetos) ativos, para escolher quais um convidado acessa (admin). */
+  projects?: { id: string; name: string }[];
 };

@@ -196,5 +196,7 @@ export async function getSettingsData(): Promise<SettingsData> {
     invitations: (invitations?.data ?? []).map((i) => ({ id: i.id, email: i.email, role: i.role as MemberRole, expiresAt: i.expires_at })),
     access: accessEvents,
     activity: items,
+    // workspaces (projetos) para escolher no convite; só admin convida
+    projects: admin ? ((await supabase.from("projects").select("id, name").eq("workspace_id", ws).is("archived_at", null).order("created_at")).data ?? []) : [],
   };
 }

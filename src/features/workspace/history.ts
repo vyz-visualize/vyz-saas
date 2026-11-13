@@ -101,6 +101,8 @@ const ACTIVITY_LABEL: Record<string, string> = {
   "project.archived": "Arquivou um workspace",
   "project.created": "Criou um workspace",
   "project.renamed": "Renomeou um workspace",
+  "project.member_added": "Pôs alguém num workspace",
+  "project.member_removed": "Tirou alguém de um workspace",
   "report.deleted": "Apagou um relatório agendado",
   "report.scheduled": "Agendou um relatório",
   "share_link.created": "Criou um link de compartilhamento",

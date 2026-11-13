@@ -27,6 +27,8 @@ const InviteInput = z
     email: z.email("Confira o e-mail.").max(254, "Confira o e-mail."),
     role: z.enum(INVITE_ROLES),
     sendEmail: z.boolean().default(true),
+    /** Workspaces (projetos) que a pessoa acessa ao aceitar; member e viewer só veem esses. */
+    projectIds: z.array(z.uuid()).max(30).default([]),
   })
   .strict();
 
@@ -75,7 +77,7 @@ export async function inviteMember(input: z.input<typeof InviteInput>): Promise<
     const created = unwrap(
       await supabase
         .from("workspace_invitations")
-        .insert({ workspace_id: ws, email, role: parsed.data.role, token_hash: hashToken(token), invited_by: session.user.id, expires_at: expiresAt })
+        .insert({ workspace_id: ws, email, role: parsed.data.role, token_hash: hashToken(token), invited_by: session.user.id, expires_at: expiresAt, project_ids: parsed.data.role === "admin" ? [] : parsed.data.projectIds })
         .select("id")
         .single(),
     );

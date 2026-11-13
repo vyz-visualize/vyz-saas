@@ -40,16 +40,18 @@ function CopyLink({ link }: { link: string }) {
   );
 }
 
-function InviteForm({ notify }: { notify: Notify }) {
+function InviteForm({ notify, projects }: { notify: Notify; projects: { id: string; name: string }[] }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<InviteRole>("member");
+  // editor e leitor só veem os workspaces escolhidos; admin vê todos
+  const [picked, setPicked] = useState<string[]>(() => projects.map((p) => p.id));
   const [sendEmail, setSendEmail] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<(InviteResult & { email: string }) | null>(null);
   const [pending, start] = useTransition();
   const submit = () =>
     start(async () => {
-      const r = await inviteMember({ email, role, sendEmail });
+      const r = await inviteMember({ email, role, sendEmail, projectIds: role === "admin" ? [] : picked });
       if (!r.ok) return setError(r.error.fields?.email ?? r.error.message);
       setError(null);
       setResult({ ...r.data, email });
@@ -77,6 +79,30 @@ function InviteForm({ notify }: { notify: Notify }) {
         </button>
       </form>
       <p className="text-[12.5px] text-fg-2">{ROLE_HINT[role]}</p>
+      {role !== "admin" && projects.length > 0 && (
+        <fieldset className="space-y-2">
+          <legend className="text-[13px] font-medium">Workspaces que a pessoa acessa</legend>
+          <div className="flex flex-wrap gap-1.5">
+            {projects.map((p) => {
+              const on = picked.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setPicked((cur) => (on ? cur.filter((id) => id !== p.id) : [...cur, p.id]))}
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-chip border px-3 text-[13px] font-medium transition-colors ${on ? "border-accent bg-accent-soft text-fg" : "border-line text-fg-2 hover:text-fg"}`}
+                >
+                  {on && <Check size={13} aria-hidden className="text-accent" />}
+                  {p.name}
+                </button>
+              );
+            })}
+          </div>
+          {!picked.length && <p className="text-[12px] text-error-fg">Sem nenhum workspace, a pessoa entra mas não vê nada até um admin pôr ela em algum.</p>}
+        </fieldset>
+      )}
+      {role === "admin" && <p className="text-[12.5px] text-fg-2">Admins acessam todos os workspaces.</p>}
       <Checkbox
         label="Enviar também por e-mail"
         hint="Só para quem ainda não tem conta no VYZ. O envio de e-mails tem limite: mande o link por WhatsApp se não chegar."
@@ -169,7 +195,7 @@ export function TeamSection({ data, role, timeZone, notify }: { data: SettingsDa
 
   return (
     <>
-      {admin ? <InviteForm notify={notify} /> : <p className="text-[14px] text-fg-2">Só administradores convidam e mudam papéis.</p>}
+      {admin ? <InviteForm notify={notify} projects={data.projects ?? []} /> : <p className="text-[14px] text-fg-2">Só administradores convidam e mudam papéis.</p>}
       <ul className="divide-y divide-line">
         {data.team.map((m) => (
           <MemberRow key={m.userId} m={m} actor={role} owners={owners} onRemove={setRemoving} notify={notify} />

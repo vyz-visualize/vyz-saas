@@ -5,7 +5,7 @@
 // workspace padrão dele. Só com "Authorization: Bearer <CRON_SECRET>".
 
 import { cronSecret, isAuthorizedCron } from "@/server/sync/cron";
-import { loadWorkspaceInsights } from "@/server/insights/load";
+import { loadWorkspaceInsights, userProjectIds } from "@/server/insights/load";
 import { pushConfigured, sendPush, type PushTarget } from "@/server/push/send";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import { generateAutoTasks } from "@/server/todo/automation";
@@ -69,8 +69,11 @@ async function handle(request: Request) {
     if (!member) continue;
     const { data: access } = await db.from("workspace_access").select("has_access").eq("workspace_id", member.workspace_id).maybeSingle();
     if (!access?.has_access) continue;
-    if (!cache.has(member.workspace_id)) cache.set(member.workspace_id, await loadWorkspaceInsights(db, member.workspace_id, "7d", 10).catch(() => null));
-    const result = cache.get(member.workspace_id);
+    // só o que a pessoa vê no painel: os workspaces (projetos) dela
+    const ids = await userProjectIds(db, member.workspace_id, userId).catch(() => [] as string[]);
+    const key = ids ? `${member.workspace_id}:${[...ids].sort().join(",")}` : member.workspace_id;
+    if (!cache.has(key)) cache.set(key, await loadWorkspaceInsights(db, member.workspace_id, "7d", 10, ids).catch(() => null));
+    const result = cache.get(key);
     const top = result?.insights[0];
     if (!result || !top) continue;
     const spend = result.pulse.reduce((n, p) => n + (p.spend ?? 0), 0);

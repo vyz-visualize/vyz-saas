@@ -80,7 +80,7 @@ export const SHELL_PURGE_ORDER = [
 export const SHELL_KEEPS = ["invoices", "payment_transactions", "billing_customers", "checkout_sessions", "audit_events", "activity_events", "subscription_changes"] as const;
 
 /** Tabelas com workspace_id que saem junto com a pessoa (auth.users em cascata). */
-export const REMOVED_WITH_USER = ["workspace_members", "product_events"] as const;
+export const REMOVED_WITH_USER = ["workspace_members", "project_members", "product_events"] as const;
 
 /** Rótulo de cada tabela no relatório. Tabela nova sem rótulo aparece como "sem classificação". */
 export const CATEGORY: Record<string, string> = {
@@ -95,7 +95,7 @@ export const CATEGORY: Record<string, string> = {
   push_tokens: "Tokens de push",
   landing_pages: "Landing pages e leads", landing_page_versions: "Landing pages e leads", landing_page_submissions: "Landing pages e leads", landing_waitlist: "Landing pages e leads", landing_waitlist_visits: "Landing pages e leads",
   subscriptions: "Assinatura", subscription_items: "Assinatura", service_orders: "Assinatura", store_customers: "Assinatura",
-  workspace_members: "Membros e convites", workspace_invitations: "Membros e convites", workspace_platforms: "Membros e convites",
+  workspace_members: "Membros e convites", project_members: "Membros e convites", workspace_invitations: "Membros e convites", workspace_platforms: "Membros e convites",
   profiles: "Perfil", credit_ledger: "Créditos", product_events: "Histórico de produtos",
 };
 

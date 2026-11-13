@@ -12,7 +12,9 @@ import { DEFAULT_SETTINGS } from "@/features/dashboards/data";
 import { DashboardsList } from "@/features/dashboards/DashboardsList";
 import type { DashboardListItem } from "@/features/dashboards/model";
 import { ENTITLEMENTS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
+import { ProjectDetailPage } from "@/features/projects/ProjectDetailPage";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
+import type { ProjectDetail } from "@/features/projects/types";
 import type { ProjectsState } from "@/features/projects/types";
 import { AppShell } from "@/features/workspace/AppShell";
 import type { HomeData, SettingsData } from "@/features/workspace/dto";
@@ -215,6 +217,32 @@ const BILLING: BillingOverview = {
 };
 const PLAN_USAGE = { projects: 3, dashboards: 4, publishedLandingPages: 0, enabledPlatforms: ["meta", "google"] };
 
+const DETAIL: ProjectDetail = {
+  id: "p1",
+  name: "Loja Aurora",
+  createdAt: day(90),
+  accounts: [
+    { id: "c1", name: "Loja Aurora · BM principal", platformId: "meta", isEnabled: true, lastSyncedAt: at(42) },
+    { id: "c2", name: "Aurora Search", platformId: "google", isEnabled: true, lastSyncedAt: at(180) },
+    { id: "c3", name: "lojaaurora.com.br", platformId: "ga4", isEnabled: true, lastSyncedAt: at(60) },
+    { id: "c4", name: "Aurora Outlet", platformId: "meta", isEnabled: false, lastSyncedAt: null },
+  ],
+  dashboards: [
+    { id: "d1", name: "Loja Aurora · Vendas", templateId: "vyz-ecommerce", updatedAt: at(12) },
+    { id: "d4", name: "Aurora · Black Friday", templateId: "vyz-ecommerce", updatedAt: at(60 * 24 * 4) },
+  ],
+  people: [
+    { userId: "u1", name: "Pedro Freitas", email: "pedro@exemplo.com", role: "owner", allAccess: true, inProject: true, isYou: true },
+    { userId: "u2", name: "Marina Alves", email: "marina@exemplo.com", role: "member", allAccess: false, inProject: true, isYou: false },
+    { userId: "u3", name: "Rafael Costa", email: "rafael@exemplo.com", role: "viewer", allAccess: false, inProject: false, isYou: false },
+  ],
+  invitations: [{ id: "i1", email: "cliente@lojaaurora.com.br", role: "viewer", expiresAt: day(-5) }],
+  seats: { used: 4, limit: 5 },
+  maxAccountsPerPlatform: 3,
+  canEdit: true,
+  canManage: true,
+};
+
 const SCREENS: Record<string, Screen> = {
   ...SCREENS_DADOS,
   ...SCREENS_TAREFAS,
@@ -228,8 +256,9 @@ const SCREENS: Record<string, Screen> = {
     ),
   },
   "inicio-novo": { path: "/painel", node: () => <HomePage data={HOME_NEW} /> },
-  projetos: { path: "/painel/projetos", node: () => <ProjectsPage state={PROJECTS} /> },
-  "projetos-vazio": { path: "/painel/projetos", node: () => <ProjectsPage state={{ ...PROJECTS, projects: [] }} /> },
+  workspaces: { path: "/painel/workspaces", node: () => <ProjectsPage state={PROJECTS} /> },
+  "workspaces-vazio": { path: "/painel/workspaces", node: () => <ProjectsPage state={{ ...PROJECTS, projects: [] }} /> },
+  workspace: { path: "/painel/workspaces/p1", node: () => <ProjectDetailPage detail={DETAIL} /> },
   dashboards: {
     path: "/painel/dashboards",
     node: (tier, role) => (

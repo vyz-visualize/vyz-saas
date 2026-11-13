@@ -92,3 +92,38 @@ export async function moveAccountToProject(adAccountId: string, projectId: strin
     return toActionError(err);
   }
 }
+
+/** Põe alguém da organização neste workspace (admin). Dono e admin já acessam todos. */
+export async function addProjectMember(projectId: string, userId: string): Promise<ActionResult> {
+  try {
+    if (!Id.safeParse(projectId).success || !Id.safeParse(userId).success) throw appError("validation");
+    const session = await authorize("admin", { access: false });
+    const db = await createServerSupabase();
+    const ws = session.workspace.id;
+    const res = await db.from("project_members").insert({ workspace_id: ws, project_id: projectId, user_id: userId, added_by: session.user.id });
+    if (res.error && !duplicate(res.error)) throw res.error;
+    await logActivity({ workspaceId: ws, actorId: session.user.id, event: "project.member_added", entityType: "project", entityId: projectId, metadata: { user_id: userId } });
+    refresh();
+    return { ok: true, data: undefined };
+  } catch (err) {
+    unstable_rethrow(err);
+    return toActionError(err);
+  }
+}
+
+/** Tira alguém deste workspace (admin). A pessoa continua na organização. */
+export async function removeProjectMember(projectId: string, userId: string): Promise<ActionResult> {
+  try {
+    if (!Id.safeParse(projectId).success || !Id.safeParse(userId).success) throw appError("validation");
+    const session = await authorize("admin", { access: false });
+    const db = await createServerSupabase();
+    const ws = session.workspace.id;
+    unwrap(await db.from("project_members").delete().eq("workspace_id", ws).eq("project_id", projectId).eq("user_id", userId));
+    await logActivity({ workspaceId: ws, actorId: session.user.id, event: "project.member_removed", entityType: "project", entityId: projectId, metadata: { user_id: userId } });
+    refresh();
+    return { ok: true, data: undefined };
+  } catch (err) {
+    unstable_rethrow(err);
+    return toActionError(err);
+  }
+}

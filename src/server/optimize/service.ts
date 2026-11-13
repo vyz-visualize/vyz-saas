@@ -4,6 +4,7 @@ import "server-only";
 // quem chama já conferiu o acesso (authorize) ou é o agendador. Cada mudança
 // vira uma linha em optimization_runs, aplicada ou não, com o motivo da falha.
 
+import { userProjectIds } from "@/server/insights/load";
 import {
   type AutopilotRules,
   budgetChange,
@@ -323,7 +324,14 @@ export async function applyTaskFor(userDb: DB, workspaceId: string, userId: stri
 
 export async function undoFor(workspaceId: string, userId: string, runId: string): Promise<OptimizationLogDTO> {
   if (!z.uuid().safeParse(runId).success) throw appError("optimization:not_found", "Mudança não encontrada.");
-  return undoRun(createAdminSupabase({ actorId: userId }), workspaceId, runId, userId);
+  const admin = createAdminSupabase({ actorId: userId });
+  // só desfaz o que é de um workspace (projeto) que a pessoa acessa
+  const allowed = await userProjectIds(admin, workspaceId, userId);
+  if (allowed) {
+    const { data: run } = await admin.from("optimization_runs").select("project_id").eq("id", runId).eq("workspace_id", workspaceId).maybeSingle();
+    if (!run || (run.project_id && !allowed.includes(run.project_id))) throw appError("optimization:not_found", "Mudança não encontrada.");
+  }
+  return undoRun(admin, workspaceId, runId, userId);
 }
 
 export async function saveAutopilotFor(userDb: DB, workspaceId: string, userId: string, projectId: string, rules: Partial<AutopilotRules>, allowed: boolean): Promise<AutopilotRules> {
