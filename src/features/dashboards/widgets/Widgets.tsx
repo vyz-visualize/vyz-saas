@@ -315,7 +315,7 @@ export function Widget({ spec, ctx: shown, delay }: { spec: WidgetSpec; ctx: Wid
       );
     case "audience":
       return (
-        <Card title={title} delay={delay} note={note}>
+        <Card title={title} delay={delay} note={note} fill>
           <Audience ctx={ctx} />
         </Card>
       );
@@ -755,39 +755,59 @@ function Goals({ ctx }: { ctx: WidgetContext }) {
   );
 }
 
+/**
+ * Quem converte: uma coluna por faixa de idade (altura = parte nas conversões, a maior em
+ * destaque, o custo de cada faixa embaixo, em vermelho quando passa do alvo) e, ao lado,
+ * a divisão por gênero em barra única com os dois números grandes.
+ */
 function Audience({ ctx }: { ctx: WidgetContext }) {
   const { ds, profile } = ctx;
-  const max = Math.max(...ds.audience.map((a) => a.share));
+  const max = Math.max(...ds.audience.map((a) => a.share), 0) || 1;
+  const top = ds.audience.reduce((a, b) => (b.share > a.share ? b : a), ds.audience[0]);
+  const conv = metric("conversions", profile).label.toLowerCase();
+  const over = (cpa: number) => hasGoal(ds) && cpa > ds.goal * 1.15;
   return (
-    <div className="grid gap-4 @[600px]:grid-cols-[2fr_1fr]">
-      <ul className="space-y-2" aria-label="Faixas de idade">
-        {ds.audience.map((a) => (
-          <li key={a.label} className={`grid items-center gap-2 text-[10.5px] tnum ${ctx.hideSpend ? "grid-cols-[3rem_1fr_auto]" : "grid-cols-[3rem_1fr_auto_auto]"}`}>
-            <span className="text-fg-2">{a.label}</span>
-            <span className="h-2.5 rounded-[3px] bg-accent" style={{ width: `${(a.share / max) * 100}%` }} />
-            <span className="font-semibold">{pct(a.share, 0)}</span>
-            {!ctx.hideSpend && <span className={`w-16 text-right ${hasGoal(ds) && a.cpa > ds.goal * 1.15 ? "text-error-fg" : "text-fg-2"}`}>{brl(a.cpa, { decimals: false })}</span>}
-          </li>
-        ))}
-        <li className="text-[10px] text-fg-2">
-          Participação nas {metric("conversions", profile).label.toLowerCase()}
-          {ctx.hideSpend ? "." : " e custo por conversão."}
-        </li>
-      </ul>
-      <div>
-        <div className="flex h-3 overflow-hidden rounded-[3px]">
+    <div className="grid min-h-0 flex-1 gap-5 @[640px]:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)]">
+      <div className="flex min-h-[170px] flex-col">
+        <ul className="grid min-h-0 flex-1 items-end gap-2.5" style={{ gridTemplateColumns: `repeat(${ds.audience.length}, minmax(0, 1fr))` }} aria-label={`Faixas de idade: parte nas ${conv}${ctx.hideSpend ? "" : " e custo por conversão"}`}>
+          {ds.audience.map((a) => {
+            const lead = a === top;
+            return (
+              <li key={a.label} className="flex h-full min-w-0 flex-col items-center justify-end gap-1.5" aria-label={`${a.label}: ${pct(a.share, 0)}${ctx.hideSpend ? "" : `, ${brl(a.cpa, { decimals: false })}`}`}>
+                <span className={`text-[12px] tnum ${lead ? "font-semibold text-fg" : "text-fg-2"}`}>{pct(a.share, 0)}</span>
+                <span className="relative flex w-full max-w-[56px] flex-1 items-end overflow-hidden rounded-[10px] bg-[color-mix(in_srgb,var(--fg)_6%,transparent)]" aria-hidden>
+                  <span className="block w-full rounded-[10px] transition-[height] duration-700" style={{ height: `${Math.max(4, (a.share / max) * 100)}%`, background: lead ? "var(--accent)" : "color-mix(in srgb, var(--accent) 38%, var(--card))" }} />
+                </span>
+                <span className="text-[11px] font-medium text-fg">{a.label}</span>
+                {!ctx.hideSpend && <span className={`text-[10.5px] tnum ${over(a.cpa) ? "font-semibold text-error-fg" : "text-fg-2"}`}>{brl(a.cpa, { decimals: false })}</span>}
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-2.5 text-[10.5px] text-fg-2">
+          Parte nas {conv} por faixa de idade{ctx.hideSpend ? "." : "; embaixo, o custo por conversão de cada uma"}
+          {!ctx.hideSpend && hasGoal(ds) ? ` (em vermelho, 15% acima do alvo de ${brl(ds.goal, { decimals: false })}).` : !ctx.hideSpend ? "." : ""}
+        </p>
+      </div>
+      <div className="flex flex-col justify-center gap-3 rounded-[14px] bg-[color-mix(in_srgb,var(--fg)_4%,transparent)] p-4">
+        <p className="text-[11px] font-medium tracking-[0.08em] text-fg-2 uppercase">Gênero</p>
+        <div className="grid grid-cols-2 gap-3">
           {ds.gender.map((g, i) => (
-            <span key={g.label} style={{ width: `${g.share * 100}%`, background: i ? "var(--seq-c)" : "var(--accent)" }} />
+            <div key={g.label} className="min-w-0">
+              <p className="flex items-center gap-1.5 text-[11.5px] text-fg-2">
+                <span className="size-2 rounded-full" style={{ background: i ? "var(--seq-c)" : "var(--accent)" }} aria-hidden />
+                {g.label}
+              </p>
+              <p className="mt-0.5 text-[26px] leading-none font-semibold tracking-[-0.02em]">{pct(g.share, 0)}</p>
+            </div>
           ))}
         </div>
-        <ul className="mt-2 space-y-1 text-[10.5px]">
-          {ds.gender.map((g) => (
-            <li key={g.label} className="flex justify-between">
-              <span className="text-fg-2">{g.label}</span>
-              <span className="font-semibold tnum">{pct(g.share, 0)}</span>
-            </li>
+        <div className="flex h-2.5 gap-[3px]" aria-hidden>
+          {ds.gender.map((g, i) => (
+            <span key={g.label} className="rounded-full" style={{ width: `${g.share * 100}%`, background: i ? "var(--seq-c)" : "var(--accent)" }} />
           ))}
-        </ul>
+        </div>
+        <p className="text-[10.5px] text-fg-2">Parte nas {conv}.</p>
       </div>
     </div>
   );

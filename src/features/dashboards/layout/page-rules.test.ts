@@ -42,8 +42,8 @@ describe("disposição nas abas com visual próprio", () => {
 });
 
 describe("visuais com moldura própria", () => {
-  it("são os cinco desenhados, e cada um tem blocos declarados", () => {
-    expect([...FRAMED_SKINS].sort()).toEqual(["areia", "lavanda", "monocromo", "noturno", "pulso"]);
+  it("são os desenhados (com o Fachada), e cada um tem blocos declarados", () => {
+    expect([...FRAMED_SKINS].sort()).toEqual(["areia", "fachada", "lavanda", "monocromo", "noturno", "pulso"]);
     for (const skin of FRAMED_SKINS) expect(SKIN_BLOCKS[skin].length).toBeGreaterThan(0);
   });
   it("as análises que seguem o tema do painel e os modelos sem visual não tomam a tela", () => {

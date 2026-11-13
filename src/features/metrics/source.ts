@@ -69,6 +69,8 @@ export type Product = { name: string; sold: number; revenue: number; spend: numb
 export type CrmStage = { stage: string; count: number; value: number };
 export type Client = { name: string; spend: number; conversions: number; goal: number };
 export type Alert = { level: "erro" | "atencao" | "info"; title: string; detail: string };
+/** Planilha do lançamento no período (metrics/launch-dataset.ts): de onde vêm os leads e o que foi vendido. Valor em centavos. */
+export type LaunchInfo = { from: string; to: string; origins: { name: string; leads: number; sales: number }[]; proposals: number; sales: number; value: number };
 
 export type Dataset = {
   spec: DataSpec;
@@ -93,6 +95,8 @@ export type Dataset = {
   breakEven: number;
   /** false: a margem não foi definida e o equilíbrio é o padrão ROAS 1. Sem o campo: definida (amostra). */
   marginSet?: boolean;
+  /** Com a planilha do lançamento ligada: o funil de vendas dela no período. Sem o campo, não há planilha. */
+  launch?: LaunchInfo;
 };
 
 export interface DataSource {

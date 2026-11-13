@@ -6,6 +6,7 @@
 import type { SkinId } from "@/features/templates/types";
 import { AreiaSkin } from "./Areia";
 import { CriativosAoVivoSkin } from "./CriativosAoVivo";
+import { FachadaSkin } from "./Fachada";
 import { LavandaSkin } from "./Lavanda";
 import { MmmSkin } from "./Mmm";
 import { MonocromoSkin } from "./Monocromo";
@@ -20,6 +21,7 @@ const SKINS: Record<SkinId, (p: SkinProps) => React.ReactNode> = {
   monocromo: MonocromoSkin,
   noturno: NoturnoSkin,
   areia: AreiaSkin,
+  fachada: FachadaSkin,
   "criativos-ao-vivo": CriativosAoVivoSkin,
   previsao: PrevisaoSkin,
   mmm: MmmSkin,

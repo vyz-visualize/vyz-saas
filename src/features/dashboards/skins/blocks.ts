@@ -57,6 +57,15 @@ export const SKIN_BLOCKS: Record<SkinId, SkinBlock[]> = {
     b("s-verba", "Verba do mês", 4, 18, 3, 11),
     b("s-campanhas", "Custo por lead por campanha", 7, 18, 5, 11),
   ],
+  // a capa ocupa a largura toda (a imagem do empreendimento fica atrás, à direita); embaixo, os quatro medidores.
+  // Os de dinheiro ficam intercalados: no link que esconde o investimento eles saem e os outros dois dividem a fileira ao meio.
+  fachada: [
+    b("s-capa", "Capa", 0, 0, 12, 13),
+    b("s-resultado", "Resultado do período", 0, 13, 3, 10),
+    b("s-verba", "Verba do mês", 3, 13, 3, 10),
+    b("s-ritmo", "Ritmo por dia", 6, 13, 3, 10),
+    b("s-custo", "Custo por resultado", 9, 13, 3, 10),
+  ],
   "criativos-ao-vivo": [
     c("s-stat0", "Investimento hoje", 0, 0, 3, 4),
     c("s-stat1", "Conversões hoje", 3, 0, 3, 4),
@@ -118,5 +127,9 @@ export const isSkinBlock = (skin: SkinId, id: string) => SKIN_BLOCKS[skin].some(
 export const isSkinCard = (skin: SkinId, id: string) => !!SKIN_BLOCKS[skin].find((s) => s.id === id)?.card;
 
 /** Visuais com moldura própria (topo, menu e fundo): tomam a tela do dashboard inteira, em todas as abas. */
-export const FRAMED_SKINS: SkinId[] = ["lavanda", "pulso", "monocromo", "noturno", "areia"];
+export const FRAMED_SKINS: SkinId[] = ["lavanda", "pulso", "monocromo", "noturno", "areia", "fachada"];
 export const isFramedSkin = (skin: SkinId | undefined): boolean => !!skin && FRAMED_SKINS.includes(skin);
+
+/** Visuais com capa (imagem do empreendimento, endereço e planilha do lançamento na primeira aba). */
+export const COVER_SKINS: SkinId[] = ["fachada"];
+export const hasCoverSkin = (skin: SkinId | undefined): boolean => !!skin && COVER_SKINS.includes(skin);

@@ -168,7 +168,7 @@ describe("dados reais: a URL manda e o servidor refaz a conta", () => {
   it("modo personalizar: suspende os filtros e devolve ao sair", async () => {
     const seen = await live(`?campanha=${firstCampaign.id}`, { canCustomize: true, saveMetrics: async () => ({ ok: true as const }) });
     expect(chips()).toHaveLength(1);
-    await click(button("Personalizar métricas"));
+    await click(button("Editar"));
     expect(seen.at(-1)).toBe("");
     expect(bar()).toBeNull();
     expect(host.querySelector("[data-filter-item]")).toBeNull();
@@ -243,7 +243,7 @@ describe("amostras: a conta é no navegador", () => {
   it("modo personalizar: os chips somem e voltam", async () => {
     await sample({ customizeId: "d1", saveMetrics: async () => ({ ok: true as const }), initialFilters: parseFilters({ campanha: "c0" }) });
     expect(chips()).toHaveLength(1);
-    await click(button("Personalizar métricas"));
+    await click(button("Editar"));
     expect(bar()).toBeNull();
     expect(window.location.search).toBe("");
     await click(button("Cancelar"));

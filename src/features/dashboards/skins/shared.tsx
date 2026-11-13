@@ -13,6 +13,7 @@ import {
 import type { DayRow } from "@/features/metrics/source";
 import type { PageId } from "@/features/templates/types";
 import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
+import type { CoverControl, LaunchSheetControl } from "../cover";
 import type { WidgetContext } from "../widgets/Widgets";
 import type { SkinGridControl } from "./SkinGrid";
 
@@ -37,6 +38,10 @@ export type SkinProps = {
   screen?: boolean;
   /** Barra da tela (voltar para a lista): o visual encaixa no topo dele, com a paleta dele. */
   bar?: React.ReactNode;
+  /** Capa (visuais com capa, como o Fachada): a imagem e o endereço. Com onChange, a pessoa troca ali mesmo. */
+  cover?: CoverControl;
+  /** Planilha do lançamento (o funil de vendas que as plataformas não enxergam). */
+  sheet?: LaunchSheetControl;
 };
 
 export const HIDDEN = "•••";

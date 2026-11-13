@@ -111,7 +111,7 @@ export function constrain(mode: "move" | "resize", wanted: LayoutItem, limits: L
 export function templateBlocks(layout: PageLayout): { id: string; w: number; h: number }[] {
   const out: { id: string; w: number; h: number }[] = [];
   if (layout.kpis.length) out.push({ id: KPIS_ID, w: COLS, h: Math.ceil(layout.kpis.length / 4) * 4 });
-  layout.widgets.forEach((w, i) => out.push({ id: widgetId(i), w: (w.span ?? 2) * 3, h: WIDGET_H[w.type] }));
+  layout.widgets.forEach((w, i) => out.push({ id: widgetId(i), w: (w.span ?? 2) * 3, h: w.rows ?? WIDGET_H[w.type] }));
   return out;
 }
 

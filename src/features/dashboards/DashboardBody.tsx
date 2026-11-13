@@ -3,6 +3,7 @@
 import { ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { PresenterBar, presentingClass, usePresentation } from "./present";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { Switch } from "@/components/ui/controls";
 import { PendingChip } from "@/components/ui/kit";
@@ -52,12 +53,14 @@ import { PlatformTray } from "./layout/LayoutEditor";
 import type { DashboardLayout } from "./layout/model";
 import { useDashboardLayout, type SaveLayout } from "./layout/useDashboardLayout";
 import { SkinView } from "./skins";
-import { isFramedSkin } from "./skins/blocks";
+import { hasCoverSkin, isFramedSkin } from "./skins/blocks";
+import { withLaunchSheet } from "@/features/metrics/launch-dataset";
+import { useDashboardCover, type CoverHost } from "./useDashboardCover";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
 import type { MetricGoal } from "./goals";
 
-export type DashboardSpec = { templateId: string; name: string; client: string; pages: PageId[]; settings: DashboardSettings; brand?: Brand; metricPrefs?: MetricPrefs; layout?: DashboardLayout; metricGoals?: readonly MetricGoal[] };
+export type DashboardSpec = { templateId: string; name: string; client: string; pages: PageId[]; settings: DashboardSettings; brand?: Brand; metricPrefs?: MetricPrefs; layout?: DashboardLayout; metricGoals?: readonly MetricGoal[]; /** Capa salva (visuais com capa): imagem e endereço. */ cover?: unknown };
 
 /** Variáveis de cor da marca própria (Personalizado), iguais nos dois modos. */
 export function brandStyle(brand?: Brand): CSSProperties | undefined {
@@ -110,6 +113,8 @@ type BodyProps = {
   onFilterNavigate?: (search: string) => void;
   /** No painel: para onde o voltar leva. Com ele, o modelo com visual próprio toma a tela toda (de ponta a ponta) e traz o voltar no topo dele. */
   backHref?: string;
+  /** Visuais com capa: como gravar a imagem, o endereço e a planilha do lançamento. Sem isso, as mudanças valem só nesta aba. */
+  coverHost?: CoverHost;
 };
 
 /** Os cards de uma aba do exemplo: os dela que seguem visíveis e, depois, os adicionados. */
@@ -120,15 +125,23 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, syncStamp, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref }: BodyProps) {
+export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, syncStamp, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref, coverHost }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
   const [customDays, setCustomDays] = useState(spec.settings.customDays || 14);
   const [range, setRange] = useState<Range | null>(null);
   const [compare, setCompare] = useState(true);
+
   const days = periodDays({ period, customDays });
-  const ds = useMemo(() => dataset ?? datasetFor({ ...spec, settings: spec.settings }, days), [dataset, spec, days]);
+  const today = useMemo(() => localDate(new Date(), DEFAULT_TIME_ZONE), []);
+  // capa (imagem, endereço) e planilha do lançamento: só os visuais com capa usam
+  const capa = useDashboardCover({ initial: spec.cover, editable: !!customizeId, host: coverHost, today });
+  // com a planilha ligada, o funil de vendas dela entra por cima dos números das plataformas
+  const ds = useMemo(() => {
+    const base = dataset ?? datasetFor({ ...spec, settings: spec.settings }, days);
+    return capa.launch ? withLaunchSheet(base, capa.launch.rows, { today, missing: capa.launch.missing }) : base;
+  }, [dataset, spec, days, capa.launch, today]);
   const defaults = useMemo(() => (t ? sampleDefaultKpis(t, spec.pages) : []), [t, spec.pages]);
   const catalog = useMemo(() => sampleCatalog(t?.profile ?? "ecommerce", defaults, t?.sources), [t, defaults]);
   const extraById = useMemo(() => new Map(extraMetrics.map((m) => [m.id, m])), [extraMetrics]);
@@ -176,6 +189,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       return extra ? { text: formatLive(extra.value, extra.format) } : null;
     },
     kpiPlace: "nesta aba",
+    settingsHref: customizeId && backHref ? `/painel/dashboards/${customizeId}/editar` : undefined,
     kpiNote: pageKpis.filter((r) => r.length).length > 1 ? "Ocultar ou adicionar vale para todas as abas com cards." : undefined,
     noKpis: !activeKpis?.length,
     goToCards: pagesWithCards[0] ? () => setPage(pagesWithCards[0]) : undefined,
@@ -216,7 +230,6 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     [creatives, ds],
   );
   const filterState = useFilterState({ initial: initialFilters, labels: filterLabels, periodDays: days, navigate: onFilterNavigate, suspended: editing });
-  const today = useMemo(() => localDate(new Date(), DEFAULT_TIME_ZONE), []);
   const filtered = useMemo(() => filterDataset(ds, filterState.filters, { today, adSelection: creatives?.selection }), [creatives?.selection, ds, filterState.filters, today]);
   // modelos novos: GA4 e orgânico (reais quando há conta ligada; senão, a amostra)
   const sourceExtras = useMemo<SourceExtras | null>(() => {
@@ -230,6 +243,8 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     const organic = sampleOrganic(current, previous);
     return { current, previous, currency: "BRL", analytics, crm, organic: { instagram: organic, facebook: organic, all: organic } };
   }, [t, realExtras, period, customDays, today, spec.name, spec.client]);
+  // modo apresentação (botão Apresentar): tela cheia, sem botões de edição, abas com ← →
+  const { rootRef, presenting, stop: stopPresenting } = usePresentation({ pages: spec.pages, page, setPage, blocked: metrics.open });
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
   const ctxOptions = { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns, today, goals: spec.metricGoals };
   const baseCtx = makeContext(ds, ctxOptions);
@@ -291,6 +306,8 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
         note={nav ? skinNote : undefined}
         screen={nav && screen}
         bar={nav ? skinBar : undefined}
+        cover={hasCoverSkin(t.skin) ? (nav ? capa.cover : { value: capa.cover.value }) : undefined}
+        sheet={hasCoverSkin(t.skin) ? (nav ? capa.sheet : { ...capa.sheet, connect: undefined, disconnect: undefined }) : undefined}
         grid={{
           items: grid.items(p),
           fit: nav && fit,
@@ -376,7 +393,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
           <Switch label="Comparar" checked={compare} onChange={setCompare} />
         </div>
       </div>
-      {customizeId && !editing && <CustomizeButton onClick={() => metrics.openPanel()} />}
+      {customizeId && !editing && !presenting && <CustomizeButton onClick={() => metrics.openPanel()} />}
       {screen && periodHint}
       <span className="mb-2 shrink-0 rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap text-fg">{realLabel}</span>
       {isReal && syncStamp && <span className="mb-2 shrink-0">{syncStamp}</span>}
@@ -392,6 +409,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   // as ações medem a largura do espaço delas ([data-actions-slot]) para decidir o que cabe
   const skinBar = screen ? (
     <>
+      {!presenting && (
       <Link
         href={backHref}
         className="-ml-2 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-control px-2 text-[13.5px] font-medium text-fg-2 outline-none transition-colors hover:bg-accent-soft hover:text-fg focus-visible:ring-2 focus-visible:ring-accent"
@@ -399,10 +417,11 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
         <ArrowLeft size={16} aria-hidden />
         Dashboards
       </Link>
+      )}
       {/* período, comparar e personalizar na mesma barra (uma linha a menos em cima dos blocos); no estreito descem para a linha de baixo */}
       <div className="order-last w-full @[1150px]:order-none @[1150px]:ml-1 @[1150px]:w-auto">{skinControls}</div>
       <div data-actions-slot className="flex min-w-10 flex-1 justify-end">
-        {actions}
+        {presenting ? null : actions}
       </div>
     </>
   ) : undefined;
@@ -429,7 +448,15 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     <MetricEditProvider value={edit.editor}>
     <FilterProvider value={filterState}>
     {/* data-skin-screen: avisa a moldura do painel (globals.css) que este dashboard toma a tela toda */}
-    <div style={brandStyle(spec.brand)} data-skin-screen={screen ? "" : undefined} data-metric-editing={editing ? edit.section : undefined} className={editing ? "pb-[62dvh] md:pb-[320px]" : ""}>
+    <div
+      ref={rootRef}
+      style={brandStyle(spec.brand)}
+      data-skin-screen={screen ? "" : undefined}
+      data-presenting={presenting ? "" : undefined}
+      data-metric-editing={editing ? edit.section : undefined}
+      // apresentação: o dashboard cobre a tela (e entra em tela cheia, onde o navegador deixa); rola por dentro
+      className={presenting ? presentingClass(framed) : editing ? "pb-[62dvh] md:pb-[320px]" : ""}
+    >
     {/* o espaçamento vale só entre as partes visíveis: a bandeja e o aviso (abaixo) não empurram a página */}
     <div className={screen ? "" : "space-y-4"}>
       {customizeId && <MetricEditBar state={edit} />}
@@ -474,7 +501,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
             </div>
           </div>
           {/* na tela cheia do painel, as ações ficam na barra do topo, não no dashboard */}
-          {fit ? <FocusBarActions>{actions}</FocusBarActions> : actions}
+          {presenting ? null : fit ? <FocusBarActions>{actions}</FocusBarActions> : actions}
         </header>
 
         <div className={fit ? "flex flex-col gap-3 @[1000px]:flex-row @[1000px]:items-end" : "flex flex-col gap-3"}>
@@ -500,7 +527,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
             </div>
             </div>
             {fit && periodHint}
-            {customizeId && !editing && (
+            {customizeId && !editing && !presenting && (
               <div className="ml-auto">
                 <CustomizeButton onClick={() => metrics.openPanel()} />
               </div>
@@ -597,6 +624,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
         </div>
       )}
     </div>
+      {presenting && <PresenterBar pages={spec.pages} page={active} setPage={setPage} name={(p) => PAGES[p].name} onStop={stopPresenting} />}
       {customizeId && <MetricTray state={edit} />}
       {customizeId && <MetricNoticeBar notice={metrics.notice} onUndo={metrics.undo} onDismiss={metrics.dismiss} />}
     </div>

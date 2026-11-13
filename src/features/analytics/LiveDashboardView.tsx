@@ -16,6 +16,7 @@ import { MetricVisibilityProvider, useMetricPrefsState, type SaveMetricPrefs } f
 import { MetricEditProvider } from "@/features/dashboards/metric-edit-context";
 import { MetricNoticeBar } from "@/features/dashboards/MetricActions";
 import { CustomizeButton, MetricEditBar, MetricTray, useMetricEditorState } from "@/features/dashboards/MetricEditor";
+import { PresenterBar, presentingClass, usePresentation } from "@/features/dashboards/present";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
 import { GoogleCampaigns, GoogleOverview, GoogleProducts, GoogleTerms } from "./google/GooglePages";
@@ -119,8 +120,11 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
     kpiPlace: active === KPI_PAGE ? undefined : `na ${PAGES[KPI_PAGE]?.name ?? "Visão geral"}`,
     noKpis: !pages.includes(KPI_PAGE) || active !== KPI_PAGE,
     goToCards: pages.includes(KPI_PAGE) && active !== KPI_PAGE ? () => setPage(KPI_PAGE) : undefined,
+    settingsHref: canCustomize ? `/painel/dashboards/${data.dashboard.id}/editar` : undefined,
   });
   const editing = metrics.open;
+  // modo apresentação (botão Apresentar do topo): tela cheia, sem botões de edição
+  const { rootRef, presenting, stop: stopPresenting } = usePresentation({ pages, page: active, setPage, blocked: editing });
   const info = data.view.filterInfo;
   const filterState = useFilterState({ initial: info?.filters ?? NO_FILTERS, labels: info?.labels, periodDays: data.current.days, navigate: filterNavigate, suspended: editing });
   const filters = filterNavigate ? filterState : null;
@@ -129,7 +133,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
   return (
     <MetricEditProvider value={edit.editor}>
     <FilterProvider value={filters}>
-    <div data-metric-editing={editing ? edit.section : undefined} className={`@container space-y-4 ${editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
+    <div ref={rootRef} data-presenting={presenting ? "" : undefined} data-metric-editing={editing ? edit.section : undefined} className={`@container space-y-4 ${presenting ? presentingClass(false) : editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
       {canCustomize && <MetricEditBar state={edit} />}
       <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
         {logo && <div className="hidden shrink-0 pt-1.5 @[500px]:block @[900px]:pt-0.5">{logo}</div>}
@@ -171,7 +175,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
           <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
             {toolbar}
           </div>
-          {canCustomize && !editing && (
+          {canCustomize && !editing && !presenting && (
             <div className="ml-auto">
               <CustomizeButton onClick={() => metrics.openPanel()} />
             </div>
@@ -221,6 +225,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
           </MetricVisibilityProvider>
         )}
       </div>
+      {presenting && <PresenterBar pages={pages} page={active} setPage={setPage} name={(p) => PAGES[p]?.name ?? p} onStop={stopPresenting} />}
       {canCustomize && <MetricTray state={edit} />}
       {canCustomize && <MetricNoticeBar notice={metrics.notice} onUndo={metrics.undo} onDismiss={metrics.dismiss} />}
     </div>

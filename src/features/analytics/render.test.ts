@@ -65,8 +65,8 @@ describe("renderização (smoke)", () => {
 
   it("o botão Personalizar não aparece no link", () => {
     const data = sampleDashboardData("meta-ecommerce", { today: TODAY })!;
-    expect(renderToString(createElement(LiveDashboardView, { data }))).not.toContain("Personalizar");
-    expect(renderToString(createElement(LiveDashboardView, { data, canCustomize: true }))).toContain("Personalizar");
+    expect(renderToString(createElement(LiveDashboardView, { data }))).not.toContain('data-tour="personalizar"');
+    expect(renderToString(createElement(LiveDashboardView, { data, canCustomize: true }))).toContain('data-tour="personalizar"');
   });
 
   describe("contador, cards e atalhos", () => {
@@ -124,17 +124,17 @@ describe("renderização (smoke)", () => {
     it("sem poder editar não há atalho nem botão", () => {
       const html = view("meta-ecommerce", undefined, false);
       expect(eyes(html)).toBe(0);
-      expect(html).not.toContain("Personalizar");
+      expect(html).not.toContain('data-tour="personalizar"');
     });
 
     it("a ordem do topo: ações, abas, período e o botão por último", () => {
       const html = renderToString(
         createElement(LiveDashboardView, { data: sampleDashboardData("meta-ecommerce", { today: TODAY })!, canCustomize: true, saveMetrics: save, actions: createElement("span", null, "AÇÕES"), toolbar: createElement("span", null, "PERÍODO") }),
       );
-      expect(html).toContain("Personalizar métricas");
+      expect(html).toContain('data-tour="personalizar"');
       expect(html.indexOf("AÇÕES")).toBeLessThan(html.indexOf('role="tablist"'));
       expect(html.indexOf('role="tablist"')).toBeLessThan(html.indexOf("PERÍODO"));
-      expect(html.indexOf("PERÍODO")).toBeLessThan(html.indexOf("Personalizar métricas"));
+      expect(html.indexOf("PERÍODO")).toBeLessThan(html.indexOf('data-tour="personalizar"'));
     });
   });
 

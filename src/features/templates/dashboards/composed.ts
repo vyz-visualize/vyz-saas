@@ -11,8 +11,21 @@ import { IMPORT_PLATFORMS, isImportPlatform } from "@/features/accounts/connecti
 import { CRM_PLATFORMS } from "@/features/sync/crm";
 import type { DashboardCategory, DashboardTemplate, PageId, PageLayout, SkinId } from "../types";
 
-export type VisualId = "vyz" | "lavanda" | "pulso" | "noturno" | "areia";
-export type Visual = { id: VisualId; name: string; skin?: SkinId; tier: Exclude<Tier, "personalizado">; description: string };
+export type VisualId = "vyz" | "lavanda" | "pulso" | "noturno" | "areia" | "fachada";
+export type Visual = {
+  id: VisualId;
+  name: string;
+  skin?: SkinId;
+  tier: Exclude<Tier, "personalizado">;
+  description: string;
+  /** Rascunho: só aparece na bancada local (/dev/templates); fica fora da galeria, do onboarding e do banco. */
+  draft?: boolean;
+  /**
+   * Disposição própria das abas padrão neste visual (a primeira aba é desenhada pelo skin).
+   * Recebe a aba, a disposição padrão dela e como pedir a de outra aba; null = fica a padrão.
+   */
+  layout?: (page: PageId, base: PageLayout, standard: (page: PageId) => PageLayout) => PageLayout | null;
+};
 
 /** Os visuais oferecidos (um arquivo cada, em ./visuais). */
 export const VISUALS: Visual[] = VISUAL_LIST;
@@ -62,7 +75,8 @@ export const featureFits = (f: Feature, platforms: readonly string[]) => !f.need
 
 export const composedId = (visual: VisualId, objective: ObjectiveId) => `${visual}-${objective}`;
 
-export const COMPOSED_TEMPLATES: DashboardTemplate[] = VISUALS.flatMap((v) =>
+/** Os modelos de uma lista de visuais (cada visual × cada objetivo). */
+export const templatesOf = (visuals: readonly Visual[]): DashboardTemplate[] => visuals.flatMap((v) =>
   OBJECTIVES.map(
     (o): DashboardTemplate => ({
       id: composedId(v.id, o.id),
@@ -78,6 +92,8 @@ export const COMPOSED_TEMPLATES: DashboardTemplate[] = VISUALS.flatMap((v) =>
     }),
   ),
 );
+
+export const COMPOSED_TEMPLATES: DashboardTemplate[] = templatesOf(VISUALS);
 
 /** Páginas de uma plataforma só: os números delas vêm filtrados para aquela plataforma. */
 export const PAGE_PLATFORM: Partial<Record<PageId, PlatformId>> = { "meta-ads": "meta", criativos: "meta", publico: "meta", "google-ads": "google", termos: "google" };

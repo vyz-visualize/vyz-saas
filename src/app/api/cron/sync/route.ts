@@ -6,6 +6,7 @@
 // "Authorization: Bearer <CRON_SECRET>"; sem o segredo configurado, 503.
 
 import { refreshSheetAccounts, type SheetRefreshSummary } from "@/server/import/scheduled";
+import { refreshLaunchSheets, type LaunchRefreshSummary } from "@/server/import/launch-scheduled";
 import { cronSecret, isAuthorizedCron } from "@/server/sync/cron";
 import { runBackfillRound, type BackfillSummary } from "@/server/mmm/backfill";
 import { syncDueAccounts } from "@/server/sync/scheduled";
@@ -34,6 +35,16 @@ async function handle(request: Request) {
       console.error("[vyz] cron das planilhas", err instanceof Error ? err.message : err);
       sheets = { error: "unknown" };
     }
+    // planilhas do lançamento ligadas aos dashboards (visuais com capa)
+    let launch: LaunchRefreshSummary | { error: string } | null = null;
+    if (total - (Date.now() - startedAt) > 15_000) {
+      try {
+        launch = await refreshLaunchSheets({ budgetMs: Math.max(15_000, total - (Date.now() - startedAt) - 60_000) });
+      } catch (err) {
+        console.error("[vyz] cron das planilhas do lançamento", err instanceof Error ? err.message : err);
+        launch = { error: "unknown" };
+      }
+    }
     // carga do histórico do MMM no tempo que sobrar (só com a fila ligada; desligada, uma consulta e sai)
     let mmm: BackfillSummary | { error: string } | null = null;
     const left = total - (Date.now() - startedAt);
@@ -45,7 +56,7 @@ async function handle(request: Request) {
         mmm = { error: "unknown" };
       }
     }
-    return Response.json({ ...summary, sheets, mmm }, { headers: NO_STORE });
+    return Response.json({ ...summary, sheets, launch, mmm }, { headers: NO_STORE });
   } catch (err) {
     console.error("[vyz] cron de sincronização", err instanceof Error ? err.message : err);
     return Response.json({ ok: false, error: "unknown" }, { status: 500, headers: NO_STORE });

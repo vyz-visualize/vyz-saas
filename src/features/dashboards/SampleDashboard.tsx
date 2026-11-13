@@ -11,6 +11,10 @@ import type { CreativesData, SampleExtraMetric } from "@/features/analytics/type
 import type { PageId } from "@/features/templates/types";
 import type { Brand } from "@/features/workspace/workspace";
 import { saveDashboardLayout, saveDashboardMetricPrefs } from "@/server/dashboards/actions";
+import { connectLaunchSheet, disconnectLaunchSheet, saveDashboardCover, uploadDashboardCover } from "@/server/dashboards/cover-actions";
+import type { CoverData } from "@/server/dashboards/cover";
+import type { CoverHost } from "./useDashboardCover";
+import { useMemo } from "react";
 import { DashboardActions } from "./DashboardActions";
 import type { Dataset } from "@/features/metrics/source";
 import type { SourceExtras } from "./SourcePages";
@@ -46,13 +50,42 @@ type Props = {
   linkedPlatforms?: PlatformId[];
   /** Selo "atualizado em" / "Atualizando…" (só no painel, com dados reais). */
   syncStamp?: ReactNode;
+  /** Visuais com capa: a capa e a planilha do lançamento salvas. */
+  coverData?: CoverData;
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms, syncStamp, sampleOnly = false }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms, syncStamp, sampleOnly = false, coverData }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [printing, setPrinting] = useState(false);
+  const dashboardId = dashboard.id;
+  // capa e planilha: gravam pelas ações do servidor (só quem edita); no link público, só leitura
+  const coverHost = useMemo<CoverHost | undefined>(() => {
+    if (!coverData) return undefined;
+    const sheet = coverData.sheet ? { link: coverData.sheet.link, rows: coverData.sheet.rows, summary: coverData.sheet.summary, error: coverData.sheet.error } : null;
+    if (!canEdit) return { sheet, code: coverData.code, serviceEmail: coverData.serviceEmail };
+    return {
+      sheet,
+      code: coverData.code,
+      serviceEmail: coverData.serviceEmail,
+      save: async (c) => {
+        const r = await saveDashboardCover(dashboardId, { image: c.image, fit: c.fit, address: c.address });
+        return r.ok ? { ok: true } : { ok: false, error: r.error.message };
+      },
+      upload: async (file) => {
+        const form = new FormData();
+        form.set("capa", file);
+        const r = await uploadDashboardCover(dashboardId, form);
+        return r.ok ? { ok: true, url: r.data.url } : { ok: false, error: r.error.message };
+      },
+      readSheet: async (link) => {
+        const r = await connectLaunchSheet(dashboardId, link);
+        return r.ok ? { ok: true, rows: r.data.rows, summary: r.data.summary } : { ok: false, error: r.error.message };
+      },
+      dropSheet: () => disconnectLaunchSheet(dashboardId),
+    };
+  }, [canEdit, coverData, dashboardId]);
 
   useEffect(() => {
     if (!printing) return;
@@ -77,7 +110,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
 
   return (
     <DashboardBody
-      spec={{ ...dashboard, brand }}
+      spec={{ ...dashboard, brand, cover: coverData?.cover }}
       dataset={realData}
       sourceExtras={sourceExtras}
       linkedPlatforms={linkedPlatforms}
@@ -90,6 +123,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       initialPage={initialPage}
       initialFilters={initialFilters}
       backHref={backHref}
+      coverHost={coverHost}
       onFilterNavigate={creatives || extraMetrics?.length || realData ? (search) => router.replace(`${pathname}${search}`, { scroll: false }) : undefined}
       onPeriodChange={
         creatives || extraMetrics?.length || realData
@@ -110,7 +144,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       canArrange={canEdit && canArrange}
       actions={
         canEdit ? (
-          <DashboardActions dashboard={{ id: dashboard.id, name: dashboard.name, live: false }} period={dashboard.settings.period} pages={dashboard.pages.length} onExport={() => setPrinting(true)} sampleOnly={sampleOnly} />
+          <DashboardActions dashboard={{ id: dashboard.id, name: dashboard.name, live: false }} period={dashboard.settings.period} pages={dashboard.pages.length} onExport={() => setPrinting(true)} sampleOnly={sampleOnly} editInPlace />
         ) : undefined
       }
     />

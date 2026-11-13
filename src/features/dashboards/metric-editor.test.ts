@@ -31,7 +31,7 @@ const click = async (el: Element | null | undefined) => {
 const sample = (extra = {}) => mount(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, initialPage: "criativos", ...extra }));
 const live = (extra = {}) => mount(createElement(LiveDashboardView, { data: sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!, initialPage: "visao-geral", canCustomize: true, saveMetrics: save, ...extra }));
 const button = (text: string) => [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === text || b.textContent?.includes(text));
-const enter = () => click(button("Personalizar métricas"));
+const enter = () => click(button("Editar"));
 const counter = () => document.querySelector("[data-metric-counter]")?.textContent ?? "";
 const count = () => Number(/^(\d+) de/.exec(counter())?.[1]);
 const cards = () => [...host.querySelectorAll<HTMLElement>("[data-edit-metric]")].map((e) => e.dataset.editMetric);
@@ -71,7 +71,7 @@ describe("entrar no modo", () => {
     expect(tray()).toBeNull();
     await enter();
     expect(document.querySelector("dialog[open], [role='dialog']")).toBeNull();
-    expect(document.querySelector("[data-metric-edit-bar]")?.textContent).toContain("Modo personalizar");
+    expect(document.querySelector("[data-metric-edit-bar]")?.textContent).toContain("Editando");
     for (const text of ["Restaurar padrão", "Cancelar", "Salvar"]) expect(button(text)).toBeTruthy();
     expect(tray()).toBeTruthy();
   });
@@ -161,11 +161,11 @@ describe("entrar no modo", () => {
 
   it("quem só visualiza nunca vê o modo", async () => {
     await mount(createElement(DashboardBody, { spec: teste }));
-    expect(button("Personalizar métricas")).toBeUndefined();
+    expect(button("Editar")).toBeUndefined();
     await act(async () => root.unmount());
     document.body.innerHTML = "";
     await mount(createElement(LiveDashboardView, { data: sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!, initialPage: "visao-geral" }));
-    expect(button("Personalizar métricas")).toBeUndefined();
+    expect(button("Editar")).toBeUndefined();
     expect(host.querySelector("[data-empty-slot]")).toBeNull();
   });
 });

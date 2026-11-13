@@ -3,9 +3,13 @@ import { MockSource, type Dataset } from "@/features/metrics/source";
 import { dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
 import { composedLayout } from "@/features/templates/dashboards/composed";
+import { DRAFT_VISUALS, VISUAL_LIST } from "@/features/templates/dashboards/visuais";
 import type { DashboardTemplate, PageId, PageLayout } from "@/features/templates/types";
 import type { DashboardSettings } from "@/features/workspace/types";
 import { sampleCatalog, type CatalogMetric, type MetricScope } from "./metric-prefs";
+
+// os lançados e os rascunhos (os rascunhos só abrem na bancada local)
+const ALL_VISUALS = [...VISUAL_LIST, ...DRAFT_VISUALS];
 
 export const DEFAULT_SETTINGS: DashboardSettings = {
   goal: 0,
@@ -34,13 +38,16 @@ export function datasetFor(spec: Spec, days: number): Dataset {
   });
 }
 
+/** A disposição padrão da aba: nos modelos novos, as métricas fortes de mercado no topo (composed.ts). */
+function standardLayout(t: DashboardTemplate, page: PageId): PageLayout {
+  return (t.composed ? composedLayout(page, t.profile) : null) ?? PAGES[page].build({ profile: t.profile, sources: t.sources });
+}
+
 export function pageLayout(t: DashboardTemplate, page: PageId): PageLayout {
-  // modelos novos: as métricas fortes de mercado no topo (composed.ts)
-  if (t.composed) {
-    const l = composedLayout(page, t.profile);
-    if (l) return l;
-  }
-  return PAGES[page].build({ profile: t.profile, sources: t.sources });
+  const base = standardLayout(t, page);
+  // o visual pode afinar a disposição das abas padrão (visuais/<id>.ts)
+  const visual = t.composed ? ALL_VISUALS.find((v) => v.id === t.composed!.visual) : undefined;
+  return visual?.layout?.(page, base, (p) => standardLayout(t, p)) ?? base;
 }
 
 /** Cards padrão de um dashboard de exemplo: os de todas as páginas dele, sem repetir. */

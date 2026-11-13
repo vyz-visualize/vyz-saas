@@ -31,6 +31,8 @@ import { SampleNotice } from "@/features/dashboards/SampleNotice";
 import { SyncStamp } from "@/features/dashboards/SyncStamp";
 import { isSamePageNavigation } from "@/server/http/request";
 import { logActivity } from "@/server/history/log";
+import { hasCoverSkin } from "@/features/dashboards/skins/blocks";
+import { loadCoverData } from "@/server/dashboards/cover";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -85,7 +87,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   const brand = { color: color ?? "", logo: ws.brandLogoUrl ?? undefined, hideVyz: whiteLabel && (ws.hideVyzBrand || !!d.brand?.hideVyz) };
   const q = parseCreativesQuery(query);
   const access = { tier: session.access.tier, tab: q.tab, ads: q.ads, upsell: true };
-  const actions = canEdit ? <DashboardActions dashboard={{ id: d.id, name: d.name, live: d.live }} period={period} pages={d.pages.length} /> : undefined;
+  const actions = canEdit ? <DashboardActions dashboard={{ id: d.id, name: d.name, live: d.live }} period={period} pages={d.pages.length} editInPlace /> : undefined;
 
   // páginas do layout que o plano ainda não libera: vitrine borrada no fim
   const upsell = <LockedPages templateId={d.templateId} tier={session.access.tier} pagesTier={session.access.entitlements?.pages ?? null} />;
@@ -123,6 +125,8 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   const sample = !realData;
   // "Conectar" no aviso: com conta ativa no workspace, liga ao dashboard (editar); sem nenhuma, conecta em Contas
   const hasEnabledAccounts = sample ? await workspaceHasEnabledAccounts(session.workspace.id) : false;
+  // visuais com capa: a imagem, o endereço e a planilha do lançamento
+  const coverData = hasCoverSkin(template?.skin) ? await loadCoverData(await createServerSupabase(), d.id, session.workspace.id) : undefined;
   return (
     <>
       {sample && <SampleNotice connectHref={hasEnabledAccounts ? `/painel/dashboards/${d.id}/editar` : "/painel/contas"} canConnect={canEdit} />}
@@ -145,6 +149,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
         }}
         brand={brand}
         canEdit={canEdit}
+        coverData={coverData}
         canArrange={canArrangeLayout(session.access.tier)}
         assemble={query.novo === "1"}
         initialPage={q.page}

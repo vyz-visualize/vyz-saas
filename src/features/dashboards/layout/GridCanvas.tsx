@@ -249,7 +249,8 @@ export function GridCanvas({
   // tela estreita (ou ainda medindo): uma coluna, na ordem da disposição
   // o mesmo contêiner medido nos dois modos (a medida não pode perder o elemento)
   return (
-    <div ref={ref} data-fit-on={fitted ? "" : undefined}>
+    // data-edit-anchor: a barra e a bandeja do Personalizar se alinham com estas bordas e usam estas cores
+    <div ref={ref} data-edit-anchor="" data-fit-on={fitted ? "" : undefined}>
       {!wide ? (
         <div className="space-y-2">
           {readingOrder(items).map((it) => (

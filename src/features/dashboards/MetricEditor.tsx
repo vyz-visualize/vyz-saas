@@ -4,8 +4,9 @@
 // topo, encaixes na fileira de cards e bandeja embaixo. Mexe só no rascunho de
 // useMetricPrefsState; quem decide o que pode e o que grava continua em metric-prefs.ts.
 
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Info, LayoutGrid, Plus, Search, SlidersHorizontal } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Info, LayoutGrid, Pencil, Plus, Search, Settings2 } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { TrendSpark } from "@/components/charts/TrendSpark";
 import { Modal } from "@/components/ui/kit";
@@ -13,6 +14,7 @@ import { Segmented } from "@/components/ui/Segmented";
 import { btn } from "@/components/ui/styles";
 import { DRAG_TYPE, markLeaveGuardSettling, type MetricEditor } from "./metric-edit-context";
 import { flipChange } from "./metric-flip";
+import { useEditAnchor } from "./useEditAnchor";
 import { METRIC_GROUP_LABEL, METRIC_GROUPS, sectionMax, toggleBlock, visibleIds, type CatalogMetric, type MetricGroup, type MetricSection } from "./metric-prefs";
 import type { useMetricPrefsState } from "./metric-prefs-context";
 
@@ -24,7 +26,7 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 export function CustomizeButton({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} data-tour="personalizar" className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-control border border-line px-3 text-[13.5px] font-medium whitespace-nowrap outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent print:hidden">
-      <SlidersHorizontal size={15} aria-hidden /> Personalizar métricas
+      <Pencil size={15} aria-hidden /> Editar
     </button>
   );
 }
@@ -135,6 +137,8 @@ export type EditorInput = {
   arrange?: boolean;
   /** Alinhar grade (Avançado, em aba com grade): arruma larguras e alturas sem trocar a ordem. */
   align?: () => void;
+  /** Nome, contas, metas e período padrão (a tela de configurações do dashboard). */
+  settingsHref?: string;
 };
 
 export function useMetricEditorState(input: EditorInput) {
@@ -248,9 +252,9 @@ export function MetricEditBar({ state }: { state: EditorState }) {
   if (!metrics.open) return null;
   const cardsOff = section === "kpis" && noKpis;
   return (
-    <div data-metric-edit-bar className="sticky top-[60px] z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-accent/50 bg-card px-3.5 py-2.5 print:hidden">
+    <AlignedBar>
       <p className="min-w-0 flex-1 basis-64 text-[13px] leading-snug text-fg">
-        <strong className="font-semibold">Modo personalizar</strong>
+        <strong className="font-semibold">Editando</strong>
         {section === "columns" ? (
           <span className="text-fg-2"> · toque em + para adicionar uma coluna, ou no ✕ do cabeçalho para tirar</span>
         ) : (
@@ -280,6 +284,11 @@ export function MetricEditBar({ state }: { state: EditorState }) {
             <LayoutGrid size={15} aria-hidden /> Alinhar grade
           </button>
         )}
+        {input.settingsHref && (
+          <Link href={input.settingsHref} className={`${btn.ghost} h-9 border border-line text-[13px] whitespace-nowrap`}>
+            <Settings2 size={15} aria-hidden /> Nome, contas e metas
+          </Link>
+        )}
         <button type="button" onClick={metrics.restore} disabled={metrics.pending} className={`${btn.ghost} h-9 border border-line text-[13px] whitespace-nowrap`}>
           Restaurar padrão
         </button>
@@ -295,6 +304,35 @@ export function MetricEditBar({ state }: { state: EditorState }) {
           {metrics.error}
         </p>
       )}
+    </AlignedBar>
+  );
+}
+
+/**
+ * A barra do Personalizar com as bordas da grade e as cores do visual do dashboard: no
+ * Fachada fica clara e começa onde a grade começa (depois do menu de ícones); no padrão
+ * VYZ, segue o tema do painel.
+ */
+function AlignedBar({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const anchor = useEditAnchor(true);
+  const [margins, setMargins] = useState<{ left: number; right: number } | null>(null);
+  useLayoutEffect(() => {
+    const parent = ref.current?.parentElement;
+    if (!anchor || !parent || !anchor.wide) return setMargins(null);
+    const p = parent.getBoundingClientRect();
+    const left = Math.max(0, Math.round(anchor.left - p.left));
+    const right = Math.max(0, Math.round(anchor.right - (window.innerWidth - p.right)));
+    setMargins((m) => (m && m.left === left && m.right === right ? m : { left, right }));
+  }, [anchor]);
+  return (
+    <div
+      ref={ref}
+      data-metric-edit-bar
+      style={{ ...anchor?.vars, ...(margins ? { marginLeft: margins.left, marginRight: margins.right } : {}) }}
+      className="sticky top-[60px] z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-accent/50 bg-card px-3.5 py-2.5 text-fg shadow-[0_18px_40px_-28px_rgb(0_0_0/0.45)] print:hidden"
+    >
+      {children}
     </div>
   );
 }
@@ -410,6 +448,9 @@ export function MetricTray({ state }: { state: EditorState }) {
   const active = groups.includes(tab) ? tab : (groups[0] ?? tab);
   const shown = list.filter((m) => m.group === active);
   const visible = section === "kpis" ? visibleKpis : columns;
+  // alinhada com a grade do dashboard e nas cores do visual dele (no celular, ocupa a largura)
+  const anchor = useEditAnchor(metrics.open);
+  const trayStyle = anchor ? { ...anchor.vars, ...(anchor.wide ? { left: anchor.left, right: anchor.right } : {}) } : undefined;
 
   return (
     <>
@@ -418,7 +459,7 @@ export function MetricTray({ state }: { state: EditorState }) {
       </p>
       {metrics.open &&
         createPortal(
-          <section data-metric-tray aria-label="Bandeja de métricas" className="fixed inset-x-0 bottom-0 z-[85] flex flex-col rounded-t-[20px] border-t border-line bg-card text-fg transition-[left] duration-300 ease-[cubic-bezier(0.32,1.15,0.6,1)] sb-closed:delay-100 md:right-3 md:bottom-3 md:left-[260px] md:rounded-[24px] md:border md:sb-closed:left-[104px] print:hidden">
+          <section data-metric-tray aria-label="Bandeja de métricas" style={trayStyle} className="fixed inset-x-0 bottom-0 z-[85] flex flex-col rounded-t-[20px] border-t border-line bg-card text-fg transition-[left] duration-300 ease-[cubic-bezier(0.32,1.15,0.6,1)] sb-closed:delay-100 md:right-3 md:bottom-3 md:left-[260px] md:rounded-[24px] md:border md:sb-closed:left-[104px] print:hidden">
             <button type="button" onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed} aria-label={collapsed ? "Abrir a bandeja" : "Recolher a bandeja"} className="flex h-6 shrink-0 items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-accent">
               <span className="h-1 w-10 rounded-full bg-line" aria-hidden />
               {collapsed && <ChevronDown size={14} aria-hidden className="ml-1 rotate-180 text-fg-2" />}

@@ -40,7 +40,7 @@ const click = async (el: Element | null | undefined) => {
   expect(el).toBeTruthy();
   await act(async () => (el as HTMLElement).click());
 };
-const openPanel = () => click([...host.querySelectorAll("button")].find((b) => b.textContent?.includes("Personalizar métricas")));
+const openPanel = () => click([...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Editar"));
 const trayTabs = () => [...document.querySelectorAll<HTMLElement>("[data-tray-tab]")];
 const trayCardsNow = () => [...document.querySelectorAll<HTMLElement>("[data-tray-metric]")];
 /** Procura o card da bandeja pelo nome, passando pelas categorias. */

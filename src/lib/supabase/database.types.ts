@@ -1256,6 +1256,57 @@ export type Database = {
           },
         ]
       }
+      dashboard_launch_sheets: {
+        Row: {
+          dashboard_id: string
+          workspace_id: string
+          link: string
+          spreadsheet_id: string
+          gid: string
+          via: string
+          rows: Json
+          summary: Json
+          read_at: string | null
+          last_error: string | null
+          last_attempt_at: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          dashboard_id: string
+          workspace_id: string
+          link: string
+          spreadsheet_id: string
+          gid: string
+          via: string
+          rows?: Json
+          summary?: Json
+          read_at?: string | null
+          last_error?: string | null
+          last_attempt_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          dashboard_id?: string
+          workspace_id?: string
+          link?: string
+          spreadsheet_id?: string
+          gid?: string
+          via?: string
+          rows?: Json
+          summary?: Json
+          read_at?: string | null
+          last_error?: string | null
+          last_attempt_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dashboards: {
         Row: {
           id: string
@@ -1280,6 +1331,7 @@ export type Database = {
           project_id: string | null
           layout: Json
           metric_goals: Json
+          cover: Json
         }
         Insert: {
           id?: string
@@ -1304,6 +1356,7 @@ export type Database = {
           project_id?: string | null
           layout?: Json
           metric_goals?: Json
+          cover?: Json
         }
         Update: {
           id?: string
@@ -1328,6 +1381,7 @@ export type Database = {
           project_id?: string | null
           layout?: Json
           metric_goals?: Json
+          cover?: Json
         }
         Relationships: [
           {

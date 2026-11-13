@@ -37,6 +37,26 @@ Um dashboard é **visual × objetivo**, e as **páginas saem das contas** ligada
 3. `npm run db:catalog`: cadastra os modelos novos (visual × cada objetivo) e apaga do banco os que saíram do código e nenhum dashboard usa.
 4. `npm test`: o teste que desenha todas as páginas de todos os modelos confere que nada quebra.
 
+### Rascunho e bancada local
+
+Para desenvolver um visual sem lançar: ponha `draft: true` no arquivo dele em `visuais/`. Assim ele:
+
+- fica fora da galeria, do onboarding, do "Trocar modelo" e do banco (`VISUAL_LIST` só tem os lançados; o `db:catalog` não vê rascunho);
+- pode ir para a `main` sem aparecer para ninguém;
+- aparece na **bancada local**, `http://localhost:<porta>/dev/templates`, que só existe no `next dev`.
+
+A bancada abre qualquer visual (os rascunhos vêm marcados) com dados de exemplo, o Personalizar funcionando sem banco (salvar fica só na aba do navegador) e tudo na URL, para mandar o link de uma tela exata:
+
+```
+/dev/templates?visual=lavanda&objetivo=ecommerce&contas=meta,google,ga4&recursos=previsao,mmm&plano=avancado&pagina=visao-geral
+```
+
+`ocultar=1` mostra com o investimento oculto e `barra=0` esconde a barra da bancada (print limpo).
+
+Para lançar: tire o `draft`, rode `npm run db:catalog` e `npm test`.
+
+Só um `next dev` por pasta: o Next recusa o segundo e sugere encerrar o primeiro. Com várias conversas na mesma pasta, usem o mesmo servidor (ou um worktree para cada uma).
+
 ## Criar um objetivo ou um recurso
 
 - Objetivo: acrescente em `OBJECTIVES` (e o nicho do onboarding em `OBJECTIVE_BY_BUSINESS`) e as métricas em `KPIS_BY_PROFILE`.
@@ -107,3 +127,20 @@ O login do Meta também traz as Páginas e o Instagram profissional ligado a cad
 No dashboard, o orgânico chega em `data.organic` (`aggregateOrganic`, `features/analytics/organic.ts`) para qualquer modelo com dados reais que tenha um Instagram ou uma Página ligados. As abas são `organico` (cards, série e tabela por perfil) e `conteudo` (ranking de posts, reels e stories), em `features/analytics/organic/OrganicPages.tsx`. Nos modelos, cada Instagram ligado vira a página `instagram`, cada Página a `pagina-facebook`, e os posts entram em `conteudo` (`composePages`).
 
 Antes de publicar uma mudança aqui: `npm run db:push` (migração `20261112090000_organic.sql`) e `npm run db:catalog` (plataformas, páginas e modelos novos).
+
+## Fachada (rascunho): lançamento imobiliário e leads
+
+Visual `fachada` (`visuais/fachada.ts`, desenho em `skins/Fachada.tsx` e `skins/fachada/`), com `draft: true`: só aparece em `/dev/templates?visual=fachada&objetivo=imob`.
+
+- **Capa** (primeira aba): título, endereço, campanhas em destaque, funil do período e a imagem do empreendimento. Sem imagem, uma ilustração padrão (`fachada/Tower.tsx`) na cor de destaque. A pessoa troca a imagem e o endereço pelo botão no canto (`CoverDialog`): PNG sem fundo vira "recorte", JPG vira "foto" (detecção automática, `cover.ts`).
+- **Medidores**: resultado por origem, ritmo por trecho do período, verba do mês e custo contra o alvo. Seguem o objetivo (`goalOf`): leads e visitas no imobiliário, vendas e receita em venda.
+- **Abas internas**: os blocos padrão com a disposição 16:9 do visual (`layout` em `visuais/fachada.ts`, novo campo opcional de `Visual`).
+- **Planilha do lançamento** (`features/import/launch-sheet.ts`): data e leads obrigatórias; origem, atendimentos, visitas, propostas, vendas e valor vendido opcionais. Só contagens, nada de dado pessoal. `metrics/launch-dataset.ts` põe o funil da planilha por cima do Dataset (o investimento continua vindo das plataformas).
+- **Leitura**: `server/import/launch.ts`. Com `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON`, lê planilhas fechadas compartilhadas com o e-mail da conta de serviço (exige o código do workspace, `launchCode`, no cabeçalho). Sem ela, só planilha aberta por link.
+
+- **Onde grava**: `dashboards.cover` (caminho da imagem no bucket `dashboard-covers`, recorte ou foto e endereço) e a tabela `dashboard_launch_sheets` (link e as linhas da última leitura). Migração `20261118150000_dashboard_cover_launch_sheet.sql`. Ações em `server/dashboards/cover-actions.ts`; releitura diária em `server/import/launch-scheduled.ts`, chamada pelo `/api/cron/sync`. Sem a migração aplicada, o dashboard abre com a capa padrão (a consulta tolera a falta).
+
+Para lançar:
+1. `npm run db:push` (migração acima) e `npm run db:types`.
+2. Criar no Google Cloud uma conta de serviço só para isto, sem papel no projeto, com a Google Sheets API ligada, e pôr o JSON em `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON` (Vercel). Sem ela, vale só a planilha aberta por link.
+3. Tirar o `draft` de `visuais/fachada.ts`, `npm run db:catalog` e `npm test`.

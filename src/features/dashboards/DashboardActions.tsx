@@ -4,7 +4,7 @@
 // vista; duplicar, agendar relatório e excluir no menu. Os botões nunca quebram
 // linha: se faltar espaço, vão para o menu, a partir do último.
 
-import { CalendarClock, Copy, FileDown, MoreHorizontal, Pencil, Share2, Trash2 } from "lucide-react";
+import { CalendarClock, Copy, FileDown, MoreHorizontal, Pencil, Presentation, Settings2, Share2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -15,6 +15,7 @@ import { ShareModal } from "@/features/share/ShareModal";
 import { deleteDashboard, duplicateDashboard, recordExport } from "@/server/dashboards/actions";
 import { DeleteDashboardModal } from "./DashboardsList";
 import { SampleBlockedModal } from "./SampleBlockedModal";
+import { PRESENT_EVENT } from "./present";
 
 const action =
   "inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-[13.5px] font-medium outline-none hover:border-accent focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent disabled:opacity-50 shrink-0 whitespace-nowrap";
@@ -31,7 +32,13 @@ type Props = {
   onExport?: () => void;
   /** Só dados de exemplo (sem conta ligada): compartilhar, PDF e relatório explicam o bloqueio. */
   sampleOnly?: boolean;
+  /**
+   * O dashboard edita no lugar (botão Editar dele): aqui o primeiro botão vira Apresentar
+   * (tela cheia) e o nome, as contas e as metas ficam em "Mais ações".
+   */
+  editInPlace?: boolean;
 };
+
 
 /** Registra a exportação no servidor e abre a impressão (Salvar como PDF). */
 export function useExport(input: { dashboardId: string; period: string; pages: number }, print: () => void) {
@@ -48,7 +55,7 @@ export function useExport(input: { dashboardId: string; period: string; pages: n
   return { run, pending, error };
 }
 
-export function DashboardActions({ dashboard, period, pages, onExport, sampleOnly = false }: Props) {
+export function DashboardActions({ dashboard, period, pages, onExport, sampleOnly = false, editInPlace = false }: Props) {
   const router = useRouter();
   const [blocked, setBlocked] = useState(false);
   const [shareOpen, setShare] = useState(false);
@@ -106,9 +113,15 @@ export function DashboardActions({ dashboard, period, pages, onExport, sampleOnl
   const shown = error ?? exporter.error;
   return (
     <div ref={rootRef} className="relative flex shrink-0 items-center print:hidden" style={{ gap: GAP }}>
-      <Link ref={itemRef(0)} href={editHref} data-tour="editar" className={`${action} ${show(0)}`}>
-        <Pencil size={15} aria-hidden /> Editar
-      </Link>
+      {editInPlace ? (
+        <button ref={itemRef(0) as React.Ref<HTMLButtonElement>} type="button" data-tour="apresentar" onClick={() => window.dispatchEvent(new Event(PRESENT_EVENT))} className={`${action} ${show(0)}`}>
+          <Presentation size={15} aria-hidden /> Apresentar
+        </button>
+      ) : (
+        <Link ref={itemRef(0)} href={editHref} data-tour="editar" className={`${action} ${show(0)}`}>
+          <Pencil size={15} aria-hidden /> Editar
+        </Link>
+      )}
       <button ref={itemRef(1)} type="button" data-tour="compartilhar" onClick={openShare} className={`${action} ${show(1)}`}>
         <Share2 size={15} aria-hidden /> Compartilhar
       </button>
@@ -120,9 +133,19 @@ export function DashboardActions({ dashboard, period, pages, onExport, sampleOnl
           <MoreHorizontal size={15} aria-hidden />
         </MenuTrigger>
         <MenuContent align="end">
-          {!visible.includes(0) && (
-            <MenuItem icon={<Pencil size={15} />} onSelect={() => router.push(editHref)}>
-              Editar
+          {!visible.includes(0) &&
+            (editInPlace ? (
+              <MenuItem icon={<Presentation size={15} />} onSelect={() => window.dispatchEvent(new Event(PRESENT_EVENT))}>
+                Apresentar
+              </MenuItem>
+            ) : (
+              <MenuItem icon={<Pencil size={15} />} onSelect={() => router.push(editHref)}>
+                Editar
+              </MenuItem>
+            ))}
+          {editInPlace && (
+            <MenuItem icon={<Settings2 size={15} />} onSelect={() => router.push(editHref)}>
+              Nome, contas e metas
             </MenuItem>
           )}
           {!visible.includes(1) && (

@@ -8,7 +8,7 @@ export type Span = 1 | 2 | 3 | 4;
 export type KpiSub = "delta" | "split" | "breakEven" | "ofLeads" | "budget" | "goal";
 export type KpiSpec = { metric: MetricId; sub?: KpiSub; highlight?: boolean };
 
-export type WidgetSpec = { span?: Span; title?: string } & (
+export type WidgetSpec = { span?: Span; title?: string; /** Altura em linhas da grade (6 a 20). Sem isso, a padrão do tipo de bloco. */ rows?: number } & (
   | { type: "line"; metric: MetricId; goal?: boolean }
   | { type: "funnel" }
   | { type: "bars"; source: "campaigns" | "platforms" | "clients"; metric: "roas" | "cpa" | "conversions" | "spend"; reference?: "breakEven" | "goal" }
@@ -76,7 +76,7 @@ export type PageDef = {
 export type DashboardCategory = "E-commerce" | "Leads" | "Imobiliário" | "Negócio local" | "Agência" | "Mídia" | "Executivo";
 
 /** Visual próprio da primeira aba (features/dashboards/skins). */
-export type SkinId = "lavanda" | "pulso" | "monocromo" | "noturno" | "areia" | "criativos-ao-vivo" | "previsao" | "mmm";
+export type SkinId = "lavanda" | "pulso" | "monocromo" | "noturno" | "areia" | "fachada" | "criativos-ao-vivo" | "previsao" | "mmm";
 
 export type DashboardTemplate = {
   id: string;

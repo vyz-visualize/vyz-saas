@@ -89,15 +89,15 @@ describe("dashboard de exemplo", () => {
 
   it("a ordem do topo: ações, abas, filtros com o botão por último", () => {
     const html = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, actions: createElement("span", null, "AÇÕES") }));
-    expect(html).toContain("Personalizar métricas");
-    expect(html.indexOf("Comparar com o período anterior")).toBeLessThan(html.indexOf("Personalizar métricas"));
+    expect(html).toContain('data-tour="personalizar"');
+    expect(html.indexOf("Comparar com o período anterior")).toBeLessThan(html.indexOf('data-tour="personalizar"'));
     expect(html.indexOf("AÇÕES")).toBeLessThan(html.indexOf('role="tablist"'));
     expect(html.indexOf('role="tablist"')).toBeLessThan(html.indexOf("Comparar com o período anterior"));
   });
 
   it("o botão Personalizar só aparece para quem pode editar", () => {
     const s = spec("vyz-ecommerce", "visao-geral");
-    expect(render(s)).not.toContain("Personalizar");
-    expect(render(s, { customizeId: "d1" })).toContain("Personalizar");
+    expect(render(s)).not.toContain('data-tour="personalizar"');
+    expect(render(s, { customizeId: "d1" })).toContain('data-tour="personalizar"');
   });
 });
