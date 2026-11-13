@@ -4,6 +4,7 @@
 // marcador, dois blocos coloridos (roxo e rosa), cards de progresso com ícone
 // flutuante e a coluna da direita com a lista e o mapa.
 
+import { CreativeImage, isVideoFormat } from "../widgets/CreativeImage";
 import {
   BarChart3,
   Bell,
@@ -511,20 +512,29 @@ export function PulsoSkin({
             )}
             {crList.map((c, i) => (
               <li key={c.id} className="flex items-center gap-3">
-                <span
-                  className="grid size-10 shrink-0 place-items-center rounded-full text-[11px] font-bold text-white"
-                  style={{
-                    background: [
-                      "#4fb3e8",
-                      "#c98a4b",
-                      "#9aa3b5",
-                      "#e2475b",
-                      "#56606e",
-                    ][i % 5],
-                  }}
-                >
-                  {initials(c.name)}
-                </span>
+                {/* dados reais: a imagem do anúncio; amostra ou sem imagem: as iniciais */}
+                <CreativeImage
+                  src={c.imageUrl}
+                  video={isVideoFormat(c.format)}
+                  compact
+                  className="size-10 shrink-0 rounded-full"
+                  fallback={
+                    <span
+                      className="grid size-full place-items-center text-[11px] font-bold text-white"
+                      style={{
+                        background: [
+                          "#4fb3e8",
+                          "#c98a4b",
+                          "#9aa3b5",
+                          "#e2475b",
+                          "#56606e",
+                        ][i % 5],
+                      }}
+                    >
+                      {initials(c.name)}
+                    </span>
+                  }
+                />
                 <span className="min-w-0 flex-1 leading-tight">
                   <span className="block truncate text-[12.5px] font-bold">
                     {c.name}

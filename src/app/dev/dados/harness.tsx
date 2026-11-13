@@ -13,6 +13,8 @@ import { datasetFromWarehouse } from "@/features/metrics/warehouse-dataset";
 import { anyDashboardTemplate } from "@/features/templates/live";
 
 const TODAY = "2026-11-13";
+// sincronizado há 8 h (na carga da bancada): o selo pede a atualização ao abrir (o Playwright segura a resposta)
+const LAST_SYNC = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString();
 const iso = (ago: number) => new Date(Date.parse(`${TODAY}T00:00:00Z`) - ago * 86_400_000).toISOString().slice(0, 10);
 
 function rows(): AccountDayRow[] {
@@ -54,15 +56,13 @@ export function DataHarness() {
     return template ? datasetFromWarehouse([meta], { profile: template.profile, today: TODAY, current, previous }) : undefined;
   }, [template]);
   if (!template || !dataset) return <p className="p-6">Modelo {templateId} não encontrado.</p>;
-  // sincronizado há 8 h: o selo pede a atualização ao abrir (o Playwright segura a resposta)
-  const last = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString();
   return (
     <div className="min-h-dvh bg-bg p-4 lg:p-8">
       <SampleDashboard
         dashboard={{ id: "00000000-0000-4000-8000-000000000001", templateId, name: "Vendas da loja", client: "Loja Verde", pages: template.pages, settings: { ...DEFAULT_SETTINGS, period: "30d" } }}
         realData={dataset}
         linkedPlatforms={["meta"]}
-        syncStamp={<SyncStamp dashboardId="00000000-0000-4000-8000-000000000001" lastSyncedAt={last} timeZone="America/Sao_Paulo" autoRefresh />}
+        syncStamp={<SyncStamp dashboardId="00000000-0000-4000-8000-000000000001" lastSyncedAt={LAST_SYNC} timeZone="America/Sao_Paulo" autoRefresh />}
       />
     </div>
   );

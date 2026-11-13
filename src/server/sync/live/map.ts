@@ -35,6 +35,7 @@ export type MetaAd = {
     video_id?: string;
     object_type?: string;
     instagram_permalink_url?: string;
+    object_story_spec?: { link_data?: { child_attachments?: unknown[] } };
   };
 };
 export type MetaInsight = {
@@ -86,6 +87,7 @@ export function mapMetaCampaign(c: MetaCampaign): CampaignEntity {
 
 function metaFormat(ad: MetaAd): AdFormat {
   const t = (ad.creative?.object_type ?? "").toUpperCase();
+  if ((ad.creative?.object_story_spec?.link_data?.child_attachments?.length ?? 0) > 1) return "carousel";
   if (ad.creative?.video_id || t === "VIDEO") return "video";
   if (t === "SHARE" || t === "PHOTO" || ad.creative?.image_url) return "image";
   return "image";

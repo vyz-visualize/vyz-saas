@@ -4,6 +4,7 @@
 // com texto, linha do tempo das campanhas, card de tendência, prévia do melhor
 // criativo em preto, lista de relatórios e o bloco da equipe por plataforma.
 
+import { CreativeImage, isVideoFormat } from "../widgets/CreativeImage";
 import {
   BarChart3,
   Bell,
@@ -430,7 +431,13 @@ export function MonocromoSkin({
                     <h3 className="flex items-center gap-2 text-[13px]">
                       <FileText size={14} /> Melhor criativo
                     </h3>
-                    <Blob className="mx-auto my-3 h-[150px] w-full" dark />
+                    {/* dados reais: a imagem do anúncio; amostra ou sem imagem: a forma decorativa */}
+                    <CreativeImage
+                      src={creative?.imageUrl}
+                      video={isVideoFormat(creative?.format)}
+                      className="mx-auto my-3 h-[150px] w-full rounded-[16px]"
+                      fallback={<Blob className="h-full w-full" dark />}
+                    />
                     <p className="truncate text-[12px]">
                       {creative?.name ?? "—"}
                     </p>

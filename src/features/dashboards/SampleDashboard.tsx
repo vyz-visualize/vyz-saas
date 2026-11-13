@@ -58,9 +58,18 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
     if (!printing) return;
     const done = () => setPrinting(false);
     window.addEventListener("afterprint", done, { once: true });
-    // espera os gráficos medirem a largura do A4 (ResizeObserver + 1 quadro)
-    const t = window.setTimeout(() => window.print(), 300);
+    // espera os gráficos medirem a largura do A4 (ResizeObserver + 1 quadro) e as imagens dos
+    // anúncios chegarem (as que estavam fora da tela ficam para depois: no PDF, saem todas; até 4 s)
+    let cancelled = false;
+    const t = window.setTimeout(async () => {
+      const imgs = [...document.querySelectorAll<HTMLImageElement>("img[loading=lazy]")];
+      for (const img of imgs) img.loading = "eager";
+      const pending = imgs.filter((img) => !img.complete).map((img) => new Promise<void>((r) => { img.addEventListener("load", () => r(), { once: true }); img.addEventListener("error", () => r(), { once: true }); }));
+      await Promise.race([Promise.all(pending), new Promise((r) => window.setTimeout(r, 4000))]);
+      if (!cancelled) window.print();
+    }, 300);
     return () => {
+      cancelled = true;
       window.clearTimeout(t);
       window.removeEventListener("afterprint", done);
     };

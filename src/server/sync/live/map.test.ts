@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapGoogleAd, mapGoogleCampaign, mapGoogleCampaignDay, mapMetaAdDay, mapMetaCampaign, mapMetaCampaignDay, metaBudget, sumAccountDays } from "./map";
+import { mapGoogleAd, mapGoogleCampaign, mapGoogleCampaignDay, mapMetaAd, mapMetaAdDay, mapMetaCampaign, mapMetaCampaignDay, metaBudget, sumAccountDays } from "./map";
 
 describe("Meta", () => {
   it("campanha: status, orçamento em centavos e data de início", () => {
@@ -71,5 +71,18 @@ describe("total da conta", () => {
     expect(days.map((d) => d.date)).toEqual(["2026-11-01", "2026-11-02"]);
     expect(days[1]).toMatchObject({ spend: 3.3, impressions: 20, conversions: 2, reach: 7, linkClicks: null });
     expect(days[0].reach).toBeNull();
+  });
+});
+
+describe("anúncio da Meta", () => {
+  it("vídeo, carrossel e imagem; a miniatura grande antes da image_url", () => {
+    const video = mapMetaAd({ id: "1", campaign_id: "c", creative: { video_id: "v", object_type: "VIDEO", thumbnail_url: "https://x/thumb640.jpg" } });
+    expect(video).toMatchObject({ format: "video", thumbnailUrl: "https://x/thumb640.jpg" });
+    const carousel = mapMetaAd({ id: "2", campaign_id: "c", creative: { object_type: "SHARE", thumbnail_url: "https://x/t.jpg", object_story_spec: { link_data: { child_attachments: [{}, {}, {}] } } } });
+    expect(carousel?.format).toBe("carousel");
+    const image = mapMetaAd({ id: "3", campaign_id: "c", creative: { object_type: "SHARE", image_url: "https://x/full.jpg" } });
+    expect(image).toMatchObject({ format: "image", thumbnailUrl: "https://x/full.jpg" });
+    const oneCard = mapMetaAd({ id: "4", campaign_id: "c", creative: { object_type: "SHARE", object_story_spec: { link_data: { child_attachments: [{}] } } } });
+    expect(oneCard?.format).toBe("image");
   });
 });

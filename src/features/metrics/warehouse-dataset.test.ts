@@ -44,3 +44,28 @@ describe("dados reais em qualquer modelo", () => {
     expect(ds.funnel).toEqual([]);
   });
 });
+
+describe("criativos com dados reais", () => {
+  const today = "2026-11-12";
+  const meta = sampleRows("meta", { period: "30d", today });
+
+  it("levam a imagem do anúncio e o formato em português; a cor da amostra fica entre as 5", () => {
+    const ads = meta.ads.map((a, i) => ({ ...a, format: i % 2 ? "video" : "image", thumbnailUrl: i === 0 ? null : `https://scontent.example.fbcdn.net/${a.id}.jpg` }));
+    const ds = datasetFromWarehouse([{ ...meta, ads }], { profile: "ecommerce", today });
+    expect(ds.creatives.length).toBeGreaterThan(1);
+    expect(ds.creatives.every((c) => ["Imagem", "Vídeo"].includes(c.format))).toBe(true);
+    expect(ds.creatives.every((c) => c.tone >= 0 && c.tone < 5)).toBe(true);
+    const withImage = ds.creatives.filter((c) => c.imageUrl);
+    expect(withImage.length).toBeGreaterThan(0);
+    expect(withImage.every((c) => c.imageUrl === `https://scontent.example.fbcdn.net/${c.id}.jpg`)).toBe(true);
+    const first = ds.creatives.find((c) => c.id === meta.ads[0].id);
+    if (first) expect(first.imageUrl).toBeNull();
+  });
+
+  it("e-commerce com a Meta: o funil de compra dela, cada etapa sobre a anterior", () => {
+    const ds = datasetFromWarehouse([meta], { profile: "ecommerce", today });
+    expect(ds.funnel[0]?.label).toBe("Cliques no link");
+    expect(ds.funnel.at(-1)?.label).toBe("Compras");
+    expect(ds.funnel.every((s) => typeof s.count === "number")).toBe(true);
+  });
+});

@@ -10,6 +10,12 @@ import { parseAgeGender } from "@/features/sync/breakdowns";
 import type { Profile } from "./definitions";
 import { crmStagesForDataset, type CrmRow } from "./crm";
 import { metaPurchaseFunnel, type FunnelStep } from "./funnel";
+import { FORMAT_LABEL } from "@/features/analytics/format";
+
+/** Cores da miniatura de amostra dos criativos (as 5 do widget). */
+const CREATIVE_TONES = 5;
+/** O formato da plataforma ("video") no rótulo da tela ("Vídeo"). */
+const formatLabel = (format: string | null | undefined) => (format ? (FORMAT_LABEL[format] ?? format) : "Imagem");
 import type { AudienceRow, Campaign, Creative, Dataset, DayRow, Product } from "./source";
 
 export type WarehouseDatasetSpec = {
@@ -114,7 +120,9 @@ function creativesOf(sets: readonly WarehouseRows[]): Creative[] {
     for (const r of rows.adDaily) {
       if (!inRange(r.date, rows.current)) continue;
       const a = info.get(r.adId);
-      const c = sum.get(r.adId) ?? { id: r.adId, name: a?.name ?? "Anúncio", format: a?.format ?? "imagem", platform: rows.platform as PlatformId, spend: 0, impressions: 0, clicks: 0, conversions: 0, frequency: 0, tone: 0, reach: 0 };
+      const c =
+        sum.get(r.adId) ??
+        { id: r.adId, name: a?.name ?? "Anúncio", format: formatLabel(a?.format), platform: rows.platform as PlatformId, spend: 0, impressions: 0, clicks: 0, conversions: 0, frequency: 0, tone: 0, reach: 0, imageUrl: a?.thumbnailUrl ?? null };
       c.spend += cents(r.spend);
       c.impressions += r.impressions;
       c.clicks += r.linkClicks ?? r.clicks;
@@ -123,7 +131,7 @@ function creativesOf(sets: readonly WarehouseRows[]): Creative[] {
       sum.set(r.adId, c);
     }
     out.push(
-      ...[...sum.values()].map(({ reach, ...c }, i) => ({ ...c, frequency: reach > 0 ? Math.round((c.impressions / reach) * 10) / 10 : 0, tone: i % 6 })),
+      ...[...sum.values()].map(({ reach, ...c }, i) => ({ ...c, frequency: reach > 0 ? Math.round((c.impressions / reach) * 10) / 10 : 0, tone: i % CREATIVE_TONES })),
     );
   }
   return out.filter((c) => c.spend > 0).sort((a, b) => b.spend - a.spend);

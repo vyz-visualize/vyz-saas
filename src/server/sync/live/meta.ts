@@ -27,6 +27,17 @@ const INSIGHT_FIELDS = [
   "action_values",
   "video_thruplay_watched_actions",
 ].join(",");
+/** Lado da imagem do criativo pedida à Meta (quadrada; os cartões cortam no centro). */
+const THUMB_PX = 640;
+
+/**
+ * O criativo do anúncio. A miniatura padrão da Meta tem 64x64: o tamanho vai como modificador
+ * na expansão (thumbnail_width/height no topo da chamada não valem para o criativo expandido;
+ * conferido nas contas reais: 64x64 assim, 720x720 com o modificador). Vídeo: a capa.
+ * child_attachments: o carrossel (dois cartões ou mais).
+ */
+export const AD_CREATIVE_FIELDS = `creative.thumbnail_width(${THUMB_PX}).thumbnail_height(${THUMB_PX}){title,body,call_to_action_type,thumbnail_url,image_url,object_url,link_url,video_id,object_type,instagram_permalink_url,object_story_spec{link_data{child_attachments{link}}}}`;
+
 const AD_EXTRA_FIELDS = ["video_p25_watched_actions", "video_p50_watched_actions", "video_p75_watched_actions", "video_p95_watched_actions", "video_p100_watched_actions"].join(",");
 
 type Page<T> = { data?: T[]; paging?: { next?: string } };
@@ -95,7 +106,7 @@ export async function fetchMetaDataset(account: SyncAccount, range: SyncRange): 
     optional(
       all<MetaAd>(
         `${act}/ads`,
-        { fields: "id,name,campaign_id,effective_status,creative{title,body,call_to_action_type,thumbnail_url,image_url,object_url,link_url,video_id,object_type,instagram_permalink_url}" },
+        { fields: `id,name,campaign_id,effective_status,${AD_CREATIVE_FIELDS}` },
         token,
         "Meta: anúncios",
         100,

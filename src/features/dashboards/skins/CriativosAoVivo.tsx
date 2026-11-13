@@ -4,6 +4,7 @@
 // entre dois criativos com a confiança estatística da diferença de CTR e o
 // alerta de fadiga (frequência alta com CTR caindo). Dados de exemplo.
 
+import { CreativeImage, isVideoFormat } from "../widgets/CreativeImage";
 import { ArrowDown, ArrowUp, Flame, Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -227,6 +228,16 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
                       >
                         {i === 0 ? <Trophy size={13} /> : i + 1}
                       </span>
+                      {/* com dados reais, a imagem do anúncio ao lado do nome (a amostra não tem imagem) */}
+                      {c.imageUrl && (
+                        <CreativeImage
+                          src={c.imageUrl}
+                          video={isVideoFormat(c.format)}
+                          compact
+                          className="size-9 shrink-0 rounded-[8px]"
+                          fallback={<span className="block size-full bg-accent-soft" />}
+                        />
+                      )}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[12.5px] font-semibold">
                           {c.name}

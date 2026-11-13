@@ -1,6 +1,7 @@
 // Widgets do dashboard. Os mesmos componentes servem o gerador da LP, o passo 2
 // de "Como funciona", as miniaturas, o painel e o link público: só muda o Dataset.
 
+import { CreativeImage, isVideoFormat } from "./CreativeImage";
 import { BUDGET_INVITE, breakEvenOf, GOAL_INVITE, hasBudget, hasGoal, hasMargin, MARGIN_INVITE } from "@/features/metrics/targets";
 import type { CSSProperties, ReactNode } from "react";
 import { BarList } from "@/components/charts/BarList";
@@ -640,11 +641,20 @@ function Creatives({ ctx }: { ctx: WidgetContext }) {
             onClick={filters?.interactive ? (e) => !(e.target as Element).closest("button") && filters.toggle("ads", c.id, c.name, e) : undefined}
             className={`overflow-hidden rounded-[8px] border bg-bg ${filters?.interactive ? "cursor-pointer" : ""} ${filterTone(filters, "ads", c.id) === "selected" ? "border-accent ring-1 ring-accent" : "border-line"} ${filterTone(filters, "ads", c.id) === "dimmed" ? "opacity-45" : ""}`}
           >
-            {/* miniatura geométrica (amostra) */}
-            <div className="relative aspect-[4/3]" style={{ background: TONES[c.tone] }} aria-hidden>
-              <span className="absolute inset-x-[18%] top-[22%] h-[18%] rounded-[3px] bg-black/15" />
-              <span className="absolute inset-x-[18%] top-[48%] h-[8%] rounded-[3px] bg-white/35" />
-              <span className="absolute bottom-2 left-2 rounded-chip bg-black/35 px-1.5 text-[9px] text-white">{c.format}</span>
+            {/* dados reais: a imagem do anúncio (vídeo: a capa); amostra ou sem imagem: a miniatura geométrica */}
+            <div className="relative" aria-hidden>
+              <CreativeImage
+                src={c.imageUrl}
+                video={isVideoFormat(c.format)}
+                className="aspect-[4/3]"
+                fallback={
+                  <div className="absolute inset-0" style={{ background: TONES[c.tone % TONES.length] }}>
+                    <span className="absolute inset-x-[18%] top-[22%] h-[18%] rounded-[3px] bg-black/15" />
+                    <span className="absolute inset-x-[18%] top-[48%] h-[8%] rounded-[3px] bg-white/35" />
+                  </div>
+                }
+              />
+              <span className="absolute bottom-2 left-2 rounded-chip bg-black/45 px-1.5 text-[9px] text-white">{c.format}</span>
             </div>
             <div className="p-2 text-[10px]">
               <p className="truncate font-semibold text-fg">
