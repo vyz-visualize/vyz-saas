@@ -10,6 +10,7 @@ import { FlaskConical, LoaderCircle, RotateCcw } from "lucide-react";
 import { useState, useTransition } from "react";
 import { btn } from "@/components/ui/styles";
 import { resetTestAccount } from "@/server/billing/test-reset";
+import { forgetFirstAccessSession } from "@/features/onboarding/guides";
 import { replayFirstAccess } from "@/server/onboarding/replay";
 import type { ActionResult } from "@/server/supabase/errors";
 
@@ -61,7 +62,16 @@ export function TestReset({ reset = false, replay = false, className = "" }: { r
             <RotateCcw size={15} aria-hidden /> Refazer primeiro acesso
           </p>
           <p className="mt-1 text-[13px] text-fg-2">Volta o primeiro acesso deste workspace ao começo, com o tour e os lembretes. Não apaga nada: projetos, contas e dashboards ficam.</p>
-          <Confirmable label="Refazer primeiro acesso" confirmLabel="Sim, refazer agora" pendingLabel="Voltando…" action={replayFirstAccess} />
+          <Confirmable
+            label="Refazer primeiro acesso"
+            confirmLabel="Sim, refazer agora"
+            pendingLabel="Voltando…"
+            // o banco volta ao começo na ação; o que esta aba guardou (lembrete já visto, último passo) também
+            action={() => {
+              forgetFirstAccessSession();
+              return replayFirstAccess();
+            }}
+          />
         </div>
       )}
       {reset && (

@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { DEFAULT_SETTINGS } from "@/features/dashboards/data";
+import { parseMetricPrefs } from "@/features/dashboards/metric-prefs";
 import { datasetFromWarehouse } from "@/features/metrics/warehouse-dataset";
 import { LINKABLE_SOURCES } from "@/features/templates/dashboards/composed";
 import { anyDashboardTemplate } from "@/features/templates/live";
@@ -31,7 +32,7 @@ async function Real({ searchParams }: { searchParams: Promise<Record<string, str
   const q = await searchParams;
   if (!q.id) return <p className="p-6">Passe ?id= de um dashboard de modelo.</p>;
   const admin = createAdminSupabase();
-  const { data: d } = await admin.from("dashboards").select("id, template_id, name").eq("id", q.id).maybeSingle();
+  const { data: d } = await admin.from("dashboards").select("id, template_id, name, metric_prefs").eq("id", q.id).maybeSingle();
   // ?visual=pulso e ?objetivo=leads: o mesmo dashboard com outro visual ou outro objetivo
   const [visual, ...rest] = (d?.template_id ?? "").split("-");
   const templateId = d ? `${q.visual ?? visual}-${q.objetivo ?? rest.join("-")}` : undefined;
@@ -54,7 +55,7 @@ async function Real({ searchParams }: { searchParams: Promise<Record<string, str
   const dataset = datasetFromWarehouse(sets, { profile: template.profile, today: warehouse.today, current: warehouse.current, previous: warehouse.previous });
   return (
     <RealHarness
-      dashboard={{ id: d.id, templateId: template.id, name: "Vendas da loja", client: "Lipe", pages: template.pages, settings: { ...DEFAULT_SETTINGS, period: "30d" } }}
+      dashboard={{ id: d.id, templateId: template.id, name: "Vendas da loja", client: "Lipe", pages: template.pages, settings: { ...DEFAULT_SETTINGS, period: "30d" }, metricPrefs: parseMetricPrefs(d.metric_prefs) }}
       dataset={dataset}
       linkedPlatforms={[...new Set(warehouse.accounts.map((a) => a.platform))] as never}
       page={q.pagina}

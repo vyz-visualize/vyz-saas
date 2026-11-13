@@ -9,7 +9,7 @@ import "server-only";
 import { ANALYTICS_PLATFORMS } from "@/features/sync/analytics";
 import { CRM_PLATFORMS } from "@/features/sync/crm";
 import { SYNC_PLATFORMS } from "@/features/sync/dataset";
-import { needsRefresh, REFRESH_COOLDOWN_MS } from "@/features/sync/freshness";
+import { needsRefresh, oldestSync, REFRESH_COOLDOWN_MS } from "@/features/sync/freshness";
 import { ORGANIC_PLATFORMS } from "@/features/sync/organic";
 import { runPool, summarizeRuns } from "@/features/sync/throttle";
 import type { WorkspaceSession } from "@/features/workspace/session";
@@ -20,22 +20,28 @@ import { SCHEDULED_CONCURRENCY } from "./scheduled";
 
 const API_PLATFORMS: readonly string[] = [...SYNC_PLATFORMS, ...ORGANIC_PLATFORMS, ...ANALYTICS_PLATFORMS, ...CRM_PLATFORMS];
 
-export type RefreshOnOpen = ReturnType<typeof summarizeRuns>;
+export type RefreshOnOpen = ReturnType<typeof summarizeRuns> & {
+  /** A sincronização mais antiga das contas do dashboard depois da rodada (o que o selo mostra). */
+  lastSyncedAt: string | null;
+};
 
 export async function refreshDashboardOnOpen(dashboardId: string, session: WorkspaceSession): Promise<RefreshOnOpen> {
   const startedAt = Date.now();
   // com a sessão da pessoa: só vê as contas de um dashboard do workspace dela
   const db = await createServerSupabase();
-  const { data, error } = await db
-    .from("dashboard_sources")
-    .select("account:ad_accounts!dashboard_sources_workspace_id_ad_account_id_fkey(id, platform_id, is_enabled, connection_id, last_synced_at)")
-    .eq("dashboard_id", dashboardId)
-    .eq("workspace_id", session.workspace.id);
-  if (error) throw error;
-  const stale = (data ?? [])
-    .map((s) => s.account)
-    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && !!a.connection_id && API_PLATFORMS.includes(a.platform_id) && needsRefresh(a.last_synced_at, startedAt));
-  if (!stale.length) return summarizeRuns(0, [], Date.now() - startedAt);
+  const accounts = async () => {
+    const { data, error } = await db
+      .from("dashboard_sources")
+      .select("account:ad_accounts!dashboard_sources_workspace_id_ad_account_id_fkey(id, platform_id, is_enabled, connection_id, last_synced_at)")
+      .eq("dashboard_id", dashboardId)
+      .eq("workspace_id", session.workspace.id);
+    if (error) throw error;
+    return (data ?? []).map((s) => s.account).filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && API_PLATFORMS.includes(a.platform_id));
+  };
+  // a data do selo: a mesma regra da página (a sincronização mais antiga das contas pela API)
+  const oldest = async () => oldestSync((await accounts()).map((a) => a.last_synced_at));
+  const stale = (await accounts()).filter((a) => !!a.connection_id && needsRefresh(a.last_synced_at, startedAt));
+  if (!stale.length) return { ...summarizeRuns(0, [], Date.now() - startedAt), lastSyncedAt: await oldest() };
 
   // tentou há pouco (qualquer gatilho, certa ou com erro): espera
   const admin = createAdminSupabase();
@@ -63,9 +69,10 @@ export async function refreshDashboardOnOpen(dashboardId: string, session: Works
     },
     (a) => !paused.has(a.platform_id),
   );
-  return summarizeRuns(
+  const summary = summarizeRuns(
     due.length,
     ran.map(({ item, result: r }) => ({ adAccountId: item.id, ok: r.ok, rowsWritten: r.rowsWritten, ...(r.code ? { code: r.code } : {}) })),
     Date.now() - startedAt,
   );
+  return { ...summary, lastSyncedAt: await oldest() };
 }

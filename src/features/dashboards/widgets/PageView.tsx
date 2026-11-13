@@ -1,4 +1,5 @@
 import type { PageLayout, Span } from "@/features/templates/types";
+import { KPI_GRID, kpiSpans } from "./kpi-grid";
 import type { KpiEdit } from "../metric-prefs-context";
 import type { SampleExtraMetric } from "@/features/analytics/types";
 import { EmptySlots, useKpiDropRow, useMetricEditor } from "../metric-edit-context";
@@ -32,16 +33,22 @@ export function PageView({ layout, ctx, variant = "full", kpiEdit, extraCards = 
   const hide = (id: string) => (!editor && kpiEdit && cards > 1 ? () => kpiEdit.hide(id) : undefined);
   const remove = (id: string) => (editingCards && editor.canRemoveKpi ? () => editor.removeKpi(id) : undefined);
   const compact = variant === "compact";
+  const spans = kpiSpans(cards);
   const widgets = compact ? layout.widgets.slice(0, 2) : layout.widgets;
   return (
     <div data-dim-scope className="@container space-y-2">
       {cards > 0 && (
-        <div className="grid grid-cols-2 gap-2 relative @[440px]:grid-cols-4" data-kpi-row {...drop.props}>
+        // sem buraco: as fileiras se dividem por igual (6 cards = 3 + 3); no Personalizar, a grade de 4 com as vagas
+        <div className={editingCards ? "grid grid-cols-2 gap-2 relative @[440px]:grid-cols-4" : KPI_GRID} data-kpi-row {...drop.props}>
           {layout.kpis.map((k, i) => (
-            <Kpi key={k.metric} spec={k} ctx={ctx} delay={200 + i * 70} onHide={hide(k.metric)} onRemove={remove(k.metric)} />
+            <div key={k.metric} className={`min-w-0 [&>*]:h-full ${editingCards ? "" : spans[i]}`}>
+              <Kpi spec={k} ctx={ctx} delay={200 + i * 70} onHide={hide(k.metric)} onRemove={remove(k.metric)} />
+            </div>
           ))}
           {extraCards.map((m, i) => (
-            <ExtraKpi key={m.id} m={m} ctx={ctx} delay={200 + (layout.kpis.length + i) * 70} onHide={hide(m.id)} onRemove={remove(m.id)} />
+            <div key={m.id} className={`min-w-0 [&>*]:h-full ${editingCards ? "" : spans[layout.kpis.length + i]}`}>
+              <ExtraKpi m={m} ctx={ctx} delay={200 + (layout.kpis.length + i) * 70} onHide={hide(m.id)} onRemove={remove(m.id)} />
+            </div>
           ))}
           {editingCards && <EmptySlots count={editor.slots - cards} onClick={editor.openTray} />}
           {drop.overlay}

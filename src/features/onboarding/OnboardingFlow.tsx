@@ -23,7 +23,7 @@ import { Trail, type TrailSummaries } from "./stage/Trail";
 import { useMascotTransition } from "./stage/useMascotTransition";
 import { ONBOARDING_STEPS, stepIndex, type ActiveStep } from "./steps";
 import type { OnboardingState } from "./types";
-import { NUDGE_SESSION_KEY } from "./guides";
+import { LAST_STEP_KEY, NUDGE_SESSION_KEY } from "./guides";
 import { STEP_BODY, useStepAction } from "./ui";
 
 /** O que todo passo recebe para o rodapé: pular e voltar. */
@@ -32,7 +32,6 @@ export type StepNav = { onSkip: () => void; skipping: boolean; onBack?: () => vo
 /** Tempo mínimo da tela "Montando seu dashboard…" antes de abrir o dashboard (as 4 etapas aparecem). */
 export const BUILDING_MS = 1600;
 
-const LAST_STEP_KEY = "vyz:onboarding-step";
 
 /**
  * onboarding_step_view a cada passo aberto e onboarding_step_complete quando o

@@ -16,6 +16,16 @@ export const TOUR_ACTIVE_ATTR = "data-tour-active";
 
 /** Chave do sessionStorage: já mostrou um lembrete nesta sessão. */
 export const NUDGE_SESSION_KEY = "vyz:nudge-shown";
+/** Chave do sessionStorage: o último passo visto (para contar o passo concluído). */
+export const LAST_STEP_KEY = "vyz:onboarding-step";
+
+/** "Refazer primeiro acesso": esquece o que esta aba guardou do primeiro acesso anterior (lembrete e último passo). */
+export function forgetFirstAccessSession() {
+  try {
+    sessionStorage.removeItem(NUDGE_SESSION_KEY);
+    sessionStorage.removeItem(LAST_STEP_KEY);
+  } catch {}
+}
 
 export type GuideStatus = "done" | "skipped" | "snoozed";
 export type GuideRow = { guide: string; status: GuideStatus; snoozedUntil: string | null };

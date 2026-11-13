@@ -22,7 +22,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/dashboards/
   try {
     const session = await authorize("viewer");
     const summary = await refreshDashboardOnOpen(id, session);
-    return Response.json({ ok: summary.ok, synced: summary.synced, failed: summary.failed, rateLimited: summary.rateLimited, due: summary.due }, { headers: NO_STORE });
+    return Response.json({ ok: summary.ok, synced: summary.synced, failed: summary.failed, rateLimited: summary.rateLimited, due: summary.due, lastSyncedAt: summary.lastSyncedAt }, { headers: NO_STORE });
   } catch (err) {
     if (err instanceof AppError) return Response.json({ ok: false, error: err.code }, { status: err.code === "auth:required" ? 401 : 403, headers: NO_STORE });
     console.error("[vyz] atualização ao abrir", err instanceof Error ? err.message : err);

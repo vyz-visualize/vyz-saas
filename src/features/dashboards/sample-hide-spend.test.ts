@@ -79,11 +79,11 @@ describe("dashboard de exemplo", () => {
     expect(edit).not.toContain("Adicionar métrica");
   });
 
-  it("quem edita e quem só visualiza têm a mesma grade de 4 colunas", () => {
+  it("quem edita e quem só visualiza têm a mesma grade de cards (12 colunas, fileiras sem buraco)", () => {
     const grid = (html: string) => /<div class="(grid grid-cols-2[^"]*)"/.exec(html)?.[1];
     const edit = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, ...criativos }));
     expect(grid(edit)).toBe(grid(render(teste, criativos)));
-    expect(grid(edit)).toContain("grid-cols-4");
+    expect(grid(edit)).toContain("grid-cols-12");
     expect(grid(edit)).not.toContain("grid-cols-5");
   });
 

@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { needsRefresh, syncedAtLabel } from "@/features/sync/freshness";
 
-type Outcome = { synced: number };
+type Outcome = { synced: number; lastSyncedAt: string | null };
 
 // a mesma página montada de novo (modo estrito, troca de período) não pede outra vez
 const asked = new Map<string, Promise<Outcome>>();
@@ -18,9 +18,9 @@ function askRefresh(dashboardId: string): Promise<Outcome> {
   let p = asked.get(dashboardId);
   if (!p) {
     p = fetch(`/api/dashboards/${dashboardId}/atualizar`, { method: "POST", cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { synced: 0 }))
-      .then((j: { synced?: number }) => ({ synced: j.synced ?? 0 }))
-      .catch(() => ({ synced: 0 }));
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((j: { synced?: number; lastSyncedAt?: string | null }) => ({ synced: j.synced ?? 0, lastSyncedAt: j.lastSyncedAt ?? null }))
+      .catch(() => ({ synced: 0, lastSyncedAt: null }));
     asked.set(dashboardId, p);
   }
   return p;
@@ -41,6 +41,8 @@ export function SyncStamp({ dashboardId, lastSyncedAt, timeZone, autoRefresh = f
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
   const [refreshing, startRefresh] = useTransition();
+  // a data que a rota devolveu depois de sincronizar: o selo mostra na hora, sem depender do redesenho da página
+  const [fresh, setFresh] = useState<string | null>(null);
 
   useEffect(() => {
     if (!autoRefresh || !needsRefresh(lastSyncedAt, Date.now())) return;
@@ -48,13 +50,15 @@ export function SyncStamp({ dashboardId, lastSyncedAt, timeZone, autoRefresh = f
     const request = askRefresh(dashboardId);
     // o selo muda no próximo quadro (nada de estado síncrono dentro do efeito)
     const frame = requestAnimationFrame(() => alive && setSyncing(true));
-    void request.then(({ synced }) => {
+    void request.then(({ synced, lastSyncedAt: after }) => {
       if (!alive) return;
       cancelAnimationFrame(frame);
+      const moved = !!after && after !== lastSyncedAt;
       // "Atualizando…" fica até os números novos chegarem
       startRefresh(() => {
         setSyncing(false);
-        if (synced > 0) router.refresh();
+        if (moved) setFresh(after);
+        if (synced > 0 || moved) router.refresh();
       });
     });
     return () => {
@@ -64,8 +68,10 @@ export function SyncStamp({ dashboardId, lastSyncedAt, timeZone, autoRefresh = f
   }, [autoRefresh, dashboardId, lastSyncedAt, router]);
 
   const busy = syncing || refreshing;
-  if (!busy && !lastSyncedAt) return null;
-  const when = lastSyncedAt ? syncedAtLabel(lastSyncedAt, timeZone) : "";
+  // a mais nova entre a da página e a da rota (a página pode chegar depois, ou nem redesenhar)
+  const shown = fresh && (!lastSyncedAt || fresh > lastSyncedAt) ? fresh : lastSyncedAt;
+  if (!busy && !shown) return null;
+  const when = shown ? syncedAtLabel(shown, timeZone) : "";
   const text = busy ? "Atualizando…" : `atualizado em ${when}`;
 
   if (variant === "inline")
