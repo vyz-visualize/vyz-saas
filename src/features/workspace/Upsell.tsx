@@ -6,6 +6,7 @@
 import { ArrowRight, BarChart3, PanelsTopLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { SectionHeader } from "@/components/ui/kit";
 import { Paywall } from "@/components/ui/Paywall";
 import { ENTITLEMENTS, canUse, type Tier } from "@/features/pricing/entitlements";
 import { brl } from "@/lib/format";
@@ -18,7 +19,7 @@ type Feature = { required: Tier; feature: string; text: string; preview: ReactNo
 /** Prévia decorativa: barras e blocos no visual do painel. */
 function Preview({ bars = [40, 65, 52, 80, 70, 92], chips = 0, rows = 0 }: { bars?: number[]; chips?: number; rows?: number }) {
   return (
-    <div className="flex h-64 flex-col justify-end rounded-card border border-line bg-card p-4">
+    <div className="flex h-56 flex-col justify-end rounded-card border border-line bg-card p-4">
       {chips > 0 && (
         <div className="mb-3 flex gap-1.5">
           {Array.from({ length: chips }, (_, i) => (
@@ -36,7 +37,7 @@ function Preview({ bars = [40, 65, 52, 80, 70, 92], chips = 0, rows = 0 }: { bar
           ))}
         </div>
       ) : (
-        <div className="flex h-40 items-end gap-2">
+        <div className="flex h-36 items-end gap-2">
           {bars.map((h, i) => (
             <span key={i} className="flex-1 rounded-t-[4px] bg-accent/50" style={{ height: `${h}%` }} />
           ))}
@@ -73,12 +74,7 @@ export function Upsell() {
     <section aria-labelledby="h-upsell" className="space-y-4">
       {locked.length > 0 && (
         <>
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 id="h-upsell" className="title text-lg">
-              Libere mais no seu plano
-            </h2>
-            {role !== "owner" && <p className="text-[12.5px] text-fg-2">Quem troca o plano é o dono do workspace.</p>}
-          </div>
+          <SectionHeader id="h-upsell" title="Libere mais no seu plano" text={role !== "owner" ? "Quem troca o plano é o dono do workspace." : "O que os planos acima acrescentam ao seu painel."} />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {locked.map((f) => (
               <Paywall key={f.feature} current={current} required={f.required} feature={f.feature} text={f.text}>
@@ -101,14 +97,14 @@ function CrossSell({ product }: { product: Product }) {
   return (
     <Link
       href={`/?produto=${product}&plano=pro&periodo=${lp ? "mensal" : "anual"}#planos`}
-      className="group flex flex-col gap-3 rounded-card border border-line bg-card p-5 transition-colors hover:border-accent sm:flex-row sm:items-center sm:justify-between"
+      className="group flex flex-col gap-3 rounded-card border border-line bg-card p-5 transition-colors hover:border-fg-2/40 sm:flex-row sm:items-center sm:justify-between"
     >
       <span className="flex items-start gap-3">
-        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-control bg-accent-soft text-fg">
+        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent">
           <Icon size={18} aria-hidden />
         </span>
         <span>
-          <span className="title block text-[15px] text-fg">{lp ? "Landing pages da VYZ" : "Dashboards da VYZ"}</span>
+          <span className="block text-[15px] font-semibold text-fg">{lp ? "Landing pages da VYZ" : "Dashboards da VYZ"}</span>
           <span className="block text-[13.5px] text-fg-2">
             {lp
               ? "Páginas feitas pelo time, com GTM e leads no painel."

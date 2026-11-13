@@ -22,7 +22,7 @@ export function AgentBar() {
       onClick={() => setOpen(true)}
       data-tour="pergunte"
       aria-keyshortcuts="Meta+K Control+K"
-      className="inline-flex h-9 w-56 items-center gap-2 rounded-control border border-line bg-field pr-2 pl-2.5 text-left text-[13px] text-fg-2 outline-none transition-colors hover:border-fg-2/60 focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent"
+      className="inline-flex h-9 w-60 items-center gap-2 rounded-control border border-line bg-card pr-2 pl-2.5 text-left text-[13px] text-fg-2 shadow-card outline-none transition-colors hover:border-fg-2/50 hover:text-fg focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent"
     >
       <Mascot size={18} />
       <span className="flex-1 truncate">Pergunte ao VYZ…</span>
@@ -52,7 +52,7 @@ export function AgentFab() {
   return (
     <div
       ref={fabRef}
-      className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 md:right-7 md:bottom-7 print:hidden"
+      className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-40 md:right-7 md:bottom-7 print:hidden"
       style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
     >
       <Tooltip content="Olá, eu sou o VYZ · arraste para mudar de lugar" side="left" disabled={dragging}>

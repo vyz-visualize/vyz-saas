@@ -82,6 +82,17 @@ api/cron/sync                           sincronização agendada das contas
 
 `src/proxy.ts` (o antigo middleware): renova a sessão, manda quem não está logado para `/entrar`, devolve 404 de verdade para `/p` e `/r` inexistentes e, nos subdomínios `dash.`/`lps.`, reescreve `/<cliente>` para `/painel/w/<cliente>`.
 
+### Interface do painel
+
+O painel (área logada) tem tokens próprios, a mesma paleta do app nativo. O site, o checkout, o login e as páginas públicas seguem nos tokens da marca.
+
+- **Tokens** (`src/app/globals.css`): a moldura marca `[data-ui="app"]` e os tokens sobem para a raiz (`:root:has([data-ui="app"])`), para valer também nos menus e selects que o Radix desenha no `<body>`. Fundo neutro, cartão branco, linha fina, oliva só como destaque, raios 10 e 16 (`--r-control`, `--r-card`), elevação leve (`--elev-card`, `--elev-pop`) e `--surface-2` para preenchimentos discretos. Claro e escuro.
+- **Dashboard do cliente**: fica nos tokens da marca dentro do painel (classe `.tokens-brand` no `<main>` da tela cheia e nas miniaturas), igual ao que o cliente vê no link e no PDF.
+- **Moldura** (`features/workspace/AppShell.tsx`): menu lateral em grupos (264 px; 76 px recolhido, com `[` ou o botão do topo), workspace em cima, uso do plano e a pessoa embaixo; topo com a seção aberta, o assistente e o tema. No celular: barra flutuante embaixo e a folha "Mais".
+- **Kit** (`components/ui/kit.tsx`, `styles.ts`): `PageHeader`, `SectionHeader`, `Tabs` (trilho), `Badge`, `StatTile`, `EmptyState`, `Modal` (vira folha que sobe no celular) e `ModalActions`; botões `btn.small` (principal), `btn.subtle`, `btn.quiet`, `btn.danger` e `btn.icon`. Cartão: `rounded-card border border-line bg-card` (a elevação entra sozinha no painel) ou o utilitário `surface`.
+- **Padrões de tela**: uma ação principal por tela; ações secundárias no menu de três pontos; listas longas viram cartões abaixo de `lg` (nada rola de lado no celular); páginas longas em abas (Plano, Configurações).
+- **Bancada** (`/dev/painel?tela=inicio`, só no `next dev`): a moldura com cada tela e dados de exemplo, sem banco nem conta de teste. Telas em `src/app/dev/painel/` (`harness.tsx`, `screens-*.tsx`); `?plano=base|pro|avancado` e `?papel=viewer|member|admin` trocam o plano e o papel.
+
 ## 4. Pastas
 
 ```
@@ -90,7 +101,7 @@ src/
   proxy.ts
   components/
     brand/            Wordmark, geometria do logo
-    ui/               botões, Modal, campos, Segmented, Toast, Paywall (recurso borrado + "Liberar no …")
+    ui/               botões, Modal, campos, abas, selos, Segmented, Toast, Paywall (recurso borrado + "Liberar no …")
     charts/           gráficos em SVG feitos à mão
     motion/           só para o site (Lenis, reveals, intro)
   features/           domínio + UI, código que roda no navegador ou é puro
@@ -102,7 +113,7 @@ src/
     landing-pages/    galeria, editor, renderizador, leads
     checkout/         pedido (order.ts), formulário, pagamento, troca de plano, rótulos
     onboarding/       passos do /comecar
-    workspace/        app shell, Início, Plano, Configurações, vitrine (Upsell), boas-vindas
+    workspace/        moldura do painel (AppShell), Início, Plano, Configurações, vitrine (Upsell), boas-vindas
     accounts/         plataformas e contas de anúncio
     agent/            assistente VYZ (só no painel): motor, drawer, mascote, voz
     marketing/        seções do site, estado do plano escolhido
@@ -188,7 +199,7 @@ Nos dashboards de exemplo cada aba tem os próprios cards: `pageKpiIds` é a fon
 
 ### Modo personalizar
 
-"Personalizar métricas" liga a edição no próprio dashboard (`features/dashboards/MetricEditor.tsx`): faixa no topo, encaixes na fileira de cards e bandeja embaixo. Mexe só no rascunho de `useMetricPrefsState`; o que pode e o que grava continua em `metric-prefs.ts`. Links internos e o voltar pedem confirmação em janela própria; fechar ou recarregar usa o aviso nativo do navegador, porque não há outra forma. A posição do card segue a ordem padrão, então arrastar destaca a fileira inteira. A bandeja é `fixed` e repete as medidas da sidebar do `AppShell` (260 px, 104 px recolhida): mudou lá, muda em `MetricTray`.
+"Personalizar métricas" liga a edição no próprio dashboard (`features/dashboards/MetricEditor.tsx`): faixa no topo, encaixes na fileira de cards e bandeja embaixo. Mexe só no rascunho de `useMetricPrefsState`; o que pode e o que grava continua em `metric-prefs.ts`. Links internos e o voltar pedem confirmação em janela própria; fechar ou recarregar usa o aviso nativo do navegador, porque não há outra forma. A posição do card segue a ordem padrão, então arrastar destaca a fileira inteira. A bandeja é `fixed` e segue a tela cheia do dashboard (sem o menu lateral): 12 px de respiro dos dois lados no computador, largura toda no celular.
 
 ### Dashboard interativo
 

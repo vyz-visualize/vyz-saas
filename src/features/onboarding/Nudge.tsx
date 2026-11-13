@@ -69,7 +69,7 @@ export function ConnectNudge({ guides, connected, onboardingDone, href = (p) => 
       aria-labelledby="lembrete-titulo"
       data-nudge={provider}
       onKeyDown={(e) => e.key === "Escape" && later()}
-      className="fixed inset-x-3 bottom-3 z-50 rounded-card border border-line bg-bg p-4 shadow-[0_12px_40px_rgba(0,0,0,0.25)] motion-safe:animate-[rise_240ms_var(--ease)_both] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[380px]"
+      className="fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-50 rounded-card border border-line bg-card p-4 shadow-[0_12px_40px_rgba(0,0,0,0.25)] motion-safe:animate-[rise_240ms_var(--ease)_both] sm:inset-x-auto sm:right-6 sm:w-[380px] md:bottom-6"
     >
       <div className="flex items-start gap-3">
         <span aria-hidden className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-fg">

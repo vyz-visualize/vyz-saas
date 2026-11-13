@@ -107,11 +107,13 @@ describe("entrar no modo", () => {
     expect(grid.lastElementChild === rows[0] || grid.lastElementChild?.getAttribute("aria-hidden") === "true").toBe(true);
   });
 
-  it("a bandeja começa na borda do conteúdo no computador e ocupa a largura toda no celular", async () => {
+  it("a bandeja acompanha a tela cheia do dashboard: respiro igual dos dois lados no computador e largura toda no celular", async () => {
     await sample();
     await enter();
     const classes = tray()!.className.split(/\s+/);
-    expect(classes).toEqual(expect.arrayContaining(["inset-x-0", "md:left-[260px]", "md:sb-closed:left-[104px]"]));
+    expect(classes).toEqual(expect.arrayContaining(["inset-x-0", "md:left-3", "md:right-3"]));
+    // o dashboard abre sem o menu lateral: nada de recuo com a medida dele
+    expect(classes.some((c) => c.includes("left-[260px]") || c.includes("sb-closed"))).toBe(false);
   });
 
   it("fileira da bandeja: seta e degradê só na ponta onde há mais cards", async () => {

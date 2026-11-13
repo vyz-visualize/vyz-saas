@@ -459,7 +459,7 @@ export function MetricTray({ state }: { state: EditorState }) {
       </p>
       {metrics.open &&
         createPortal(
-          <section data-metric-tray aria-label="Bandeja de métricas" style={trayStyle} className="fixed inset-x-0 bottom-0 z-[85] flex flex-col rounded-t-[20px] border-t border-line bg-card text-fg transition-[left] duration-300 ease-[cubic-bezier(0.32,1.15,0.6,1)] sb-closed:delay-100 md:right-3 md:bottom-3 md:left-[260px] md:rounded-[24px] md:border md:sb-closed:left-[104px] print:hidden">
+          <section data-metric-tray aria-label="Bandeja de métricas" style={trayStyle} className="fixed inset-x-0 bottom-0 z-[85] flex flex-col rounded-t-[20px] border-t border-line bg-card text-fg md:right-3 md:bottom-3 md:left-3 md:rounded-[24px] md:border print:hidden">
             <button type="button" onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed} aria-label={collapsed ? "Abrir a bandeja" : "Recolher a bandeja"} className="flex h-6 shrink-0 items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-accent">
               <span className="h-1 w-10 rounded-full bg-line" aria-hidden />
               {collapsed && <ChevronDown size={14} aria-hidden className="ml-1 rotate-180 text-fg-2" />}

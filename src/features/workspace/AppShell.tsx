@@ -649,6 +649,9 @@ function Shell({ children, simulatedBilling }: { children: ReactNode; simulatedB
         <TooltipProvider>
           <AgentProvider>
             <div data-ui="app" className="min-h-dvh bg-bg md:flex md:h-dvh md:overflow-hidden print:block print:h-auto print:bg-white">
+              <a href="#conteudo" className="sr-only rounded-control bg-accent px-4 py-2 text-[14px] font-semibold text-on-accent focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100]">
+                Pular para o conteúdo
+              </a>
               <Sidebar />
 
               <div className="shell-content min-h-dvh min-w-0 flex-1 md:h-dvh md:min-h-0 md:overflow-y-auto print:h-auto print:overflow-visible">
