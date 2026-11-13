@@ -1,5 +1,6 @@
 "use client";
 
+import { funnelRows, funnelSummary, type FunnelStep } from "@/features/metrics/funnel";
 import { StageFunnel } from "./StageFunnel";
 
 /** Índice da etapa que recebe a maior queda relativa. */
@@ -17,7 +18,7 @@ export function biggestDrop(steps: { pct: number }[]): number {
 }
 
 type FunnelProps = {
-  steps: { label: string; pct: number }[];
+  steps: FunnelStep[];
   title: string;
   /** "lg": texto de leitura (painel de "Como funciona"). */
   size?: "sm" | "lg";
@@ -35,14 +36,8 @@ export function Funnel({ steps, title, size = "sm", fill = false }: FunnelProps)
   if (steps.length < 2) return <p className="grid h-full min-h-24 place-items-center text-[13px] text-fg-2">Sem dados de funil neste período.</p>;
   const drop = biggestDrop(steps);
   const lg = size === "lg";
-  const summary = `${title}: ${steps.map((s) => `${s.label} ${s.pct}%`).join(", ")}. Maior queda antes de ${steps[drop].label}.`;
-  const data = steps.map((s, i) => ({
-    label: s.label,
-    value: s.pct,
-    display: `${s.pct}%`,
-    note: i > 0 && steps[i - 1].pct > 0 ? `${Math.round((s.pct / steps[i - 1].pct) * 100)}% avançam` : undefined,
-    color: i === drop ? "var(--chart-negative)" : undefined,
-  }));
+  const summary = `${funnelSummary(title, steps)} Maior queda antes de ${steps[drop].label}.`;
+  const data = funnelRows(steps).map((r, i) => ({ ...r, color: i === drop ? "var(--chart-negative)" : undefined }));
   return (
     <div className={`flex flex-col ${fill ? "min-h-0 flex-1" : ""}`} data-chart-theme style={fill ? { minHeight: 190 } : { height: lg ? 330 : 220 }}>
       <StageFunnel steps={data} color="var(--chart-line-primary)" summary={summary} large={lg} className="flex-1" />

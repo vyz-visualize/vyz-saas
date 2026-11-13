@@ -28,6 +28,7 @@ import { createServerSupabase } from "@/server/supabase/server";
 import { tourPending } from "@/features/onboarding/guides";
 import { DashboardTour } from "@/features/onboarding/DashboardTour";
 import { SampleNotice } from "@/features/dashboards/SampleNotice";
+import { SyncStamp } from "@/features/dashboards/SyncStamp";
 import { isSamePageNavigation } from "@/server/http/request";
 import { logActivity } from "@/server/history/log";
 
@@ -107,6 +108,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
             canCustomize={canEdit}
             toolbar={<PeriodNav period={period} customDays={customDays} />}
             logo={<BrandMark brand={brand} />}
+            autoRefresh
           />
         </Suspense>
         {upsell}
@@ -117,7 +119,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
 
   const template = anyDashboardTemplate(d.templateId);
   // contas ligadas: o modelo desenha com os dados reais delas; sem nenhuma, a amostra (com o aviso fixo)
-  const { realData, linkedPlatforms, sourceExtras } = await loadDashboardData(d, template, { period, customDays });
+  const { realData, linkedPlatforms, sourceExtras, sync } = await loadDashboardData(d, template, { period, customDays });
   const sample = !realData;
   // "Conectar" no aviso: com conta ativa no workspace, liga ao dashboard (editar); sem nenhuma, conecta em Contas
   const hasEnabledAccounts = sample ? await workspaceHasEnabledAccounts(session.workspace.id) : false;
@@ -129,6 +131,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
         sampleOnly={sample}
         linkedPlatforms={linkedPlatforms}
         sourceExtras={sourceExtras}
+        syncStamp={sync?.lastSyncedAt ? <SyncStamp dashboardId={d.id} lastSyncedAt={sync.lastSyncedAt} timeZone={sync.timeZone} autoRefresh /> : undefined}
         dashboard={{
           id: d.id,
           templateId: d.templateId,

@@ -4,6 +4,7 @@
 // investimento em azul. Faixa de números com minilinha, receita e investimento por
 // dia, anéis por canal, funil de compra, produtos e campanhas. Gráficos da Bklit UI.
 
+import { funnelRows, funnelSummary } from "@/features/metrics/funnel";
 import { breakEvenOf, GOAL_INVITE, hasGoal, hasMargin, MARGIN_INVITE } from "@/features/metrics/targets";
 import { CalendarDays, CircleDollarSign, Percent, ShoppingBag, Target, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -135,14 +136,8 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
           className="flex-1"
           orientation="horizontal"
           color={P.accent}
-          steps={funnel.map((s, i) => ({
-            label: s.label,
-            value: s.pct,
-            display: `${s.pct}%`,
-            note: i > 0 && funnel[i - 1].pct > 0 ? `${Math.round((s.pct / funnel[i - 1].pct) * 100)}% avançam` : "entrada",
-            color: i === drop && funnel.length > 1 ? P.error : undefined,
-          }))}
-          summary={`Funil de compra: ${funnel.map((s) => `${s.label} ${s.pct}%`).join(", ")}.`}
+          steps={funnelRows(funnel, "entrada").map((r, i) => ({ ...r, color: i === drop && funnel.length > 1 ? P.error : undefined }))}
+          summary={funnelSummary("Funil de compra", funnel)}
         />
       </Block>
     ),

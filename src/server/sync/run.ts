@@ -24,6 +24,7 @@ import { insightsTag } from "@/features/sync/tags";
 import { logActivity } from "@/server/history/log";
 import { requestContext } from "@/server/http/request";
 import { createAdminSupabase } from "@/server/supabase/admin";
+import { isRateLimited } from "@/features/sync/throttle";
 import { AppError, appError } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
 import { sourceFor, type SyncAccount } from "./source";
@@ -37,6 +38,7 @@ export type SyncErrorCode =
   | "sync:account_disabled"
   | "sync:connection_inactive"
   | "sync:running"
+  | "sync:rate_limited"
   | "sync:not_configured"
   | "sync:failed";
 
@@ -63,6 +65,7 @@ const MESSAGES: Record<SyncErrorCode, string> = {
   "sync:account_disabled": "Ative a conta para importar os dados.",
   "sync:connection_inactive": "A conexão desta conta precisa ser refeita. Conecte de novo para importar os dados.",
   "sync:running": "Esta conta já está sincronizando. Aguarde alguns instantes.",
+  "sync:rate_limited": "A plataforma pediu uma pausa nas consultas. A importação volta sozinha na próxima rodada.",
   "sync:not_configured": "A importação de dados reais ainda não está configurada.",
   "sync:failed": "Não foi possível importar os dados agora. Tente de novo em alguns minutos.",
 };
@@ -167,6 +170,11 @@ function toFailure(err: unknown): { code: SyncErrorCode; message: string; detail
   // o motivo técnico (já sem token: ProviderError só leva status e diagnóstico) fica no histórico,
   // porque o log do servidor some em poucas horas
   const technical = typeof e.message === "string" ? e.message.slice(0, 300) : null;
+  // limite de taxa da Meta ou do Google: a conta espera e entra na próxima rodada
+  if (isRateLimited(err)) {
+    console.warn("[vyz] sincronização: limite de taxa", technical ?? "");
+    return { code: "sync:rate_limited", message: MESSAGES["sync:rate_limited"], detail, technical };
+  }
   console.error("[vyz] sincronização falhou", detail ?? "", technical ?? err);
   return { code: "sync:failed", message: MESSAGES["sync:failed"], detail, technical };
 }

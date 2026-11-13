@@ -5,7 +5,7 @@
 // imprime todas as páginas, uma por folha.
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { DashFilters } from "@/features/analytics/filters";
 import type { CreativesData, SampleExtraMetric } from "@/features/analytics/types";
 import type { PageId } from "@/features/templates/types";
@@ -44,9 +44,11 @@ type Props = {
   /** GA4 e orgânico reais (modelos novos). */
   sourceExtras?: SourceExtras;
   linkedPlatforms?: PlatformId[];
+  /** Selo "atualizado em" / "Atualizando…" (só no painel, com dados reais). */
+  syncStamp?: ReactNode;
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms, sampleOnly = false }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms, syncStamp, sampleOnly = false }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -70,6 +72,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       dataset={realData}
       sourceExtras={sourceExtras}
       linkedPlatforms={linkedPlatforms}
+      syncStamp={syncStamp}
       hideSpend={hideSpend}
       assemble={assemble}
       printing={printing}

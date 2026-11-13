@@ -46,7 +46,8 @@ export type DayRow = {
 
 export type Campaign = { /** Estável no mesmo modelo: é o que vai na URL do filtro. */ id: string; name: string; platform: PlatformId; spend: number; impressions: number; clicks: number; conversions: number; revenue: number };
 export type Creative = { id: string; name: string; format: string; platform: PlatformId; spend: number; impressions: number; clicks: number; conversions: number; frequency: number; tone: number };
-export type FunnelStep = { label: string; pct: number };
+import type { FunnelStep } from "./funnel";
+export type { FunnelStep };
 export type Project = { name: string; invest: number; cpl: number; bad?: boolean };
 export type AudienceRow = { label: string; share: number; cpa: number };
 export type Product = { name: string; sold: number; revenue: number; spend: number };

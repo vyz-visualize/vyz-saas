@@ -48,9 +48,11 @@ export type LiveDashboardProps = {
   filters?: DashFilters;
   /** Cliente que confere o acesso. Padrão: sessão (RLS). Link público: admin, DEPOIS de validar o token. */
   db?: DB;
+  /** Painel: dados de mais de 6 h sincronizam ao abrir ("Atualizando…" no selo). Nunca no link. */
+  autoRefresh?: boolean;
 };
 
-export async function LiveDashboard({ dashboardId, period, customDays, pageIds, hideSpend, initialPage, actions, toolbar, logo, metricPrefs, canCustomize, creatives, filters, db }: LiveDashboardProps) {
+export async function LiveDashboard({ dashboardId, period, customDays, pageIds, hideSpend, initialPage, actions, toolbar, logo, metricPrefs, canCustomize, creatives, filters, db, autoRefresh }: LiveDashboardProps) {
   let data: LiveDashboardData;
   try {
     data = await loadLiveDashboard(dashboardId, { period, customDays, hideSpend, db, creatives, filters });
@@ -60,7 +62,7 @@ export async function LiveDashboard({ dashboardId, period, customDays, pageIds, 
     console.error("[analytics] falha ao carregar o dashboard", dashboardId, err);
     return <LiveDashboardError message="Tente de novo em alguns instantes. Se continuar, fale com o suporte." />;
   }
-  return <FilterableLiveDashboard data={data} pageIds={pageIds} initialPage={initialPage} actions={actions} toolbar={toolbar} logo={logo} metricPrefs={metricPrefs} canCustomize={canCustomize} saveMetrics={canCustomize ? saveDashboardMetricPrefs : undefined} />;
+  return <FilterableLiveDashboard data={data} pageIds={pageIds} initialPage={initialPage} actions={actions} toolbar={toolbar} logo={logo} metricPrefs={metricPrefs} canCustomize={canCustomize} saveMetrics={canCustomize ? saveDashboardMetricPrefs : undefined} autoRefresh={autoRefresh} />;
 }
 
 export { LiveDashboardSkeleton } from "./ui";

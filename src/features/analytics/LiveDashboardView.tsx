@@ -3,6 +3,7 @@
 // Miolo dos dashboards com dados reais: cabeçalho, abas e a página ativa. Os
 // dados já chegam prontos (servidor ou prévia); trocar de aba não consulta nada.
 
+import { SyncStamp } from "@/features/dashboards/SyncStamp";
 import { OrganicContent, OrganicOverview } from "./organic/OrganicPages";
 import Link from "next/link";
 import { useMemo, useState, type ComponentType, type ReactNode } from "react";
@@ -66,6 +67,8 @@ export type LiveDashboardViewProps = {
   saveMetrics?: SaveMetricPrefs;
   /** Dashboard interativo: troca os filtros na URL. Sem isso (prévias), nada é clicável. */
   filterNavigate?: (search: string) => void;
+  /** Painel: com dados de mais de 6 h, sincroniza ao abrir e mostra "Atualizando…". */
+  autoRefresh?: boolean;
 };
 
 const CATALOG: Record<LivePlatform, readonly CatalogMetric[]> = { meta: META_CATALOG, google: GOOGLE_CATALOG, import: IMPORT_CATALOG };
@@ -79,24 +82,13 @@ function liveHasData(view: DashboardView, id: string): boolean {
   return true;
 }
 
-/** "2026-10-30T13:05:00Z" → "30/10 às 10:05" no fuso dado (mesmo texto no servidor e no navegador). */
-function syncedAt(iso: string, timeZone: string): string {
-  try {
-    const parts = new Intl.DateTimeFormat("en-GB", { timeZone, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso));
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-    return `${get("day")}/${get("month")} às ${get("hour")}:${get("minute")}`;
-  } catch {
-    return "";
-  }
-}
-
 const RESULT_IDS = new Set(RESULT_METRICS.map((m) => m.id));
 const RESULT_METRIC_ROWS = META_CATALOG.filter((m) => RESULT_IDS.has(m.id));
 
 /** A única aba com fileira de cards nos dashboards com dados reais. */
 const KPI_PAGE: PageId = "visao-geral";
 
-export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar, logo, metricPrefs, canCustomize = false, saveMetrics, filterNavigate }: LiveDashboardViewProps) {
+export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar, logo, metricPrefs, canCustomize = false, saveMetrics, filterNavigate, autoRefresh = false }: LiveDashboardViewProps) {
   // tipos de resultado diferentes no período: o card sai da conta (e do contador), mas a escolha salva fica
   const resultsMixed = data.view.platform === "meta" && !!data.view.resultsMixed;
   const liveCatalog = useMemo(() => (resultsMixed ? CATALOG[data.platform].map((m) => (RESULT_IDS.has(m.id) ? { ...m, kpi: undefined } : m)) : CATALOG[data.platform]), [data.platform, resultsMixed]);
@@ -197,7 +189,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
             : `${ddmm(data.current.from)} a ${ddmmyyyyIso(data.current.to)} · ${data.current.days} ${data.current.days === 1 ? "dia" : "dias"}, comparado com ${ddmm(data.previous.from)} a ${ddmm(data.previous.to)}`}
         </span>
         {data.maturingFrom && <span>· a partir de {ddmm(data.maturingFrom)} as conversões ainda estão chegando (em maturação)</span>}
-        {last && !data.sample && <span>· atualizado em {syncedAt(last, data.timeZone)}</span>}
+        {last && !data.sample && <SyncStamp variant="inline" dashboardId={data.dashboard.id} lastSyncedAt={last} timeZone={data.timeZone} autoRefresh={autoRefresh} />}
       </p>
 
       <div role="tabpanel" id={panelId} data-dim-wrap aria-label={PAGES[active]?.name ?? active}>

@@ -102,6 +102,8 @@ type BodyProps = {
   sourceExtras?: SourceExtras;
   /** Plataformas com conta ligada (modelos novos): os selos do topo mostram só elas. */
   linkedPlatforms?: PlatformId[];
+  /** Selo de sincronização ("atualizado em" / "Atualizando…"), ao lado de "Dados reais". */
+  syncStamp?: ReactNode;
   /** Filtros que vieram na URL. */
   initialFilters?: DashFilters;
   /** Galeria e métricas novas vêm do servidor: filtrar precisa navegar. Sem isso, só troca o endereço. */
@@ -118,7 +120,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref }: BodyProps) {
+export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, syncStamp, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
@@ -377,6 +379,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       {customizeId && !editing && <CustomizeButton onClick={() => metrics.openPanel()} />}
       {screen && periodHint}
       <span className="mb-2 shrink-0 rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap text-fg">{realLabel}</span>
+      {isReal && syncStamp && <span className="mb-2 shrink-0">{syncStamp}</span>}
       {/* fora do painel (link público) não há barra: as ações, se houver, ficam aqui. Elas medem a largura desta linha. */}
       {!screen && actions && (
         <>
@@ -465,6 +468,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
                   ),
                 )}
                 <span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium text-fg">{realLabel}</span>
+                {isReal && syncStamp}
                 {actions && !isReal && <PendingChip label="Modelo com dados de exemplo" detail="Os números são fictícios. Para os números das suas contas, crie um dashboard Meta Ads ou Google Ads · E-commerce." />}
               </div>
             </div>

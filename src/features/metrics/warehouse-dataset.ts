@@ -9,6 +9,7 @@ import type { WarehouseRows } from "@/features/analytics/types";
 import { parseAgeGender } from "@/features/sync/breakdowns";
 import type { Profile } from "./definitions";
 import { crmStagesForDataset, type CrmRow } from "./crm";
+import { metaPurchaseFunnel, type FunnelStep } from "./funnel";
 import type { AudienceRow, Campaign, Creative, Dataset, DayRow, Product } from "./source";
 
 export type WarehouseDatasetSpec = {
@@ -30,6 +31,9 @@ export type AnalyticsRow = { date: string; channel: string; sessions: number; us
 
 /** Perfis em que a conversão confirmada é a compra (no resto, o evento-chave). */
 const PURCHASE_PROFILES: readonly Profile[] = ["ecommerce", "marketplace", "executivo"];
+
+/** Perfis de loja: o funil é o de compra da Meta (quando a Meta está ligada). */
+const SHOP_PROFILES: readonly Profile[] = ["ecommerce", "marketplace"];
 
 const DAY = 86_400_000;
 const cents = (v: number | null | undefined) => Math.round((v ?? 0) * 100);
@@ -175,12 +179,13 @@ function productsOf(sets: readonly WarehouseRows[]): Product[] {
 }
 
 /** Funil do site (GA4): sessões → engajadas → conversões (linhas já do período atual). */
-function siteFunnel(current: readonly DayRow[], analytics: readonly AnalyticsRow[]): { label: string; pct: number }[] {
+function siteFunnel(current: readonly DayRow[], analytics: readonly AnalyticsRow[]): FunnelStep[] {
   const sessions = current.reduce((a, d) => a + d.sessions, 0);
   const conv = current.reduce((a, d) => a + d.conversions, 0);
   const engaged = analytics.reduce((a, r) => a + r.engagedSessions, 0);
   if (sessions <= 0) return [];
-  const p = (v: number) => Math.round((v / sessions) * 1000) / 10;
+  // sem arredondar aqui: a tela formata (duas casas nos valores pequenos, nunca "0%" com conversão)
+  const p = (v: number) => (v / sessions) * 100;
   return [
     { label: "Sessões", pct: 100 },
     { label: "Sessões engajadas", pct: Math.min(100, p(engaged)) },
@@ -217,8 +222,10 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
     apply(previous, prevRange);
   }
   const totals = current.reduce((a, d) => ({ impressions: a.impressions + d.impressions, clicks: a.clicks + d.clicks, conv: a.conv + d.conversions }), { impressions: 0, clicks: 0, conv: 0 });
-  const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : 0);
+  const pct = (a: number, b: number) => (b > 0 ? (a / b) * 100 : 0);
   const { audience, gender } = audienceOf(sets);
+  const meta = sets.find((s) => s.platform === "meta");
+  const metaFunnel = meta && curRange && SHOP_PROFILES.includes(spec.profile) ? metaPurchaseFunnel(meta.accountDaily, curRange) : [];
 
   // verba: gasto do mês corrente (até hoje) contra a verba mensal das configurações
   const month = spec.today.slice(0, 7);
@@ -234,13 +241,18 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
     adPlatforms: sets.map((s) => s.platform as PlatformId),
     campaigns: campaignsOf(sets),
     creatives: creativesOf(sets),
-    funnel: analytics.length
-      ? siteFunnel(current, curRange ? analytics.filter((r) => r.date >= curRange.from && r.date <= curRange.to) : [])
-      : totals.impressions > 0 ? [
-      { label: "Impressões", pct: 100 },
-      { label: "Cliques", pct: pct(totals.clicks, totals.impressions) },
-      { label: "Conversões", pct: pct(totals.conv, totals.impressions) },
-    ] : [],
+    // e-commerce com a Meta: o funil de compra dela (cada etapa sobre a anterior); senão o do
+    // site (GA4); senão impressões → cliques → conversões
+    funnel: (metaFunnel.length ? metaFunnel : null) ??
+      (analytics.length
+        ? siteFunnel(current, curRange ? analytics.filter((r) => r.date >= curRange.from && r.date <= curRange.to) : [])
+        : totals.impressions > 0
+          ? [
+              { label: "Impressões", pct: 100 },
+              { label: "Cliques", pct: pct(totals.clicks, totals.impressions) },
+              { label: "Conversões", pct: pct(totals.conv, totals.impressions) },
+            ]
+          : []),
     projects: [],
     audience,
     gender,

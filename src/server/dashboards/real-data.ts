@@ -11,13 +11,21 @@ import type { SourceExtras } from "@/features/dashboards/SourcePages";
 import type { Dataset } from "@/features/metrics/source";
 import { datasetFromWarehouse } from "@/features/metrics/warehouse-dataset";
 import { isCrmSyncPlatform } from "@/features/sync/crm";
+import { oldestSync } from "@/features/sync/freshness";
+import { isImportPlatform } from "@/features/accounts/connection-modes";
 import { LINKABLE_SOURCES } from "@/features/templates/dashboards/composed";
 import type { DashboardTemplate } from "@/features/templates/types";
 import type { PeriodId } from "@/features/workspace/types";
 import { loadTemplateWarehouse } from "@/server/analytics/queries";
 import type { DB } from "@/server/supabase/server";
 
-export type DashboardData = { realData?: Dataset; linkedPlatforms?: PlatformId[]; sourceExtras?: SourceExtras };
+export type DashboardData = {
+  realData?: Dataset;
+  linkedPlatforms?: PlatformId[];
+  sourceExtras?: SourceExtras;
+  /** A sincronização mais antiga das contas que importam pela API (planilha fica de fora) e o fuso delas. */
+  sync?: { lastSyncedAt: string | null; timeZone: string };
+};
 
 export async function loadDashboardData(d: DashboardDetail, template: DashboardTemplate | undefined, opts: { period: PeriodId; customDays: number; db?: DB }): Promise<DashboardData> {
   if (!template) return {};
@@ -33,5 +41,6 @@ export async function loadDashboardData(d: DashboardDetail, template: DashboardT
     template.composed && (warehouse.analytics.length || warehouse.crm.length || warehouse.accounts.some((a) => isCrmSyncPlatform(a.platform)) || warehouse.organic.all)
       ? { current: warehouse.current, previous: warehouse.previous, currency: "BRL", analytics: warehouse.analytics, crm: warehouse.crm, organic: warehouse.organic }
       : undefined;
-  return { realData, linkedPlatforms: [...new Set(warehouse.accounts.map((a) => a.platform))] as PlatformId[], sourceExtras: extras };
+  const sync = { lastSyncedAt: oldestSync(warehouse.accounts.filter((a) => !isImportPlatform(a.platform)).map((a) => a.lastSyncedAt)), timeZone: warehouse.timeZone };
+  return { realData, linkedPlatforms: [...new Set(warehouse.accounts.map((a) => a.platform))] as PlatformId[], sourceExtras: extras, sync };
 }

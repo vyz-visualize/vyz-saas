@@ -2,8 +2,13 @@ import "server-only";
 
 // Sincronização agendada: contas ativas, com a conexão ativa e a assinatura
 // em dia, que não sincronizam (nem tentaram) há algumas horas. Da mais
-// atrasada para a mais recente, uma de cada vez (sem pesar no banco) e dentro
-// de um tempo máximo: o que não couber fica para a próxima rodada.
+// atrasada para a mais recente, 3 contas ao mesmo tempo e dentro de um tempo
+// máximo: o que não couber fica para a próxima rodada.
+//
+// Limite de taxa (Meta ou Google pedem uma pausa): a conta não é tentada de
+// novo nesta rodada, e a plataforma dela também para de receber contas novas
+// até o fim da rodada (o limite costuma valer para o app inteiro). Elas
+// entram na próxima.
 //
 // Os filtros ficam na consulta, antes do limite: conta de workspace sem
 // assinatura ou que falha toda vez (token vencido, API fora do ar) não ocupa
@@ -14,11 +19,15 @@ import { SYNC_PLATFORMS } from "@/features/sync/dataset";
 import { ORGANIC_PLATFORMS } from "@/features/sync/organic";
 import { ANALYTICS_PLATFORMS } from "@/features/sync/analytics";
 import { CRM_PLATFORMS } from "@/features/sync/crm";
+import { runPool, summarizeRuns } from "@/features/sync/throttle";
 import type { Enums } from "@/lib/supabase/database.types";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import { syncAdAccount, type SyncErrorCode } from "./run";
 
 const HOUR = 60 * 60 * 1000;
+
+/** Contas sincronizando ao mesmo tempo (cada uma usa até 3 requisições ao banco por vez). */
+export const SCHEDULED_CONCURRENCY = 3;
 
 /** Assinaturas que dão acesso (as de workspace_access.has_access). */
 const ACCESS_STATUSES: Enums<"subscription_status">[] = ["active", "trialing", "past_due"];
@@ -26,7 +35,11 @@ const ACCESS_STATUSES: Enums<"subscription_status">[] = ["active", "trialing", "
 export type ScheduledOptions = {
   /** Tempo máximo da rodada; não começa outra conta depois dele (padrão: 4 min). */
   budgetMs?: number;
-  /** Só sincroniza a conta que não sincroniza (nem tentou) há este tempo (padrão: 6 h). */
+  /**
+   * Só sincroniza a conta que não sincroniza (nem tentou) há este tempo (padrão: 3 h). Os
+   * crons rodam às 09, 15 e 21 UTC, mas no Hobby cada um dispara em algum momento da hora
+   * (até 59 min depois): duas rodadas podem ficar a menos de 4 h uma da outra.
+   */
   minIntervalMs?: number;
   /** Máximo de contas por rodada (padrão: 200). */
   limit?: number;
@@ -40,7 +53,9 @@ export type ScheduledSummary = {
   failed: number;
   /** Já estavam sincronizando (outra rodada ou um pedido manual). */
   skipped: number;
-  /** Ficaram para a próxima rodada (tempo esgotado). */
+  /** Limite de taxa da plataforma: tentam de novo na próxima rodada. */
+  rateLimited: number;
+  /** Ficaram para a próxima rodada (tempo esgotado ou plataforma em pausa). */
   pending: number;
   durationMs: number;
   results: { adAccountId: string; ok: boolean; rowsWritten: number; code?: SyncErrorCode }[];
@@ -49,13 +64,13 @@ export type ScheduledSummary = {
 export async function syncDueAccounts(opts: ScheduledOptions = {}): Promise<ScheduledSummary> {
   const startedAt = Date.now();
   const budget = opts.budgetMs ?? 4 * 60 * 1000;
-  const cutoff = new Date(startedAt - (opts.minIntervalMs ?? 6 * HOUR)).toISOString();
+  const cutoff = new Date(startedAt - (opts.minIntervalMs ?? 3 * HOUR)).toISOString();
   const db = createAdminSupabase();
 
   const { data: accounts, error } = await db
     .from("ad_accounts")
     .select(
-      `id, workspace_id,
+      `id, workspace_id, platform_id,
       connection:connections!ad_accounts_workspace_id_connection_id_fkey!inner(status),
       workspace:workspaces!ad_accounts_workspace_id_fkey!inner(subscriptions!subscriptions_workspace_id_fkey!inner(status)),
       recent:sync_runs!sync_runs_workspace_id_ad_account_id_fkey(id)`,
@@ -79,23 +94,18 @@ export async function syncDueAccounts(opts: ScheduledOptions = {}): Promise<Sche
   const active = new Set((access.data ?? []).filter((w) => w.has_access).map((w) => w.workspace_id));
   const due = (accounts ?? []).filter((a) => active.has(a.workspace_id));
 
-  const results: ScheduledSummary["results"] = [];
-  for (const account of due) {
-    if (Date.now() - startedAt > budget) break;
-    const r = await syncAdAccount(account.id, "scheduled");
-    results.push({ adAccountId: account.id, ok: r.ok, rowsWritten: r.rowsWritten, ...(r.code ? { code: r.code } : {}) });
-  }
-
-  const skipped = results.filter((r) => r.code === "sync:running").length;
-  const failed = results.filter((r) => !r.ok).length - skipped;
-  return {
-    ok: failed === 0,
-    due: due.length,
-    synced: results.length - failed - skipped,
-    failed,
-    skipped,
-    pending: due.length - results.length,
-    durationMs: Date.now() - startedAt,
-    results,
-  };
+  // plataformas que pediram pausa nesta rodada: as contas delas ficam para a próxima
+  const paused = new Set<string>();
+  const ran = await runPool(
+    due,
+    SCHEDULED_CONCURRENCY,
+    async (account) => {
+      const r = await syncAdAccount(account.id, "scheduled");
+      if (r.code === "sync:rate_limited") paused.add(account.platform_id);
+      return r;
+    },
+    (account) => Date.now() - startedAt <= budget && !paused.has(account.platform_id),
+  );
+  const results: ScheduledSummary["results"] = ran.map(({ item, result: r }) => ({ adAccountId: item.id, ok: r.ok, rowsWritten: r.rowsWritten, ...(r.code ? { code: r.code } : {}) }));
+  return summarizeRuns(due.length, results, Date.now() - startedAt);
 }

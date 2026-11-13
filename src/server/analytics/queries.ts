@@ -181,6 +181,8 @@ export type TemplateWarehouse = {
   current: DateRange;
   previous: DateRange;
   accounts: { id: string; name: string; platform: string; lastSyncedAt: string | null }[];
+  /** Fuso das contas (o da primeira): o "atualizado em" usa. */
+  timeZone: string;
   today: string;
 };
 
@@ -229,7 +231,7 @@ export async function loadTemplateWarehouse(dashboardId: string, opts: { platfor
     organicFor(profilesOf("facebook")),
     organicFor(profilesOf()),
   ]);
-  return { sets, analytics, crm, organic: { instagram, facebook, all }, current, previous, accounts: linked.map((a) => ({ id: a.id, name: a.name, platform: a.platform_id, lastSyncedAt: a.last_synced_at })), today };
+  return { sets, analytics, crm, organic: { instagram, facebook, all }, current, previous, accounts: linked.map((a) => ({ id: a.id, name: a.name, platform: a.platform_id, lastSyncedAt: a.last_synced_at })), today, timeZone };
 }
 
 /** GA4 do intervalo, em cache como o armazém (a sincronização invalida pela propriedade). */
