@@ -23,6 +23,7 @@ import { AgentFab } from "@/features/agent/AgentEntry";
 import { AgentProvider } from "@/features/agent/AgentProvider";
 import { Caption } from "@/features/agent/Caption";
 import { PanelTour } from "@/features/onboarding/DashboardTour";
+import { WorkspaceAvatar } from "@/features/projects/WorkspaceAvatar";
 import { signOut } from "@/server/auth/actions";
 import type { ActionResult } from "@/server/supabase/errors";
 import { switchWorkspace } from "@/server/workspace/actions";
@@ -128,7 +129,7 @@ function MoreSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
                     }}
                     className={sheetRow}
                   >
-                    <Avatar name={p.name} size="sm" tone={p.id === current?.id ? "accent" : "soft"} />
+                    <WorkspaceAvatar name={p.name} color={p.color} logoUrl={p.logoUrl} size={28} fallback={p.id === current?.id ? "bg-accent text-on-accent" : "bg-surface-2 text-fg-2"} />
                     <span className="min-w-0 flex-1 truncate">{p.name}</span>
                     {p.id === current?.id && <Check size={17} aria-hidden className="text-accent" />}
                   </button>
@@ -275,7 +276,7 @@ function MobileTop({ onMore }: { onMore: () => void }) {
         <Wordmark decorative />
       </Link>
       <button type="button" onClick={onMore} data-tour="workspaces" className={`flex min-w-0 items-center gap-2 rounded-chip border border-line bg-card py-1 pr-2.5 pl-1 text-[13px] font-semibold shadow-card ${ring}`}>
-        <Avatar name={title} size="sm" />
+        {open && session.workspace.product !== "lp" ? <WorkspaceAvatar name={open.name} color={open.color} logoUrl={open.logoUrl} size={28} /> : <Avatar name={title} size="sm" />}
         <span className="max-w-[46vw] truncate">{title}</span>
         <ChevronsUpDown size={14} aria-hidden className="shrink-0 text-fg-2" />
       </button>

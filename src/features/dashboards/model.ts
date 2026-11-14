@@ -38,6 +38,8 @@ export type DashboardRow = {
   metric_prefs?: unknown;
   metric_goals?: unknown;
   layout?: unknown;
+  /** Workspace (cliente) do dashboard: a logo dele entra no lugar da logo da organização. */
+  project_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -61,6 +63,8 @@ export type DashboardDetail = Dashboard & {
   layout: DashboardLayout;
   /** Metas por métrica (qualquer KPI). [] = nenhuma. */
   metricGoals: MetricGoal[];
+  /** Workspace (cliente) do dashboard. */
+  projectId?: string | null;
 };
 
 /** Conta que pode alimentar um dashboard com dados reais (escolha das fontes). */
@@ -107,6 +111,7 @@ export function toDashboard(row: DashboardRow, pages: PageRow[], sources: Source
     metricPrefs: parseMetricPrefs(row.metric_prefs),
     layout: parseLayout(row.layout),
     metricGoals: parseMetricGoals(row.metric_goals),
+    projectId: row.project_id ?? null,
   };
 }
 

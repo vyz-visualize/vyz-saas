@@ -83,9 +83,11 @@ type Props = {
   workspaceBrand: { color: string; logoUrl: string | null; hideVyz: boolean; canEdit: boolean };
   /** Números das contas já ligadas, para a prévia. */
   preview: { realData?: Dataset; linkedPlatforms?: PlatformId[]; sourceExtras?: SourceExtras };
+  /** Logo do workspace (cliente) do dashboard: entra no lugar da logo da empresa; troca nos Ajustes dele. */
+  clientLogo?: { url: string; workspace: string; href: string } | null;
 };
 
-export function DashboardEditor({ dashboard, sources, tier, pagesTier, whiteLabel, canArrange, workspaceBrand, preview }: Props) {
+export function DashboardEditor({ dashboard, sources, tier, pagesTier, whiteLabel, canArrange, workspaceBrand, preview, clientLogo = null }: Props) {
   const router = useRouter();
   const t = anyDashboardTemplate(dashboard.templateId);
   const initial = useMemo(() => draftFrom(dashboard), [dashboard]);
@@ -198,7 +200,7 @@ export function DashboardEditor({ dashboard, sources, tier, pagesTier, whiteLabe
     metricPrefs: dashboard.metricPrefs,
     layout: dashboard.layout,
     metricGoals: draft.metricGoals.filter((g) => g.value > 0),
-    brand: { color: previewColor, logo: logo ?? undefined, hideVyz: whiteLabel && (workspaceBrand.hideVyz || draft.hideVyz) },
+    brand: { color: previewColor, logo: clientLogo?.url ?? logo ?? undefined, hideVyz: whiteLabel && (workspaceBrand.hideVyz || draft.hideVyz) },
   };
 
   return (
@@ -463,6 +465,14 @@ export function DashboardEditor({ dashboard, sources, tier, pagesTier, whiteLabe
                         <p className="text-[12.5px] text-fg-2">Só quem administra a organização troca a logo e a cor.</p>
                       )}
                     </div>
+                    {clientLogo && (
+                      <p className="text-[12.5px] text-fg-2">
+                        Este dashboard usa a logo de {clientLogo.workspace}.{" "}
+                        <Link href={clientLogo.href} className="font-medium text-accent underline-offset-4 hover:underline">
+                          Trocar nos Ajustes do workspace
+                        </Link>
+                      </p>
+                    )}
                     {brandBusy && <p className="text-[12.5px] text-fg-2">Enviando…</p>}
                     {brandError && <p className="text-[12.5px] text-error-fg">{brandError}</p>}
                     {workspaceBrand.canEdit && <ColorField label="Cor da empresa" value={color} onChange={setColor} />}

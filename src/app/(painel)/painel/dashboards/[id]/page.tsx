@@ -84,7 +84,9 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   const whiteLabel = !!session.access.entitlements?.whiteLabel;
   // logo e cor da empresa em todos os planos; cor própria por dashboard e "ocultar VYZ" só no Personalizado
   const color = (whiteLabel && d.brand?.color) || ws.brandColor || null;
-  const brand = { color: color ?? "", logo: ws.brandLogoUrl ?? undefined, hideVyz: whiteLabel && (ws.hideVyzBrand || !!d.brand?.hideVyz) };
+  // a logo do workspace (cliente) do dashboard, quando tem, no lugar da logo da organização
+  const clientLogo = (d.projectId && session.projects?.find((p) => p.id === d.projectId)?.logoUrl) || null;
+  const brand = { color: color ?? "", logo: clientLogo ?? ws.brandLogoUrl ?? undefined, hideVyz: whiteLabel && (ws.hideVyzBrand || !!d.brand?.hideVyz) };
   const q = parseCreativesQuery(query);
   const access = { tier: session.access.tier, tab: q.tab, ads: q.ads, upsell: true };
   const actions = canEdit ? <DashboardActions dashboard={{ id: d.id, name: d.name, live: d.live }} period={period} pages={d.pages.length} editInPlace /> : undefined;

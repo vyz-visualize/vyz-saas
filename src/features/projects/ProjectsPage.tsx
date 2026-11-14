@@ -34,17 +34,10 @@ import {
   renameProject,
 } from "@/server/projects/actions";
 import type { ProjectDTO, ProjectsState } from "./types";
+import { WorkspaceAvatar } from "./WorkspaceAvatar";
 
 const plural = (n: number, one: string, many: string) =>
   `${n} ${n === 1 ? one : many}`;
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("") || "P";
 
 type Editing = { mode: "new" } | { mode: "rename"; project: ProjectDTO } | null;
 
@@ -239,12 +232,7 @@ export function ProjectsPage({ state, openNew = false }: { state: ProjectsState;
               className="relative flex flex-col rounded-card border border-line bg-card p-4 transition-colors hover:border-fg-2/40 sm:p-5"
             >
               <div className="flex items-start gap-3">
-                <span
-                  aria-hidden
-                  className="inline-flex size-10 shrink-0 items-center justify-center rounded-[11px] bg-accent-soft text-[13px] font-bold text-accent"
-                >
-                  {initials(p.name)}
-                </span>
+                <WorkspaceAvatar name={p.name} color={p.color} logoUrl={p.logoUrl} size={40} fallback="bg-accent-soft text-accent" />
                 <div className="min-w-0 flex-1">
                   <h2 className="text-[15.5px] leading-snug font-semibold break-words text-fg">
                     {/* o cartão inteiro abre o workspace (o link estica por cima dele; menu e números ficam acima) */}

@@ -63,7 +63,7 @@ export type WorkspaceSession = {
   usage: WorkspaceUsage;
   memberships: { id: string; name: string; role: MemberRole }[];
   /** Workspaces (clientes; na tabela, projetos) que a pessoa acessa, do mais antigo para o mais novo. */
-  projects?: { id: string; name: string }[];
+  projects?: { id: string; name: string; color?: string | null; logoUrl?: string | null }[];
   /** Workspace aberto por último (cookie vyz-project), se a pessoa ainda acessa; null sem nenhum. */
   currentProjectId?: string | null;
 };

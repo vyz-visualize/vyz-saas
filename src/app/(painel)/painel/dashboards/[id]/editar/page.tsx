@@ -54,6 +54,8 @@ async function Editar({ params }: { params: PageProps<"/painel/dashboards/[id]/e
         )
       : undefined;
   const ws = session.workspace;
+  // o workspace (cliente) do dashboard com logo própria: a prévia usa a dele
+  const project = dashboard.projectId ? session.projects?.find((p) => p.id === dashboard.projectId) : undefined;
   return (
     <DashboardEditor
       dashboard={dashboard}
@@ -63,6 +65,7 @@ async function Editar({ params }: { params: PageProps<"/painel/dashboards/[id]/e
       whiteLabel={!!session.access.entitlements?.whiteLabel}
       canArrange={canArrangeLayout(session.access.tier)}
       workspaceBrand={{ color: ws.brandColor, logoUrl: ws.brandLogoUrl ?? null, hideVyz: !!ws.hideVyzBrand, canEdit: hasRole(session.role, "admin") }}
+      clientLogo={project?.logoUrl ? { url: project.logoUrl, workspace: project.name, href: `/painel/workspaces/${project.id}/ajustes` } : null}
       preview={{
         realData,
         linkedPlatforms: warehouse ? ([...new Set(warehouse.accounts.map((a) => a.platform))] as PlatformId[]) : undefined,

@@ -27,7 +27,7 @@ export type NavGroup = {
   workspace?: { id: string; name: string };
 };
 
-export type OpenProject = { id: string; name: string };
+export type OpenProject = { id: string; name: string; color?: string | null; logoUrl?: string | null };
 
 // aba "Interno" só para os admins da Vyzualize (o servidor confere de novo na página)
 export const AdminContext = createContext(false);

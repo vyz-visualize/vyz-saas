@@ -19,17 +19,20 @@ import type { Screen } from "./types";
 export const P1 = "11111111-1111-4111-8111-111111111111";
 export const P2 = "22222222-2222-4222-8222-222222222222";
 export const P3 = "33333333-3333-4333-8333-333333333333";
+// logo de exemplo (um sol), sem arquivo: data URL de um SVG pequeno
+export const AURORA_LOGO = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="36" r="13" fill="#f59e0b"/><g stroke="#f59e0b" stroke-width="4" stroke-linecap="round"><path d="M32 9v7M12 18l5 5M52 18l-5 5M6 36h7M51 36h7"/></g><path d="M8 52h48" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/></svg>')}`;
+/** Os três casos: com logo, com cor e sem nada (a cor padrão). */
 export const BENCH_PROJECTS = [
-  { id: P1, name: "Loja Aurora" },
-  { id: P2, name: "Clínica Sol" },
-  { id: P3, name: "Imobiliária Vista do Parque Empreendimentos" },
+  { id: P1, name: "Loja Aurora", color: null, logoUrl: AURORA_LOGO },
+  { id: P2, name: "Clínica Sol", color: "#2563eb", logoUrl: null },
+  { id: P3, name: "Imobiliária Vista do Parque Empreendimentos", color: null, logoUrl: null },
 ];
 
 const NOW = "2026-11-13T15:00:00.000Z";
 const at = (min: number) => new Date(Date.parse(NOW) - min * 60_000).toISOString();
 const day = (ago: number) => new Date(Date.parse(NOW) - ago * 86_400_000).toISOString();
 
-const SUMMARY: ProjectSummary = { id: P1, name: "Loja Aurora", createdAt: day(90), enabledAccounts: 5, accounts: 6, dashboards: 2, people: 3, canEdit: true, canManage: true };
+const SUMMARY: ProjectSummary = { id: P1, name: "Loja Aurora", createdAt: day(90), color: null, logoUrl: AURORA_LOGO, enabledAccounts: 5, accounts: 6, dashboards: 2, people: 3, canEdit: true, canManage: true };
 
 const OVERVIEW: ProjectOverviewData = {
   now: NOW,

@@ -2959,6 +2959,8 @@ export type Database = {
           created_at: string
           updated_at: string
           archived_at: string | null
+          color: string | null
+          logo_path: string | null
         }
         Insert: {
           id?: string
@@ -2968,6 +2970,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
           archived_at?: string | null
+          color?: string | null
+          logo_path?: string | null
         }
         Update: {
           id?: string
@@ -2977,6 +2981,8 @@ export type Database = {
           created_at?: string
           updated_at?: string
           archived_at?: string | null
+          color?: string | null
+          logo_path?: string | null
         }
         Relationships: [
           {

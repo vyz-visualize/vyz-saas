@@ -16,6 +16,7 @@ import { ConnectNudge } from "@/features/onboarding/Nudge";
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
 import { useHydrated } from "@/lib/hooks";
 import type { ProjectDTO } from "@/features/projects/types";
+import { WorkspaceAvatar } from "@/features/projects/WorkspaceAvatar";
 import type { HomeConnection, HomeData } from "./dto";
 import { projectHref } from "./nav";
 import { homeCta, homeSteps, nextStep, planBadge } from "./home-steps";
@@ -115,14 +116,7 @@ function Workspaces({ projects, canCreate }: { projects: ProjectDTO[]; canCreate
           {shown.map((p) => (
             <li key={p.id}>
               <Link href={projectHref(p.id)} className={`group flex items-center gap-3 rounded-card border border-line bg-card p-4 shadow-card transition-colors hover:border-fg-2/40 ${ring}`}>
-                <span aria-hidden className="inline-flex size-11 shrink-0 items-center justify-center rounded-[12px] bg-accent text-[14px] font-bold text-on-accent">
-                  {p.name
-                    .split(/\s+/)
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .map((w) => w[0]?.toUpperCase())
-                    .join("")}
-                </span>
+                <WorkspaceAvatar name={p.name} color={p.color} logoUrl={p.logoUrl} size={44} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-semibold group-hover:text-accent">{p.name}</span>
                   <span className="block truncate text-[12.5px] text-fg-2">

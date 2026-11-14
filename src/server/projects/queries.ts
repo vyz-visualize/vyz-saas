@@ -6,6 +6,7 @@ import { cache } from "react";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import type { ProjectDTO, ProjectsState } from "@/features/projects/types";
 import { hasRole } from "@/features/workspace/session";
+import { publicAssetUrl } from "@/lib/supabase/storage";
 import { getWorkspaceSession } from "@/server/auth/workspace";
 import { appError, unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
@@ -17,12 +18,12 @@ export const listProjects = cache(async (): Promise<ProjectDTO[]> => {
   const db = await createServerSupabase();
   const ws = session.workspace.id;
   const [projects, accounts, dashboards] = await Promise.all([
-    db.from("projects").select("id, name, created_at").eq("workspace_id", ws).is("archived_at", null).order("created_at").then(unwrap),
+    db.from("projects").select("id, name, created_at, color, logo_path").eq("workspace_id", ws).is("archived_at", null).order("created_at").then(unwrap),
     db.from("ad_accounts").select("project_id").eq("workspace_id", ws).eq("is_enabled", true).then(unwrap),
     db.from("dashboards").select("project_id").eq("workspace_id", ws).then(unwrap),
   ]);
   const count = (rows: { project_id: string | null }[] | null, id: string) => (rows ?? []).filter((r) => r.project_id === id).length;
-  return (projects ?? []).map((p) => ({ id: p.id, name: p.name, createdAt: p.created_at, enabledAccounts: count(accounts, p.id), dashboards: count(dashboards, p.id) }));
+  return (projects ?? []).map((p) => ({ id: p.id, name: p.name, createdAt: p.created_at, color: p.color, logoUrl: publicAssetUrl(p.logo_path), enabledAccounts: count(accounts, p.id), dashboards: count(dashboards, p.id) }));
 });
 
 export async function getProjectsState(): Promise<ProjectsState> {

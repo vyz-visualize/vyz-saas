@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { btn } from "@/components/ui/styles";
 import { projectFromPath, projectHref, rememberProject, usePanelPath } from "@/features/workspace/nav";
-import { initials } from "@/features/workspace/Sidebar";
+import { WorkspaceAvatar } from "../WorkspaceAvatar";
 import type { ProjectSummary } from "../types";
 
 const TABS = [
@@ -46,9 +46,7 @@ export function WorkspaceHeader({ summary, orgName }: { summary: ProjectSummary;
         ) : (
           <>
             <Link href={projectHref(summary.id)} className={`flex min-w-0 items-center gap-1.5 ${crumb}`}>
-              <span aria-hidden className="inline-flex size-5 shrink-0 items-center justify-center rounded-[6px] bg-accent text-[9px] font-bold text-on-accent">
-                {initials(summary.name)}
-              </span>
+              <WorkspaceAvatar name={summary.name} color={summary.color} logoUrl={summary.logoUrl} size={20} />
               <span className="truncate">{summary.name}</span>
             </Link>
             <ChevronRight size={13} aria-hidden className="shrink-0 text-fg-2/60" />
@@ -62,9 +60,7 @@ export function WorkspaceHeader({ summary, orgName }: { summary: ProjectSummary;
       {overview && (
         <header className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <div className="flex min-w-0 items-center gap-4">
-            <span aria-hidden className="inline-flex size-14 shrink-0 items-center justify-center rounded-[16px] bg-accent text-[18px] font-bold text-on-accent shadow-card">
-              {initials(summary.name)}
-            </span>
+            <WorkspaceAvatar name={summary.name} color={summary.color} logoUrl={summary.logoUrl} size={56} className="shadow-card" />
             <div className="min-w-0">
               <h1 className="truncate text-[24px] leading-[1.15] font-bold tracking-[-0.028em] sm:text-[30px]">{summary.name}</h1>
               <p className="mt-1 text-[13.5px] text-fg-2">

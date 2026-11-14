@@ -27,7 +27,7 @@ import type { BillingOverview } from "@/server/billing/queries";
 import { DataHarness } from "../dados/harness";
 import { SCREENS_DADOS } from "./screens-dados";
 import { SCREENS_TAREFAS } from "./screens-tarefas";
-import { BENCH_PROJECTS, P1, P2, P3, SCREENS_WORKSPACE } from "./screens-workspace";
+import { AURORA_LOGO, BENCH_PROJECTS, P1, P2, P3, SCREENS_WORKSPACE } from "./screens-workspace";
 import type { Screen } from "./types";
 
 const NOW = "2026-11-13T15:00:00.000Z";
@@ -84,8 +84,8 @@ const HOME_NEW: HomeData = {
 
 const PROJECTS: ProjectsState = {
   projects: [
-    { id: P1, name: "Loja Aurora", createdAt: day(90), enabledAccounts: 5, dashboards: 2 },
-    { id: P2, name: "Clínica Sol", createdAt: day(40), enabledAccounts: 1, dashboards: 1 },
+    { id: P1, name: "Loja Aurora", createdAt: day(90), logoUrl: AURORA_LOGO, enabledAccounts: 5, dashboards: 2 },
+    { id: P2, name: "Clínica Sol", createdAt: day(40), color: "#2563eb", enabledAccounts: 1, dashboards: 1 },
     { id: P3, name: "Imobiliária Vista do Parque Empreendimentos", createdAt: day(8), enabledAccounts: 1, dashboards: 1 },
   ],
   quantity: 15,

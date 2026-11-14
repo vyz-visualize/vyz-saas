@@ -11,6 +11,9 @@ export type ProjectDTO = {
   id: string;
   name: string;
   createdAt: string;
+  /** Identidade (cor #rrggbb e logo); sem elas, as iniciais na cor padrão. */
+  color?: string | null;
+  logoUrl?: string | null;
   /** Contas ligadas no projeto. */
   enabledAccounts: number;
   dashboards: number;
@@ -45,6 +48,8 @@ export type ProjectSummary = {
   id: string;
   name: string;
   createdAt: string;
+  color?: string | null;
+  logoUrl?: string | null;
   enabledAccounts: number;
   accounts: number;
   dashboards: number;

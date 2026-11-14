@@ -9,7 +9,7 @@
 // ícones pelo botão do rodapé ou com "[", e o estado fica no <html data-sidebar>, aplicado
 // antes da primeira pintura.
 
-import { ArrowUpRight, Check, ChevronsUpDown, FolderKanban, Gem, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Plug, Plus, Search, Settings, Sun } from "lucide-react";
+import { ArrowUpRight, Check, ChevronsUpDown, FolderKanban, Gem, LogOut, Moon, Palette, PanelLeftClose, PanelLeftOpen, Plug, Plus, Search, Settings, Sun } from "lucide-react";
 import { m } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,6 +21,8 @@ import { usePortalContainer } from "@/components/ui/portal";
 import { setTheme, useTheme } from "@/components/ui/ThemeToggle";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useAgent } from "@/features/agent/AgentProvider";
+import { initials } from "@/features/projects/identity";
+import { WorkspaceAvatar } from "@/features/projects/WorkspaceAvatar";
 import { Mascot } from "@/features/agent/Mascot";
 import { TIER_LABEL } from "@/features/pricing/entitlements";
 import type { Product } from "@/features/pricing/pricing";
@@ -54,13 +56,7 @@ const useCollapsed = () => useSyncExternalStore(subscribe, readCollapsed, () => 
 
 // ---- peças ------------------------------------------------------------------------------------
 
-export const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("") || "V";
+export { initials };
 
 export function planLine(session: Pick<ReturnType<typeof useWorkspaceSession>, "access" | "usage">, product: Product) {
   const { access, usage } = session;
@@ -118,16 +114,20 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
         <Popover.Trigger
           data-tour="workspaces"
           aria-label={`${title}, ${sub}. Trocar de workspace`}
-          className={`group flex h-[52px] w-full items-center gap-2.5 overflow-hidden rounded-[14px] px-2 text-left transition-colors duration-150 hover:bg-[var(--frame-hover)] data-[state=open]:bg-[var(--frame-hover)] ${orgPage ? "bg-[var(--frame-hover)] ring-1 ring-[var(--frame-line)]" : ""} ${frameFocus}`}
+          className={`group flex h-[60px] w-full items-center gap-3 overflow-hidden rounded-[16px] bg-[var(--frame-hover)] px-2.5 text-left shadow-[inset_0_1px_0_rgb(255_255_255/0.06)] ring-1 transition-colors duration-150 hover:bg-[var(--frame-hover-2)] data-[state=open]:bg-[var(--frame-hover-2)] sb-closed:px-1.5 ${orgPage ? "ring-[var(--frame-accent)]/60" : "ring-[var(--frame-line)]"} ${frameFocus}`}
         >
-          <span className="transition-transform duration-300 ease-brand">
-            <Avatar name={title} tone={lp || !open ? "org" : "ws"} />
-          </span>
+          {lp || !open ? (
+            <Avatar name={title} tone="org" size={40} />
+          ) : (
+            <WorkspaceAvatar name={open.name} color={open.color} logoUrl={open.logoUrl} size={40} fallback="bg-[var(--frame-accent)] text-[var(--frame)]" className="shadow-[0_1px_3px_rgb(0_0_0/0.25)]" />
+          )}
           <span className={`min-w-0 flex-1 ${fade}`}>
-            <span className="block truncate text-[13.5px] leading-tight font-semibold text-[var(--frame-fg)]">{title}</span>
-            <span className="mt-0.5 block truncate text-[12px] leading-tight text-[var(--frame-muted)]">{sub}</span>
+            <span className="block truncate text-[15px] leading-tight font-semibold tracking-[-0.01em] text-[var(--frame-fg)]">{title}</span>
+            <span className="mt-1 block truncate text-[12px] leading-tight text-[var(--frame-muted)]">{lp || !open ? sub : org.name}</span>
           </span>
-          <ChevronsUpDown size={15} aria-hidden className={`mr-0.5 shrink-0 text-[var(--frame-muted)] ${fade}`} />
+          <span className={`inline-flex size-7 shrink-0 items-center justify-center rounded-[9px] bg-[var(--frame-hover)] text-[var(--frame-muted)] transition-colors group-hover:text-[var(--frame-fg)] ${fade}`}>
+            <ChevronsUpDown size={14} aria-hidden />
+          </span>
         </Popover.Trigger>
       </Tooltip>
       <Popover.Portal container={container}>
@@ -165,9 +165,7 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
                         onClick={() => go(p.id)}
                         className={`flex h-10 w-full items-center gap-2.5 rounded-control px-2 text-left text-[13.5px] transition-colors hover:bg-surface-2 ${on ? "font-semibold" : ""}`}
                       >
-                        <span aria-hidden className={`inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] text-[11px] font-bold ${on ? "bg-accent text-on-accent" : "bg-surface-2 text-fg-2"}`}>
-                          {initials(p.name)}
-                        </span>
+                        <WorkspaceAvatar name={p.name} color={p.color} logoUrl={p.logoUrl} size={28} fallback={on ? "bg-accent text-on-accent" : "bg-surface-2 text-fg-2"} />
                         <span className="min-w-0 flex-1 truncate">{p.name}</span>
                         {on && <Check size={16} aria-hidden className="shrink-0 text-accent" />}
                       </button>
@@ -183,6 +181,11 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
                 {hasRole(role, "member") && (
                   <Link href="/painel/workspaces?novo=1" onClick={() => setShow(false)} className="flex h-9 items-center gap-2.5 rounded-control px-2 text-[13.5px] text-fg-2 hover:bg-surface-2 hover:text-fg">
                     <Plus size={15} aria-hidden /> Novo workspace
+                  </Link>
+                )}
+                {open && hasRole(role, "member") && (
+                  <Link href={projectHref(open.id, "ajustes")} onClick={() => setShow(false)} className="flex h-9 min-w-0 items-center gap-2.5 rounded-control px-2 text-[13.5px] text-fg-2 hover:bg-surface-2 hover:text-fg">
+                    <Palette size={15} aria-hidden className="shrink-0" /> <span className="truncate">Logo e cor de {open.name}</span>
                   </Link>
                 )}
               </div>
@@ -295,7 +298,7 @@ function AskVyz({ collapsed }: { collapsed: boolean }) {
         data-tour="pergunte"
         aria-keyshortcuts="Meta+K Control+K"
         aria-label="Pergunte ao VYZ"
-        className={`flex h-10 w-full items-center gap-2.5 overflow-hidden rounded-[12px] bg-[var(--frame-hover)] px-2.5 text-left text-[13px] text-[var(--frame-muted)] transition-colors hover:text-[var(--frame-fg)] ${frameFocus}`}
+        className={`flex h-10 w-full items-center gap-2.5 overflow-hidden rounded-[12px] border border-[var(--frame-line)] px-2.5 text-left text-[13px] text-[var(--frame-muted)] transition-colors hover:bg-[var(--frame-hover)] hover:text-[var(--frame-fg)] ${frameFocus}`}
       >
         <span className="shrink-0 transition-transform duration-300 ease-brand sb-closed:translate-x-[6px]">
           <Mascot size={20} />
@@ -401,7 +404,7 @@ export function Sidebar() {
         </Link>
       </div>
 
-      <div className="mt-3 space-y-2 pr-3">
+      <div className="mt-3 space-y-2.5 pr-3">
         <WorkspaceSwitcher collapsed={collapsed} />
         <AskVyz collapsed={collapsed} />
       </div>

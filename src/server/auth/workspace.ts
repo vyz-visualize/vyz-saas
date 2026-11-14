@@ -104,12 +104,12 @@ export async function composeWorkspaceSession(supabase: DB, viewer: Viewer, pref
     supabase.from("workspace_access").select("*").eq("workspace_id", current.workspace.id).maybeSingle(),
     supabase.from("workspace_usage").select("*").eq("workspace_id", current.workspace.id).maybeSingle(),
     // os workspaces (projetos) que a pessoa acessa: o RLS já corta os de outros
-    supabase.from("projects").select("id, name").eq("workspace_id", current.workspace.id).is("archived_at", null).order("created_at").limit(500),
+    supabase.from("projects").select("id, name, color, logo_path").eq("workspace_id", current.workspace.id).is("archived_at", null).order("created_at").limit(500),
   ]);
   if (access.error) console.error("[vyz] acesso do workspace", access.error);
   if (usage.error) console.error("[vyz] uso do workspace", usage.error);
   if (projects.error) console.error("[vyz] workspaces da organização", projects.error);
-  const projectList = (projects.data ?? []).map((p) => ({ id: p.id, name: p.name }));
+  const projectList = (projects.data ?? []).map((p) => ({ id: p.id, name: p.name, color: p.color, logoUrl: publicAssetUrl(p.logo_path) }));
   const openProject = projectList.find((p) => p.id === preferredProject)?.id ?? projectList[0]?.id ?? null;
   const a = access.data;
   const u = usage.data;

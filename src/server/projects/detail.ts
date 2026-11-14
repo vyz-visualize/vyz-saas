@@ -10,6 +10,7 @@ import { syncSummary } from "@/features/integrations/sync-label";
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
 import type { ProjectAccountsData, ProjectDashboardsData, ProjectHighlights, ProjectOverviewData, ProjectPeopleData, ProjectPerson, ProjectSummary } from "@/features/projects/types";
 import { hasRole, ROLE_RANK, type MemberRole } from "@/features/workspace/session";
+import { publicAssetUrl } from "@/lib/supabase/storage";
 import { getWorkspaceSession } from "@/server/auth/workspace";
 import { listDashboards, listSourceOptions } from "@/server/dashboards/queries";
 import { loadWorkspaceInsights } from "@/server/insights/load";
@@ -55,7 +56,7 @@ export const getProjectSummary = cache(async (projectId: string): Promise<Projec
   if (!UUID.test(projectId)) return null;
   const db = await createServerSupabase();
   const ws = s.workspace.id;
-  const project = unwrap(await db.from("projects").select("id, name, created_at").eq("id", projectId).eq("workspace_id", ws).is("archived_at", null).maybeSingle());
+  const project = unwrap(await db.from("projects").select("id, name, created_at, color, logo_path").eq("id", projectId).eq("workspace_id", ws).is("archived_at", null).maybeSingle());
   if (!project) return null;
   const [accounts, dashboards, { people }] = await Promise.all([
     db.from("ad_accounts").select("is_enabled").eq("workspace_id", ws).eq("project_id", projectId).then(unwrap),
@@ -66,6 +67,8 @@ export const getProjectSummary = cache(async (projectId: string): Promise<Projec
     id: project.id,
     name: project.name,
     createdAt: project.created_at,
+    color: project.color,
+    logoUrl: publicAssetUrl(project.logo_path),
     enabledAccounts: (accounts ?? []).filter((a) => a.is_enabled).length,
     accounts: accounts?.length ?? 0,
     dashboards: dashboards.count ?? 0,

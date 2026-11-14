@@ -47,6 +47,7 @@ Regras: migration aplicada não se edita (corrige-se com outra); depois de toda 
 | 18 métricas do dashboard | `dashboards.metric_prefs` | o que difere do padrão do template, por plataforma (member+ edita) |
 | 19 métricas de criativos | colunas em `insights_ad_daily`, `ads.post_url` | leads, engajamento, vídeo 25 a 100%, segundos assistidos, visitas ao perfil e link do post |
 | 20 métricas do Personalizar | colunas em `insights_ad_daily` e `insights_campaign_daily` | cadastros por anúncio; todas as conversões, interações e topo por campanha. O rollup por conta não usa essas colunas |
+| identidade do workspace (`20261119090000`) | colunas `projects.color` e `projects.logo_path` | cor (`#rrggbb`) e logo de cada workspace (cliente), no painel e nos dashboards dele; a regra do banco só aceita a logo na pasta `<organização>/projects/<id>/` do bucket `brand-assets` |
 
 ### Fluxo de compra
 
@@ -74,7 +75,7 @@ O app checa antes para mostrar a mensagem certa, mas quem garante é o banco: ch
 - **Histórico imutável.** Nem a chave de serviço altera ou apaga histórico (`audit_events`, `subscription_changes`, `auth_events`, `activity_events`, `legal_acceptances`, `landing_page_versions`); só a retenção, por partição, o remove.
 - **Dados financeiros ficam.** Faturas e transações seguram o workspace (`on delete restrict`): apagar uma conta exige purgar ou anonimizar antes.
 - **Regras de conteúdo.** Link público revogado não volta; convite vale no máximo 30 dias e só enquanto quem convidou for admin; slugs de LP reservados (`www`, `app`, `painel`…) e "aposentados" por 180 dias depois de apagados (ninguém de outra conta captura o endereço); a data de publicação de LP é sempre a do banco; caminhos do Storage gravados nas tabelas precisam ser da pasta do próprio workspace.
-- **Storage.** `brand-assets` aceita só PNG, JPEG e WebP (sem SVG), até 2 MB, na pasta `<workspace_id>/` e só por admin.
+- **Storage.** `brand-assets` aceita só PNG, JPEG e WebP (sem SVG), até 2 MB, na pasta `<workspace_id>/` e só por admin. As logos de cada workspace (cliente) ficam em `<workspace_id>/projects/<id>/` e são gravadas pelo servidor com a chave de serviço, depois de autorizar quem edita aquele workspace.
 - **No app:** cookies de sessão `httpOnly`; JWT validado localmente (`getClaims`, chave ES256); validação com zod em toda Server Action; `safeNextPath` contra *open redirect*; limite de tentativas em login, cadastro, senha, checkout e OAuth; headers de segurança (CSP, HSTS, `frame-ancestors 'none'`); pagamento e OAuth simulados bloqueados em produção sem `ALLOW_MOCKS_IN_PRODUCTION=true`.
 
 ## Desempenho
