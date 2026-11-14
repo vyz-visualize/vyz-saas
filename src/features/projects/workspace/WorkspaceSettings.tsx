@@ -32,6 +32,7 @@ export function WorkspaceSettings({ summary, timeZone }: { summary: ProjectSumma
     start(async () => {
       const r = await archiveProject(summary.id);
       if (!r.ok) return toast.show(r.error.message, "blocked");
+      setArchiving(false);
       router.push("/painel/workspaces");
     });
 

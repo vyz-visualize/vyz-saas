@@ -82,6 +82,14 @@ function FlowScreen({ step, building, loading = false, stage, summaries, transit
     const d = ref.current;
     if (d && !d.open) d.showModal();
   }, []);
+  // ao sair (o fim do primeiro acesso navega para o painel), a tela fica escondida (Activity) em
+  // vez de desmontada: o <dialog> modal aberto deixaria o painel inteiro inerte. Fecha ao esconder.
+  useLayoutEffect(() => {
+    const d = ref.current;
+    return () => {
+      if (d?.open) d.close();
+    };
+  }, []);
   // a cada passo, o foco vai para o campo marcado (data-autofocus) ou para o título; nunca para
   // o primeiro botão (o "Pular por agora") nem para uma dica que abriria sozinha
   useEffect(() => {

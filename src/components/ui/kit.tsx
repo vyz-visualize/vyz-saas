@@ -6,7 +6,7 @@
 // elevação do painel; fora dele, ficam no visual plano da marca.
 
 import { Info, Lock, X } from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { PortalContainer } from "./portal";
 
 /** Aviso discreto do que depende de backend, com tooltip. */
@@ -69,11 +69,28 @@ export function Modal({
     if (open && !d.open) d.showModal();
     if (!open && d.open) d.close();
   }, [open]);
+  // Com Cache Components, a página de onde se navegou fica escondida (Activity), não desmontada:
+  // um <dialog> modal aberto ali deixaria a página nova inteira inerte (nada clicável). Ao esconder,
+  // o diálogo fecha sem avisar quem abriu (o estado continua "aberto"), e o efeito acima reabre se
+  // a página voltar a aparecer. Sem o aviso, o StrictMode (que monta duas vezes) também não fecha.
+  const silent = useRef(false);
+  useLayoutEffect(() => {
+    const d = ref.current;
+    return () => {
+      if (!d?.open) return;
+      silent.current = true;
+      d.close();
+    };
+  }, []);
   const size = full ? "h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[1400px] max-sm:h-[calc(100dvh-1.5rem)]" : wide ? "w-[min(920px,calc(100vw-2rem))]" : "w-[min(520px,calc(100vw-2rem))]";
   return (
     <dialog
       ref={ref}
-      onClose={onClose}
+      // o evento close chega depois (assíncrono): o fechamento ao esconder a página não conta
+      onClose={() => {
+        if (silent.current) silent.current = false;
+        else onClose();
+      }}
       // Esc com um popover aberto fecha só o popover
       onCancel={(e) => ref.current?.querySelector("[data-radix-popper-content-wrapper]") && e.preventDefault()}
       onClick={(e) => e.target === ref.current && onClose()}

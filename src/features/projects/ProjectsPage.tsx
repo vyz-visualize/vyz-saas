@@ -114,6 +114,8 @@ export function ProjectsPage({ state, openNew = false }: { state: ProjectsState;
       // workspace novo: entra nele (é lá que se ligam as contas e se criam os dashboards)
       if (editing.mode === "new" && res.data && "id" in res.data) {
         rememberProject(res.data.id);
+        // fecha antes de sair: a página fica guardada (Activity) e, ao voltar, o modal não reaparece
+        setEditing(null);
         router.push(projectHref(res.data.id, "contas"));
         return;
       }
