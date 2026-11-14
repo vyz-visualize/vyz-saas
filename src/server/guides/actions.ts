@@ -1,13 +1,13 @@
 "use server";
 
-// Grava os guias da pessoa (user_guides): concluir ou pular o tour e adiar um
+// Grava os guias da pessoa (user_guides): concluir ou pular um tour e adiar um
 // lembrete de conexão. É estado da interface de cada pessoa, não dado do
 // workspace: fica fora do histórico (ver history/coverage.test.ts). Sem a
 // tabela no banco, não quebra nada: só não grava.
 
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
-import { isMissingTable, nudgeGuide, snoozeUntil, TOUR_GUIDE, type GuideStatus } from "@/features/onboarding/guides";
+import { isMissingTable, nudgeGuide, snoozeUntil, TOUR_GUIDE, TOUR_GUIDES, type GuideStatus, type TourGuide } from "@/features/onboarding/guides";
 import { CORE_PROVIDER_IDS } from "@/features/integrations/providers";
 import { getSessionUser } from "@/server/auth/session";
 import { appError, toActionError, type ActionResult } from "@/server/supabase/errors";
@@ -29,10 +29,10 @@ async function saveGuide(guide: string, status: GuideStatus, snoozedUntil: strin
   }
 }
 
-/** Tour do primeiro dashboard: concluído ou pulado (não volta). */
-export async function finishTour(how: "done" | "skipped"): Promise<ActionResult> {
-  if (how !== "done" && how !== "skipped") return toActionError(appError("validation"));
-  return saveGuide(TOUR_GUIDE, how, null);
+/** Um tour (o do painel ou o do primeiro dashboard): concluído ou pulado (não volta). */
+export async function finishTour(how: "done" | "skipped", guide: TourGuide = TOUR_GUIDE): Promise<ActionResult> {
+  if ((how !== "done" && how !== "skipped") || !(TOUR_GUIDES as readonly string[]).includes(guide)) return toActionError(appError("validation"));
+  return saveGuide(guide, how, null);
 }
 
 /** "Agora não" num lembrete de conexão: volta em 3 dias. */

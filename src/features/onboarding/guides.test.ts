@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findTourTarget, isMissingTable, NO_GUIDES, nudgeFor, nudgeGuide, snoozeUntil, SNOOZE_DAYS, TOUR_GUIDE, TOUR_STEPS, tourPending, type GuidesState, type NudgeInput } from "./guides";
+import { findTourTarget, isMissingTable, NO_GUIDES, nudgeFor, nudgeGuide, PANEL_TOUR_GUIDE, PANEL_TOUR_STEPS, snoozeUntil, SNOOZE_DAYS, TOUR_GUIDE, TOUR_GUIDES, TOUR_STEPS, tourPending, type GuidesState, type NudgeInput } from "./guides";
 
 const NOW = new Date("2026-11-12T12:00:00Z");
 const on = (rows: GuidesState["rows"] = []): GuidesState => ({ available: true, rows });
@@ -16,6 +16,27 @@ describe("tabela ainda não aplicada no banco", () => {
   it("sem a tabela: nem tour nem lembrete (não aparecem toda hora sem conseguir gravar)", () => {
     expect(tourPending(NO_GUIDES)).toBe(false);
     expect(nudgeFor({ ...base, guides: NO_GUIDES })).toBeNull();
+  });
+});
+
+describe("tour do painel", () => {
+  it("aparece uma vez, separado do tour do dashboard", () => {
+    expect(tourPending(on(), PANEL_TOUR_GUIDE)).toBe(true);
+    expect(tourPending(on([{ guide: PANEL_TOUR_GUIDE, status: "done", snoozedUntil: null }]), PANEL_TOUR_GUIDE)).toBe(false);
+    expect(tourPending(on([{ guide: PANEL_TOUR_GUIDE, status: "skipped", snoozedUntil: null }]), PANEL_TOUR_GUIDE)).toBe(false);
+    // concluir um não esconde o outro
+    expect(tourPending(on([{ guide: TOUR_GUIDE, status: "done", snoozedUntil: null }]), PANEL_TOUR_GUIDE)).toBe(true);
+    expect(tourPending(on([{ guide: PANEL_TOUR_GUIDE, status: "done", snoozedUntil: null }]))).toBe(true);
+    expect(tourPending(NO_GUIDES, PANEL_TOUR_GUIDE)).toBe(false);
+  });
+
+  it("passos na ordem, cada um com o próprio alvo", () => {
+    expect(PANEL_TOUR_STEPS.map((s) => s.id)).toEqual(["workspaces", "workspace", "barra", "rotina", "conta", "mais", "pergunte"]);
+    for (const s of PANEL_TOUR_STEPS) expect(s.selector).toMatch(/^\[data-tour="[a-z-]+"\]$/);
+  });
+
+  it("as chaves cabem na regra do banco (user_guides.guide)", () => {
+    for (const g of TOUR_GUIDES) expect(g).toMatch(/^[a-z0-9_:-]{1,60}$/);
   });
 });
 

@@ -111,7 +111,7 @@ function Workspaces({ projects, canCreate }: { projects: ProjectDTO[]; canCreate
         </span>
       </div>
       {shown.length ? (
-        <ul className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 min-[1800px]:grid-cols-4">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 min-[1800px]:grid-cols-4">
           {shown.map((p) => (
             <li key={p.id}>
               <Link href={projectHref(p.id)} className={`group flex items-center gap-3 rounded-card border border-line bg-card p-4 shadow-card transition-colors hover:border-fg-2/40 ${ring}`}>

@@ -4,12 +4,13 @@
 // - Início: a visão da organização inteira;
 // - o workspace aberto: Visão geral, Dashboards, Contas, Pessoas e Ajustes, todos desse cliente
 //   (no computador, o menu é a navegação do workspace; no celular, as abas do cabeçalho);
-// - Rotina: A Fazer e Compartilhar (de todos os workspaces);
-// - Organização: Workspaces, Conexões (os logins), Plano e Configurações.
+// - Rotina: A Fazer e Compartilhar (de todos os workspaces).
+// A organização (todos os workspaces, Conexões, Plano e Configurações) fica no seletor do topo
+// do menu e no menu da pessoa, para o menu ter só o dia a dia.
 // O workspace aberto é o do endereço (/painel/workspaces/<id>/...) ou, fora dele, o último
 // aberto (cookie vyz-project). Fonte única do menu lateral, da barra do celular e da folha "Mais".
 
-import { BarChart3, Building2, FolderKanban, Gem, Home, Inbox, LayoutGrid, ListChecks, PanelsTopLeft, Plug, Settings, Settings2, Share2, ShieldCheck, Users, Workflow } from "lucide-react";
+import { BarChart3, FolderKanban, Gem, Home, Inbox, LayoutGrid, ListChecks, PanelsTopLeft, Plug, Settings, Settings2, Share2, ShieldCheck, Users, Workflow } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { createContext, use } from "react";
 import { ACTIVE_PROJECT_COOKIE } from "@/lib/supabase/cookies";
@@ -116,19 +117,12 @@ function dashGroups(project: OpenProject | null): NavGroup[] {
         { href: "/painel/compartilhar", label: "Compartilhar", icon: Share2 },
       ],
     },
-    {
-      id: "organizacao",
-      label: "Organização",
-      icon: Building2,
-      items: [
-        { href: "/painel/workspaces", label: "Workspaces", icon: FolderKanban },
-        { href: "/painel/contas", label: "Conexões", icon: Plug },
-        { href: "/painel/plano", label: "Plano", icon: Gem },
-        { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
-      ],
-    },
   ];
 }
+
+/** Páginas da organização: ficam no seletor do topo do menu (e no "Mais" do celular), não no menu. */
+export const ORG_PAGES = ["/painel/workspaces", "/painel/contas", "/painel/plano", "/painel/configuracoes"] as const;
+export const isOrgPage = (path: string | null) => !!path && ORG_PAGES.some((h) => path === h || (path.startsWith(`${h}/`) && !projectFromPath(path)));
 
 export function useNavGroups(): NavGroup[] {
   const { workspace } = useWorkspaceSession();

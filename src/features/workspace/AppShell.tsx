@@ -9,7 +9,7 @@
 // O dashboard (ver, editar e montar) abre em tela cheia: sem o menu do produto, só uma barra
 // fina com o botão de voltar (isFocusPath), e o conteúdo dele fica nos tokens da marca.
 
-import { AlertTriangle, ArrowLeft, ArrowUpRight, Check, ChevronRight, ChevronsUpDown, Info, LogOut, Menu, Moon, Sun } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowUpRight, Check, ChevronRight, ChevronsUpDown, FolderKanban, Info, LogOut, Menu, Moon, Plug, Settings, Sun } from "lucide-react";
 import { LazyMotion, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,9 @@ import { AgentDrawer } from "@/features/agent/AgentDrawer";
 import { AgentFab } from "@/features/agent/AgentEntry";
 import { AgentProvider } from "@/features/agent/AgentProvider";
 import { Caption } from "@/features/agent/Caption";
+import { PanelTour } from "@/features/onboarding/DashboardTour";
 import { signOut } from "@/server/auth/actions";
+import type { ActionResult } from "@/server/supabase/errors";
 import { switchWorkspace } from "@/server/workspace/actions";
 import { FOCUS_ACTIONS_ID, isFocusPath } from "./focus";
 import { AdminContext, flat, isActive, mobilePrimary, PreviewPathContext, projectHref, rememberProject, useNavGroups, useOpenProject, usePanelPath, type NavIcon } from "./nav";
@@ -75,7 +77,7 @@ function BottomNav({ path, onMore }: { path: string | null; onMore: () => void }
         );
       })}
       <li className="min-w-0">
-        <button type="button" onClick={onMore} aria-haspopup="dialog" className={cls}>
+        <button type="button" onClick={onMore} aria-haspopup="dialog" data-tour="mais" className={cls}>
           {cell(moreActive, Menu, "Mais")}
         </button>
       </li>
@@ -88,6 +90,11 @@ function ActiveBottomNav({ onMore }: { onMore: () => void }) {
 }
 
 /** Linha da folha "Mais". */
+const ORG_LINKS = [
+  { href: "/painel/workspaces", label: "Todos os workspaces", icon: FolderKanban },
+  { href: "/painel/contas", label: "Conexões", icon: Plug },
+  { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
+];
 const sheetRow = `flex min-h-12 w-full items-center gap-3 rounded-control px-3 text-left text-[15px] font-medium transition-colors hover:bg-surface-2 ${ring}`;
 const sheetLabel = "px-3 pt-4 pb-1 text-[11px] font-semibold tracking-[0.07em] text-fg-2 uppercase";
 
@@ -165,6 +172,22 @@ function MoreSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           </span>
           <ChevronRight size={18} aria-hidden className="shrink-0 text-fg-2" />
         </Link>
+        {/* fora do menu do Dash (no computador, ficam no seletor do topo); o de LP já tem Plano e Configurações */}
+        {org.product === "dash" && (
+          <ul className="mt-1">
+            {ORG_LINKS.map(({ href, label, icon: I }) => (
+              <li key={href}>
+                <Link href={href} className={sheetRow}>
+                  <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-control bg-surface-2 text-fg">
+                    <I size={18} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{label}</span>
+                  <ChevronRight size={17} aria-hidden className="shrink-0 text-fg-2" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
         {memberships.length > 1 && (
           <ul className="mt-1">
             {memberships
@@ -251,7 +274,7 @@ function MobileTop({ onMore }: { onMore: () => void }) {
       <Link href="/painel" aria-label="VYZ, início do painel" className={`block w-[52px] shrink-0 rounded-[6px] ${ring}`}>
         <Wordmark decorative />
       </Link>
-      <button type="button" onClick={onMore} className={`flex min-w-0 items-center gap-2 rounded-chip border border-line bg-card py-1 pr-2.5 pl-1 text-[13px] font-semibold shadow-card ${ring}`}>
+      <button type="button" onClick={onMore} data-tour="workspaces" className={`flex min-w-0 items-center gap-2 rounded-chip border border-line bg-card py-1 pr-2.5 pl-1 text-[13px] font-semibold shadow-card ${ring}`}>
         <Avatar name={title} size="sm" />
         <span className="max-w-[46vw] truncate">{title}</span>
         <ChevronsUpDown size={14} aria-hidden className="shrink-0 text-fg-2" />
@@ -260,11 +283,24 @@ function MobileTop({ onMore }: { onMore: () => void }) {
   );
 }
 
-export function AppShell({ children, isAdmin = false, previewPath = null }: { children: ReactNode; simulatedBilling?: boolean; isAdmin?: boolean; /** Só na bancada: endereço simulado. */ previewPath?: string | null }) {
+export function AppShell({
+  children,
+  isAdmin = false,
+  previewPath = null,
+  tour = false,
+}: {
+  children: ReactNode;
+  simulatedBilling?: boolean;
+  isAdmin?: boolean;
+  /** Só na bancada: endereço simulado. */
+  previewPath?: string | null;
+  /** Tour do painel no primeiro acesso ("preview": na bancada, sem gravar). */
+  tour?: boolean | "preview";
+}) {
   return (
     <AdminContext value={isAdmin}>
       <PreviewPathContext value={previewPath}>
-        <Shell>{children}</Shell>
+        <Shell tour={tour}>{children}</Shell>
       </PreviewPathContext>
     </AdminContext>
   );
@@ -303,7 +339,10 @@ export function FocusShell({ children }: { children: ReactNode }) {
   );
 }
 
-function Shell({ children }: { children: ReactNode }) {
+// bancada: o tour roda sem gravar nada
+const previewFinish = async (): Promise<ActionResult> => ({ ok: true, data: undefined });
+
+function Shell({ children, tour }: { children: ReactNode; tour: boolean | "preview" }) {
   const [more, setMore] = useState(false);
   const focus = isFocusPath(usePanelPath());
   if (focus)
@@ -341,7 +380,7 @@ function Shell({ children }: { children: ReactNode }) {
                 </main>
               </div>
 
-              <nav aria-label="Seções" className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-[22px] border border-line bg-[color-mix(in_srgb,var(--card)_92%,transparent)] p-1.5 shadow-pop backdrop-blur-lg md:hidden print:hidden">
+              <nav aria-label="Seções" data-tour="barra" className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 rounded-[22px] border border-line bg-[color-mix(in_srgb,var(--card)_92%,transparent)] p-1.5 shadow-pop backdrop-blur-lg md:hidden print:hidden">
                 <Suspense fallback={<BottomNav path={null} onMore={() => setMore(true)} />}>
                   <ActiveBottomNav onMore={() => setMore(true)} />
                 </Suspense>
@@ -350,6 +389,8 @@ function Shell({ children }: { children: ReactNode }) {
               <AgentFab />
               <AgentDrawer />
               <Caption />
+              {/* primeiro acesso: onde fica cada coisa (uma vez por pessoa) */}
+              {tour && <PanelTour onFinish={tour === "preview" ? previewFinish : undefined} />}
             </div>
           </AgentProvider>
         </TooltipProvider>

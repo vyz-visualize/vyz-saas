@@ -4,11 +4,12 @@
 // item ativo é uma aba na cor do painel que se funde nele pelos cantos côncavos (.side-tab no
 // globals.css); a aba desliza entre os itens (layoutId).
 // No topo, o seletor de workspaces (busca quando são muitos, a aba atual vai junto na troca)
-// e a organização (plano, configurações e a troca de organização). Recolhe para um trilho de
+// e a organização (todos os workspaces, plano, Conexões, configurações e a troca de
+// organização): o menu fica só com o dia a dia (Início, o workspace aberto e a Rotina). Recolhe para um trilho de
 // ícones pelo botão do rodapé ou com "[", e o estado fica no <html data-sidebar>, aplicado
 // antes da primeira pintura.
 
-import { ArrowUpRight, Check, ChevronsUpDown, FolderKanban, Gem, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, Sun } from "lucide-react";
+import { ArrowUpRight, Check, ChevronsUpDown, FolderKanban, Gem, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Plug, Plus, Search, Settings, Sun } from "lucide-react";
 import { m } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,7 +27,7 @@ import type { Product } from "@/features/pricing/pricing";
 import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
 import { planBadge } from "./home-steps";
-import { activeHref, projectFromPath, projectHref, rememberProject, useNavGroups, useOpenProject, usePanelPath, type NavGroup } from "./nav";
+import { activeHref, isOrgPage, projectFromPath, projectHref, rememberProject, useNavGroups, useOpenProject, usePanelPath, type NavGroup } from "./nav";
 import { hasRole, ROLE_LABEL } from "./session";
 import { useWorkspaceSession } from "./WorkspaceProvider";
 
@@ -98,6 +99,8 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
   const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
   const list = projects.filter((p) => !q.trim() || fold(p.name).includes(fold(q.trim())));
   const title = lp || !open ? org.name : open.name;
+  // nas páginas da organização (todos os workspaces, Conexões, Plano, Configurações), o seletor fica aceso
+  const orgPage = isOrgPage(path);
   const sub = lp || !open ? planLine(session, org.product) : org.name;
 
   const go = (id: string) => {
@@ -113,8 +116,9 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
     <Popover.Root open={show} onOpenChange={setShow}>
       <Tooltip content={title} disabled={!collapsed}>
         <Popover.Trigger
+          data-tour="workspaces"
           aria-label={`${title}, ${sub}. Trocar de workspace`}
-          className={`group flex h-[52px] w-full items-center gap-2.5 overflow-hidden rounded-[14px] px-2 text-left transition-colors duration-150 hover:bg-[var(--frame-hover)] data-[state=open]:bg-[var(--frame-hover)] ${frameFocus}`}
+          className={`group flex h-[52px] w-full items-center gap-2.5 overflow-hidden rounded-[14px] px-2 text-left transition-colors duration-150 hover:bg-[var(--frame-hover)] data-[state=open]:bg-[var(--frame-hover)] ${orgPage ? "bg-[var(--frame-hover)] ring-1 ring-[var(--frame-line)]" : ""} ${frameFocus}`}
         >
           <span className="transition-transform duration-300 ease-brand">
             <Avatar name={title} tone={lp || !open ? "org" : "ws"} />
@@ -197,6 +201,9 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
             <Link href="/painel/plano" onClick={() => setShow(false)} className="flex h-9 items-center gap-2.5 rounded-control px-2 text-[13.5px] text-fg-2 hover:bg-card hover:text-fg">
               <Gem size={15} aria-hidden /> Plano e cobrança
             </Link>
+            <Link href="/painel/contas" onClick={() => setShow(false)} className="flex h-9 items-center gap-2.5 rounded-control px-2 text-[13.5px] text-fg-2 hover:bg-card hover:text-fg">
+              <Plug size={15} aria-hidden /> Conexões (logins e contas)
+            </Link>
             <Link href="/painel/configuracoes#workspace" onClick={() => setShow(false)} className="flex h-9 items-center gap-2.5 rounded-control px-2 text-[13.5px] text-fg-2 hover:bg-card hover:text-fg">
               <Settings size={15} aria-hidden /> Configurações da organização
             </Link>
@@ -231,33 +238,33 @@ function NavList({ path, collapsed }: { path: string | null; collapsed: boolean 
   const groups = useNavGroups();
   const href = activeHref(groups, path);
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {groups.map((g: NavGroup) => (
-        <div key={g.id}>
+        <div key={g.id} data-tour={g.workspace ? "workspace-menu" : g.id === "rotina" ? "rotina" : undefined}>
           {g.items.length > 1 && (
             <>
-              <p className="mb-1 truncate pr-4 pl-3 text-[11px] font-semibold tracking-[0.07em] text-[var(--frame-muted)] uppercase sb-closed:hidden" title={g.label}>
+              <p className="mb-2 truncate pr-4 pl-3 text-[11px] font-semibold tracking-[0.07em] text-[var(--frame-muted)] uppercase sb-closed:hidden" title={g.label}>
                 {g.workspace ? `Workspace · ${g.label}` : g.label}
               </p>
-              <span aria-hidden className="mr-3 mb-2 hidden h-px bg-[var(--frame-line)] sb-closed:mx-auto sb-closed:block sb-closed:w-6" />
+              <span aria-hidden className="mr-3 mb-3 hidden h-px bg-[var(--frame-line)] sb-closed:mx-auto sb-closed:block sb-closed:w-6" />
             </>
           )}
-          <ul className="space-y-0.5">
+          <ul className="space-y-1">
             {g.items.map(({ href: h, label, icon: I, soon }) => {
               const active = h === href;
               return (
                 <li key={h} className="relative">
                   {/* a aba ativa é um pedaço do painel: vai até a borda e se funde nele pelos cantos côncavos */}
-                  {active && <m.span layoutId="side-tab" transition={TAB_SPRING} aria-hidden className="side-tab absolute inset-y-0 left-0 -right-px rounded-l-[12px] bg-bg" />}
+                  {active && <m.span layoutId="side-tab" transition={TAB_SPRING} aria-hidden className="side-tab absolute inset-y-0 left-0 -right-px rounded-l-[14px] bg-bg" />}
                   <Tooltip content={soon ? `${label} · em breve` : label} disabled={!collapsed}>
                     <Link
                       href={h}
                       aria-current={active ? "page" : undefined}
                       aria-label={collapsed ? label : undefined}
-                      className={`group relative flex h-9 items-center gap-3 overflow-hidden pl-3 text-[14px] outline-none ${active ? "font-semibold text-fg" : "text-[var(--frame-muted)] hover:text-[var(--frame-fg)]"}`}
+                      className={`group relative flex h-11 items-center gap-3 overflow-hidden pl-3 text-[14px] outline-none ${active ? "font-semibold text-fg" : "text-[var(--frame-muted)] hover:text-[var(--frame-fg)]"}`}
                     >
-                      {!active && <span aria-hidden className="absolute inset-y-0 right-3 left-0 rounded-[12px] transition-colors duration-150 group-hover:bg-[var(--frame-hover)] group-focus-visible:bg-[var(--frame-hover)]" />}
-                      <span aria-hidden className="pointer-events-none absolute inset-y-1 right-4 left-1 rounded-[10px] group-focus-visible:ring-2 group-focus-visible:ring-[var(--frame-fg)]/60" />
+                      {!active && <span aria-hidden className="absolute inset-y-0 right-3 left-0 rounded-[14px] transition-colors duration-150 group-hover:bg-[var(--frame-hover)] group-focus-visible:bg-[var(--frame-hover)]" />}
+                      <span aria-hidden className="pointer-events-none absolute inset-y-1.5 right-4 left-1 rounded-[11px] group-focus-visible:ring-2 group-focus-visible:ring-[var(--frame-fg)]/60" />
                       <I size={18} aria-hidden className={`relative shrink-0 transition-transform duration-300 ease-brand sb-closed:translate-x-[5px] ${active ? "text-accent" : ""}`} />
                       <span className={`relative truncate pr-4 ${fade}`}>{label}</span>
                     </Link>
@@ -285,6 +292,7 @@ function AskVyz({ collapsed }: { collapsed: boolean }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
+        data-tour="pergunte"
         aria-keyshortcuts="Meta+K Control+K"
         aria-label="Pergunte ao VYZ"
         className={`flex h-10 w-full items-center gap-2.5 overflow-hidden rounded-[12px] bg-[var(--frame-hover)] px-2.5 text-left text-[13px] text-[var(--frame-muted)] transition-colors hover:text-[var(--frame-fg)] ${frameFocus}`}
@@ -349,6 +357,9 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
         <MenuItem icon={<Settings size={15} />} onSelect={() => router.push("/painel/configuracoes")}>
           Minha conta
         </MenuItem>
+        <MenuItem icon={<Gem size={15} />} onSelect={() => router.push("/painel/plano")}>
+          Plano e cobrança
+        </MenuItem>
         <MenuItem icon={<ArrowUpRight size={15} />} onSelect={() => router.push("/")}>
           Voltar ao site
         </MenuItem>
@@ -401,7 +412,7 @@ export function Sidebar() {
         </Suspense>
       </nav>
 
-      <div className="pt-2 pr-3">
+      <div data-tour="conta" className="pt-2 pr-3">
         <UsageCard />
         <div className="flex items-center gap-1 sb-closed:flex-col">
           <UserMenu collapsed={collapsed} />

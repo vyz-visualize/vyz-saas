@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { NO_GUIDES, PANEL_TOUR_GUIDE, tourPending } from "@/features/onboarding/guides";
 import { AppShell } from "@/features/workspace/AppShell";
 import { WorkspaceProvider } from "@/features/workspace/WorkspaceProvider";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { requireWorkspace } from "@/server/auth/workspace";
 import { isMockBilling } from "@/server/env";
 import { isAdminEmail } from "@/server/admin/report";
+import { getMyGuides } from "@/server/guides/queries";
 
 export const metadata: Metadata = {
   title: { default: "Painel", template: "%s · Painel VYZ" },
@@ -29,9 +31,13 @@ export default function PainelLayout({ children }: LayoutProps<"/painel">) {
 async function PainelSession({ children }: { children: React.ReactNode }) {
   const session = await requireWorkspace({ access: false, onboarding: false, next: "/painel" });
   if (session.access.hasAccess && session.workspace.onboardingStep !== "done") redirect("/comecar");
+  // tour do painel (onde fica cada coisa): uma vez por pessoa, depois do primeiro acesso, no Dash
+  const guides = session.access.hasAccess && session.workspace.product === "dash" ? await getMyGuides(session.user.id) : NO_GUIDES;
   return (
     <WorkspaceProvider session={session}>
-      <AppShell simulatedBilling={isMockBilling()} isAdmin={isAdminEmail(session.user.email)}>{children}</AppShell>
+      <AppShell simulatedBilling={isMockBilling()} isAdmin={isAdminEmail(session.user.email)} tour={tourPending(guides, PANEL_TOUR_GUIDE)}>
+        {children}
+      </AppShell>
     </WorkspaceProvider>
   );
 }

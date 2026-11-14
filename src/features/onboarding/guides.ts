@@ -1,10 +1,14 @@
-// Guias do primeiro acesso: o tour do primeiro dashboard e os lembretes de
-// conexão. O estado fica no banco (user_guides, por pessoa); o limite de um
+// Guias do primeiro acesso: o tour do painel (onde fica cada coisa), o tour do
+// primeiro dashboard e os lembretes de conexão. O estado fica no banco (user_guides, por pessoa); o limite de um
 // lembrete por sessão fica no navegador. Puro: servidor e tela usam o mesmo.
 
 import { CORE_PROVIDER_IDS, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 
 export const TOUR_GUIDE = "dashboard_tour";
+/** Tour do painel: o menu, os workspaces, a rotina, a conta e o assistente. */
+export const PANEL_TOUR_GUIDE = "panel_tour";
+export const TOUR_GUIDES = [TOUR_GUIDE, PANEL_TOUR_GUIDE] as const;
+export type TourGuide = (typeof TOUR_GUIDES)[number];
 export const nudgeGuide = (provider: ProviderId) => `nudge:${provider}`;
 
 /** "Agora não" adia o lembrete por 3 dias. */
@@ -46,9 +50,9 @@ export function isMissingTable(err: { code?: string | null; message?: string | n
   return /does not exist|Could not find the table/i.test(m);
 }
 
-/** O tour aparece uma vez: até a pessoa concluir ou pular. */
-export function tourPending(g: GuidesState): boolean {
-  return g.available && !g.rows.some((r) => r.guide === TOUR_GUIDE && (r.status === "done" || r.status === "skipped"));
+/** Cada tour aparece uma vez: até a pessoa concluir ou pular. */
+export function tourPending(g: GuidesState, guide: TourGuide = TOUR_GUIDE): boolean {
+  return g.available && !g.rows.some((r) => r.guide === guide && (r.status === "done" || r.status === "skipped"));
 }
 
 function snoozed(g: GuidesState, provider: ProviderId, now: Date): boolean {
@@ -85,11 +89,22 @@ export function nudgeFor(i: NudgeInput): ProviderId | null {
 export const nudgeText = (provider: ProviderId) => `Você ainda não conectou o ${PROVIDERS[provider].name}. Quer fazer isso agora?`;
 
 /**
- * Pontos do tour, na ordem. O alvo é um seletor (e, se houver, o texto exato do
+ * Um ponto de um tour. O alvo é um seletor (e, se houver, o texto exato do
  * elemento: as abas dos visuais não têm atributo próprio); o que não estiver
  * visível na tela fica de fora.
  */
-export const TOUR_STEPS: readonly { id: string; selector: string; label?: string; title: string; text: string }[] = [
+export type TourStep = {
+  id: string;
+  selector: string;
+  label?: string;
+  title: string;
+  text: string;
+  /** Balão ao lado do alvo (no menu lateral), quando cabe; senão, embaixo ou em cima. */
+  side?: "right";
+};
+
+/** Pontos do tour do primeiro dashboard, na ordem. */
+export const TOUR_STEPS: readonly TourStep[] = [
   { id: "periodo", selector: '[data-tour="periodo"]', title: "Período e comparação", text: "Troque o período aqui e ligue o Comparar: cada número mostra quanto mudou contra o período anterior." },
   { id: "metricas", selector: '[data-tour="personalizar"], [data-kpi-row]', title: "Indicadores principais", text: "Os números que decidem o mês ficam no topo. Em Personalizar métricas você escolhe quais aparecem e em que ordem." },
   { id: "abas", selector: '[data-tour="abas"]', title: "Abas do dashboard", text: "Meta Ads, Criativos, Funil e as outras abas aprofundam cada parte. O cliente vê as mesmas no link." },
@@ -98,6 +113,21 @@ export const TOUR_STEPS: readonly { id: string; selector: string; label?: string
   // sem espaço (celular), o botão vai para o menu "Mais ações": o tour aponta para o menu
   { id: "compartilhar", selector: '[data-tour="compartilhar"], [aria-label="Mais ações"]', title: "Compartilhar e exportar", text: "Mande ao cliente um link só de leitura ou exporte o PDF. Em telas menores, ficam no menu ⋯." },
   { id: "pergunte", selector: '[data-tour="pergunte"]', title: "Pergunte ao VYZ", text: "Tire dúvidas sobre os números a qualquer hora: clique aqui ou use ⌘K (Ctrl K no Windows)." },
+];
+
+/**
+ * Pontos do tour do painel, na ordem. No computador, o menu lateral (workspaces, o
+ * workspace aberto, a rotina, o plano e a conta); no celular, o topo, a barra de
+ * atalhos e o "Mais". O assistente fecha os dois.
+ */
+export const PANEL_TOUR_STEPS: readonly TourStep[] = [
+  { id: "workspaces", selector: '[data-tour="workspaces"]', side: "right", title: "Seus workspaces", text: "Cada cliente ou marca é um workspace, com contas, dashboards e equipe próprios. Troque de workspace aqui; a organização (plano, Conexões e configurações) também fica neste menu." },
+  { id: "workspace", selector: '[data-tour="workspace-menu"]', side: "right", title: "O workspace aberto", text: "Visão geral, Dashboards, Contas, Pessoas e Ajustes deste cliente. Tudo o que você cria aqui fica nele." },
+  { id: "barra", selector: '[data-tour="barra"]', title: "Atalhos", text: "Início, os dashboards e as contas do workspace aberto e o A Fazer, sempre à mão." },
+  { id: "rotina", selector: '[data-tour="rotina"]', side: "right", title: "Sua rotina", text: "A Fazer junta as tarefas de todos os workspaces, e em Compartilhar ficam os links que os clientes acompanham." },
+  { id: "conta", selector: '[data-tour="conta"]', side: "right", title: "Plano e conta", text: "O uso do plano fica aqui. No seu nome: Minha conta, Plano e cobrança e Sair. A tecla [ recolhe o menu." },
+  { id: "mais", selector: '[data-tour="mais"]', title: "Mais", text: "Os outros workspaces, Conexões, Plano, Configurações e Sair." },
+  { id: "pergunte", selector: '[data-tour="pergunte"]', side: "right", title: "Pergunte ao VYZ", text: "Tire dúvidas sobre os números ou peça para abrir uma tela: clique aqui ou use ⌘K (Ctrl K no Windows)." },
 ];
 
 /** O primeiro elemento visível de um passo do tour (ou nenhum). */

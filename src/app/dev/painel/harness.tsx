@@ -1,7 +1,7 @@
 "use client";
 
 // Sessão e dados de exemplo para ver o painel sem banco. ?tela= escolhe a página,
-// ?papel=viewer troca o papel e ?plano=base|pro|avancado troca o plano.
+// ?papel=viewer troca o papel e ?plano=base|pro|avancado troca o plano; ?tour=1 mostra o tour do painel.
 
 import { useSearchParams } from "next/navigation";
 import { AdminDashboard } from "@/features/admin/AdminDashboard";
@@ -259,7 +259,7 @@ export function PanelHarness() {
   if (!screen) return <p className="p-6">Tela &quot;{key}&quot; não existe. Opções: {Object.keys(SCREENS).join(", ")}.</p>;
   return (
     <WorkspaceProvider session={session(tier, role)}>
-      <AppShell isAdmin previewPath={screen.path} simulatedBilling={params.get("simulado") === "1"}>
+      <AppShell isAdmin previewPath={screen.path} simulatedBilling={params.get("simulado") === "1"} tour={params.get("tour") === "1" ? "preview" : false}>
         {screen.node(tier, role)}
       </AppShell>
     </WorkspaceProvider>
