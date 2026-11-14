@@ -50,3 +50,9 @@ secrets/
 
 # prints de conferência do primeiro acesso (locais, não vão para o repositório)
 .prints-onboarding/
+
+# Material de trabalho das sessões do Claude Code: worktrees, scripts avulsos (alguns usam o banco
+# de produção) e permissões locais. Só as configurações e skills compartilhadas podem ir para o git.
+/.claude/*
+!/.claude/settings.json
+!/.claude/skills/
