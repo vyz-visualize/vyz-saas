@@ -157,3 +157,9 @@ export const canWrite = (id: PlatformId) => CONNECTIONS[id].mode === "oauth_writ
 export const IMPORT_PLATFORMS: PlatformId[] = PLATFORM_ORDER.filter((p) => CONNECTIONS[p].mode === "import" && PLATFORMS[p].kind === "ads");
 
 export const isImportPlatform = (id: string): id is PlatformId => (IMPORT_PLATFORMS as string[]).includes(id);
+
+/** Mídia com API própria que o VYZ sincroniza e lê como as planilhas (mesmas colunas de anúncio). */
+export const API_AD_PLATFORMS: PlatformId[] = ["tiktok", "linkedin"];
+
+/** Mídia além de Meta e Google nos dashboards: planilha ou API (TikTok, LinkedIn). */
+export const isGenericAdPlatform = (id: string): id is PlatformId => isImportPlatform(id) || (API_AD_PLATFORMS as string[]).includes(id);

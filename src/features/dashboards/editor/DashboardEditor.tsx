@@ -14,7 +14,7 @@ import { ColorField } from "@/components/ui/ColorField";
 import { FileInput } from "@/components/ui/FileInput";
 import { Checkbox, LockBadge, SelectField, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
-import { isImportPlatform } from "@/features/accounts/connection-modes";
+import { isGenericAdPlatform } from "@/features/accounts/connection-modes";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import type { Dataset } from "@/features/metrics/source";
 import type { MetricId } from "@/features/metrics/definitions";
@@ -114,7 +114,7 @@ export function DashboardEditor({ dashboard, sources, tier, pagesTier, whiteLabe
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
   const composed = !!t.composed;
   const pickAccounts = usesAccounts(t);
-  const linkable = sources.filter((s) => t.sources.includes(s.platformId) || isImportPlatform(s.platformId)).filter((s) => (REAL_DATA_PLATFORMS as readonly string[]).includes(s.platformId) || isImportPlatform(s.platformId));
+  const linkable = sources.filter((s) => t.sources.includes(s.platformId) || isGenericAdPlatform(s.platformId)).filter((s) => (REAL_DATA_PLATFORMS as readonly string[]).includes(s.platformId) || isGenericAdPlatform(s.platformId));
   const platforms = platformsOf(draft.accountIds, sources);
   const features = featuresOf(draft.pages);
   const profile = t.profile;

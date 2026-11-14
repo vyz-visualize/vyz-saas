@@ -115,7 +115,7 @@ describe("gerador simulado · determinismo", () => {
   });
 
   it("recusa entrada inválida", () => {
-    expect(() => generateAccountData({ ...META, platform: "tiktok" as never })).toThrow(RangeError);
+    expect(() => generateAccountData({ ...META, platform: "pinterest" as never })).toThrow(RangeError);
     expect(() => generateAccountData({ ...META, days: 0 })).toThrow(RangeError);
     expect(() => generateAccountData({ ...META, days: 1.5 })).toThrow(RangeError);
     expect(() => generateAccountData({ ...META, endDate: "2026-02-30" })).toThrow(RangeError);
@@ -467,6 +467,17 @@ describe("gerador simulado · histórias plantadas", () => {
       expect(sum(rows, (r) => r.spend)).toBeGreaterThan(0);
       expect(sum(rows, (r) => r.conversions)).toBe(0);
       expect(new Set(rows.map((r) => r.campaignExternalId))).toEqual(new Set([google.stories.budgetLimitedCampaign]));
+    }
+  });
+});
+
+describe("gerador simulado · TikTok e LinkedIn", () => {
+  it("usam a história de mídia social, com a plataforma certa", () => {
+    for (const platform of ["tiktok", "linkedin"] as const) {
+      const ds = generateAccountData({ ...META, platform, accountExternalId: `${platform}-1` });
+      expect(ds.platform).toBe(platform);
+      expect(ds.campaigns.length).toBeGreaterThan(0);
+      expect(ds.campaignDaily.length).toBeGreaterThan(0);
     }
   });
 });

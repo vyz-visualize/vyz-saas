@@ -11,7 +11,7 @@ import "server-only";
 // Ocultar investimento acontece depois do cache, antes de ir para o navegador.
 
 import { cacheLife, cacheTag } from "next/cache";
-import { isImportPlatform } from "@/features/accounts/connection-modes";
+import { isGenericAdPlatform } from "@/features/accounts/connection-modes";
 import { z } from "zod";
 import { aggregateDashboard, redactSpend } from "@/features/analytics/aggregate";
 import { aggregateOrganic, type OrganicDayRow, type OrganicPostRow, type OrganicProfile, type OrganicView } from "@/features/analytics/organic";
@@ -93,12 +93,12 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
     .map((a) => ({ id: a.id, name: a.name, platform: a.platform_id as OrganicProfile["platform"] }))
     .sort((a, b) => a.id.localeCompare(b.id));
   const enabledIds = (sources ?? []).filter((s) => s.account?.is_enabled).map((s) => s.account!.platform_id);
-  if (!platform) platform = enabledIds.includes("meta") ? "meta" : enabledIds.includes("google") || !enabledIds.some(isImportPlatform) ? "google" : "import";
+  if (!platform) platform = enabledIds.includes("meta") ? "meta" : enabledIds.includes("google") || !enabledIds.some(isGenericAdPlatform) ? "google" : "import";
   const livePlatform: LivePlatform = platform;
   const accounts: (LiveAccount & { platformId: string })[] = (sources ?? [])
     .map((s) => s.account)
     // planilha: qualquer plataforma que entra por importação; modelo novo: Meta e Google juntos; os outros, só a do template
-    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (livePlatform === "import" ? isImportPlatform(a.platform_id) : composed ? a.platform_id === "meta" || a.platform_id === "google" || isImportPlatform(a.platform_id) : a.platform_id === livePlatform))
+    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (livePlatform === "import" ? isGenericAdPlatform(a.platform_id) : composed ? a.platform_id === "meta" || a.platform_id === "google" || isGenericAdPlatform(a.platform_id) : a.platform_id === livePlatform))
     .map((a) => ({ id: a.id, name: a.name, currency: a.currency, timeZone: a.timezone || DEFAULT_TIME_ZONE, lastSyncedAt: a.last_synced_at, platformId: a.platform_id }))
     .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -128,7 +128,7 @@ export async function loadLiveDashboard(dashboardId: string, opts: LoadLiveDashb
           mergeRows(
             await Promise.all(
               (["meta", "google", "import"] as const)
-                .map((p) => [p, accounts.filter((a) => (p === "import" ? isImportPlatform(a.platformId) : a.platformId === p)).map((a) => a.id)] as const)
+                .map((p) => [p, accounts.filter((a) => (p === "import" ? isGenericAdPlatform(a.platformId) : a.platformId === p)).map((a) => a.id)] as const)
                 // planilha entra somada (as plataformas importadas têm as mesmas colunas de anúncio)
                 .map(([p, ids]) => (ids.length ? readRows({ dashboardId, platform: p, accountIds: ids, current, previous, breakEvenRoas }) : null)),
             ).then((sets) => sets.filter((x): x is WarehouseRows => !!x)),
@@ -200,7 +200,7 @@ export async function loadTemplateWarehouse(dashboardId: string, opts: { platfor
   if (error) throw fromPostgrest(error);
   const linked = (sources ?? [])
     .map((s) => s.account)
-    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (["meta", "google", "ga4", "instagram", "facebook"].includes(a.platform_id) || isImportPlatform(a.platform_id) || isCrmSyncPlatform(a.platform_id)) && opts.platforms.includes(a.platform_id))
+    .filter((a): a is NonNullable<typeof a> => !!a && a.is_enabled && (["meta", "google", "ga4", "instagram", "facebook"].includes(a.platform_id) || isGenericAdPlatform(a.platform_id) || isCrmSyncPlatform(a.platform_id)) && opts.platforms.includes(a.platform_id))
     .sort((a, b) => a.id.localeCompare(b.id));
   if (!linked.length) return null;
   const timeZone = linked[0].timezone || DEFAULT_TIME_ZONE;
@@ -221,7 +221,7 @@ export async function loadTemplateWarehouse(dashboardId: string, opts: { platfor
     Promise.all([
       ...[...byPlatform].map(([platform, accountIds]) => readRows({ dashboardId, platform, accountIds, current, previous, breakEvenRoas: null })),
       // planilha: as linhas de cada plataforma importada, com o nome dela (TikTok, LinkedIn...) para somar por plataforma
-      ...[...new Set(linked.filter((a) => isImportPlatform(a.platform_id)).map((a) => a.platform_id))].map((pid) =>
+      ...[...new Set(linked.filter((a) => isGenericAdPlatform(a.platform_id)).map((a) => a.platform_id))].map((pid) =>
         readRows({ dashboardId, platform: "import", accountIds: linked.filter((a) => a.platform_id === pid).map((a) => a.id), current, previous, breakEvenRoas: null }).then((r) => ({ ...r, platform: pid as LivePlatform })),
       ),
     ]),

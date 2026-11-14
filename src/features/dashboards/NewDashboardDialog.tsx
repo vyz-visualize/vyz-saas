@@ -13,7 +13,7 @@ import { useMemo, useState, useTransition } from "react";
 import { LockBadge, Modal, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
-import { isImportPlatform } from "@/features/accounts/connection-modes";
+import { isGenericAdPlatform } from "@/features/accounts/connection-modes";
 import { isCrmSyncPlatform } from "@/features/sync/crm";
 import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements";
 import { composePages, FEATURES, featureFits, type FeatureId, type ObjectiveId } from "@/features/templates/dashboards/composed";
@@ -97,7 +97,7 @@ export function NewDashboardDialog({
 
   const byPlatform = useMemo(() => {
     const m = new Map<PlatformId, SourceOption[]>();
-    for (const s of sources) if (BASE_ORDER.includes(s.platformId) || isImportPlatform(s.platformId) || isCrmSyncPlatform(s.platformId)) m.set(s.platformId, [...(m.get(s.platformId) ?? []), s]);
+    for (const s of sources) if (BASE_ORDER.includes(s.platformId) || isGenericAdPlatform(s.platformId) || isCrmSyncPlatform(s.platformId)) m.set(s.platformId, [...(m.get(s.platformId) ?? []), s]);
     return m;
   }, [sources]);
 

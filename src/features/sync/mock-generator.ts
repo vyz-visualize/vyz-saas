@@ -47,7 +47,7 @@ function brandOf(accountName: string): string {
 }
 
 export function generateAccountData(input: GenerateAccountInput): MockAccountDataset {
-  if (input.platform !== "meta" && input.platform !== "google") throw new RangeError(`Plataforma sem gerador: ${String(input.platform)}`);
+  if (!["meta", "google", "tiktok", "linkedin"].includes(input.platform)) throw new RangeError(`Plataforma sem gerador: ${String(input.platform)}`);
   if (!input.accountExternalId?.trim()) throw new RangeError("accountExternalId é obrigatório.");
   if (!isIsoDate(input.endDate)) throw new RangeError(`endDate inválida: ${input.endDate}`);
   if (!Number.isInteger(input.days) || input.days < 1 || input.days > MAX_GENERATED_DAYS) throw new RangeError(`days deve ser um inteiro de 1 a ${MAX_GENERATED_DAYS}.`);
@@ -67,5 +67,8 @@ export function generateAccountData(input: GenerateAccountInput): MockAccountDat
     dates: dateRange(input.endDate, input.days),
     anchor: input.anchorDate ?? input.endDate,
   };
-  return ctx.platform === "meta" ? generateMeta(ctx) : generateGoogle(ctx);
+  if (ctx.platform === "google") return generateGoogle(ctx);
+  // TikTok e LinkedIn: a mesma história de mídia social do Meta (campanhas, anúncios e números por dia)
+  const data = generateMeta(ctx);
+  return ctx.platform === "meta" ? data : { ...data, platform: ctx.platform };
 }

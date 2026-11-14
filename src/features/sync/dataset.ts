@@ -12,7 +12,7 @@
 //   * null = a plataforma não tem o dado (ex.: alcance no Google Ads).
 
 /** Plataformas que importam dados automaticamente. */
-export const SYNC_PLATFORMS = ["meta", "google"] as const;
+export const SYNC_PLATFORMS = ["meta", "google", "tiktok", "linkedin"] as const;
 
 export type SyncPlatform = (typeof SYNC_PLATFORMS)[number];
 

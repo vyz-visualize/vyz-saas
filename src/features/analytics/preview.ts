@@ -20,7 +20,7 @@ export const TEMPLATE_PLATFORM: Record<string, LivePlatform> = { "meta-ecommerce
 /** Do conjunto do gerador (ou de qualquer fonte) para as linhas do armazém. */
 export function datasetToRows(ds: AccountDataset, current: DateRange, previous: DateRange): WarehouseRows {
   return {
-    platform: ds.platform,
+    platform: ds.platform === "meta" || ds.platform === "google" ? ds.platform : "import",
     current,
     previous,
     accountDaily: ds.accountDaily,

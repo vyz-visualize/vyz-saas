@@ -18,8 +18,10 @@ import { appError } from "@/server/supabase/errors";
 import { fetchCrmDataset } from "./live/crm";
 import { fetchGa4Dataset } from "./live/ga4";
 import { fetchGoogleDataset } from "./live/google";
+import { fetchLinkedInDataset } from "./live/linkedin";
 import { fetchMetaDataset } from "./live/meta";
 import { fetchOrganicDataset } from "./live/organic";
+import { fetchTikTokDataset } from "./live/tiktok";
 
 export type SyncAccount = {
   id: string;
@@ -78,8 +80,8 @@ export const mockSource: SyncSource = {
   },
 };
 
-// Fonte real: Meta (Insights por campanha, anúncio e conta) e Google Ads (GAQL
-// por campanha e anúncio), em server/sync/live. Ainda sem: quebras por
+// Fonte real: Meta (Insights por campanha, anúncio e conta), Google Ads (GAQL
+// por campanha e anúncio), TikTok (relatório diário) e LinkedIn (adAnalytics), em server/sync/live. Ainda sem: quebras por
 // público/posicionamento/dispositivo, termos de pesquisa e produtos (Shopping).
 // Os tokens saem de getValidAccessToken, que renova quando precisa.
 export const liveSource: SyncSource = {
@@ -87,6 +89,8 @@ export const liveSource: SyncSource = {
   async fetch(account, range) {
     if (account.platform === "meta") return fetchMetaDataset(account, range);
     if (account.platform === "google") return fetchGoogleDataset(account, range);
+    if (account.platform === "tiktok") return fetchTikTokDataset(account, range);
+    if (account.platform === "linkedin") return fetchLinkedInDataset(account, range);
     throw appError("sync:not_configured", `A importação de dados reais do ${PLATFORMS[account.platform as keyof typeof PLATFORMS]?.name ?? account.platform} ainda não está configurada.`);
   },
   async fetchOrganic(account, range) {

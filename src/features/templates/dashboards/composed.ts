@@ -7,7 +7,7 @@ import type { PlatformId } from "@/features/accounts/platforms";
 import type { Profile } from "@/features/metrics/definitions";
 import type { Tier } from "@/features/pricing/entitlements";
 import { VISUAL_LIST } from "./visuais";
-import { IMPORT_PLATFORMS, isImportPlatform } from "@/features/accounts/connection-modes";
+import { API_AD_PLATFORMS, IMPORT_PLATFORMS, isGenericAdPlatform } from "@/features/accounts/connection-modes";
 import { CRM_PLATFORMS } from "@/features/sync/crm";
 import type { DashboardCategory, DashboardTemplate, PageId, PageLayout, SkinId } from "../types";
 
@@ -53,7 +53,7 @@ export const objectiveForBusiness = (businessTypeId: string | null | undefined):
 export const COMPOSED_SOURCES: PlatformId[] = ["meta", "google", "ga4", "instagram", "facebook"];
 
 /** Também podem ser ligadas: as plataformas que entram por planilha (CSV ou Google Sheets) e os CRMs. Não entram na amostra. */
-export const LINKABLE_SOURCES: PlatformId[] = [...COMPOSED_SOURCES, ...IMPORT_PLATFORMS, ...CRM_PLATFORMS];
+export const LINKABLE_SOURCES: PlatformId[] = [...COMPOSED_SOURCES, ...API_AD_PLATFORMS, ...IMPORT_PLATFORMS, ...CRM_PLATFORMS];
 
 /** Todas as páginas que um modelo novo pode ter (o banco aceita só estas). */
 export const COMPOSED_PAGES: PageId[] = ["visao-geral", "meta-ads", "criativos", "publico", "google-ads", "termos", "site", "canais-site", "crm", "instagram", "pagina-facebook", "conteudo", "criativos-ao-vivo", "previsao", "mmm", "metas", "comparativo", "funil", "campanhas"];
@@ -114,7 +114,7 @@ export function composePages(platforms: readonly string[], features: readonly Fe
   const has = (p: string) => platforms.includes(p);
   const ads = ["meta", "google"].filter(has);
   // planilha: mídia de outras plataformas (TikTok, LinkedIn...) com os mesmos números de anúncio
-  const sheets = platforms.filter((p) => isImportPlatform(p));
+  const sheets = platforms.filter((p) => isGenericAdPlatform(p));
   const organic = ["instagram", "facebook"].filter(has);
   const crm = CRM_PLATFORMS.some(has);
   const sources = ads.length + sheets.length + (has("ga4") ? 1 : 0) + (crm ? 1 : 0) + organic.length;
