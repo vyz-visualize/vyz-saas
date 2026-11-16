@@ -12,6 +12,7 @@ import { DEFAULT_SETTINGS } from "@/features/dashboards/data";
 import { DashboardsList } from "@/features/dashboards/DashboardsList";
 import type { DashboardListItem } from "@/features/dashboards/model";
 import { ENTITLEMENTS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
+import { PLAN_PROJECTS } from "@/features/pricing/pricing";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
 import type { ProjectsState } from "@/features/projects/types";
 import { AppShell } from "@/features/workspace/AppShell";
@@ -39,7 +40,7 @@ function session(tier: Exclude<Tier, "personalizado">, role: MemberRole): Worksp
     user: { id: "u1", email: "pedro@exemplo.com", fullName: "Pedro Freitas", avatarUrl: null },
     workspace: { id: "ws1", name: "Agência Exemplo", slug: "agencia-exemplo", businessTypeId: "ecommerce", brandColor: "#4B5320", brandLogoUrl: null, hideVyzBrand: false, onboardingStep: "done", onboardingCompletedAt: NOW, timezone: "America/Sao_Paulo", currency: "BRL", product: "dash" },
     role,
-    access: { hasAccess: true, tier, status: "active", interval: "year", accountsQuantity: tier === "base" ? 5 : tier === "pro" ? 15 : 30, currentPeriodEnd: day(-200), cancelAtPeriodEnd: false, entitlements: ENTITLEMENTS[tier] },
+    access: { hasAccess: true, tier, status: "active", interval: "year", accountsQuantity: PLAN_PROJECTS[tier], currentPeriodEnd: day(-200), cancelAtPeriodEnd: false, entitlements: ENTITLEMENTS[tier] },
     usage: { dashboards: 4, landingPages: 0, publishedLandingPages: 0, enabledAdAccounts: 5, billableAccounts: 5, activeConnections: 2, projects: 3 },
     memberships: [
       { id: "ws1", name: "Agência Exemplo", role },
@@ -193,7 +194,7 @@ const BILLING: BillingOverview = {
     currentPeriodEnd: day(-200),
     cancelAtPeriodEnd: false,
     createdAt: day(165),
-    items: [{ id: "i1", kind: "plan", label: "Plano Padrão · até 15 projetos", quantity: 1, monthlyCents: 18325 }],
+    items: [{ id: "i1", kind: "plan", label: "Plano Padrão · até 5 workspaces", quantity: 1, monthlyCents: 18325 }],
     monthlyCents: 18325,
     extrasMonthlyCents: 0,
     recurringCents: 219900,
