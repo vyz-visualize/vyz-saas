@@ -88,7 +88,7 @@ function dashCard(tier: PlanId, period: Period): Card {
     pitch: "Tudo do Padrão, com análise por voz e comparativo de criativos.",
     features: [
       "Tudo do Padrão",
-      `${projectsLabel("avancado")} (clientes)`,
+      `${projectsLabel("avancado", { capital: true })} (clientes)`,
       "Todas as plataformas: + X, Spotify, Globo, ChatGPT, YouTube, Shopee Ads e Mercado Ads (em breve)",
       "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos",
       "MMM, análise preditiva, correlações e estatística avançada",
