@@ -1,7 +1,9 @@
 // Assinaturas vendidas nas lojas (App Store / Google Play, via RevenueCat).
-// Mesma regra do site: 3 planos fixos, cada um com o seu limite de projetos
-// (Básico até 5, Padrão até 15, Avançado até 30), mensal ou anual. 6 produtos:
-//   vyz_<plano>_<mensal|anual>_ate<projetos>   ex.: vyz_pro_anual_ate15
+// Mesma regra do site: 3 planos fixos, cada um com o seu limite de workspaces
+// (Básico até 3, Padrão até 5, Avançado "+5", com teto interno de 30), mensal ou anual.
+// 6 produtos, com o número antigo no id (os produtos já estão cadastrados nas lojas):
+//   vyz_<plano>_<mensal|anual>_ate<n>   ex.: vyz_pro_anual_ate15
+// O número do id é só identificação: o limite concedido é o de STORE_PLAN_PROJECTS.
 // Lista para cadastrar nas lojas: apps/mobile/store/pacotes-lojas.csv (sai de
 // scripts/store/plan-products.ts). Os preços são os de STORE_PLAN_PRICE, iguais aos do site.
 
@@ -13,8 +15,11 @@ export type StorePlanPeriod = (typeof STORE_PLAN_PERIODS)[number];
 /** accounts = limite de projetos do plano. */
 export type StorePlan = { tier: StorePlanTier; period: StorePlanPeriod; accounts: number };
 
-/** Projetos de cada plano. */
-export const STORE_PLAN_PROJECTS: Record<StorePlanTier, number> = { base: 5, pro: 15, avancado: 30 };
+/** Workspaces de cada plano (o mesmo PLAN_PROJECTS do site). */
+export const STORE_PLAN_PROJECTS: Record<StorePlanTier, number> = { base: 3, pro: 5, avancado: 30 };
+
+/** Número no id do produto nas lojas (o limite antigo; não muda para não recriar os produtos). */
+export const STORE_PLAN_ID_SUFFIX: Record<StorePlanTier, number> = { base: 5, pro: 15, avancado: 30 };
 
 /** Preço de cada plano, em centavos, por cobrança (mês no mensal, ano no anual). */
 export const STORE_PLAN_PRICE: Record<StorePlanTier, Record<StorePlanPeriod, number>> = {
@@ -26,7 +31,7 @@ export const STORE_PLAN_PRICE: Record<StorePlanTier, Record<StorePlanPeriod, num
 export const storePlan = (tier: StorePlanTier, period: StorePlanPeriod): StorePlan => ({ tier, period, accounts: STORE_PLAN_PROJECTS[tier] });
 
 export function storePlanProductId(p: Pick<StorePlan, "tier" | "period">): string {
-  return `vyz_${p.tier}_${p.period}_ate${STORE_PLAN_PROJECTS[p.tier]}`;
+  return `vyz_${p.tier}_${p.period}_ate${STORE_PLAN_ID_SUFFIX[p.tier]}`;
 }
 
 const PATTERN = /^vyz_(base|pro|avancado)_(mensal|anual)_ate(\d+)$/;
@@ -36,17 +41,18 @@ export function parseStorePlan(productId: string | null | undefined): StorePlan 
   const m = PATTERN.exec((productId ?? "").split(":")[0]);
   if (!m) return null;
   const tier = m[1] as StorePlanTier;
-  if (Number(m[3]) !== STORE_PLAN_PROJECTS[tier]) return null;
+  if (Number(m[3]) !== STORE_PLAN_ID_SUFFIX[tier]) return null;
   return storePlan(tier, m[2] as StorePlanPeriod);
 }
 
 /** O que cada plano traz (paywall do app). Mesma regra do site; cada plano inclui o de baixo. */
 export const STORE_PLAN_HIGHLIGHTS: Record<StorePlanTier, string[]> = {
-  base: ["Até 5 workspaces (clientes)", "Meta Ads, Google Ads e GA4", "Visão geral com tudo junto", "Assistente VYZ por chat", "1 usuário"],
-  pro: ["Até 15 workspaces (clientes)", "Tudo do Básico", "TikTok Ads e LinkedIn Ads", "CRMs: RD Station e HubSpot", "Galeria de criativos", "2 usuários"],
+  base: ["Até 3 workspaces (clientes)", "Meta Ads, Google Ads e GA4", "Visão geral com tudo junto", "Assistente VYZ por chat", "1 usuário"],
+  pro: ["Até 5 workspaces (clientes), compartilhados entre os usuários", "Tudo do Básico", "TikTok Ads e LinkedIn Ads", "CRMs: RD Station e HubSpot", "Galeria de criativos", "2 usuários"],
   avancado: [
-    "Até 30 workspaces (clientes)",
+    "+5 workspaces (clientes)",
     "Tudo do Padrão",
+    "Mais de 5 modelos de dashboard",
     "X Ads, Spotify Ads, Globo Ads, ChatGPT Ads e mais",
     "Comparativo de criativos",
     "Análise preditiva e MMM",

@@ -14,9 +14,8 @@ import { usePlan } from "@/features/marketing/state/PlanProvider";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import {
   DEFAULT_STATE,
-  MAX_PROJECTS_IN_PLAN,
   PLAN,
-  PLAN_PROJECTS,
+  projectsLabel,
   annualSavingPct,
   LP_PLAN_PAGES,
   PLAN_LABEL,
@@ -66,14 +65,14 @@ function dashCard(tier: PlanId, period: Period): Card {
   const e = ENTITLEMENTS[tier];
   const base = {
     price: startingPrice(tier, period),
-    caption: `${period === "anual" ? `no anual · ${brl(PLAN[tier].anual * 12)} por ano` : "no mensal"} · até ${PLAN_PROJECTS[tier]} workspaces`,
+    caption: `${period === "anual" ? `no anual · ${brl(PLAN[tier].anual * 12)} por ano` : "no mensal"} · ${projectsLabel(tier)}`,
     templates: `${e.dashboardTemplates} visuais de dashboard`,
   };
   if (tier === "base") {
     return {
       ...base,
       pitch: "Você conecta as contas e escolhe o template. Pronto em minutos.",
-      features: [`Até ${PLAN_PROJECTS.base} workspaces (clientes)`, "Meta Ads, Google Ads e GA4, com visão geral", "1 conta por plataforma em cada workspace", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário"],
+      features: [`${projectsLabel("base", { capital: true })} (clientes)`, "Meta Ads, Google Ads e GA4, com visão geral", "1 conta por plataforma em cada workspace", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário"],
     };
   }
   if (tier === "pro") {
@@ -82,7 +81,7 @@ function dashCard(tier: PlanId, period: Period): Card {
       pitch: "Tudo do Básico, com mais layouts, mais páginas e mais contas por cliente.",
       features: [
         "Tudo do Básico",
-        `Até ${PLAN_PROJECTS.pro} workspaces (clientes)`,
+        `${projectsLabel("pro", { capital: true })} (clientes), compartilhados entre os usuários`,
         `Até ${e.maxAccountsPerPlatform} contas por plataforma em cada workspace`,
         "+ TikTok Ads, LinkedIn Ads e CRMs (RD Station e HubSpot)",
         "Criativos em galeria, com previews",
@@ -96,7 +95,8 @@ function dashCard(tier: PlanId, period: Period): Card {
     pitch: "Tudo do Padrão, com análise por voz e comparativo de criativos.",
     features: [
       "Tudo do Padrão",
-      `Até ${PLAN_PROJECTS.avancado} workspaces (clientes)`,
+      `${projectsLabel("avancado")} (clientes)`,
+      "Mais de 5 modelos de dashboard",
       "Todas as plataformas: + X, Spotify, Globo, ChatGPT, YouTube, Shopee Ads e Mercado Ads (em breve)",
       "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos",
       "MMM, análise preditiva, correlações e estatística avançada",
@@ -290,7 +290,7 @@ export function Planos() {
         <div className="mt-8 flex flex-col gap-3 text-sm text-fg-2 sm:flex-row sm:items-center sm:justify-between">
           <p>
             {product === "dash"
-              ? `Valores em reais · mais de ${MAX_PROJECTS_IN_PLAN} workspaces, marca própria ou implementação sob medida: plano Personalizado, sob consulta.`
+              ? "Valores em reais · operação grande, marca própria ou implementação sob medida: plano Personalizado, sob consulta."
               : "Valores em reais · mais páginas e domínio próprio você liga dentro do painel"}
           </p>
           <a href={waLink(MSG_SPECIALIST)} target="_blank" rel="noopener noreferrer" data-track="whatsapp_click" data-track-origem="planos" className={`${btn.ghost} -ml-3 w-fit sm:ml-0`}>

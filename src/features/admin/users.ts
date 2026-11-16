@@ -1,6 +1,6 @@
 // Gerenciador de usuários do painel Interno: tipos e regras puras (testáveis).
 
-import { PLAN_PROJECTS } from "@/features/pricing/pricing";
+import { MAX_PROJECTS_IN_PLAN, PLAN_PROJECTS } from "@/features/pricing/pricing";
 
 export type GrantTier = "base" | "pro" | "avancado" | "personalizado";
 export const GRANT_TIERS: GrantTier[] = ["base", "pro", "avancado", "personalizado"];
@@ -9,7 +9,7 @@ export const GRANT_LABEL: Record<GrantTier, string> = { base: "Básico", pro: "P
 export const GRANT_MONTHS = [1, 3, 6, 12, 0] as const;
 
 /** Projetos (contas) de cada plano; o banco aceita de 1 a 30. */
-export const projectsOf = (tier: GrantTier) => (tier === "personalizado" ? 30 : PLAN_PROJECTS[tier]);
+export const projectsOf = (tier: GrantTier) => (tier === "personalizado" ? MAX_PROJECTS_IN_PLAN : PLAN_PROJECTS[tier]);
 
 export type UserStatus = "ativo" | "inativado" | "sem_plano" | "parou_no_pagamento";
 

@@ -24,7 +24,7 @@ describe("gerenciador de usuários", () => {
   });
 
   it("projetos por plano dentro do limite do banco (1 a 30)", () => {
-    expect([projectsOf("base"), projectsOf("pro"), projectsOf("avancado"), projectsOf("personalizado")]).toEqual([5, 15, 30, 30]);
+    expect([projectsOf("base"), projectsOf("pro"), projectsOf("avancado"), projectsOf("personalizado")]).toEqual([3, 5, 30, 30]);
   });
 
   it("prazo: meses somados; 0 = sem prazo (100 anos)", () => {

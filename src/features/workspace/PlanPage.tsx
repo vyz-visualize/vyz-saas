@@ -30,7 +30,7 @@ import {
 } from "@/features/checkout/labels";
 import { planChangeBlocker, planSelection, quotePlanChange, samePlan, type PlanSelection, type PlanUsage } from "@/features/checkout/plan-change";
 import { ENTITLEMENTS, LIMIT_ROWS, LIMIT_TIERS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
-import { annualSavingPct, LP_PLAN_PAGES, MAX_PROJECTS_IN_PLAN, PLAN_PROJECTS, lpMonthly, lpSetup, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
+import { annualSavingPct, LP_PLAN_PAGES, projectsLabel, lpMonthly, lpSetup, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";
 import { msgUpgrade, waLink } from "@/lib/whatsapp";
 import { cancelSubscription, changePlan, resumeSubscription } from "@/server/billing/actions";
@@ -197,16 +197,16 @@ function ChangePlan({
                 {brl(planMonthly(t, next.period))}
                 <span className="text-[12px] font-medium tracking-normal text-fg-2">/mês</span>
               </span>
-              <span className="mt-1.5 block text-[12.5px] text-fg-2">até {PLAN_PROJECTS[t]} workspaces</span>
+              <span className="mt-1.5 block text-[12.5px] text-fg-2">{projectsLabel(t)}</span>
             </button>
           );
         })}
       </div>
       <p className="text-[13px] text-fg-2">
-        O {TIER_LABEL[next.tier]} vai até <strong className="font-semibold text-fg">{PLAN_PROJECTS[next.tier]} workspaces</strong> (clientes ou marcas); você usa{" "}
-        {usage.projects}. Mais de {MAX_PROJECTS_IN_PLAN}?{" "}
+        Workspaces no {TIER_LABEL[next.tier]}: <strong className="font-semibold text-fg">{projectsLabel(next.tier)}</strong> (clientes ou marcas); você usa{" "}
+        {usage.projects}. Precisa de mais?{" "}
         <a
-          href={waLink(`Olá, VYZ! Tenho mais de ${MAX_PROJECTS_IN_PLAN} workspaces e quero o plano Personalizado.`)}
+          href={waLink("Olá, VYZ! Tenho muitos workspaces e quero o plano Personalizado.")}
           target="_blank"
           rel="noopener noreferrer"
           className="font-semibold text-accent underline-offset-4 hover:underline"

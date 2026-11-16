@@ -7,12 +7,12 @@ const s = (patch: Partial<PlanState>): PlanState => normalizeState(patch);
 const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
 
 describe("pedido", () => {
-  it("Padrão anual: 15 projetos fixos, mesmo com projetos na query antiga", () => {
+  it("Padrão anual: 5 workspaces fixos, mesmo com projetos na query antiga", () => {
     const order = buildOrder(normalizeState(fromQuery(new URLSearchParams("plano=pro&periodo=anual&workspaces=5"))));
     expect(order.planId).toBe("pro");
     expect(order.interval).toBe("year");
-    expect(order.accountsQuantity).toBe(15);
-    expect(order.items).toEqual([{ kind: "recurring", planPriceId: "pro_year", quantity: 15, amountCents: 18325, label: "Plano Padrão · até 15 workspaces" }]);
+    expect(order.accountsQuantity).toBe(5);
+    expect(order.items).toEqual([{ kind: "recurring", planPriceId: "pro_year", quantity: 5, amountCents: 18325, label: "Plano Padrão · até 5 workspaces" }]);
     expect(order.recurringCents).toBe(219900);
     expect(order.amountDueNowCents).toBe(order.recurringCents);
     expect(order.blocked).toBeUndefined();
@@ -20,7 +20,7 @@ describe("pedido", () => {
 
   it("Básico mensal cobra um mês: R$ 59,90", () => {
     const order = buildOrder(s({ plano: "base", periodo: "mensal" }));
-    expect(order.items[0]).toMatchObject({ planPriceId: "base_month", quantity: 5, amountCents: 5990 });
+    expect(order.items[0]).toMatchObject({ planPriceId: "base_month", quantity: 3, amountCents: 5990 });
     expect(order.recurringCents).toBe(5990);
     expect(order.amountDueNowCents).toBe(5990);
   });
@@ -29,7 +29,7 @@ describe("pedido", () => {
     const order = buildOrder(s({ plano: "avancado", periodo: "anual" }));
     expect(order.items).toHaveLength(1);
     expect(order.items[0]).toMatchObject({ planPriceId: "avancado_year", quantity: 30, amountCents: 40825 });
-    expect(order.items[0].label).toBe("Plano Avançado · até 30 workspaces");
+    expect(order.items[0].label).toBe("Plano Avançado · +5 workspaces");
     expect(order.recurringCents).toBe(489900);
   });
 
@@ -47,7 +47,7 @@ describe("pedido", () => {
   it("extras: mensais primeiro, depois os únicos, cada um com o preço do catálogo", () => {
     const order = buildOrder(s({ plano: "pro", periodo: "anual", lp: 2, lpcare: true, sob: 1, sobm: "recorrente", dash: 3 }));
     expect(order.items.map((i) => [i.kind, i.planPriceId ?? i.billingItemId, i.quantity])).toEqual([
-      ["recurring", "pro_year", 15],
+      ["recurring", "pro_year", 5],
       ["recurring", "lp_care", 2],
       ["recurring", "dash_custom_monthly", 1],
       ["one_time", "lp_team", 2],

@@ -18,7 +18,7 @@ const sub = (over: Record<string, unknown> = {}) => ({
 describe("storeStateFrom", () => {
   it("lê plano, período e limite de projetos do produto", () => {
     const s = storeStateFrom({ vyz_pro_anual_ate15: sub() }, now);
-    expect(s).toMatchObject({ plan: { tier: "pro", period: "anual", accounts: 15 }, status: "active", store: "app_store", cancelAtPeriodEnd: false });
+    expect(s).toMatchObject({ plan: { tier: "pro", period: "anual", accounts: 5 }, status: "active", store: "app_store", cancelAtPeriodEnd: false });
   });
 
   it("ignora créditos e fica com o plano que vence por último (troca de plano)", () => {

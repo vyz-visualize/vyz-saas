@@ -14,9 +14,8 @@ import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import { waLink } from "@/lib/whatsapp";
 import {
   LP_PLAN_PAGES,
-  MAX_PROJECTS_IN_PLAN,
   PLAN_LABEL,
-  PLAN_PROJECTS,
+  projectsLabel,
   annualSavingPct,
   type Period,
   type PlanId,
@@ -52,7 +51,7 @@ function PlanSwitch({ plan, onChange }: { plan: PlanId; onChange: (p: PlanId) =>
           className={`rounded-[10px] px-2 py-2 text-center transition-colors ${plan === p ? "bg-accent text-on-accent" : "text-fg-2 hover:text-fg"}`}
         >
           <span className="block text-[13.5px] font-semibold">{PLAN_LABEL[p]}</span>
-          <span className="block text-[11.5px] tnum">até {PLAN_PROJECTS[p]} workspaces</span>
+          <span className="block text-[11.5px] tnum">{projectsLabel(p)}</span>
         </button>
       ))}
     </div>
@@ -186,7 +185,7 @@ export function OrderSummary({
             <p className="text-[15px] font-semibold text-fg">O {PLAN_LABEL[plan]} inclui</p>
             <ul className="mt-2 space-y-1.5 text-[13px] text-fg-2">
               {[
-                `Até ${PLAN_PROJECTS[plan]} workspaces (clientes ou marcas)`,
+                `${projectsLabel(plan, { capital: true })} (clientes ou marcas)${plan === "pro" ? ", compartilhados entre os usuários" : ""}`,
                 `${ENTITLEMENTS[plan].maxDashboards} dashboards`,
                 `${ENTITLEMENTS[plan].maxMembers} ${ENTITLEMENTS[plan].maxMembers === 1 ? "usuário" : "usuários"}`,
                 platformsForTier(plan)
@@ -201,9 +200,9 @@ export function OrderSummary({
             </ul>
             <ProjectHelp />
             <p className="mt-2 text-[12.5px] text-fg-2">
-              Mais de {MAX_PROJECTS_IN_PLAN} workspaces?{" "}
+              Operação maior ou sob medida?{" "}
               <a
-                href={waLink(`Olá, VYZ! Tenho mais de ${MAX_PROJECTS_IN_PLAN} workspaces e quero o plano Personalizado.`)}
+                href={waLink("Olá, VYZ! Tenho muitos workspaces e quero o plano Personalizado.")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-semibold text-accent underline-offset-4 hover:underline"

@@ -13,11 +13,19 @@ export type Product = "dash" | "lp";
 export const PRODUCTS: Product[] = ["dash", "lp"];
 export const PRODUCT_LABEL: Record<Product, string> = { dash: "Dashboards", lp: "Landing pages" };
 
-// Três planos fixos: cada um com um número fechado de projetos (clientes ou
-// marcas). Não se escolhe quantidade: mais projetos = plano de cima. Acima de
-// 30, plano Personalizado sob consulta. Preço por mês; o anual é o valor por
-// mês equivalente, cobrado 12× de uma vez.
-export const PLAN_PROJECTS: Record<PlanId, number> = { base: 5, pro: 15, avancado: 30 };
+// Três planos fixos: cada um com um número fechado de workspaces (clientes ou
+// marcas; no banco, "projects"). Não se escolhe quantidade: mais workspaces = plano
+// de cima. Básico até 3, Padrão até 5 e Avançado "+5" (o teto interno é 30; acima
+// disso, plano Personalizado sob consulta). Preço por mês; o anual é o valor por
+// mês equivalente, cobrado 12× de uma vez. O banco aplica o mesmo limite
+// (plan_entitlements.max_projects, migration 20261120090000_plan_projects).
+export const PLAN_PROJECTS: Record<PlanId, number> = { base: 3, pro: 5, avancado: 30 };
+
+/** Como o limite aparece na tela: "até 3 workspaces"; o Avançado é só "+5 workspaces" (sem número exato). */
+export function projectsLabel(tier: PlanId, opts: { capital?: boolean } = {}): string {
+  const text = tier === "avancado" ? `+${PLAN_PROJECTS.pro} workspaces` : `até ${PLAN_PROJECTS[tier]} workspaces`;
+  return opts.capital ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
 
 export const PLAN: Record<PlanId, Record<Period, number>> = {
   base: { mensal: 5990, anual: 4825 }, // R$ 579,00/ano
@@ -153,7 +161,6 @@ export function annualSavingPct(plan: PlanId): number {
   return Math.round((1 - PLAN[plan].anual / PLAN[plan].mensal) * 100);
 }
 
-const projectsLabel = (n: number) => `${n} ${n === 1 ? "workspace" : "workspaces"}`;
 
 export function quote(s: PlanState): Quote {
   if (s.produto === "lp") return quoteLp(s);
@@ -168,7 +175,7 @@ export function quote(s: PlanState): Quote {
     const plan = s.plano as PlanId;
     planMensal = planMonthly(plan, "mensal");
     planAnual = planMonthly(plan, "anual");
-    lines.push({ id: "plan", label: `Plano ${PLAN_LABEL[plan]} · até ${projectsLabel(projects)}`, amount: PLAN[plan][s.periodo], kind: "monthly" });
+    lines.push({ id: "plan", label: `Plano ${PLAN_LABEL[plan]} · ${projectsLabel(plan)}`, amount: PLAN[plan][s.periodo], kind: "monthly" });
   }
 
   let oneTime = 0;

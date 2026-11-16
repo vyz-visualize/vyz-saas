@@ -8,11 +8,11 @@ import { STORE_PLAN_PERIODS, STORE_PLAN_PRICE, STORE_PLAN_PROJECTS, STORE_PLAN_T
 
 const LABEL = { base: "Básico", pro: "Padrão", avancado: "Avançado" } as const;
 
-const rows = ["product_id,nome,plano,periodo,ate_projetos,preco_brl"];
+const rows = ["product_id,nome,plano,periodo,ate_workspaces,preco_brl"];
 for (const tier of STORE_PLAN_TIERS) {
   for (const period of STORE_PLAN_PERIODS) {
     const projects = STORE_PLAN_PROJECTS[tier];
-    rows.push([storePlanProductId({ tier, period }), `"${LABEL[tier]} · até ${projects} projetos"`, tier, period, projects, (STORE_PLAN_PRICE[tier][period] / 100).toFixed(2)].join(","));
+    rows.push([storePlanProductId({ tier, period }), `"${LABEL[tier]} · ${tier === "avancado" ? "+5" : `até ${projects}`} workspaces"`, tier, period, projects, (STORE_PLAN_PRICE[tier][period] / 100).toFixed(2)].join(","));
   }
 }
 console.log(rows.join("\n"));

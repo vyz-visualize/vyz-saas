@@ -3,7 +3,7 @@
 // servidor recalcula tudo daqui; o navegador nunca manda preço.
 
 import { BILLING_ITEMS, INTERVAL, planPriceId, type BillingItemId } from "@/features/pricing/catalog";
-import { DEFAULT_STATE, LP_PLAN_PAGES, PLAN_LABEL, lpMonthly, planDbId, quote, type Period, type PlanId, type PlanState, type Product, type Quote } from "@/features/pricing/pricing";
+import { DEFAULT_STATE, LP_PLAN_PAGES, PLAN_LABEL, PLAN_PROJECTS, lpMonthly, projectsLabel, planDbId, quote, type Period, type PlanId, type PlanState, type Product, type Quote } from "@/features/pricing/pricing";
 
 export type OrderItem = {
   kind: "recurring" | "one_time";
@@ -60,7 +60,9 @@ export function normalizeState(patch: Partial<PlanState> | null | undefined): Pl
   return s;
 }
 
+/** "Plano Padrão · até 5 workspaces". Quantidade diferente da do plano (cobranças antigas): o número dela. */
 export function planItemLabel(plan: PlanId, projects: number): string {
+  if (projects === PLAN_PROJECTS[plan]) return `Plano ${PLAN_LABEL[plan]} · ${projectsLabel(plan)}`;
   return `Plano ${PLAN_LABEL[plan]} · até ${projects} ${projects === 1 ? "workspace" : "workspaces"}`;
 }
 
