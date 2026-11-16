@@ -1,6 +1,13 @@
 # MMM v2: armazém de dados de mídia por plataforma
 
-**Proposta. Nada foi criado nem ligado.** Não há migration, não há código e a fila do backfill continua desligada. Este documento é para o Pedro e o Gustavo decidirem; as decisões pendentes estão na seção 11.
+**Direção aprovada em 16/11/2026** (seção 12):
+- o recente fica no Postgres;
+- o histórico pesado e as respostas brutas vão para Parquet no Storage, numa pasta por workspace, plataforma e conta;
+- o cancelamento apaga só a pasta da parcela cancelada.
+
+**Benchmark:** fica só o desenho. Nada de agregado entre anunciantes é calculado nem guardado até sair o parecer jurídico.
+
+Ainda não há migration nem código do armazém. O Redis (Upstash) já está no código para limite de chamadas e cache curto (seção 10). As decisões que faltam estão na seção 12.
 
 Marcações:
 - **[M]** medido em produção, só com leitura;
@@ -232,10 +239,11 @@ Decisão tomada: apagar só a parcela cancelada; o resto continua.
 
 Por isso o caminho dos arquivos é `wh/{workspace_id}/{platform_id}/{ad_account_id}/{tabela}/{ano}/{mes}.parquet`: cada nível de cancelamento é um prefixo.
 
-O fluxo de exclusão de hoje (`account-deletion.ts`, `SHELL_PURGE_ORDER`) ganha três passos:
-1. capturar o benchmark;
-2. apagar as tabelas `wh_*`;
-3. apagar os prefixos no Storage.
+O fluxo de exclusão de hoje (`account-deletion.ts`, `SHELL_PURGE_ORDER`) ganha dois passos:
+1. apagar as tabelas `wh_*`;
+2. apagar os prefixos no Storage.
+
+A captura do benchmark antes de apagar só entra depois do parecer jurídico (seção 9).
 
 Um teste deve conferir que nada do workspace sobrou.
 
@@ -276,9 +284,11 @@ Uma conta média dá ~160 MB por ano no Postgres. O bruto comprimido dá ~35 MB 
 
 Não pesquisei o preço do MotherDuck; fica como alternativa a avaliar para a opção B.
 
-**Recomendação: B.** O disco do Postgres não é o problema; o problema é IO e compute dividindo o banco com o painel. Parquet por prefixo também resolve o cancelamento granular (seção 7) de graça. A troca para C fica aberta, porque o formato Parquet sobe direto para o BigQuery.
+**Decisão: B** (aprovada em 16/11/2026). O disco do Postgres não é o problema; o problema é IO e compute dividindo o banco com o painel. Parquet por prefixo também resolve o cancelamento granular (seção 7) de graça. A troca para C fica aberta, porque o formato Parquet sobe direto para o BigQuery.
 
-## 9. Benchmark por segmento (agregados anônimos)
+## 9. Benchmark por segmento (agregados anônimos): só desenho
+
+> **Decisão (16/11/2026):** não calcular nem guardar agregados entre anunciantes até haver parecer jurídico. A tabela `bench`, o cálculo mensal e a captura antes da exclusão (seção 7) **não serão criados** até lá. Enquanto isso, cancelar ou excluir apaga tudo da parcela, sem exceção.
 
 **Tabela `bench.segment_monthly`:**
 - chave: `segmento` (o `business_type` do workspace), `mercado` (Brasil, ou a UF quando a célula permitir), `platform_id`, `objetivo`, `mes`;
@@ -313,7 +323,16 @@ O que os termos das plataformas permitem (pesquisa; **precisa de revisão juríd
 
 Sugestão: criar a tabela e o cálculo, mas **não mostrar nada** a cliente nenhum até o parecer. Começar pelo Google, com consentimento no contrato, e pelos percentis oficiais do Google.
 
-## 10. Redis (`REDIS_URL`; nada implementado)
+## 10. Redis: Upstash, implementado na branch `feat/planos-site-onboarding`
+
+**Decisão:** Upstash, pela integração da Vercel, lido com `Redis.fromEnv()` (`KV_REST_API_URL` e `KV_REST_API_TOKEN`).
+- O código está em `src/server/cache/redis.ts`.
+- Sem as variáveis, ou com o Redis fora do ar ou lento (mais de 400 ms), tudo funciona sem ele.
+- A trava de sincronização continua no Postgres.
+
+A tabela abaixo é o papel proposto antes da decisão. O que foi implementado:
+- pausa compartilhada por limite da Meta e do Google (cabeçalhos de uso da Meta; operações do Google Ads por dia);
+- cache de 10 minutos nas leituras da sincronização.
 
 Papel proposto, sempre com TTL curto e sem histórico:
 
@@ -345,19 +364,23 @@ A v1 está aplicada e vazia, e a fila nunca rodou [M]. Recomendação: **reaprov
   - a carga grava nas tabelas `wh_*` e não só em `media_daily`;
   - continua desligada até a decisão.
 
-## 12. Decisões pendentes (Pedro e Gustavo)
+## 12. Decisões
 
-1. **Onde fica o histórico pesado:** opção B (Postgres + Parquet no Storage), C (BigQuery) ou A (tudo no Postgres). Recomendação: B.
-2. **`fields jsonb` + colunas sob demanda** ou uma coluna para cada métrica desde o início. Recomendação: jsonb, mais as colunas usadas.
-3. **Recortes e níveis da carga histórica,** na ordem da tabela da seção 3.3. Começar pelos recortes de 13 meses da Meta já, antes do resto?
-4. **Ligar a fila de backfill agora** (com o desenho da v1) para não perder mais meses, enquanto a v2 é escrita? Hoje cada mês parado é um mês de 2023 que sai da Meta e do Google.
-5. **Cadência das recargas:** 3 dias por dia, 28/30 dias por semana. Cabe no limite de operações do Google? Hoje é Explorer (2.880 por dia); o nível Basic (15.000) exige pedido.
-6. **Benchmark:** parecer jurídico sobre os termos da Meta e do Google, a cláusula no contrato e nos Termos de Uso, e o opt-in. Até lá, calcular sem mostrar?
-7. **Limites da célula do benchmark:** 10 contas, 5 workspaces e 30% de dominância estão bons?
-8. **Redis:** Upstash (HTTP) ou o Redis Cloud já criado (TCP, 30 conexões)? E a trava de sincronização continua no Postgres?
-9. **Retenção:** "por anos" sem fim enquanto o contrato estiver ativo, ou um teto (ex.: 5 anos)?
-10. **TikTok e LinkedIn:** entram já no armazém ou depois da Meta e do Google?
-11. **LinkedIn:** ler os requisitos de armazenamento de dados da API antes de guardar por anos.
+Tomadas em 16/11/2026:
+- **Onde fica o histórico pesado:** opção B (Postgres + Parquet no Storage, uma pasta por workspace, plataforma e conta).
+- **Cancelamento granular:** apaga só a pasta e as linhas da parcela.
+- **Benchmark:** só o desenho; nada calculado nem guardado até o parecer jurídico.
+- **Redis:** Upstash (HTTP), e a trava de sincronização fica no Postgres.
+- **Carga do histórico (v1):** ligar já. O código está na main e em produção; ela grava `raw_insights` em jsonb até a v2 mover o bruto para o Storage.
+
+Pendentes:
+1. **`fields jsonb` + colunas sob demanda** ou uma coluna para cada métrica desde o início. Recomendação: jsonb, mais as colunas usadas.
+2. **Recortes e níveis da carga histórica,** na ordem da tabela da seção 3.3. Começar pelos recortes de 13 meses da Meta antes do resto?
+3. **Cadência das recargas:** 3 dias por dia, 28/30 dias por semana. Cabe no limite de operações do Google? Hoje é Explorer (2.880 por dia); o nível Basic (15.000) exige pedido.
+4. **Parecer jurídico do benchmark:** termos da Meta e do Google, cláusula no contrato e nos Termos de Uso, opt-in. Depois dele: os limites da célula (10 contas, 5 workspaces, 30% de dominância).
+5. **Retenção:** "por anos" sem fim enquanto o contrato estiver ativo, ou um teto (ex.: 5 anos)?
+6. **TikTok e LinkedIn:** entram já no armazém ou depois da Meta e do Google?
+7. **LinkedIn:** ler os requisitos de armazenamento de dados da API antes de guardar por anos.
 
 ## Fontes
 
