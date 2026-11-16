@@ -12,8 +12,8 @@ import { PLATFORMS, PLATFORM_ORDER, type PlatformId } from "@/features/accounts/
 import { PROVIDER_IDS, type ProviderId } from "@/features/integrations/providers";
 import { BUSINESS_TYPES, templateBusinessTypes } from "@/features/catalog/business-types";
 import { BILLING_ITEMS, INTERVAL, planPriceId } from "@/features/pricing/catalog";
-import { ENTITLEMENTS, TIER_LABEL, TIERS } from "@/features/pricing/entitlements";
-import { LP_PLAN_PAGES, PLAN, PLAN_LABEL, lpMonthly, planDbId, type Period, type PlanId } from "@/features/pricing/pricing";
+import { ENTITLEMENTS, TIER_LABEL, TIERS, unlimitedProjects } from "@/features/pricing/entitlements";
+import { LP_PLAN_PAGES, PLAN, PLAN_LABEL, PLAN_PROJECTS, lpMonthly, planDbId, type Period, type PlanId } from "@/features/pricing/pricing";
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 import { LINKABLE_SOURCES } from "@/features/templates/dashboards/composed";
@@ -25,6 +25,8 @@ if (!url) throw new Error("SUPABASE_DB_URL não definido (.env.local)");
 
 const PRICED: PlanId[] = ["base", "pro", "avancado"];
 const PERIODS: Period[] = ["mensal", "anual"];
+/** max_projects das LPs: sem teto próprio, vale a quantidade contratada (migration 20261120090000_plan_projects). */
+const NO_PROJECT_CAP = 200;
 // Login que conecta cada plataforma (o YouTube entra pelo login do Google Ads).
 // Instagram e Página do Facebook (orgânico) chegam pelo login do Meta.
 const OAUTH: Partial<Record<PlatformId, ProviderId>> = { ...Object.fromEntries(PROVIDER_IDS.map((p) => [p, p])), youtube: "google", instagram: "meta", facebook: "meta" };
@@ -62,6 +64,8 @@ async function main() {
         max_landing_pages: e.maxLandingPages,
         max_members: e.maxMembers,
         max_accounts_per_platform: e.maxAccountsPerPlatform,
+        // teto de workspaces do plano; nulo = ilimitado (Avançado e Personalizado)
+        max_projects: unlimitedProjects(id) ? null : PLAN_PROJECTS[id as PlanId],
       };
     });
     // landing pages: sem dashboards nem contas; LPs do pacote e templates por tier
@@ -78,6 +82,7 @@ async function main() {
         max_dashboards: 0,
         max_landing_pages: LP_PLAN_PAGES[tier],
         landing_templates: e.landingTemplates,
+        max_projects: NO_PROJECT_CAP,
       });
     }
     await tx`insert into public.plan_entitlements ${tx(entitlements)}
@@ -86,7 +91,8 @@ async function main() {
         platforms = excluded.platforms, pages_plan_id = excluded.pages_plan_id, white_label = excluded.white_label,
         audio = excluded.audio, custom_dashboards = excluded.custom_dashboards, agent_chat = excluded.agent_chat,
         agent_voice = excluded.agent_voice, max_dashboards = excluded.max_dashboards, max_landing_pages = excluded.max_landing_pages,
-        max_members = excluded.max_members, max_accounts_per_platform = excluded.max_accounts_per_platform`;
+        max_members = excluded.max_members, max_accounts_per_platform = excluded.max_accounts_per_platform,
+        max_projects = excluded.max_projects`;
     counts.plan_entitlements = entitlements.length;
 
     const prices: Record<string, unknown>[] = PRICED.flatMap((plan) =>

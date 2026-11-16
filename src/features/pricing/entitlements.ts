@@ -1,6 +1,7 @@
 // Limites por plano. A LP (cartões de planos) e o painel (bloqueios) usam as
 // mesmas funções daqui.
 
+import { PLAN_PROJECTS, type PlanId } from "@/features/pricing/pricing";
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { VISUALS } from "@/features/templates/dashboards/composed";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
@@ -65,6 +66,12 @@ export const ENTITLEMENTS: Record<Tier, Entitlements> = {
 /** O que a página de Criativos mostra neste plano (sem plano: só a lista). */
 export const creativesLevel = (tier: Tier | null | undefined): Entitlements["creatives"] => (tier ? ENTITLEMENTS[tier].creatives : "list");
 
+/** Workspaces ilimitados (Avançado e Personalizado): o painel mostra só o uso, sem total. */
+export const unlimitedProjects = (tier: Tier | null | undefined): boolean => tier === "avancado" || tier === "personalizado";
+
+/** Limite de workspaces sem número (planos ilimitados: só acima de 200, o máximo que a assinatura grava). */
+export const PROJECT_LIMIT_HIDDEN_MESSAGE = "Você chegou ao limite do seu plano. Fale com a gente para ampliar.";
+
 /** O plano `tier` cobre o que exige `required`? */
 export function canUse(tier: Tier, required: Tier): boolean {
   return RANK[tier] >= RANK[required];
@@ -92,7 +99,7 @@ export const LIMIT_TIERS: Tier[] = ["base", "pro", "avancado"];
 
 /** Linhas da tabela de limites (página Plano e documentação). */
 export const LIMIT_ROWS: { label: string; value: (t: Tier) => string }[] = [
-  { label: "Workspaces", value: (t) => ({ base: "até 5", pro: "até 15", avancado: "até 30", personalizado: "sob consulta" })[t] },
+  { label: "Workspaces", value: (t) => (unlimitedProjects(t) ? "ilimitados" : `até ${PLAN_PROJECTS[t as PlanId]}`) },
   { label: "Templates de dashboard", value: (t) => String(ENTITLEMENTS[t].dashboardTemplates) },
   ...(SHOW_LANDING_PAGES ? [{ label: "Templates de landing page", value: (t: Tier) => String(ENTITLEMENTS[t].landingTemplates) }] : []),
   {

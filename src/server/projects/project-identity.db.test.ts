@@ -37,7 +37,7 @@ beforeAll(async () => {
   other = (await ins("projects", { workspace_id: ws, name: "Clínica", created_by: owner })).id;
   await ins("workspace_members", { workspace_id: ws, user_id: viewer, role: "viewer" });
   await ins("project_members", { workspace_id: ws, project_id: proj, user_id: viewer, added_by: owner });
-});
+}, 120_000);
 
 const logo = (projectId: string, file = "logo-0123456789abcdef.png") => `${ws}/projects/${projectId}/${file}`;
 

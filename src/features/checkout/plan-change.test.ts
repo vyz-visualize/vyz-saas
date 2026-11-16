@@ -34,9 +34,9 @@ describe("troca de plano no mesmo período", () => {
   });
 
   it("a seleção do plano traz os projetos fixos", () => {
-    expect(planSelection("base", "anual").accounts).toBe(5);
-    expect(planSelection("pro", "anual").accounts).toBe(15);
-    expect(planSelection("avancado", "mensal").accounts).toBe(30);
+    expect(planSelection("base", "anual").accounts).toBe(3);
+    expect(planSelection("pro", "anual").accounts).toBe(5);
+    expect(planSelection("avancado", "mensal").accounts).toBe(200);
   });
 
   it("os extras mensais entram na recorrência, não na diferença", () => {

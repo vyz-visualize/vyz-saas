@@ -6,7 +6,9 @@ import { AppShell } from "@/features/workspace/AppShell";
 import { WorkspaceProvider } from "@/features/workspace/WorkspaceProvider";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { requireWorkspace } from "@/server/auth/workspace";
-import { isMockBilling } from "@/server/env";
+import { isTestWorkspace } from "@/server/billing/simulated";
+import { isMockBilling, isSimulatedCheckoutEmail } from "@/server/env";
+import { createServerSupabase } from "@/server/supabase/server";
 import { isAdminEmail } from "@/server/admin/report";
 import { getMyGuides } from "@/server/guides/queries";
 
@@ -33,9 +35,11 @@ async function PainelSession({ children }: { children: React.ReactNode }) {
   if (session.access.hasAccess && session.workspace.onboardingStep !== "done") redirect("/comecar");
   // tour do painel (onde fica cada coisa): uma vez por pessoa, depois do primeiro acesso, no Dash
   const guides = session.access.hasAccess && session.workspace.product === "dash" ? await getMyGuides(session.user.id) : NO_GUIDES;
+  // selo "Pagamento simulado": tudo simulado, ou a organização de teste da equipe (só olha o banco para os e-mails da lista)
+  const simulated = isMockBilling() || (isSimulatedCheckoutEmail(session.user.email) && (await isTestWorkspace(await createServerSupabase(), session.workspace.id)));
   return (
     <WorkspaceProvider session={session}>
-      <AppShell simulatedBilling={isMockBilling()} isAdmin={isAdminEmail(session.user.email)} tour={tourPending(guides, PANEL_TOUR_GUIDE)}>
+      <AppShell simulatedBilling={simulated} isAdmin={isAdminEmail(session.user.email)} tour={tourPending(guides, PANEL_TOUR_GUIDE)}>
         {children}
       </AppShell>
     </WorkspaceProvider>

@@ -34,7 +34,10 @@ describe("Primeiros passos da Início", () => {
   });
 
   it("selo do plano deixa claro que é limite", () => {
-    expect(planBadge("Avançado", 1, 2)).toBe("Avançado · 1 de 2 workspaces");
-    expect(planBadge("Básico", 0, 1)).toBe("Básico · 0 de 1 workspace");
+    expect(planBadge("pro", 1, 5)).toBe("Padrão · 1 de 5 workspaces");
+    expect(planBadge("base", 0, 1)).toBe("Básico · 0 de 1 workspace");
+    // Avançado e Personalizado (ilimitados): sem total
+    expect(planBadge("avancado", 1, 30)).toBe("1 workspace · Avançado");
+    expect(planBadge("avancado", 4, 30)).toBe("4 workspaces · Avançado");
   });
 });

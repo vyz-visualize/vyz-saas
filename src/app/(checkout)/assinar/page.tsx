@@ -63,7 +63,7 @@ async function Checkout({ searchParams }: { searchParams: Promise<SearchParams> 
       initial={state}
       account={viewer.user ? { email: viewer.user.email, fullName: viewer.user.fullName, phone: viewer.user.phone } : null}
       workspaceName={viewer.target?.workspaceName ?? null}
-      simulated={isMockBilling()}
+      simulated={isMockBilling() || viewer.simulated}
       heading={
         <>
           <p className="label-caps text-fg-2">Assinatura</p>

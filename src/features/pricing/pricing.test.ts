@@ -1,33 +1,36 @@
 import { describe, expect, it } from "vitest";
 import { brl } from "@/lib/format";
-import { DEFAULT_STATE, PLAN_PROJECTS, annualSavingPct, annualTotal, fromQuery, quote, startingPrice, toQuery, type PlanState } from "./pricing";
+import { STORE_PLAN_PROJECTS } from "@vyz/shared";
+import { DEFAULT_STATE, PLAN_PROJECTS, annualSavingPct, projectsLabel, annualTotal, fromQuery, quote, startingPrice, toQuery, type PlanState } from "./pricing";
 import { buildPlanMessage } from "./messages";
 
 const s = (patch: Partial<PlanState>): PlanState => ({ ...DEFAULT_STATE, ...patch });
 describe("casos que precisam bater", () => {
-  it("Básico, até 5 projetos: R$ 59,90 no mensal e R$ 579,00 por ano", () => {
+  it("Básico, até 3 workspaces: R$ 59,90 no mensal e R$ 579,00 por ano", () => {
     expect(brl(quote(s({ plano: "base", periodo: "mensal" })).monthly)).toBe("R$ 59,90");
     expect(brl(quote(s({ plano: "base", periodo: "anual" })).monthly)).toBe("R$ 48,25");
     expect(brl(quote(s({ plano: "base", periodo: "anual" })).yearly)).toBe("R$ 579,00");
   });
 
-  it("Padrão, até 15 projetos: R$ 219,90 no mensal e R$ 2.199,00 por ano", () => {
+  it("Padrão, até 5 workspaces: R$ 219,90 no mensal e R$ 2.199,00 por ano", () => {
     expect(brl(quote(s({ plano: "pro", periodo: "mensal" })).monthly)).toBe("R$ 219,90");
     expect(brl(quote(s({ plano: "pro", periodo: "anual" })).monthly)).toBe("R$ 183,25");
     expect(brl(annualTotal("pro"))).toBe("R$ 2.199,00");
   });
 
-  it("Avançado, até 30 projetos: R$ 499,90 no mensal e R$ 4.899,00 por ano", () => {
+  it("Avançado, workspaces ilimitados: R$ 499,90 no mensal e R$ 4.899,00 por ano", () => {
     expect(brl(quote(s({ plano: "avancado", periodo: "mensal" })).monthly)).toBe("R$ 499,90");
     expect(brl(quote(s({ plano: "avancado", periodo: "anual" })).monthly)).toBe("R$ 408,25");
     expect(brl(annualTotal("avancado"))).toBe("R$ 4.899,00");
   });
 
-  it("os projetos são fixos por plano: 5, 15 e 30", () => {
-    expect(PLAN_PROJECTS).toEqual({ base: 5, pro: 15, avancado: 30 });
-    expect(quote(s({ plano: "base" })).projects).toBe(5);
-    expect(quote(s({ plano: "pro" })).projects).toBe(15);
-    expect(quote(s({ plano: "avancado" })).projects).toBe(30);
+  it("os workspaces são fixos por plano: 3, 5 e ilimitados (a assinatura grava 200)", () => {
+    expect(PLAN_PROJECTS).toEqual({ base: 3, pro: 5, avancado: 200 });
+    expect(STORE_PLAN_PROJECTS).toEqual(PLAN_PROJECTS); // o app concede o mesmo limite do site
+    expect([projectsLabel("base"), projectsLabel("pro"), projectsLabel("avancado")]).toEqual(["até 3 workspaces", "até 5 workspaces", "workspaces ilimitados"]);
+    expect(quote(s({ plano: "base" })).projects).toBe(3);
+    expect(quote(s({ plano: "pro" })).projects).toBe(5);
+    expect(quote(s({ plano: "avancado" })).projects).toBe(200);
     expect(quote(s({ plano: "sem" })).projects).toBe(0);
   });
 
@@ -73,7 +76,7 @@ describe("regras", () => {
   it("o plano é uma linha só, sem projeto extra nem plataforma extra", () => {
     const q = quote(s({ plano: "base", periodo: "mensal" }));
     expect(q.lines.map((l) => l.id)).toEqual(["plan"]);
-    expect(q.lines[0].label).toBe("Plano Básico · até 5 workspaces");
+    expect(q.lines[0].label).toBe("Plano Básico · até 3 workspaces");
   });
 
   it("o desconto do anual vem dos preços", () => {
@@ -135,7 +138,7 @@ describe("mensagem do WhatsApp", () => {
       [
         "Olá, VYZ! Montei meu plano no site:",
         "• Plano Padrão, anual",
-        "• até 15 workspaces",
+        "• até 5 workspaces",
         "• Tipo de negócio: E-commerce",
         "• Extras: 1× Landing page feita pelo time",
         "• Todo mês: R$ 183,25 (R$ 2.199,00 no ano)",

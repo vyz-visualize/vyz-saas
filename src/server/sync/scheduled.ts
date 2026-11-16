@@ -15,6 +15,7 @@ import "server-only";
 // o lugar das outras na fila. Quem falhou espera o mesmo intervalo para
 // tentar de novo.
 
+import { pauseAfterRateLimit, sharedPauses } from "@/server/cache/redis";
 import { SYNC_PLATFORMS } from "@/features/sync/dataset";
 import { ORGANIC_PLATFORMS } from "@/features/sync/organic";
 import { ANALYTICS_PLATFORMS } from "@/features/sync/analytics";
@@ -70,7 +71,7 @@ export async function syncDueAccounts(opts: ScheduledOptions = {}): Promise<Sche
   const { data: accounts, error } = await db
     .from("ad_accounts")
     .select(
-      `id, workspace_id, platform_id,
+      `id, workspace_id, platform_id, external_id,
       connection:connections!ad_accounts_workspace_id_connection_id_fkey!inner(status),
       workspace:workspaces!ad_accounts_workspace_id_fkey!inner(subscriptions!subscriptions_workspace_id_fkey!inner(status)),
       recent:sync_runs!sync_runs_workspace_id_ad_account_id_fkey(id)`,
@@ -94,17 +95,22 @@ export async function syncDueAccounts(opts: ScheduledOptions = {}): Promise<Sche
   const active = new Set((access.data ?? []).filter((w) => w.has_access).map((w) => w.workspace_id));
   const due = (accounts ?? []).filter((a) => active.has(a.workspace_id));
 
-  // plataformas que pediram pausa nesta rodada: as contas delas ficam para a próxima
+  // plataformas que pediram pausa nesta rodada: as contas delas ficam para a próxima.
+  // Com Redis, também as pausas de outras funções (limite da Meta ou do Google, cota do dia)
   const paused = new Set<string>();
+  const sharedPaused = await sharedPauses(due);
   const ran = await runPool(
     due,
     SCHEDULED_CONCURRENCY,
     async (account) => {
       const r = await syncAdAccount(account.id, "scheduled");
-      if (r.code === "sync:rate_limited") paused.add(account.platform_id);
+      if (r.code === "sync:rate_limited") {
+        paused.add(account.platform_id);
+        await pauseAfterRateLimit(account.platform_id);
+      }
       return r;
     },
-    (account) => Date.now() - startedAt <= budget && !paused.has(account.platform_id),
+    (account) => Date.now() - startedAt <= budget && !paused.has(account.platform_id) && !sharedPaused(account),
   );
   const results: ScheduledSummary["results"] = ran.map(({ item, result: r }) => ({ adAccountId: item.id, ok: r.ok, rowsWritten: r.rowsWritten, ...(r.code ? { code: r.code } : {}) }));
   return summarizeRuns(due.length, results, Date.now() - startedAt);

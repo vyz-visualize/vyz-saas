@@ -21,7 +21,7 @@ const CAPTIONS = [
   "Bastidores da produção desta semana",
   "3 dicas para escolher o tamanho certo",
   "Cliente real, foto real: obrigado pelo carinho",
-  "Últimas peças com frete grátis",
+  "Últimas peças da coleção",
   "Como usar no dia a dia",
   "Promoção relâmpago só hoje",
   "Antes e depois",

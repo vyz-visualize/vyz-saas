@@ -77,7 +77,7 @@ const METHODS: { title: string; mobileTitle?: string; text: string; short: strin
   { title: "MMM", text: "Quanto cada canal realmente gerou de receita, além do último clique.", short: "Quanto cada canal gerou de verdade.", art: <MmmArt /> },
   { title: "Análise preditiva", mobileTitle: "Previsão", text: "Projeção de vendas, CPA e ROAS, com faixa de confiança: o fechamento do mês antes do mês fechar.", short: "O fechamento do mês antes do fim.", art: <ForecastArt /> },
   { title: "Correlações", text: "O que anda junto com o resultado: investimento, frequência, criativo, dia da semana.", short: "O que anda junto com o resultado.", art: <CorrelationArt /> },
-  { title: "Estatística avançada", mobileTitle: "Estatística", text: "Uma queda só vira alerta quando é queda de verdade, não variação do dia.", short: "Alerta só para queda de verdade.", art: <StatsArt /> },
+  { title: "Estatística avançada", mobileTitle: "Estatística", text: "Dias fora do padrão, pelo dia da semana: o que passa de 2 desvios do esperado aparece marcado, para você ver o que mudou.", short: "Dias fora do padrão, pelo dia da semana.", art: <StatsArt /> },
 ];
 
 export function Inteligencia() {

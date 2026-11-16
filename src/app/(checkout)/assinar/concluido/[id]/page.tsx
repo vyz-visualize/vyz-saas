@@ -9,11 +9,10 @@ import { btn } from "@/components/ui/styles";
 import { CARD_BRAND_LABEL } from "@/features/checkout/card";
 import { CheckoutSteps } from "@/features/checkout/CheckoutSteps";
 import { INTERVAL_LABEL, PAYMENT_METHOD_LABEL, formatDate } from "@/features/checkout/labels";
-import { PLAN_LABEL, PRODUCT_HOME } from "@/features/pricing/pricing";
+import { PLAN_LABEL, PLAN_PROJECTS, PRODUCT_HOME, projectsLabel } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";
 import { getSessionUser } from "@/server/auth/session";
 import { getCheckout, getCheckoutReceipt, type CheckoutReceipt, type CheckoutView } from "@/server/billing/queries";
-import { isMockBilling } from "@/server/env";
 
 export const metadata: Metadata = { title: "Assinatura confirmada" };
 
@@ -109,7 +108,7 @@ async function Done({ params }: { params: PageProps<"/assinar/concluido/[id]">["
         </Link>
       )}
 
-      {isMockBilling() && (
+      {checkout.provider === "mock" && (
         <div className="mt-6">
           <PendingChip
             label="Pagamento simulado · nenhum valor foi cobrado"
@@ -126,7 +125,12 @@ function Receipt({ checkout, receipt }: { checkout: CheckoutView; receipt: Check
   const rows: [string, string][] = [];
   if (receipt.workspaceName) rows.push(["Organização", receipt.workspaceName]);
   if (checkout.planId) {
-    const accounts = checkout.product === "lp" ? "landing pages" : `até ${checkout.accountsQuantity} workspaces`;
+    const accounts =
+      checkout.product === "lp"
+        ? "landing pages"
+        : checkout.accountsQuantity === PLAN_PROJECTS[checkout.planId]
+          ? projectsLabel(checkout.planId)
+          : `até ${checkout.accountsQuantity} workspaces`;
     rows.push(["Plano", `${PLAN_LABEL[checkout.planId]} · ${INTERVAL_LABEL[checkout.interval]} · ${accounts}`]);
   }
   const method =

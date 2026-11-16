@@ -29,8 +29,8 @@ import {
   TRANSACTION_STATUS_LABEL,
 } from "@/features/checkout/labels";
 import { planChangeBlocker, planSelection, quotePlanChange, samePlan, type PlanSelection, type PlanUsage } from "@/features/checkout/plan-change";
-import { ENTITLEMENTS, LIMIT_ROWS, LIMIT_TIERS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
-import { annualSavingPct, LP_PLAN_PAGES, MAX_PROJECTS_IN_PLAN, PLAN_PROJECTS, lpMonthly, lpSetup, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
+import { ENTITLEMENTS, unlimitedProjects, LIMIT_ROWS, LIMIT_TIERS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
+import { annualSavingPct, LP_PLAN_PAGES, projectsLabel, lpMonthly, lpSetup, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";
 import { msgUpgrade, waLink } from "@/lib/whatsapp";
 import { cancelSubscription, changePlan, resumeSubscription } from "@/server/billing/actions";
@@ -77,7 +77,16 @@ function StatusChip({ status, label }: { status: string; label: string }) {
 }
 
 /** Barra de uso do plano: quanto já foi do limite. */
-function Meter({ used, limit, label }: { used: number; limit: number; label: string }) {
+/** Uso do plano. Sem limite (workspaces ilimitados), só o número. */
+function Meter({ used, limit, label }: { used: number; limit?: number; label: string }) {
+  if (limit === undefined) {
+    return (
+      <p className="flex items-baseline justify-between gap-3 text-[13.5px]">
+        <span className="text-fg-2">{label}</span>
+        <span className="font-semibold text-fg tnum">{used}</span>
+      </p>
+    );
+  }
   const ratio = Math.min(1, used / Math.max(1, limit));
   const over = used > limit;
   return (
@@ -197,16 +206,16 @@ function ChangePlan({
                 {brl(planMonthly(t, next.period))}
                 <span className="text-[12px] font-medium tracking-normal text-fg-2">/mês</span>
               </span>
-              <span className="mt-1.5 block text-[12.5px] text-fg-2">até {PLAN_PROJECTS[t]} workspaces</span>
+              <span className="mt-1.5 block text-[12.5px] text-fg-2">{projectsLabel(t)}</span>
             </button>
           );
         })}
       </div>
       <p className="text-[13px] text-fg-2">
-        O {TIER_LABEL[next.tier]} vai até <strong className="font-semibold text-fg">{PLAN_PROJECTS[next.tier]} workspaces</strong> (clientes ou marcas); você usa{" "}
-        {usage.projects}. Mais de {MAX_PROJECTS_IN_PLAN}?{" "}
+        Workspaces no {TIER_LABEL[next.tier]}: <strong className="font-semibold text-fg">{projectsLabel(next.tier)}</strong> (clientes ou marcas); você usa{" "}
+        {usage.projects}. Precisa de mais?{" "}
         <a
-          href={waLink(`Olá, VYZ! Tenho mais de ${MAX_PROJECTS_IN_PLAN} workspaces e quero o plano Personalizado.`)}
+          href={waLink("Olá, VYZ! Tenho muitos workspaces e quero o plano Personalizado.")}
           target="_blank"
           rel="noopener noreferrer"
           className="font-semibold text-accent underline-offset-4 hover:underline"
@@ -483,7 +492,9 @@ export function PlanPage({
     : tier
       ? lp
         ? `${ent.maxLandingPages} landing pages no plano`
-        : `${access.accountsQuantity} ${access.accountsQuantity === 1 ? "workspace contratado" : "workspaces contratados"}`
+        : unlimitedProjects(tier)
+          ? `${usage.projects} ${usage.projects === 1 ? "workspace em uso" : "workspaces em uso"}`
+          : `${access.accountsQuantity} ${access.accountsQuantity === 1 ? "workspace contratado" : "workspaces contratados"}`
       : lp
         ? "Escolha um plano para publicar as landing pages."
         : "Escolha um plano para usar os dashboards.";
@@ -571,7 +582,7 @@ export function PlanPage({
                   <Meter used={usage.publishedLandingPages} limit={ent.maxLandingPages} label="Landing pages publicadas" />
                 ) : (
                   <div className="space-y-5">
-                    <Meter used={usage.projects} limit={access.accountsQuantity} label="Workspaces" />
+                    <Meter used={usage.projects} limit={unlimitedProjects(tier) ? undefined : access.accountsQuantity} label="Workspaces" />
                     <Meter used={usage.dashboards} limit={ent.maxDashboards} label="Dashboards" />
                   </div>
                 )}

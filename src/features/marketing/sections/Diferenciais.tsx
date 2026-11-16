@@ -1,64 +1,80 @@
-// Dobra "Diferenciais": o que já está no produto e um gerador de relatório comum não faz.
-// Sem citar ninguém. O app aparece como disponível; os selos das lojas, só com a URL.
+"use client";
 
-import { BarChart3, EyeOff, GitCompareArrows, MessageCircle, MousePointerClick, Smartphone } from "lucide-react";
-import type { ReactNode } from "react";
+// Dobra "Diferenciais" · "Prompt × Pronto": derruba o "por que pagar o VYZ se eu faço isso numa
+// IA?". À esquerda, a lista de tarefas com uma IA genérica se acumula ao rolar e termina em
+// "E amanhã, de novo."; à direita (fixa no computador), um login e o dashboard se montando.
+// Abaixo, quem fez o VYZ e a frase final. No celular, a lista vira uma pilha que cresce e o lado
+// VYZ vem em seguida. Sem citar nenhuma IA ou empresa; com "reduzir movimento", tudo parado.
+// Textos em ./diferenciais/copy.ts; a bancada fica em /dev/diferenciais (só no next dev).
+
+import { RotateCcw } from "lucide-react";
 import { CutReveal } from "@/components/motion/CutReveal";
-import { Reveal } from "@/components/motion/Reveal";
-import { storeLinks } from "@/lib/store-links";
+import { CLOSING, GENERIC_END, GENERIC_STEPS, WEEK_DAYS } from "./diferenciais/copy";
+import { Closing, Land, MadeBy, VyzSide } from "./diferenciais/parts";
 
-const ITEMS: { icon: ReactNode; title: string; short: string; text: string; tag?: string }[] = [
-  { icon: <MousePointerClick size={20} />, title: "Dashboard interativo", short: "Clique numa campanha e tudo filtra.", text: "Clique numa campanha e o painel inteiro filtra. O seu cliente também consegue, no link." },
-  { icon: <MessageCircle size={20} />, title: "Análise, não só gráfico", short: "Pergunte ao VYZ. Voz no Avançado.", text: "Pergunte ao VYZ sobre os números e ele responde na hora.", tag: "Voz no Avançado" },
-  { icon: <GitCompareArrows size={20} />, title: "Comparativo de criativos", short: "Anúncios lado a lado, no Avançado.", text: "Anúncios lado a lado, com o melhor de cada métrica e uma leitura do resultado.", tag: "No Avançado" },
-  { icon: <BarChart3 size={20} />, title: "Métricas por cliente", short: "Escolha os cards de cada cliente.", text: "Escolha os cards de cada cliente: cada um vê o que importa para ele." },
-  { icon: <EyeOff size={20} />, title: "Investimento oculto no link", short: "O valor nem chega ao cliente.", text: "Mande o resultado sem mostrar quanto foi investido: o valor nem chega ao navegador do cliente." },
-  { icon: <Smartphone size={20} />, title: "App para iOS e Android", short: "Os dashboards no seu celular.", text: "Os dashboards dos seus clientes no celular, com o VYZ junto." },
-];
+const N = GENERIC_STEPS.length;
 
 export function Diferenciais() {
-  const stores = storeLinks();
   return (
     <section id="diferenciais" aria-labelledby="dif-title" className="relative">
       <div className="mx-auto max-w-[1360px] px-4 pt-14 pb-14 sm:px-6 sm:pt-20 sm:pb-24 lg:px-10 lg:pt-28">
-        <p className="label-caps text-fg-2">Diferenciais</p>
-        <CutReveal as="h2" id="dif-title" className="display mt-5 text-[clamp(2.2rem,5.4vw,4.4rem)] text-fg" lines={["O que um gerador de", <span key="a" className="text-accent">relatório comum não faz.</span>]} />
-        <ul className="mt-7 grid gap-2.5 sm:mt-12 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-          {ITEMS.map((it, i) => (
-            <li key={it.title}>
-              <Reveal delay={(i % 3) * 80} className="h-full">
-                <article className="group flex h-full flex-col rounded-card border border-line bg-card p-4 transition-colors duration-200 hover:border-accent sm:p-6">
-                  {/* no celular: ícone ao lado, título e uma linha curta */}
-                  <div className="flex items-center gap-3.5 sm:block">
-                    <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent transition-transform duration-300 ease-brand group-hover:-translate-y-0.5 sm:size-11" aria-hidden>
-                      {it.icon}
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="title text-[1.05rem] text-fg sm:mt-5 sm:text-[1.25rem]">{it.title}</h3>
-                      <p className="mt-0.5 text-[14px] leading-snug text-fg-2 sm:hidden">{it.short}</p>
-                    </div>
-                  </div>
-                  <p className="mt-2 hidden text-[15.5px] leading-relaxed text-fg-2 sm:block">{it.text}</p>
-                  {it.tag && <span className="mt-4 hidden w-fit sm:inline-block rounded-chip border border-line px-2.5 py-0.5 text-[12px] font-medium text-fg-2">{it.tag}</span>}
-                  {it.icon && it.title.startsWith("App") && (stores.appStore || stores.playStore) && (
-                    <span className="mt-4 flex flex-wrap gap-2">
-                      {stores.appStore && (
-                        <a href={stores.appStore} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center rounded-control border border-line px-3 text-[13px] font-medium text-fg hover:border-accent">
-                          App Store
-                        </a>
-                      )}
-                      {stores.playStore && (
-                        <a href={stores.playStore} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center rounded-control border border-line px-3 text-[13px] font-medium text-fg hover:border-accent">
-                          Google Play
-                        </a>
-                      )}
-                    </span>
-                  )}
-                </article>
-              </Reveal>
-            </li>
-          ))}
-        </ul>
+        <p className="label-caps text-fg-2">Prompt × Pronto</p>
+        <CutReveal as="h2" id="dif-title" className="display mt-5 max-w-[16ch] text-[clamp(2.2rem,5.4vw,4.4rem)] text-fg" lines={["Dá para fazer numa IA.", <span key="a" className="text-accent">Toda vez.</span>]} />
+        <p className="mt-4 max-w-[38rem] text-[16px] leading-relaxed text-fg-2 sm:text-[17px]">
+          Uma IA genérica responde o que você pergunta. O relatório do cliente pede o mesmo trabalho todo dia, e o VYZ faz esse trabalho sozinho.
+        </p>
+
+        <div className="mt-10 grid gap-12 sm:mt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-16">
+          {/* lado A: a pilha de tarefas */}
+          <div data-dif-generic>
+            <p className="flex items-baseline justify-between gap-3 border-b border-line pb-3">
+              <span className="title text-[1.15rem] text-fg">Com uma IA genérica</span>
+              <span className="text-[13px] text-fg-2 tnum">{N} passos, toda vez</span>
+            </p>
+            <ol className="mt-1">
+              {GENERIC_STEPS.map((s, i) => (
+                <Land key={s.title} className="flex gap-4 border-b border-dashed border-line py-3.5 sm:py-4">
+                  <span className="w-7 shrink-0 pt-0.5 text-[13px] font-semibold text-fg-2 tnum">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="min-w-0">
+                    <span className="block text-[16.5px] font-semibold text-fg sm:text-[18px]">{s.title}</span>
+                    <span className="block text-[14px] text-fg-2">{s.note}</span>
+                  </span>
+                </Land>
+              ))}
+              <Land className="pt-5">
+                <span className="flex items-center gap-3">
+                  <RotateCcw size={20} className="shrink-0 text-error" aria-hidden />
+                  <span className="display text-[clamp(1.5rem,3vw,2.1rem)] text-fg">{GENERIC_END}</span>
+                </span>
+                {/* a conta é só a lista acima vezes os dias úteis: passos, não horas */}
+                <span className="mt-2 block text-[14px] text-fg-2" data-dif-week>
+                  <strong className="font-semibold text-fg tnum">
+                    {N} × {WEEK_DAYS} = {N * WEEK_DAYS} passos por semana
+                  </strong>{" "}
+                  com uma IA genérica · <strong className="font-semibold text-accent">1 login</strong> no VYZ
+                </span>
+              </Land>
+            </ol>
+          </div>
+
+          {/* lado B: um login e pronto (fixo no computador enquanto a pilha cresce) */}
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <p className="flex items-baseline justify-between gap-3 border-b border-accent pb-3">
+              <span className="title text-[1.15rem] text-accent">Com o VYZ</span>
+              <span className="text-[13px] text-fg-2">1 login</span>
+            </p>
+            <div className="mt-5">
+              <VyzSide />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-16 sm:mt-24">
+          <MadeBy />
+        </div>
+        <div className="mt-14 sm:mt-20">
+          <Closing text={CLOSING} />
+        </div>
       </div>
     </section>
   );

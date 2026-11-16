@@ -8,7 +8,7 @@ import { btn } from "@/components/ui/styles";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { VyzFace } from "@/features/marketing/demo/VyzFace";
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
-import { MAX_PROJECTS_IN_PLAN, PLAN_PROJECTS } from "@/features/pricing/pricing";
+import { PLAN_PROJECTS } from "@/features/pricing/pricing";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 
 type Faq = { q: string; a: string };
@@ -44,7 +44,7 @@ const GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Quantos workspaces cabem em cada plano?",
-        a: `O Básico vai até ${PLAN_PROJECTS.base} workspaces, o Padrão até ${PLAN_PROJECTS.pro} e o Avançado até ${PLAN_PROJECTS.avancado}. Tem mais de ${MAX_PROJECTS_IN_PLAN} clientes? O plano Personalizado é sob consulta, com um especialista.`,
+        a: `O Básico vai até ${PLAN_PROJECTS.base} workspaces e 1 usuário. O Padrão vai até ${PLAN_PROJECTS.pro} workspaces e ${ENTITLEMENTS.pro.maxMembers} usuários, que dividem os mesmos workspaces. O Avançado tem workspaces ilimitados, com até ${ENTITLEMENTS.avancado.maxMembers} usuários. Marca própria ou algo sob medida? O plano Personalizado é sob consulta, com um especialista.`,
       },
       {
         q: "E se eu passar do limite de workspaces?",

@@ -105,10 +105,15 @@ export function appError(code: string, message?: string, fields?: Record<string,
   return new AppError(code, message ?? messageFor(code), fields);
 }
 
+/** Na tela o "projeto" do banco se chama workspace: troca o termo nas dicas que vêm das funções antigas. */
+export function screenHint(hint: string): string {
+  return hint.replace(/\b([Pp])rojeto(s?)\b/g, (_, p: string, s: string) => `${p === "P" ? "W" : "w"}orkspace${s}`);
+}
+
 /** Traduz um erro do PostgREST/Postgres. */
 export function fromPostgrest(error: PostgrestError): AppError {
   if (error.code === "P0001" && /^[a-z_]+:[a-z_]+$/.test(error.message)) {
-    return new AppError(error.message, error.hint || messageFor(error.message));
+    return new AppError(error.message, error.hint ? screenHint(error.hint) : messageFor(error.message));
   }
   switch (error.code) {
     case "23505":

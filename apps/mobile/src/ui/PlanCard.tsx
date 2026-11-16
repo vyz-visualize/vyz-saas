@@ -1,5 +1,5 @@
 // Plano do workspace no app: assinar ou trocar pela loja (mesma regra do site:
-// 3 planos fixos, Básico até 5 projetos, Padrão até 15, Avançado até 30, mensal
+// 3 planos fixos, Básico até 3 workspaces, Padrão até 5, Avançado ilimitados, mensal
 // ou anual). Plano contratado no site muda no site (sem link: regra das lojas).
 // O preço vem da loja.
 
@@ -48,7 +48,7 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
         {current ? <Chip label={PERIOD_LABEL[current.period]} tone="accent" /> : null}
         {ending ? <Chip label={ending} tone="warn" /> : null}
       </View>
-      {current ? <Text style={{ color: t.fg2, fontSize: 13.5, lineHeight: 19 }}>Até {current.accounts} workspaces</Text> : null}
+      {current ? <Text style={{ color: t.fg2, fontSize: 13.5, lineHeight: 19 }}>{current.tier === "avancado" ? "Workspaces ilimitados" : `Até ${current.accounts} workspaces`}</Text> : null}
     </View>
   );
 
@@ -69,7 +69,8 @@ export function PlanCard({ workspace, onChanged }: { workspace: Workspace; onCha
     );
   }
 
-  const same = !!current && current.tier === plan.tier && current.period === plan.period && current.accounts === plan.accounts && !workspace.cancelAtPeriodEnd;
+  // os workspaces vêm do plano: mesmo plano e período é o mesmo produto (a quantidade gravada pode ser a antiga)
+  const same = !!current && current.tier === plan.tier && current.period === plan.period && !workspace.cancelAtPeriodEnd;
 
   const purchase = async () => {
     if (!product) return;

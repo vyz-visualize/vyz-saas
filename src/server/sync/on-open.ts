@@ -6,6 +6,7 @@ import "server-only";
 // conta de novo antes de 15 min (deu erro, bateu no limite da plataforma ou acabou de rodar).
 // As mesmas 3 contas por vez do agendador.
 
+import { pauseAfterRateLimit, sharedPauses } from "@/server/cache/redis";
 import { ANALYTICS_PLATFORMS } from "@/features/sync/analytics";
 import { CRM_PLATFORMS } from "@/features/sync/crm";
 import { SYNC_PLATFORMS } from "@/features/sync/dataset";
@@ -32,7 +33,7 @@ export async function refreshDashboardOnOpen(dashboardId: string, session: Works
   const accounts = async () => {
     const { data, error } = await db
       .from("dashboard_sources")
-      .select("account:ad_accounts!dashboard_sources_workspace_id_ad_account_id_fkey(id, platform_id, is_enabled, connection_id, last_synced_at)")
+      .select("account:ad_accounts!dashboard_sources_workspace_id_ad_account_id_fkey(id, platform_id, external_id, is_enabled, connection_id, last_synced_at)")
       .eq("dashboard_id", dashboardId)
       .eq("workspace_id", session.workspace.id);
     if (error) throw error;
@@ -58,16 +59,21 @@ export async function refreshDashboardOnOpen(dashboardId: string, session: Works
   const due = stale.filter((a) => !tried.has(a.id));
 
   const paused = new Set<string>();
+  // com Redis, também as pausas de outras funções (limite da Meta ou do Google)
+  const sharedPaused = await sharedPauses(due);
   const ran = await runPool(
     due,
     SCHEDULED_CONCURRENCY,
     async (a) => {
       // "manual": os números novos aparecem na hora (o agendado serve o cache enquanto recalcula)
       const r = await syncAdAccount(a.id, "manual", { actorId: session.user.id });
-      if (r.code === "sync:rate_limited") paused.add(a.platform_id);
+      if (r.code === "sync:rate_limited") {
+        paused.add(a.platform_id);
+        await pauseAfterRateLimit(a.platform_id);
+      }
       return r;
     },
-    (a) => !paused.has(a.platform_id),
+    (a) => !paused.has(a.platform_id) && !sharedPaused(a),
   );
   const summary = summarizeRuns(
     due.length,

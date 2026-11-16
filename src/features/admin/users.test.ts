@@ -24,7 +24,7 @@ describe("gerenciador de usuários", () => {
   });
 
   it("projetos por plano dentro do limite do banco (1 a 30)", () => {
-    expect([projectsOf("base"), projectsOf("pro"), projectsOf("avancado"), projectsOf("personalizado")]).toEqual([5, 15, 30, 30]);
+    expect([projectsOf("base"), projectsOf("pro"), projectsOf("avancado"), projectsOf("personalizado")]).toEqual([3, 5, 200, 200]);
   });
 
   it("prazo: meses somados; 0 = sem prazo (100 anos)", () => {
@@ -52,5 +52,14 @@ describe("gerenciador de usuários", () => {
     const re = /^[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?$/;
     for (const n of ["CAP Digital", "Ação & Cia!!", "---", "x".repeat(90)]) expect(workspaceSlug(n, "7e0c6494-b816-4356")).toMatch(re);
     expect(workspaceSlug("CAP Digital", "7e0c6494-b816")).toBe("cap-digital-7e0c64");
+  });
+});
+
+describe("organização de teste na lista de usuários", () => {
+  it("assinatura de teste viva vira \"Teste\", não \"Com plano\"", () => {
+    const plan = { id: "pro", tier: "pro", status: "active", provider: "mock", periodEnd: null, courtesy: false };
+    expect(statusOf({ banned: false, openCheckout: null, plan: { ...plan, test: true } })).toBe("teste");
+    expect(statusOf({ banned: false, openCheckout: null, plan })).toBe("ativo");
+    expect(statusOf({ banned: false, openCheckout: null, plan: { ...plan, test: true, status: "canceled" } })).toBe("sem_plano");
   });
 });
