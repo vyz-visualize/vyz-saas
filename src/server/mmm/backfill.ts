@@ -13,6 +13,7 @@ import "server-only";
 
 import { createHmac } from "node:crypto";
 import { isRateLimited, runPool } from "@/features/sync/throttle";
+import { pauseAfterRateLimit, pauseCalls, pausedPlatforms, RATE_LIMIT_PAUSE_SECONDS } from "@/server/cache/redis";
 import { serverEnv } from "@/server/env";
 import { ADS, adsHeaders } from "@/server/integrations/providers/google";
 import { fetchJson } from "@/server/integrations/providers/http";
@@ -126,7 +127,9 @@ export async function runBackfillRound(opts: { budgetMs: number }): Promise<Back
   const started = Date.now();
   const db = createAdminSupabase();
   const summary: BackfillSummary = { ran: 0, concluded: 0, waiting: 0, paused: 0, failed: 0, durationMs: 0 };
-  const paused = new Set<string>();
+  // com Redis, começa com as pausas que outras funções já pediram (limite ou cota do dia)
+  const shared = await pausedPlatforms();
+  const paused = new Set<string>(shared);
   const googleCap = Number(process.env.GOOGLE_ADS_DAILY_OPS) || 2000;
   let googleOps: number | null = null;
 
@@ -179,6 +182,7 @@ export async function runBackfillRound(opts: { budgetMs: number }): Promise<Back
       } catch (err) {
         if (isRateLimited(err)) {
           paused.add(job.platform_id);
+          await pauseAfterRateLimit(job.platform_id);
           summary.paused++;
           return back("pendente", null, job.report_run_id, true);
         }
@@ -190,6 +194,8 @@ export async function runBackfillRound(opts: { budgetMs: number }): Promise<Back
     // tudo em pausa: não adianta pegar mais nesta rodada
     if (paused.has("meta") && (paused.has("google") || (googleOps ?? 0) >= googleCap)) break;
   }
+  // a Meta passou de 75% da cota de relatórios: as outras funções também seguram
+  if (paused.has("meta") && !shared.has("meta")) await pauseCalls("meta", RATE_LIMIT_PAUSE_SECONDS.meta);
   summary.durationMs = Date.now() - started;
   return summary;
 }

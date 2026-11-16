@@ -9,7 +9,7 @@ import { createHmac } from "node:crypto";
 import type { AccountDataset } from "@/features/sync/dataset";
 import type { SyncRange } from "@/features/sync/dates";
 import { serverEnv } from "@/server/env";
-import { fetchJson } from "@/server/integrations/providers/http";
+import { fetchJson, SYNC_CACHE_SECONDS } from "@/server/integrations/providers/http";
 import { getValidAccessToken } from "@/server/integrations/tokens";
 import type { SyncAccount } from "../source";
 import { mapMetaAd, mapMetaAdDay, mapMetaCampaign, mapMetaCampaignDay, sumAccountDays, type MetaAd, type MetaCampaign, type MetaInsight } from "./map";
@@ -71,7 +71,8 @@ async function all<T>(path: string, params: Record<string, string>, token: strin
     // o paging.next da Meta volta sem o appsecret_proof: sem reaplicar, a 2ª página é recusada (code=100)
     for (const [k, v] of Object.entries(authParams(token))) pageUrl.searchParams.set(k, v);
     try {
-      const page: Page<T> = await fetchJson<Page<T>>(pageUrl, { label, rejectCode: "provedor_recusou", timeoutMs: TIMEOUT_MS });
+      // cache curto (Redis): uma nova tentativa logo depois de uma falha no meio reaproveita as páginas que já vieram
+      const page: Page<T> = await fetchJson<Page<T>>(pageUrl, { label, rejectCode: "provedor_recusou", timeoutMs: TIMEOUT_MS, cacheSeconds: SYNC_CACHE_SECONDS });
       out.push(...(page.data ?? []));
       next = page.paging?.next;
     } catch (err) {

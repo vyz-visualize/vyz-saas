@@ -7,7 +7,7 @@ import "server-only";
 import type { AccountDataset } from "@/features/sync/dataset";
 import type { SyncRange } from "@/features/sync/dates";
 import { ADS, adsHeaders } from "@/server/integrations/providers/google";
-import { fetchJson } from "@/server/integrations/providers/http";
+import { fetchJson, SYNC_CACHE_SECONDS } from "@/server/integrations/providers/http";
 import { getValidAccessToken } from "@/server/integrations/tokens";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import type { SyncAccount } from "../source";
@@ -49,6 +49,8 @@ export async function fetchGoogleDataset(account: SyncAccount, range: SyncRange)
         body: JSON.stringify(pageToken ? { query, pageToken } : { query }),
         label,
         rejectCode: "provedor_recusou",
+        // cache curto (Redis): uma nova tentativa logo depois de uma falha reaproveita as páginas (e não gasta operação)
+        cacheSeconds: SYNC_CACHE_SECONDS,
       });
       out.push(...(res.results ?? []));
       pageToken = res.nextPageToken;
