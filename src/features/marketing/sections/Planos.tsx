@@ -58,7 +58,8 @@ function dashCard(tier: PlanId, period: Period): Card {
   const base = {
     price: startingPrice(tier, period),
     caption: `${period === "anual" ? `no anual · ${brl(PLAN[tier].anual * 12)} por ano` : "no mensal"} · ${projectsLabel(tier)}`,
-    templates: `${e.dashboardTemplates} visuais de dashboard`,
+    // o Avançado, como os workspaces, sem número exato: "+5"
+    templates: tier === "avancado" ? "+5 visuais de dashboard" : `${e.dashboardTemplates} visuais de dashboard`,
   };
   if (tier === "base") {
     return {
@@ -88,7 +89,6 @@ function dashCard(tier: PlanId, period: Period): Card {
     features: [
       "Tudo do Padrão",
       `${projectsLabel("avancado")} (clientes)`,
-      "Mais de 5 modelos de dashboard",
       "Todas as plataformas: + X, Spotify, Globo, ChatGPT, YouTube, Shopee Ads e Mercado Ads (em breve)",
       "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos",
       "MMM, análise preditiva, correlações e estatística avançada",

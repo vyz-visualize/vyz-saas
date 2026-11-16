@@ -120,7 +120,7 @@ export function OrderSummary({
   const plan = noPlan ? null : (state.plano as PlanId);
   const pages = !plan || !lp ? 0 : LP_PLAN_PAGES[plan];
   const dash = !!plan && !lp;
-  // no anual, a parcela em 12x é o que todo mês custaria (sem juros)
+  // no anual, a parcela "em até 12x" é o valor do ano dividido por 12 (sem prometer condição de juros)
   const installment = annual && recurringCents > 0 ? Math.round(recurringCents / 12) : 0;
   const lines = q.lines.filter((l) => l.kind !== "included");
 
@@ -142,9 +142,10 @@ export function OrderSummary({
           <div className="mt-4 rounded-[16px] border border-accent/40 bg-[linear-gradient(150deg,color-mix(in_srgb,var(--accent)_16%,transparent),transparent_70%)] p-4">
             {annual ? (
               <>
-                <p className="text-[13px] font-semibold text-fg-2">12x sem juros de</p>
-                <p className="mt-0.5 flex items-baseline gap-1">
+                <p className="text-[13px] font-semibold text-fg-2">em até 12x de</p>
+                <p className="mt-0.5 flex items-baseline gap-1.5">
                   <span className="text-[2.6rem] leading-none font-extrabold tracking-[-0.03em] tnum">{brl(installment)}</span>
+                  <span className="text-[15px] font-semibold text-fg-2">no cartão</span>
                 </p>
                 <p className="mt-2 text-[13px] text-fg-2">
                   ou <strong className="font-semibold text-fg tnum">{brl(recurringCents)}</strong> à vista · cobrado uma vez por ano

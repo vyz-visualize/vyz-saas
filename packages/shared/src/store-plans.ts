@@ -52,7 +52,7 @@ export const STORE_PLAN_HIGHLIGHTS: Record<StorePlanTier, string[]> = {
   avancado: [
     "+5 workspaces (clientes)",
     "Tudo do Padrão",
-    "Mais de 5 modelos de dashboard",
+    "+5 visuais de dashboard",
     "X Ads, Spotify Ads, Globo Ads, ChatGPT Ads e mais",
     "Comparativo de criativos",
     "Análise preditiva e MMM",
