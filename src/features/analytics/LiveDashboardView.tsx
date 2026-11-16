@@ -15,7 +15,7 @@ import { GOOGLE_CATALOG, IMPORT_CATALOG, META_CATALOG, type CatalogMetric } from
 import { MetricVisibilityProvider, useMetricPrefsState, type SaveMetricPrefs } from "@/features/dashboards/metric-prefs-context";
 import { MetricEditProvider } from "@/features/dashboards/metric-edit-context";
 import { MetricNoticeBar } from "@/features/dashboards/MetricActions";
-import { CustomizeButton, MetricEditBar, MetricTray, useMetricEditorState } from "@/features/dashboards/MetricEditor";
+import { CustomizeButton, MetricTray, useMetricEditorState } from "@/features/dashboards/MetricEditor";
 import { PresenterBar, presentingClass, usePresentation } from "@/features/dashboards/present";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
@@ -133,8 +133,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
   return (
     <MetricEditProvider value={edit.editor}>
     <FilterProvider value={filters}>
-    <div ref={rootRef} data-presenting={presenting ? "" : undefined} data-metric-editing={editing ? edit.section : undefined} className={`@container space-y-4 ${presenting ? presentingClass(false) : editing ? "pb-[62dvh] md:pb-[320px]" : ""}`}>
-      {canCustomize && <MetricEditBar state={edit} />}
+    <div ref={rootRef} data-presenting={presenting ? "" : undefined} data-metric-editing={editing ? edit.section : undefined} className={`@container space-y-4 ${presenting ? presentingClass(false) : editing ? (edit.collapsed ? "pb-24" : "pb-[80dvh] md:pb-[324px]") : ""}`}>
       <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
         {logo && <div className="hidden shrink-0 pt-1.5 @[500px]:block @[900px]:pt-0.5">{logo}</div>}
         {/* no largo, título, cliente e etiquetas dividem uma linha: sobra altura para os números */}

@@ -107,37 +107,13 @@ describe("entrar no modo", () => {
     expect(grid.lastElementChild === rows[0] || grid.lastElementChild?.getAttribute("aria-hidden") === "true").toBe(true);
   });
 
-  it("a bandeja acompanha a tela cheia do dashboard: respiro igual dos dois lados no computador e largura toda no celular", async () => {
+  it("o editor fica embaixo da tela: respiro igual dos dois lados no computador e largura toda no celular", async () => {
     await sample();
     await enter();
     const classes = tray()!.className.split(/\s+/);
-    expect(classes).toEqual(expect.arrayContaining(["inset-x-0", "md:left-3", "md:right-3"]));
+    expect(classes).toEqual(expect.arrayContaining(["fixed", "bottom-0", "inset-x-0", "md:inset-x-3", "md:bottom-3"]));
     // o dashboard abre sem o menu lateral: nada de recuo com a medida dele
     expect(classes.some((c) => c.includes("left-[260px]") || c.includes("sb-closed"))).toBe(false);
-  });
-
-  it("fileira da bandeja: seta e degradê só na ponta onde há mais cards", async () => {
-    await sample();
-    await enter();
-    const row = document.querySelector<HTMLElement>("[data-tray-row]")!;
-    const arrow = (side: string) => document.querySelector(`[data-tray-arrow="${side}"]`);
-    expect(row.className).toContain("md:[scrollbar-width:none]");
-    expect(arrow("prev")).toBeNull();
-    expect(arrow("next")).toBeNull();
-    const scrollBy = vi.fn();
-    Object.assign(row, { scrollBy });
-    Object.defineProperty(row, "scrollWidth", { configurable: true, value: 900 });
-    Object.defineProperty(row, "clientWidth", { configurable: true, value: 400 });
-    await act(async () => void row.dispatchEvent(new Event("scroll")));
-    expect(arrow("prev")).toBeNull();
-    expect(arrow("next")).not.toBeNull();
-    expect(document.querySelectorAll("[data-tray-fade]")).toHaveLength(1);
-    await click(arrow("next"));
-    expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: 320 }));
-    row.scrollLeft = 500;
-    await act(async () => void row.dispatchEvent(new Event("scroll")));
-    expect(arrow("prev")).not.toBeNull();
-    expect(arrow("next")).toBeNull();
   });
 
   it("encaixe vazio leva a busca da bandeja", async () => {
@@ -218,12 +194,13 @@ describe("adicionar e remover", () => {
 });
 
 describe("cards apagados", () => {
-  it("já em uso: ✓, sem +", async () => {
+  it("já em uso: fica em Na tela, com o ✕, e sai de Adicionar", async () => {
     await sample();
     await enter();
-    const card = await trayCard("CTR");
-    expect(card?.querySelector('[role="img"]')?.getAttribute("aria-label")).toContain("em uso");
-    expect(card?.querySelector('button[aria-label^="Adicionar"]')).toBeNull();
+    expect(await trayCard("CTR")).toBeUndefined();
+    const onScreen = document.querySelector('[data-metric-tray] ul[aria-label="Na tela"]');
+    expect(onScreen?.textContent).toContain("CTR");
+    expect(onScreen?.querySelector('button[aria-label="Tirar CTR"]')).toBeTruthy();
   });
 
   it("ⓘ no toque: o primeiro toque já mostra a explicação", async () => {
@@ -251,14 +228,13 @@ describe("cards apagados", () => {
     expect(cards()).toHaveLength(3);
   });
 
-  it("sem dados: mostra o traço, sem linha de tendência e com o aviso inteiro", async () => {
+  it("sem dados: mostra o traço e o aviso, sem linha de tendência", async () => {
     await sample();
     await enter();
     const card = await trayCard("Leads qualificados");
     expect(card?.textContent).toContain("—");
-    expect(card?.querySelector(".h-6")).toBeNull();
-    const aviso = [...(card?.querySelectorAll("span") ?? [])].find((s) => s.textContent === "sem dados nesta conta");
-    expect(aviso?.className).not.toContain("truncate");
+    expect(card?.textContent).toContain("sem dados nesta conta");
+    expect(card?.querySelector(".w-12")).toBeNull();
   });
 
   it("com dados: mostra o valor, e não o traço", async () => {
@@ -391,26 +367,6 @@ describe("arrastar", () => {
     expect(host.textContent).not.toContain("Solte para adicionar");
   });
 
-  it("rolar a fileira com o mouse não pega o card que passa por baixo", async () => {
-    await sample();
-    await enter();
-    const card = (await trayCard("Investimento"))!;
-    const row = document.querySelector<HTMLElement>("[data-tray-row]")!;
-    Object.defineProperty(row, "scrollWidth", { configurable: true, value: 900 });
-    Object.defineProperty(row, "clientWidth", { configurable: true, value: 400 });
-    Object.assign(row, { setPointerCapture: vi.fn() });
-    const pointer = (type: string) => act(async () => void row.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "mouse", button: 0, clientX: 100 })));
-    const kpiRow = () => host.querySelector("[data-kpi-row]")!;
-
-    await pointer("pointerdown");
-    await fire(card, "dragstart", dataTransfer());
-    expect(kpiRow().textContent).not.toContain("Solte para adicionar");
-
-    await pointer("pointerup");
-    await fire(card, "dragstart", dataTransfer());
-    expect(kpiRow().textContent).toContain("Solte para adicionar");
-    await fire(card, "dragend", dataTransfer());
-  });
 });
 
 describe("sair com mudança não salva", () => {
@@ -481,7 +437,7 @@ describe("Meta e Google na aba Criativos", () => {
     const { dashboardTemplate } = await import("@/features/templates/dashboards");
     const load = (id: string) => sampleCreatives(dashboardTemplate(id)!, { name: "T", client: "C", settings: DEFAULT_SETTINGS }, ["criativos"], { tier: "pro" }, { period: "30d", customDays: 30 });
     await mount(createElement(DashboardBody, { spec: { ...teste, pages: ["criativos"], metricPrefs: undefined }, creatives: load("vyz-ecommerce"), initialPage: "criativos" }));
-    const labels = () => [...host.querySelectorAll("[data-edit-metric] p:first-child")].map((p) => p.textContent);
+    const labels = () => [...host.querySelectorAll("[data-edit-metric]")].map((card) => card.querySelector("p")?.textContent);
     expect(labels().length).toBe(4);
     for (const l of labels()) expect(l).toMatch(/ · Meta$/);
   });

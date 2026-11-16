@@ -1,7 +1,13 @@
 // Widgets do dashboard. Os mesmos componentes servem o gerador da LP, o passo 2
 // de "Como funciona", as miniaturas, o painel e o link público: só muda o Dataset.
 
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { TrendSpark } from "@/components/charts/TrendSpark";
 import { CreativeImage, isVideoFormat } from "./CreativeImage";
+import { BreakdownWidget, SearchTermsWidget, VideoWidget } from "./Detail";
+import { RankWidget } from "./Rank";
+import { RankingWidget } from "./Ranking";
+import { TrendWidget } from "./Trend";
 import { BUDGET_INVITE, breakEvenOf, GOAL_INVITE, hasBudget, hasGoal, hasMargin, MARGIN_INVITE } from "@/features/metrics/targets";
 import type { CSSProperties, ReactNode } from "react";
 import { BarList } from "@/components/charts/BarList";
@@ -13,6 +19,7 @@ import { Odometer, zeroed } from "@/components/ui/Odometer";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { byPlatform, currentTotals, delta, maturedAverage, previousTotals, series, type Totals } from "@/features/metrics/compute";
 import { formatValue, isGood, metric, type MetricDef, type MetricId, type Profile } from "@/features/metrics/definitions";
+import { rankMetric } from "@/features/metrics/rank";
 import type { Dataset } from "@/features/metrics/source";
 import type { KpiSpec, WidgetSpec } from "@/features/templates/types";
 import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
@@ -66,10 +73,10 @@ const short = (id: PlatformId) => PLATFORMS[id].short;
 
 export function Card({ title, children, delay = 440, className = "", aside, note, fill = false }: { title?: string; children: ReactNode; delay?: number; className?: string; aside?: ReactNode; /** Selo "não filtrado por". */ note?: string | null; /** O conteúdo (gráfico) ocupa a altura que o bloco tiver na grade. */ fill?: boolean }) {
   return (
-    <section className={`m-in min-w-0 rounded-[10px] border border-line bg-card p-3 ${fill ? "flex flex-col" : ""} ${className}`} style={{ "--d": `${delay}ms` } as CSSProperties}>
+    <section className={`m-in min-w-0 rounded-[14px] border border-line/80 bg-[linear-gradient(170deg,color-mix(in_srgb,var(--fg)_3%,var(--card)),var(--card)_45%)] p-3.5 ${fill ? "flex flex-col" : ""} ${className}`} style={{ "--d": `${delay}ms` } as CSSProperties}>
       {(title || aside) && (
-        <header className="mb-2 flex items-baseline justify-between gap-2">
-          {title && <h3 className="text-[11.5px] leading-snug font-semibold text-fg">{title}</h3>}
+        <header className="mb-2.5 flex items-baseline justify-between gap-2">
+          {title && <h3 className="text-[12.5px] leading-snug font-semibold text-fg">{title}</h3>}
           {aside}
         </header>
       )}
@@ -113,53 +120,146 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
   const strong = spec.highlight;
   const filters = useDashFilters();
   const filtered = !!ctx.base;
-
   const goal = ctx.goals?.find((g) => g.metric === spec.metric);
-  let sub: ReactNode = null;
+  const v = cur[spec.metric];
+
+  // variação contra o período anterior: selo no canto (em todos os cards, com a comparação ligada)
+  const d = delta(v, prev[spec.metric]);
+  const good = isGood(d, def.better);
+  const showDelta = ctx.compare && Number.isFinite(d) && prev[spec.metric] > 0 && !hidden;
+  const pill = showDelta ? (
+    <span
+      title={filters?.compared ? `vs ${rangeLabel(filters.compared)}` : "vs período anterior"}
+      className={`inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-[2px] text-[10.5px] leading-none font-semibold tnum ${
+        strong ? "bg-on-accent/15 text-on-accent" : good === null ? "bg-surface-2 text-fg-2" : good ? "bg-accent/15 text-accent" : "bg-error-fg/12 text-error-fg"
+      }`}
+    >
+      {d >= 0 ? <ArrowUpRight size={11} aria-hidden /> : <ArrowDownRight size={11} aria-hidden />}
+      {pct(Math.abs(d))}
+    </span>
+  ) : null;
+
+  // o pé do card: barra de progresso quando há alvo (verba, custo, equilíbrio), senão a tendência do período
+  let foot: ReactNode = null;
   switch (spec.sub) {
-    case "delta":
-      sub = ctx.compare ? <Delta cur={cur[spec.metric]} prev={prev[spec.metric]} id={spec.metric} profile={profile} suffix={filters?.compared ? ` vs ${rangeLabel(filters.compared)}` : " vs anterior"} /> : "no período";
+    case "budget":
+      foot = filtered ? (
+        <FootText strong={strong}>no recorte</FootText>
+      ) : hasBudget(ds) ? (
+        <Meter
+          strong={strong}
+          value={ds.budget.spent / ds.budget.monthly}
+          marker={ds.budget.day / ds.budget.daysInMonth}
+          tone={ds.budget.spent / ds.budget.monthly > (ds.budget.day / ds.budget.daysInMonth) * 1.08 ? "warn" : "ok"}
+          text={hidden ? `dia ${ds.budget.day} de ${ds.budget.daysInMonth}` : `${pct(ds.budget.spent / ds.budget.monthly, 0)} da verba do mês`}
+          hint="A marca mostra onde o mês deveria estar hoje"
+        />
+      ) : (
+        <FootText strong={strong}>
+          <Invite text={BUDGET_INVITE} />
+        </FootText>
+      );
       break;
-    case "split": {
-      const plats = byPlatform(ds);
-      // uma plataforma só: "Meta 36" parecia uma meta; diz de onde vieram
-      sub = plats.length > 1 ? plats.map((p) => `${short(p.id)} ${int(p.conv)}`).join(" · ") : plats.length ? `todas pelo ${PLATFORMS[plats[0].id].name}` : "Confirmadas no GA4";
+    case "goal": {
+      if (!hasGoal(ds)) {
+        foot = (
+          <FootText strong={strong}>
+            <Invite text={GOAL_INVITE} />
+          </FootText>
+        );
+        break;
+      }
+      // custo: quanto menor, melhor. A barra enche até o alvo; passou dele, fica vermelha
+      const ratio = v / ds.goal;
+      const gap = Math.abs(1 - ratio);
+      foot = <Meter strong={strong} value={Math.min(1, ratio / 1.5)} marker={1 / 1.5} tone={ratio <= 1 ? "ok" : "bad"} text={`alvo ${brl(ds.goal, { decimals: false })} · ${pct(gap, 0)} ${ratio <= 1 ? "abaixo" : "acima"}`} hint="A marca é o alvo de custo" />;
       break;
     }
-    case "breakEven":
-      sub = `Equilíbrio ${decimal(breakEvenOf(ds))}${hasMargin(ds) ? "" : ` · ${MARGIN_INVITE}`}`;
+    case "breakEven": {
+      const be = breakEvenOf(ds);
+      const ratio = be > 0 ? v / be : 0;
+      foot = <Meter strong={strong} value={Math.min(1, v / (be * 2))} marker={0.5} tone={ratio >= 1 ? "ok" : "bad"} text={`equilíbrio ${decimal(be)}${ratio > 0 ? ` · ${decimal(ratio, 1)}× ${ratio >= 1 ? "acima" : "abaixo"}` : ""}${hasMargin(ds) ? "" : ` · ${MARGIN_INVITE}`}`} hint="A marca é o ROAS de equilíbrio" />;
       break;
-    case "ofLeads":
-      sub = `de ${int(cur.leads || cur.conversions)} leads`;
+    }
+    case "split": {
+      const plats = byPlatform(ds);
+      const total = plats.reduce((a, p) => a + p.conv, 0) || 1;
+      foot =
+        plats.length > 1 ? (
+          <div className="space-y-1">
+            <div className="flex h-1.5 gap-[2px] overflow-hidden rounded-full" aria-hidden>
+              {plats.map((p) => (
+                <span key={p.id} className="h-full first:rounded-l-full last:rounded-r-full" style={{ width: `${(p.conv / total) * 100}%`, background: strong ? "currentColor" : platformColor(p.id), opacity: strong ? 0.6 : 1 }} />
+              ))}
+            </div>
+            <FootText strong={strong}>{plats.map((p) => `${short(p.id)} ${int(p.conv)}`).join(" · ")}</FootText>
+          </div>
+        ) : (
+          <FootText strong={strong}>{plats.length ? `todas pelo ${PLATFORMS[plats[0].id].name}` : "Confirmadas no GA4"}</FootText>
+        );
       break;
-    case "budget":
-      // a verba do mês é da conta inteira: não dá para comparar com um recorte
-      sub = filtered ? "no recorte" : hidden ? "da verba do mês" : hasBudget(ds) ? `${pct(ds.budget.spent / ds.budget.monthly, 0)} da verba do mês` : <Invite text={BUDGET_INVITE} />;
+    }
+    case "ofLeads": {
+      const of = cur.leads || cur.conversions;
+      foot = <Meter strong={strong} value={of ? v / of : 0} tone="ok" text={`de ${int(of)} leads`} />;
       break;
-    case "goal":
-      sub = hasGoal(ds) ? `alvo ${brl(ds.goal, { decimals: false })}` : <Invite text={GOAL_INVITE} />;
-      break;
+    }
+    default: {
+      const values = ctx.chart?.current ?? ds.current;
+      foot = hidden ? <FootText strong={strong}>no período</FootText> : <TrendSpark values={series(values, spec.metric)} maturing={3} tone={good === false ? "bad" : "good"} line className={`h-7 ${strong ? "opacity-80" : ""}`} />;
+    }
   }
 
   return (
     <div
       data-vyz-metric={spec.metric}
       data-edit-metric={spec.metric}
-      className={`group/kpi m-in relative min-w-0 rounded-[10px] border ${lg ? "p-3.5" : "p-2.5"} ${strong ? "border-transparent bg-accent text-on-accent" : "border-line bg-card"}`}
+      className={`group/kpi m-in @container relative flex min-w-0 flex-col overflow-hidden rounded-[14px] border transition-[border-color,transform] duration-200 ${lg ? "p-3.5" : "px-3 py-2"} ${
+        strong
+          ? "border-transparent bg-[linear-gradient(145deg,color-mix(in_srgb,var(--accent)_100%,white_6%),color-mix(in_srgb,var(--accent)_82%,black))] text-on-accent shadow-[0_10px_30px_-14px_var(--accent)]"
+          : "border-line/80 bg-[linear-gradient(165deg,color-mix(in_srgb,var(--fg)_4%,var(--card)),var(--card)_55%)] hover:border-fg-2/40"
+      }`}
       style={{ "--d": `${delay}ms` } as CSSProperties}
       title={def.help}
     >
-      <p className={`min-h-[2.3em] leading-[1.15] font-medium tracking-[0.08em] uppercase ${lg ? "text-[11px]" : "text-[9.5px]"} ${strong ? "" : "text-fg-2"}`}>{label}</p>
-      <p className={`mt-1 leading-none font-bold tracking-[-0.02em] ${lg ? "text-[22px] @[760px]:text-[26px]" : value.length > 10 ? "text-[15px] @[900px]:text-[18px]" : "text-[17px] @[900px]:text-[21px]"}`}>
-        <Odometer value={value} label={hidden ? HIDDEN : raw} />
-      </p>
-      <p className={`mt-1.5 leading-tight ${lg ? "text-[12px]" : "text-[10px]"} ${strong ? "[&_span]:text-inherit" : "text-fg-2"}`}>{sub}</p>
-      {goal && !hidden && <GoalLine goal={goal} value={cur[spec.metric]} profile={profile} strong={!!strong} lg={lg} />}
+      <p className={`truncate leading-tight font-medium tracking-[0.06em] uppercase ${lg ? "text-[11px]" : "text-[10px]"} ${strong ? "opacity-85" : "text-fg-2"}`}>{label}</p>
+      {/* número e variação numa linha só: no card estreito, a variação sai (o número nunca corta) */}
+      <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
+        <p className={`shrink-0 leading-none font-bold tracking-[-0.02em] whitespace-nowrap tnum ${lg ? "text-[24px] @[760px]:text-[28px]" : value.length > 10 ? "text-[17px]" : "text-[20px]"}`}>
+          <Odometer value={value} label={hidden ? HIDDEN : raw} />
+        </p>
+        <span className="hidden min-w-0 overflow-hidden @[150px]:inline-flex">{pill}</span>
+      </div>
+      <div className="mt-auto pt-1.5">{goal && !hidden ? <GoalLine goal={goal} value={v} profile={profile} strong={!!strong} lg={lg} /> : foot}</div>
       {onHide && <HideMetricButton label={label} onClick={onHide} />}
       {onRemove && <RemoveMetricButton label={label} onClick={onRemove} />}
     </div>
   );
 }
+
+function FootText({ children, strong }: { children: ReactNode; strong?: boolean }) {
+  return <p className={`truncate text-[10.5px] leading-tight ${strong ? "opacity-85 [&_span]:text-inherit" : "text-fg-2"}`}>{children}</p>;
+}
+
+/** Barra de progresso do card: quanto já foi, com a marca do alvo (ou de onde deveria estar). */
+function Meter({ value, marker, tone, text, hint, strong }: { value: number; marker?: number; tone: "ok" | "warn" | "bad"; text: string; hint?: string; strong?: boolean }) {
+  const fill = strong ? "bg-on-accent" : tone === "ok" ? "bg-accent" : tone === "warn" ? "bg-warning" : "bg-error-fg";
+  return (
+    <div title={hint}>
+      <div className={`relative h-1.5 rounded-full ${strong ? "bg-on-accent/20" : "bg-[color-mix(in_srgb,var(--fg)_9%,transparent)]"}`} aria-hidden>
+        <span className={`absolute inset-y-0 left-0 rounded-full ${fill} transition-[width] duration-700`} style={{ width: `${Math.max(2, Math.min(100, value * 100))}%` }} />
+        {marker != null && <span className={`absolute -top-[3px] -bottom-[3px] w-[2px] -translate-x-1/2 rounded-full ${strong ? "bg-on-accent" : "bg-fg"}`} style={{ left: `${Math.min(100, marker * 100)}%` }} />}
+      </div>
+      <p className={`mt-1 truncate text-[10.5px] leading-tight ${strong ? "opacity-85" : "text-fg-2"}`}>{text}</p>
+    </div>
+  );
+}
+
+/** Cor de cada plataforma nos gráficos (as mesmas em todo o dashboard). */
+export function platformColor(id: PlatformId): string {
+  return PLATFORM_COLORS[id] ?? "var(--accent)";
+}
+const PLATFORM_COLORS: Partial<Record<PlatformId, string>> = { meta: "#5B8DEF", google: "#E9A23B", tiktok: "#E2557F", linkedin: "#3E8FC8", youtube: "#E5484D", mercado: "#E8C93B", shopee: "#F26B3A", x: "#9AA0A6", spotify: "#3DBE6E", ga4: "#B07CE0" };
 
 /** Meta da métrica no card: no alvo ou fora, com a barra do quanto já foi. */
 export function GoalLine({ goal, value, profile, strong = false, lg = false }: { goal: MetricGoal; value: number; profile: Profile; strong?: boolean; lg?: boolean }) {
@@ -206,9 +306,10 @@ export function ExtraKpi({ m, ctx, delay, onHide, onRemove }: { m: SampleExtraMe
 // ---- widgets ----------------------------------------------------------------
 
 /** Widgets do modelo sem campanha, anúncio nem dia: ficam no total, com o selo. */
-const NO_DIMENSIONS: ReadonlySet<WidgetSpec["type"]> = new Set(["funnel", "scatter", "split", "goals", "audience", "compare", "crm", "alerts"]);
+const NO_DIMENSIONS: ReadonlySet<WidgetSpec["type"]> = new Set(["funnel", "scatter", "split", "goals", "audience", "compare", "crm", "alerts", "breakdown", "searchTerms", "videos"]);
 
-const isFixed = (spec: WidgetSpec) => NO_DIMENSIONS.has(spec.type) || (spec.type === "table" && spec.source !== "campaigns") || (spec.type === "bars" && spec.source !== "campaigns" && spec.source !== "platforms");
+const isFixed = (spec: WidgetSpec) =>
+  NO_DIMENSIONS.has(spec.type) || (spec.type === "table" && spec.source !== "campaigns") || (spec.type === "bars" && spec.source !== "campaigns" && spec.source !== "platforms") || (spec.type === "rank" && spec.entity !== "campaigns");
 
 /** O que o widget não consegue respeitar, entre os filtros ativos. */
 function widgetUnfiltered(spec: WidgetSpec, f: DashFilters): (FilterDim | "days")[] {
@@ -230,6 +331,8 @@ export function Widget({ spec, ctx: shown, delay }: { spec: WidgetSpec; ctx: Wid
   if (ctx.hideSpend) {
     if (spec.type === "line" && isSampleSpendDerived(spec.metric)) return null;
     if (spec.type === "bars" && spec.metric !== "conversions") return null;
+    if (spec.type === "ranking") return null;
+    if (spec.type === "rank" && rankMetric(spec.metric, ctx.profile).spendDerived) return null;
   }
 
   switch (spec.type) {
@@ -241,6 +344,42 @@ export function Widget({ spec, ctx: shown, delay }: { spec: WidgetSpec; ctx: Wid
         </Card>
       );
     }
+    case "trend":
+      return (
+        <Card delay={delay} note={note} fill>
+          <TrendWidget ctx={ctx} metrics={spec.metrics} title={title} />
+        </Card>
+      );
+    case "breakdown":
+      return (
+        <Card title={title} delay={delay} note={note} fill>
+          <BreakdownWidget ctx={ctx} dimension={spec.dimension} platform={spec.platform} />
+        </Card>
+      );
+    case "searchTerms":
+      return (
+        <Card title={title} delay={delay} note={note} fill>
+          <SearchTermsWidget ctx={ctx} view={spec.view} />
+        </Card>
+      );
+    case "videos":
+      return (
+        <Card title={title} delay={delay} note={note} fill>
+          <VideoWidget ctx={ctx} platform={spec.platform} />
+        </Card>
+      );
+    case "rank":
+      return (
+        <Card title={title} delay={delay} note={note} fill>
+          <RankWidget ctx={ctx} spec={spec} />
+        </Card>
+      );
+    case "ranking":
+      return (
+        <Card title={title} delay={delay} note={note} fill>
+          <RankingWidget ctx={ctx} by={spec.metric} />
+        </Card>
+      );
     case "funnel":
       return (
         <Card title={title} delay={delay} note={note} fill>

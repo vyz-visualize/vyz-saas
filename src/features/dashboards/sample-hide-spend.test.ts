@@ -27,8 +27,8 @@ describe("dashboard de exemplo", () => {
   it("escolhas salvas valem no link", () => {
     const prefs = { sample: { kpis: { hidden: ["roas"], shown: ["impressions"] }, columns: { hidden: [], shown: [] } } };
     const html = render(spec("vyz-ecommerce", "visao-geral", prefs));
-    expect(html).toContain("Impressões");
-    expect(html).not.toContain(">ROAS<");
+    expect(html).toContain('data-vyz-metric="impressions"');
+    expect(html).not.toContain('data-vyz-metric="roas"');
   });
 
   it("coluna oculta some da tabela", () => {
@@ -79,20 +79,23 @@ describe("dashboard de exemplo", () => {
     expect(edit).not.toContain("Adicionar métrica");
   });
 
-  it("quem edita e quem só visualiza têm a mesma grade de cards (12 colunas, fileiras sem buraco)", () => {
-    const grid = (html: string) => /<div class="(grid grid-cols-2[^"]*)"/.exec(html)?.[1];
+  it("quem edita e quem só visualiza têm a mesma faixa de cards (uma fileira só no computador)", () => {
+    const row = (html: string) => /<div class="([^"]*)" data-kpi-row/.exec(html)?.[1];
     const edit = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, ...criativos }));
-    expect(grid(edit)).toBe(grid(render(teste, criativos)));
-    expect(grid(edit)).toContain("grid-cols-12");
-    expect(grid(edit)).not.toContain("grid-cols-5");
+    expect(row(edit)).toBe(row(render(teste, criativos)));
+    expect(row(edit)).toContain("@[720px]:flex");
+    expect(row(edit)).not.toContain("grid-cols-5");
   });
 
-  it("a ordem do topo: ações, abas, filtros com o botão por último", () => {
+  it("a ordem do topo: ações, período e o botão Editar no cabeçalho; as abas depois", () => {
     const html = renderToString(createElement(DashboardBody, { spec: teste, customizeId: "d1", saveMetrics: save, actions: createElement("span", null, "AÇÕES") }));
+    const at = (s: string) => html.indexOf(s);
     expect(html).toContain('data-tour="personalizar"');
-    expect(html.indexOf("Comparar com o período anterior")).toBeLessThan(html.indexOf('data-tour="personalizar"'));
-    expect(html.indexOf("AÇÕES")).toBeLessThan(html.indexOf('role="tablist"'));
-    expect(html.indexOf('role="tablist"')).toBeLessThan(html.indexOf("Comparar com o período anterior"));
+    expect(html).toContain("comparando com o período anterior");
+    expect(at("AÇÕES")).toBeGreaterThan(-1);
+    expect(at("AÇÕES")).toBeLessThan(at('data-tour="periodo"'));
+    expect(at('data-tour="periodo"')).toBeLessThan(at('data-tour="personalizar"'));
+    expect(at('data-tour="personalizar"')).toBeLessThan(at('role="tablist"'));
   });
 
   it("o botão Personalizar só aparece para quem pode editar", () => {

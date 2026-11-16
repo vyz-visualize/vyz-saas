@@ -6,7 +6,8 @@
 
 import type { PlatformId } from "@/features/accounts/platforms";
 import type { WarehouseRows } from "@/features/analytics/types";
-import { parseAgeGender } from "@/features/sync/breakdowns";
+import { BR_STATES, DEVICE_LABEL, parseAgeGender, PLACEMENT_LABEL } from "@/features/sync/breakdowns";
+import type { BreakdownRow, DatasetDetail, DetailDimension, SearchTermRow } from "./detail";
 import type { Profile } from "./definitions";
 import { crmStagesForDataset, type CrmRow } from "./crm";
 import { metaPurchaseFunnel, type FunnelStep } from "./funnel";
@@ -116,25 +117,85 @@ function creativesOf(sets: readonly WarehouseRows[]): Creative[] {
   const out: Creative[] = [];
   for (const rows of sets) {
     const info = new Map(rows.ads.map((a) => [a.id, a]));
-    const sum = new Map<string, Creative & { reach: number }>();
+    const sum = new Map<string, Creative & { reach: number; v: { views: number; p25: number; p50: number; p75: number; p100: number; any: boolean } }>();
     for (const r of rows.adDaily) {
       if (!inRange(r.date, rows.current)) continue;
       const a = info.get(r.adId);
       const c =
         sum.get(r.adId) ??
-        { id: r.adId, name: a?.name ?? "Anúncio", format: formatLabel(a?.format), platform: rows.platform as PlatformId, spend: 0, impressions: 0, clicks: 0, conversions: 0, frequency: 0, tone: 0, reach: 0, imageUrl: a?.thumbnailUrl ?? null };
+        { id: r.adId, name: a?.name ?? "Anúncio", format: formatLabel(a?.format), platform: rows.platform as PlatformId, spend: 0, impressions: 0, clicks: 0, conversions: 0, frequency: 0, tone: 0, reach: 0, imageUrl: a?.thumbnailUrl ?? null, v: { views: 0, p25: 0, p50: 0, p75: 0, p100: 0, any: false } };
       c.spend += cents(r.spend);
       c.impressions += r.impressions;
       c.clicks += r.linkClicks ?? r.clicks;
       c.conversions += Math.round(r.conversions);
       c.reach += r.reach ?? 0;
+      // retenção do vídeo (quando a plataforma manda os quartis)
+      if (r.videoP25 != null || r.videoP100 != null) {
+        c.v.any = true;
+        c.v.views += r.videoViews ?? 0;
+        c.v.p25 += r.videoP25 ?? 0;
+        c.v.p50 += r.videoP50 ?? 0;
+        c.v.p75 += r.videoP75 ?? 0;
+        c.v.p100 += r.videoP100 ?? 0;
+      }
       sum.set(r.adId, c);
     }
     out.push(
-      ...[...sum.values()].map(({ reach, ...c }, i) => ({ ...c, frequency: reach > 0 ? Math.round((c.impressions / reach) * 10) / 10 : 0, tone: i % CREATIVE_TONES })),
+      ...[...sum.values()].map(({ reach, v, ...c }, i) => ({
+        ...c,
+        frequency: reach > 0 ? Math.round((c.impressions / reach) * 10) / 10 : 0,
+        tone: i % CREATIVE_TONES,
+        ...(v.any ? { video: { views: v.views || v.p25, p25: v.p25, p50: v.p50, p75: v.p75, p100: v.p100 } } : {}),
+      })),
     );
   }
   return out.filter((c) => c.spend > 0).sort((a, b) => b.spend - a.spend);
+}
+
+/** Quebras do período (posicionamento, dispositivo, estado, hora), somadas por valor e plataforma. */
+function breakdownsOf(sets: readonly WarehouseRows[]): NonNullable<DatasetDetail["breakdowns"]> {
+  const out: NonNullable<DatasetDetail["breakdowns"]> = {};
+  const label: Record<DetailDimension, (v: string) => string> = { placement: (v) => PLACEMENT_LABEL[v] ?? v, device: (v) => DEVICE_LABEL[v] ?? v, region: (v) => BR_STATES[v] ?? v, hour: (v) => `${v}h` };
+  for (const dim of ["placement", "device", "region", "hour"] as const) {
+    const sum = new Map<string, BreakdownRow>();
+    for (const rows of sets) {
+      for (const r of rows.breakdownDaily) {
+        if (r.dimension !== dim || !inRange(r.date, rows.current)) continue;
+        const key = `${rows.platform}|${r.value}`;
+        const b = sum.get(key) ?? { key: r.value, label: label[dim](r.value), platform: rows.platform as PlatformId, spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0 };
+        b.spend += cents(r.spend);
+        b.impressions += r.impressions;
+        b.clicks += r.clicks;
+        b.conversions += r.conversions;
+        b.revenue += cents(r.conversionValue);
+        sum.set(key, b);
+      }
+    }
+    if (sum.size) out[dim] = [...sum.values()];
+  }
+  return out;
+}
+
+/** Termos de pesquisa do Google no período, somados por termo e tipo de correspondência. */
+function searchTermsOf(sets: readonly WarehouseRows[]): SearchTermRow[] | undefined {
+  const sum = new Map<string, SearchTermRow>();
+  let any = false;
+  for (const rows of sets) {
+    const names = new Map(rows.campaigns.map((c) => [c.id, c.name]));
+    for (const r of rows.searchTermDaily) {
+      any = true;
+      if (!inRange(r.date, rows.current)) continue;
+      const key = `${r.searchTerm}|${r.matchType}`;
+      const t = sum.get(key) ?? { term: r.searchTerm, matchType: r.matchType, campaign: names.get(r.campaignId) ?? "Campanha", spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0 };
+      t.spend += cents(r.spend);
+      t.impressions += r.impressions;
+      t.clicks += r.clicks;
+      t.conversions += r.conversions;
+      t.revenue += cents(r.conversionValue);
+      sum.set(key, t);
+    }
+  }
+  return any || sets.some((s) => s.platform === "google") ? [...sum.values()].sort((a, b) => b.spend - a.spend) : undefined;
 }
 
 const AGE_LABEL: Record<string, string> = { "18-24": "18 a 24", "25-34": "25 a 34", "35-44": "35 a 44", "45-54": "45 a 54", "55-64": "55 a 64", "65+": "65+" };
@@ -249,6 +310,8 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
     adPlatforms: sets.map((s) => s.platform as PlatformId),
     campaigns: campaignsOf(sets),
     creatives: creativesOf(sets),
+    breakdowns: breakdownsOf(sets),
+    searchTerms: searchTermsOf(sets),
     // e-commerce com a Meta: o funil de compra dela (cada etapa sobre a anterior); senão o do
     // site (GA4); senão impressões → cliques → conversões
     funnel: (metaFunnel.length ? metaFunnel : null) ??

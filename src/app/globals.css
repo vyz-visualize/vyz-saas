@@ -1077,6 +1077,20 @@ details.lines summary::-webkit-details-marker {
   top: 8px;
   margin: 12px;
 }
+/* Visual padrão com a barra flutuante (DashboardNav): ela já traz o voltar, as ações e o tema,
+   então a faixa do topo da tela cheia some e a página sobe para perto da borda. */
+.shell-content:has([data-float-nav]) > .focus-header {
+  border-bottom-width: 0;
+}
+.shell-content:has([data-float-nav]) > .focus-header > .focus-bar {
+  display: none;
+}
+.shell-content:has([data-float-nav]) > .focus-main {
+  padding-top: 10px;
+}
+.shell-content:has([data-float-nav]) [data-metric-edit-bar] {
+  top: 8px;
+}
 /* Aba encaixada na altura da tela ([data-fit-on], GridCanvas): a página não rola, então o respiro
    de baixo (que abre espaço para o botão do assistente) encolhe para o da grade (FIT_BOTTOM). */
 .shell-content:has([data-fit-on]) {

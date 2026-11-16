@@ -23,12 +23,12 @@ import {
   COLS,
   compact,
   constrain,
-  fitRows,
   GAP,
   GRID_MIN_WIDTH,
   gridRows,
   kindOf,
   limitsOf,
+  paginate,
   place,
   readingOrder,
   ROW,
@@ -38,6 +38,7 @@ import {
   type PageGrid,
 } from "./model";
 import { useFitHeight } from "./useFitHeight";
+import { ScreenPager, useScreenKeys } from "./ScreenPager";
 
 export type Block = { label: string; node: ReactNode };
 
@@ -111,11 +112,20 @@ export function GridCanvas({
     Math.max(gridRows(items), incoming ? incoming.y + incoming.h : 0) +
     (editing ? 6 : 0);
 
-  // encaixe na tela: cada fileira com a altura que faz a grade terminar no pé da área visível
+  // encaixe na tela: cada fileira com a altura que faz a grade terminar no pé da área visível.
+  // Não coube com tamanho legível: a aba vira telas (paginate), nunca rolagem.
   const fitting = fit && wide && !editing;
   const free = useFitHeight(ref, fitting, FIT_BOTTOM);
-  const fitted = fitting && free != null ? fitRows(items, free, compactBlock) : null;
+  const pages = fitting && free != null ? paginate(items, free, compactBlock) : null;
+  const [pageAt, setPage] = useState(0);
+  const pageIdx = pages ? Math.min(pageAt, pages.length - 1) : 0;
+  const screen = pages?.[pageIdx] ?? null;
+  const fitted = screen?.heights ?? null;
+  const shown = screen?.items ?? items;
+  const paged = !!pages && pages.length > 1;
   const tops = fitted ? rowTops(fitted) : null;
+  // Page Down / Page Up passam de tela (a rodinha do mouse não)
+  useScreenKeys(paged, pageIdx, pages?.length ?? 1, setPage);
   const rowTop = (r: number) => (tops ? (tops[Math.min(r, tops.length - 1)] ?? 0) : r * ROW);
 
   const box = (it: Pick<LayoutItem, "x" | "y" | "w" | "h">): CSSProperties => ({
@@ -282,7 +292,7 @@ export function GridCanvas({
             />
           )}
 
-          {items.map((it) => {
+          {shown.map((it) => {
             const block = blocks[it.id];
             if (!block) return null;
             const active = drag?.id === it.id;
@@ -318,6 +328,7 @@ export function GridCanvas({
                   />
                 )}
                 <div
+                  data-block={it.id}
                   className={`absolute min-w-0 transition-[left,top,width,height,transform,box-shadow] duration-300 ease-[cubic-bezier(.2,.8,.2,1)] ${
                     editing
                       ? `overflow-hidden rounded-[12px] bg-card ${active ? "shadow-[0_24px_60px_-12px_rgba(0,0,0,.45)] ring-2 ring-accent" : focus === it.id ? "ring-2 ring-accent" : "ring-1 ring-line hover:ring-accent/70"}`
@@ -388,6 +399,7 @@ export function GridCanvas({
           })}
         </div>
       )}
+      {paged && wide && <ScreenPager count={pages.length} index={pageIdx} onChange={setPage} labels={pages.map((p) => p.items.filter((i) => !compactBlock(i.id)).map((i) => blocks[i.id]?.label ?? "").filter(Boolean))} />}
     </div>
   );
 }

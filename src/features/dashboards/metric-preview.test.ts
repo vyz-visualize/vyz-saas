@@ -40,7 +40,7 @@ const click = async (el: Element | null | undefined) => {
   expect(el).toBeTruthy();
   await act(async () => (el as HTMLElement).click());
 };
-const openPanel = () => click([...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Editar"));
+const openPanel = () => click([...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Editar dashboard"));
 const trayTabs = () => [...document.querySelectorAll<HTMLElement>("[data-tray-tab]")];
 const trayCardsNow = () => [...document.querySelectorAll<HTMLElement>("[data-tray-metric]")];
 /** Procura o card da bandeja pelo nome, passando pelas categorias. */
@@ -170,7 +170,7 @@ describe("prévia não salva", () => {
     await mount(createElement(LiveDashboardView, { data, initialPage: "visao-geral", canCustomize: true, saveMetrics: save }));
     await openPanel();
     const heads = () => trayTabs().map((h) => h.textContent);
-    expect(heads()).toEqual(["Gerais", "Conversões", "Custos", "Taxas", "Vídeo", "Engajamento"]);
+    expect(heads()).toEqual(["Todas", "Gerais", "Conversões", "Custos", "Taxas", "Vídeo", "Engajamento"]);
     const input = document.querySelector("[data-metric-search]") as HTMLInputElement;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "reproducoes");

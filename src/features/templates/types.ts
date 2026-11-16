@@ -8,8 +8,24 @@ export type Span = 1 | 2 | 3 | 4;
 export type KpiSub = "delta" | "split" | "breakEven" | "ofLeads" | "budget" | "goal";
 export type KpiSpec = { metric: MetricId; sub?: KpiSub; highlight?: boolean };
 
+/** O que dá para ranquear num bloco "rank" (os blocos que a pessoa pede no editor). */
+export type RankEntity = "products" | "campaigns" | "creatives" | "platforms" | "regions" | "devices" | "placements" | "terms";
+export type RankMetric = "revenue" | "sold" | "roas" | "profit" | "spend" | "conversions" | "cpa" | "ctr" | "clicks" | "cpc" | "impressions" | "ticket" | "frequency";
+
 export type WidgetSpec = { span?: Span; title?: string; /** Altura em linhas da grade (6 a 20). Sem isso, a padrão do tipo de bloco. */ rows?: number } & (
   | { type: "line"; metric: MetricId; goal?: boolean }
+  /** Desempenho diário: a pessoa escolhe a métrica (as da lista); uma linha por plataforma. */
+  | { type: "trend"; metrics: MetricId[] }
+  /** Ranking das campanhas pela métrica que decide, com a plataforma de cada uma. */
+  | { type: "ranking"; metric: "roas" | "cpa" }
+  /** Ranking de qualquer coisa por uma métrica (produtos por receita, estados por vendas...), de uma plataforma ou de todas. */
+  | { type: "rank"; entity: RankEntity; metric: RankMetric; dir?: "asc" | "desc"; platform?: PlatformId }
+  /** Quebra do período (posicionamento, dispositivo, estado, hora), de uma plataforma ou de todas. */
+  | { type: "breakdown"; dimension: "placement" | "device" | "region" | "hour"; platform?: PlatformId }
+  /** Termos de pesquisa do Google: tabela completa, desperdício, correspondência ou palavras. */
+  | { type: "searchTerms"; view: "table" | "waste" | "match" | "words" }
+  /** Retenção dos vídeos (25%, 50%, 75%, 100%). */
+  | { type: "videos"; platform?: PlatformId }
   | { type: "funnel" }
   | { type: "bars"; source: "campaigns" | "platforms" | "clients"; metric: "roas" | "cpa" | "conversions" | "spend"; reference?: "breakEven" | "goal" }
   | { type: "scatter" }

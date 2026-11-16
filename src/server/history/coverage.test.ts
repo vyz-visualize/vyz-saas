@@ -39,6 +39,8 @@ const EXEMPT: Record<string, string> = {
   // painel Interno: a simulação só lê; a exclusão total apaga o histórico da pessoa junto (e o servidor loga)
   "admin/user-actions.ts:previewDeletionAction": "só consulta",
   "admin/user-actions.ts:applyDeletionAction": "exclusão total: o histórico da pessoa sai junto",
+  // Pedir ao Vyz: a IA só monta a proposta; os blocos entram pelo Salvar do layout, que registra
+  "dashboards/ask.ts:askLayout": "só monta a proposta, não grava",
 };
 
 function actionFiles(dir: string): string[] {

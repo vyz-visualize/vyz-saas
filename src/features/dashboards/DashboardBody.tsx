@@ -5,10 +5,9 @@ import Link from "next/link";
 import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { PresenterBar, presentingClass, usePresentation } from "./present";
 import { Wordmark } from "@/components/brand/Wordmark";
-import { Switch } from "@/components/ui/controls";
 import { PendingChip } from "@/components/ui/kit";
-import { OverflowTabs } from "@/components/ui/OverflowTabs";
-import { PeriodPicker, rangeDays, type Range } from "@/components/ui/PeriodPicker";
+import { DateRangePicker } from "@/components/ui/DateRangePicker";
+import { rangeDays, type Range } from "@/components/ui/PeriodPicker";
 import { Notices, notify } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
@@ -28,7 +27,8 @@ import { dashboardTemplate } from "@/features/templates/dashboards";
 import { PAGES } from "@/features/templates/pages";
 import type { MetricId } from "@/features/metrics/definitions";
 import type { PageId, PageLayout } from "@/features/templates/types";
-import { FocusBarActions } from "@/features/workspace/FocusBarActions";
+import { DashboardNav } from "./DashboardNav";
+import { PageIcon } from "./PageIcon";
 import { ATTRIBUTIONS, periodDays, PERIODS, type DashboardSettings, type PeriodId } from "@/features/workspace/types";
 import type { Brand } from "@/features/workspace/workspace";
 import { ddmmyyyy } from "@/lib/format";
@@ -46,8 +46,12 @@ import { isSampleMetric, pageCatalog, pageKpiIds, sampleCatalog, type MetricPref
 import { useMetricPrefsState, type SaveMetricPrefs } from "./metric-prefs-context";
 import { MetricNoticeBar } from "./MetricActions";
 import { MetricEditProvider } from "./metric-edit-context";
-import { CustomizeButton, MetricEditBar, MetricTray, useMetricEditorState } from "./MetricEditor";
+import { CustomizeButton, MetricTray, useMetricEditorState } from "./MetricEditor";
 import { pageRules } from "./layout/page-rules";
+import { customSize, isCustomId } from "./layout/custom-blocks";
+import type { AskHost } from "./ask/AskBar";
+import type { AskLayoutAction } from "./ask/ai-plan";
+import { formatRank, rankRows } from "@/features/metrics/rank";
 import { GridPage, templateBlocksOf } from "./layout/GridPage";
 import { PlatformTray } from "./layout/LayoutEditor";
 import type { DashboardLayout } from "./layout/model";
@@ -90,6 +94,8 @@ type BodyProps = {
   saveMetrics?: SaveMetricPrefs;
   /** Grava a disposição de uma aba (member+). */
   saveLayout?: (dashboardId: string, page: PageId, items: unknown) => ReturnType<SaveLayout>;
+  /** "Pedir ao Vyz" com IA (askLayout). Sem isso, o editor lê o pedido sozinho. */
+  askLayout?: AskLayoutAction;
   /** Mover e redimensionar blocos (Avançado). Nos outros planos, só métricas entram e saem. */
   canArrange?: boolean;
   /** Modelos que usam a Meta: a página de Criativos por plano, no lugar do widget. */
@@ -117,6 +123,9 @@ type BodyProps = {
   coverHost?: CoverHost;
 };
 
+/** Abas que as fontes desenham (GA4, CRM, orgânico, recursos do Avançado): não usam a grade. */
+const SOURCE_TABS: ReadonlySet<PageId> = new Set(["site", "canais-site", "crm", "instagram", "pagina-facebook", "conteudo", "criativos-ao-vivo", "previsao", "mmm"]);
+
 /** Os cards de uma aba do exemplo: os dela que seguem visíveis e, depois, os adicionados. */
 export function sampleLayout(layout: PageLayout, visible: readonly string[]): PageLayout {
   const kept = layout.kpis.filter((k) => visible.includes(k.metric));
@@ -125,7 +134,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, syncStamp, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref, coverHost }: BodyProps) {
+export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, syncStamp, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, askLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref, coverHost }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
@@ -172,7 +181,40 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   const activeIds = pageKpiIds(catalog, activeKpis ?? [], metrics.prefs?.kpis, { hideSpend }).filter(known);
   // aba Criativos com outras plataformas: os cards mostram a parte da Meta, a mesma dos anúncios
   const metaPart = !!creatives && active === "criativos" && ds.adPlatforms.length > 1 && ds.adPlatforms.includes("meta");
+  // "Pedir ao Vyz": só nas abas desenhadas pela grade (fora a capa do visual, as páginas das fontes e a galeria de criativos)
+  const gridTab = !!t && !(t.skin && active === t.pages[0]) && !(t.composed && SOURCE_TABS.has(active)) && !(active === "criativos" && creatives);
+  const askHost: AskHost | undefined =
+    canArrange && t && gridTab && metrics.open
+      ? {
+          pageName: PAGES[active].name,
+          where: arrangePlan ? "logo abaixo dos cards" : "no primeiro espaço livre",
+          context: { profile: t.profile, accepts: (id) => grid.accepts(active, id), hasProducts: ds.products.length > 0, kpiIds: activeCatalog.filter((m) => !!m.kpi).map((m) => m.id), visibleKpis: activeIds },
+          preview: (b) => {
+            if (b.type !== "rank") return null;
+            const rows = rankRows(ds, b.entity, b.metric, { dir: b.dir, platform: b.platform, profile: t.profile });
+            return rows ? rows.slice(0, 3).map((r) => ({ label: r.label, value: formatRank(r.value, b.metric, t.profile) })) : null;
+          },
+          apply: (blocks) => grid.insert(active, blocks.map((b) => ({ id: b.id, title: b.title, ...customSize(b.spec) }))),
+          ai: askLayout
+            ? async (text) => {
+                const res = await askLayout({
+                  text,
+                  profile: t.profile,
+                  pageName: PAGES[active].name,
+                  sources: t.sources,
+                  hideSpend: !!hideSpend,
+                  hasProducts: ds.products.length > 0,
+                  existing: grid.items(active).map((i) => i.id).filter(isCustomId),
+                  kpis: activeCatalog.filter((m) => !!m.kpi).map((m) => ({ id: m.id, label: m.label })),
+                  visibleKpis: activeIds,
+                });
+                return res.ok ? res.data : null;
+              }
+            : undefined,
+        }
+      : undefined;
   const edit = useMetricEditorState({
+    ask: askHost,
     metrics,
     visibleKpis: activeIds,
     hasData: (id) => {
@@ -331,13 +373,16 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     ) : null;
   const attribution = ATTRIBUTIONS.find((a) => a.value === spec.settings.attribution)?.label;
 
-  const periodControl = (labelHidden = false) => (
-    <PeriodPicker
-      labelHidden={labelHidden}
+  // período e comparação num botão só (o comparar fica no pé do calendário)
+  const periodControl = (compact = false) => (
+    <DateRangePicker
+      compact={compact}
       period={period}
       range={range}
       customDays={customDays}
       maxDays={60}
+      compare={compare}
+      onCompare={setCompare}
       onChange={(p, r) => {
         setPeriod(p);
         // o trecho de dias só vale dentro do período
@@ -353,18 +398,6 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   // Na tela do dashboard do painel, cada aba se encaixa na altura do monitor (16:9, sem rolar a página):
   // o topo fica enxuto (título, abas e controles em menos linhas) e as ações vão para a barra do topo.
   const fit = !!backHref;
-  const compareControl = (
-    <Switch
-      label={
-        <>
-          <span className={fit ? "" : "@[760px]:hidden"}>Comparar</span>
-          {!fit && <span className="hidden @[760px]:inline">Comparar com o período anterior</span>}
-        </>
-      }
-      checked={compare}
-      onChange={setCompare}
-    />
-  );
   // Visual com moldura própria (Lavanda, Pulso, Monocromo, Noturno, Areia): a tela mostra só
   // o dashboard no modelo escolhido. O cabeçalho padrão some; os controles entram no topo do
   // visual, com a paleta dele, e todas as abas ficam dentro da moldura.
@@ -376,7 +409,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       <button
         type="button"
         aria-label={`Sobre o período: ${periodNote}`}
-        className="hidden size-10 shrink-0 items-center justify-center rounded-control border border-line text-fg-2 outline-none transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent @[720px]:inline-flex"
+        className="hidden size-9 shrink-0 items-center justify-center rounded-full text-fg-2 outline-none transition-colors hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-accent @[720px]:inline-flex"
       >
         <Info size={16} aria-hidden />
       </button>
@@ -388,10 +421,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   const skinControls = framed ? (
     <div className="flex flex-wrap items-end gap-2">
       <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
-        <div className="w-full @[540px]:w-52 @[760px]:w-60">{periodControl(screen)}</div>
-        <div className="flex h-10 shrink-0 items-center rounded-control border border-line px-2.5 text-[13px] whitespace-nowrap [&>div]:gap-2">
-          <Switch label="Comparar" checked={compare} onChange={setCompare} />
-        </div>
+        {periodControl()}
       </div>
       {customizeId && !editing && !presenting && <CustomizeButton onClick={() => metrics.openPanel()} />}
       {screen && periodHint}
@@ -434,6 +464,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   // o miolo das abas que o visual não desenha: os blocos padrão (dentro da moldura, ganham a paleta dele)
   const pageContent =
     sourcePage(active, !!backHref && !printing) ?? (active === "criativos" && creatives ? (
+      // Criativos rola (a galeria é longa): a única aba fora do encaixe na tela
       <div className="space-y-2">
         <PageView layout={{ ...layoutOf(active), widgets: [] }} ctx={creativesCtx} kpiEdit={metrics.edit} extraCards={extrasOf(active)} />
         <div data-dim-self>
@@ -455,87 +486,59 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       data-presenting={presenting ? "" : undefined}
       data-metric-editing={editing ? edit.section : undefined}
       // apresentação: o dashboard cobre a tela (e entra em tela cheia, onde o navegador deixa); rola por dentro
-      className={presenting ? presentingClass(framed) : editing ? "pb-[62dvh] md:pb-[320px]" : ""}
+      className={presenting ? presentingClass(framed) : editing ? (edit.collapsed ? "pb-24" : "pb-[80dvh] md:pb-[324px]") : ""}
     >
     {/* o espaçamento vale só entre as partes visíveis: a bandeja e o aviso (abaixo) não empurram a página */}
     <div className={screen ? "" : "space-y-4"}>
-      {customizeId && <MetricEditBar state={edit} />}
       {/* avisos curtos do Personalizar (bloco que não cabe, limite da grade) */}
       {customizeId && <Notices placement="top" />}
       {!framed && (
-      <div className={`@container print:hidden ${fit ? "space-y-3" : "space-y-4"}`}>
-        <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
-          <div className={`flex min-w-0 flex-1 items-start gap-4 ${fit ? "@[900px]:items-center" : ""}`}>
-            <div className={`hidden shrink-0 pt-1.5 @[500px]:block ${fit ? "@[900px]:pt-0" : ""}`}>
-              <BrandMark brand={spec.brand} />
-            </div>
-            {/* no encaixe, título, cliente e etiquetas dividem uma linha só */}
-            <div className={fit ? "min-w-0 @[900px]:flex @[900px]:flex-wrap @[900px]:items-center @[900px]:gap-x-3 @[900px]:gap-y-1" : "min-w-0"}>
-              <h1 className={`title truncate ${fit ? "text-[1.6rem] @[900px]:text-[1.3rem]" : "text-[1.6rem]"}`}>{spec.name}</h1>
-              <p className="text-[14px] text-fg-2">{spec.client}</p>
-              <div className={`flex flex-wrap items-center gap-1.5 ${fit ? "mt-2 @[900px]:mt-0" : "mt-2"}`}>
-                {headerSources.map((s) =>
-                  // com mais de uma plataforma de anúncios, a fonte também filtra
-                  ds.adPlatforms.length > 1 && ds.adPlatforms.includes(s) && !editing ? (
-                    <button
-                      key={s}
-                      type="button"
-                      data-filter-item={s}
-                      aria-pressed={filterTone(filterState, "platforms", s) === "selected"}
-                      aria-label={filterAria("platforms", PLATFORMS[s].name)}
-                      onClick={(e) => filterState.toggle("platforms", s, PLATFORMS[s].name, e)}
-                      className={`cursor-pointer rounded-chip border px-2 py-0.5 text-[11.5px] outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent ${filterTone(filterState, "platforms", s) === "selected" ? "border-accent bg-accent-soft text-fg" : filterTone(filterState, "platforms", s) === "dimmed" ? "border-line text-fg-2 opacity-45" : "border-line text-fg-2"}`}
-                    >
-                      {PLATFORMS[s].name}
-                    </button>
-                  ) : (
-                    <span key={s} className="rounded-chip border border-line px-2 py-0.5 text-[11.5px] text-fg-2">
-                      {PLATFORMS[s].name}
-                    </span>
-                  ),
-                )}
-                <span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium text-fg">{realLabel}</span>
-                {isReal && syncStamp}
-                {actions && !isReal && <PendingChip label="Modelo com dados de exemplo" detail="Os números são fictícios. Para os números das suas contas, crie um dashboard Meta Ads ou Google Ads · E-commerce." />}
-              </div>
-            </div>
-          </div>
-          {/* na tela cheia do painel, as ações ficam na barra do topo, não no dashboard */}
-          {presenting ? null : fit ? <FocusBarActions>{actions}</FocusBarActions> : actions}
-        </header>
-
-        <div className={fit ? "flex flex-col gap-3 @[1000px]:flex-row @[1000px]:items-end" : "flex flex-col gap-3"}>
-          <div className={fit ? "min-w-0 @[1000px]:flex-1" : "min-w-0"}>
-            <OverflowTabs
-              tourId="abas"
-              label="Páginas do dashboard"
-              value={active}
-              onChange={(p) => {
-                setPage(p);
-                setQueryParam("pagina", p);
-              }}
-              items={spec.pages.map((p) => ({ value: p, label: PAGES[p].name }))}
-            />
-          </div>
-          <div className={`flex flex-wrap items-end gap-2 ${fit ? "@[1000px]:shrink-0 @[1000px]:flex-nowrap" : ""}`}>
-            <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
-            <div className="w-full @[540px]:w-52 @[760px]:w-60">
-              {periodControl(fit)}
-            </div>
-            <div className="flex h-10 shrink-0 items-center rounded-control border border-line px-2.5 text-[13px] whitespace-nowrap [&>div]:gap-2">
-              {compareControl}
-            </div>
-            </div>
-            {fit && periodHint}
-            {customizeId && !editing && !presenting && (
-              <div className="ml-auto">
-                <CustomizeButton onClick={() => metrics.openPanel()} />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
+        <DashboardNav
+          brand={<BrandMark brand={spec.brand} />}
+          name={spec.name}
+          client={spec.client}
+          backHref={presenting ? undefined : backHref}
+          locked={editing}
+          chips={
+            <>
+              {headerSources.map((s) =>
+                // com mais de uma plataforma de anúncios, a fonte também filtra
+                ds.adPlatforms.length > 1 && ds.adPlatforms.includes(s) && !editing ? (
+                  <button
+                    key={s}
+                    type="button"
+                    data-filter-item={s}
+                    aria-pressed={filterTone(filterState, "platforms", s) === "selected"}
+                    aria-label={filterAria("platforms", PLATFORMS[s].name)}
+                    onClick={(e) => filterState.toggle("platforms", s, PLATFORMS[s].name, e)}
+                    className={`cursor-pointer rounded-full border px-2 py-px text-[11px] outline-none hover:border-accent focus-visible:ring-2 focus-visible:ring-accent ${filterTone(filterState, "platforms", s) === "selected" ? "border-accent bg-accent-soft text-fg" : filterTone(filterState, "platforms", s) === "dimmed" ? "border-line text-fg-2 opacity-45" : "border-line text-fg-2"}`}
+                  >
+                    {PLATFORMS[s].name}
+                  </button>
+                ) : (
+                  <span key={s} className="rounded-full border border-line px-2 py-px text-[11px] text-fg-2">
+                    {PLATFORMS[s].name}
+                  </span>
+                ),
+              )}
+              <span className="rounded-full bg-accent-soft px-2 py-px text-[11px] font-medium text-fg">{realLabel}</span>
+              {isReal && syncStamp}
+              {actions && !isReal && <PendingChip label="Modelo com dados de exemplo" detail="Os números são fictícios. Para os números das suas contas, crie um dashboard Meta Ads ou Google Ads · E-commerce." />}
+            </>
+          }
+          tabs={{
+            items: spec.pages.map((p) => ({ value: p, label: PAGES[p].name, icon: <PageIcon page={p} /> })),
+            value: active,
+            onChange: (p) => {
+              setPage(p as PageId);
+              setQueryParam("pagina", p);
+            },
+          }}
+          period={(compact) => <div inert={editing || undefined} className={editing ? "opacity-50" : ""}>{periodControl(compact)}</div>}
+          hint={periodHint}
+          edit={customizeId && !editing && !presenting ? <CustomizeButton onClick={() => metrics.openPanel()} /> : undefined}
+          actions={presenting ? undefined : actions}
+        />
       )}
 
       {!framed && (

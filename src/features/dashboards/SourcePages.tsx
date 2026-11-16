@@ -97,9 +97,9 @@ export function SitePage({ extras, profile }: { extras: SourceExtras; profile: P
   const what = purchase ? "compras" : "conversões";
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="grid shrink-0 grid-cols-2 gap-2.5 @[640px]:grid-cols-3 @[1040px]:grid-cols-6">
+      <div className="grid shrink-0 grid-cols-2 gap-2 @[640px]:grid-cols-3 @[860px]:grid-cols-6">
         {kpis.map((k) => (
-          <KpiCard key={k.id} kpi={k} currency={extras.currency} maturing={0} featured={k.id === "site-conv"} />
+          <KpiCard key={k.id} kpi={k} currency={extras.currency} maturing={0} featured={k.id === "site-conv"} compact />
         ))}
       </div>
       <div className="grid min-h-0 flex-1 gap-3 @[1040px]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
@@ -167,9 +167,9 @@ export function ChannelsPage({ extras, profile, ds }: { extras: SourceExtras; pr
   const paidRows = rows.filter((r) => paid(r) && r.spend);
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className={`grid shrink-0 grid-cols-2 gap-2.5 @[640px]:grid-cols-3 ${purchase ? "@[1040px]:grid-cols-5" : "@[1040px]:grid-cols-4"}`}>
+      <div className={`grid shrink-0 grid-cols-2 gap-2 @[640px]:grid-cols-3 ${purchase ? "@[860px]:grid-cols-5" : "@[860px]:grid-cols-4"}`}>
         {cards.map((k) => (
-          <KpiCard key={k.id} kpi={k} currency={extras.currency} maturing={0} featured={k.id === "paid-cpa"} />
+          <KpiCard key={k.id} kpi={k} currency={extras.currency} maturing={0} featured={k.id === "paid-cpa"} compact />
         ))}
       </div>
       <div className="grid shrink-0 gap-3 @[1040px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -382,7 +382,7 @@ export function CrmPage({ extras, ds, hideSpend = false }: { extras: SourceExtra
     <div className="flex h-full min-h-0 flex-col gap-3">
       <div className={`grid shrink-0 grid-cols-2 gap-2.5 @[640px]:grid-cols-4 ${cross ? "@[1040px]:grid-cols-8" : "@[1040px]:grid-cols-6"}`}>
         {kpis.map((k) => (
-          <KpiCard key={k.id} kpi={k} currency={extras.currency} maturing={0} hideSpend={hideSpend} featured={k.id === (cross ? "crm-cac" : "crm-won")} />
+          <KpiCard key={k.id} kpi={k} currency={extras.currency} maturing={0} hideSpend={hideSpend} featured={k.id === (cross ? "crm-cac" : "crm-won")} compact />
         ))}
       </div>
       <div className="grid min-h-0 flex-1 gap-3 @[1040px]:grid-cols-2">

@@ -11,6 +11,7 @@ import type { CreativesData, SampleExtraMetric } from "@/features/analytics/type
 import type { PageId } from "@/features/templates/types";
 import type { Brand } from "@/features/workspace/workspace";
 import { saveDashboardLayout, saveDashboardMetricPrefs } from "@/server/dashboards/actions";
+import { askLayout } from "@/server/dashboards/ask";
 import { connectLaunchSheet, disconnectLaunchSheet, saveDashboardCover, uploadDashboardCover } from "@/server/dashboards/cover-actions";
 import type { CoverData } from "@/server/dashboards/cover";
 import type { CoverHost } from "./useDashboardCover";
@@ -141,6 +142,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       customizeId={canEdit ? dashboard.id : undefined}
       saveMetrics={canEdit ? saveDashboardMetricPrefs : undefined}
       saveLayout={canEdit ? saveDashboardLayout : undefined}
+      askLayout={canEdit ? askLayout : undefined}
       canArrange={canEdit && canArrange}
       actions={
         canEdit ? (

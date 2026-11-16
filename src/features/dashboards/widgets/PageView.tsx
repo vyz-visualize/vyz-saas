@@ -13,6 +13,9 @@ const SPAN: Record<Span, string> = {
   4: "@[460px]:col-span-2 @[900px]:col-span-4",
 };
 
+/** Card na fileira única: largura igual entre todos, nunca menos que o número inteiro. */
+const STRIP_CELL = "@[720px]:min-w-[148px] @[720px]:flex-1 @[720px]:basis-0 @[720px]:snap-start";
+
 type PageViewProps = {
   layout: PageLayout;
   ctx: WidgetContext;
@@ -22,10 +25,12 @@ type PageViewProps = {
   kpiEdit?: KpiEdit;
   /** Métricas novas ligadas no Personalizar, depois dos cards do modelo. */
   extraCards?: readonly SampleExtraMetric[];
+  /** Cards numa fileira só (a grade do dashboard): dividem a largura e, se não couberem, a fileira rola de lado. */
+  strip?: boolean;
 };
 
 /** Uma página do dashboard: linha de KPIs e os widgets abaixo. */
-export function PageView({ layout, ctx, variant = "full", kpiEdit, extraCards = [] }: PageViewProps) {
+export function PageView({ layout, ctx, variant = "full", kpiEdit, extraCards = [], strip = false }: PageViewProps) {
   const cards = layout.kpis.length + extraCards.length;
   const editor = useMetricEditor();
   const editingCards = editor?.section === "kpis" && !!kpiEdit;
@@ -39,14 +44,24 @@ export function PageView({ layout, ctx, variant = "full", kpiEdit, extraCards = 
     <div data-dim-scope className="@container space-y-2">
       {cards > 0 && (
         // sem buraco: as fileiras se dividem por igual (6 cards = 3 + 3); no Personalizar, a grade de 4 com as vagas
-        <div className={editingCards ? "grid grid-cols-2 gap-2 relative @[440px]:grid-cols-4" : KPI_GRID} data-kpi-row {...drop.props}>
+        <div
+          className={
+            strip
+              ? "relative grid h-full grid-cols-2 gap-2 @[720px]:flex @[720px]:snap-x @[720px]:overflow-x-auto @[720px]:[scrollbar-width:none] @[720px]:[&::-webkit-scrollbar]:hidden"
+              : editingCards
+                ? "grid grid-cols-2 gap-2 relative @[440px]:grid-cols-4"
+                : KPI_GRID
+          }
+          data-kpi-row
+          {...drop.props}
+        >
           {layout.kpis.map((k, i) => (
-            <div key={k.metric} className={`min-w-0 [&>*]:h-full ${editingCards ? "" : spans[i]}`}>
+            <div key={k.metric} className={`min-w-0 [&>*]:h-full ${strip ? STRIP_CELL : editingCards ? "" : spans[i]}`}>
               <Kpi spec={k} ctx={ctx} delay={200 + i * 70} onHide={hide(k.metric)} onRemove={remove(k.metric)} />
             </div>
           ))}
           {extraCards.map((m, i) => (
-            <div key={m.id} className={`min-w-0 [&>*]:h-full ${editingCards ? "" : spans[layout.kpis.length + i]}`}>
+            <div key={m.id} className={`min-w-0 [&>*]:h-full ${strip ? STRIP_CELL : editingCards ? "" : spans[layout.kpis.length + i]}`}>
               <ExtraKpi m={m} ctx={ctx} delay={200 + (layout.kpis.length + i) * 70} onHide={hide(m.id)} onRemove={remove(m.id)} />
             </div>
           ))}

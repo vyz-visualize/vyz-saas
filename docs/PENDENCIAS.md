@@ -21,6 +21,7 @@ O que hoje funciona só no navegador e depende de backend, de integração ou de
 | Item | Como está hoje | Aviso no produto |
 |---|---|---|
 | `LlmEngine` (respostas abertas, via route handler no servidor) | Só o `LocalEngine`: intenções por palavra-chave, sem API. O ponto de troca está pronto em `features/agent/engine/index.ts` | "Motor local · dados da demo" no drawer |
+| "Pedir ao Vyz" no editor: ligado ao Claude (Opus 5.5, esforço baixo, ~5 s e ~US$ 0,01 por pedido) | Com `CLAUDE_API_KEY`, o pedido vai para `server/dashboards/ask.ts` (login com plano ativo, 40 pedidos por hora por pessoa); a resposta passa pelas regras da aba (`features/dashboards/ask/ai-plan.ts`). Sem chave, sem plano ou com erro, vale a leitura local (`planner.ts`). Falta: medir em produção quantos pedidos caem na leitura local e o custo por mês | Exemplos clicáveis quando não entende |
 | Persistência da conversa | Só na memória da aba; fechar a aba ou "limpar" apaga | — |
 | Reconhecimento de voz em todos os navegadores | Web Speech API: funciona no Chrome e no Edge; no Firefox e em parte do Safari o microfone some e fica o texto | — |
 | Dados reais nas respostas | Mesmos dados de amostra do painel (`datasetFor`) | "Amostra · dados fictícios" nos dashboards |

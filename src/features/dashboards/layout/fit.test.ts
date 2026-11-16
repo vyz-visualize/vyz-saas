@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FIT_COMPACT_MIN, FIT_MIN_ROW, fitRows, GAP, ROW, rowTops, type PageGrid } from "./model";
+import { FIT_COMFORT_ROW, FIT_COMPACT_MIN, FIT_MIN_ROW, fitRows, GAP, ROW, rowTops, type PageGrid } from "./model";
 
 // cards de KPI em cima (4 fileiras), dois gráficos embaixo (12 fileiras)
 const grid: PageGrid = [
@@ -26,12 +26,15 @@ describe("fitRows (encaixe na altura da tela)", () => {
   });
 
   it("no aperto os cards cedem até o mínimo antes dos gráficos", () => {
-    const rows = fitRows(grid, 330, isCard)!;
+    expect(FIT_COMFORT_ROW).toBeGreaterThan(FIT_MIN_ROW);
+    const rows = fitRows(grid, 360, isCard)!;
     expect(rows[0]).toBe(FIT_COMPACT_MIN);
     expect(rows[10]).toBeGreaterThanOrEqual(FIT_MIN_ROW);
+    expect(rows[10]).toBeLessThan(FIT_COMFORT_ROW);
   });
 
-  it("desiste quando os gráficos ficariam ilegíveis (a página volta a rolar)", () => {
+  it("desiste quando os gráficos ficariam ilegíveis (a aba vira telas)", () => {
+    expect(fitRows(grid, 330, isCard)).toBeNull();
     expect(fitRows(grid, 200, isCard)).toBeNull();
     expect(fitRows([], 800, isCard)).toBeNull();
     expect(fitRows(grid, 0, isCard)).toBeNull();

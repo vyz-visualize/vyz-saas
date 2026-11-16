@@ -6,7 +6,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { PageId, PageLayout } from "@/features/templates/types";
-import { alignGrid, compact, defaultGrid, firstFree, kindOf, limitsOf, normalizeGrid, place, sameGrid, type DashboardLayout, type PageGrid } from "./model";
+import { alignGrid, compact, defaultGrid, firstFree, insertBlocks, kindOf, limitsOf, normalizeGrid, place, sameGrid, withAddedBlocks, type DashboardLayout, type LayoutItem, type PageGrid } from "./model";
 
 export type SaveLayout = (page: PageId, items: PageGrid | null) => Promise<{ ok: true } | { ok: false; error: { message: string } }>;
 
@@ -54,6 +54,14 @@ export function useDashboardLayout({ initial, pages, templateOf, accept, baseOf,
         if (!arrange) return [...g, { id, ...firstFree(g, size.w, size.h), w: size.w, h: size.h }];
         return compact(place(g, { id, ...(at ?? firstFree(g, size.w, size.h)), w: size.w, h: size.h }));
       }),
+    /** Blocos pedidos no editor: logo abaixo dos cards (Avançado) ou no próximo espaço livre. Devolve os que entraram. */
+    insert: (p: PageId, blocks: readonly Omit<LayoutItem, "x" | "y">[]): string[] => {
+      const fresh = blocks.filter((b) => accept(p)(b.id) && !items(p).some((i) => i.id === b.id));
+      if (!fresh.length) return [];
+      const placed = fresh.map((b) => ({ ...b, x: 0, y: 0 }));
+      update(p, (g) => (arrange ? insertBlocks(g, placed) : withAddedBlocks(g, placed)));
+      return fresh.map((b) => b.id);
+    },
     /** Alinhar grade: fecha as fileiras nas 12 colunas e iguala as alturas, sem trocar a ordem. */
     align: (p: PageId, kpiCount = 4) => update(p, (g) => alignGrid(g, kpiCount)),
     /** A aba já está alinhada? (o botão avisa em vez de parecer que não fez nada) */

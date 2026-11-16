@@ -26,6 +26,7 @@ import { DashboardBody } from "@/features/dashboards/DashboardBody";
 import { DEFAULT_SETTINGS } from "@/features/dashboards/data";
 import { canArrangeLayout } from "@/features/dashboards/layout/model";
 import { ENTITLEMENTS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
+import { askLayout } from "@/server/dashboards/ask";
 import { FocusShell } from "@/features/workspace/AppShell";
 import type { WorkspaceSession } from "@/features/workspace/session";
 import { WorkspaceProvider } from "@/features/workspace/WorkspaceProvider";
@@ -152,6 +153,7 @@ export function TemplatesBench() {
               customizeId="00000000-0000-0000-0000-000000000000"
               saveMetrics={ok}
               saveLayout={ok}
+              askLayout={askLayout}
               canArrange={canArrangeLayout(plan)}
               creatives={creatives}
               backHref="/dev/templates"

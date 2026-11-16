@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PageLayout } from "@/features/templates/types";
-import { alignGrid, compact, COLS, constrain, defaultGrid, firstFree, KPIS_ID, limitsOf, metricCardId, normalizeGrid, overlaps, parseMetricCardId, place, sameGrid } from "./model";
+import { alignGrid, compact, COLS, constrain, defaultGrid, firstFree, KPI_ROWS, KPIS_ID, limitsOf, metricCardId, normalizeGrid, overlaps, parseMetricCardId, place, sameGrid } from "./model";
 
 const page: PageLayout = {
   kpis: [{ metric: "spend" }, { metric: "revenue" }, { metric: "roas" }, { metric: "cpa" }, { metric: "ctr" }],
@@ -13,9 +13,9 @@ const page: PageLayout = {
 const noOverlap = (items: ReturnType<typeof defaultGrid>) => items.every((a) => items.every((b) => !overlaps(a, b)));
 
 describe("disposição", () => {
-  it("padrão do template: KPIs em cima, widgets na largura do template, sem sobrepor", () => {
+  it("padrão do template: KPIs numa faixa só em cima, widgets na largura do template, sem sobrepor", () => {
     const g = defaultGrid(page);
-    expect(g[0]).toEqual({ id: KPIS_ID, x: 0, y: 0, w: COLS, h: 8 });
+    expect(g[0]).toEqual({ id: KPIS_ID, x: 0, y: 0, w: COLS, h: KPI_ROWS });
     expect(g.map((i) => i.w)).toEqual([12, 12, 6, 6]);
     expect(g[2].y).toBe(g[3].y);
     expect(noOverlap(g)).toBe(true);

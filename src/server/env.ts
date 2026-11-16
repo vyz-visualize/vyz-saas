@@ -86,6 +86,8 @@ const Schema = z
     WHATSAPP_VERIFY_TOKEN: optional,
     /** Idioma dos templates aprovados. */
     WHATSAPP_TEMPLATE_LANG: z.string().trim().default("pt_BR"),
+    /** Chave da API do Claude (Anthropic): "Pedir ao Vyz" no editor. Sem ela, a leitura do pedido é local. */
+    CLAUDE_API_KEY: optional,
   })
   .superRefine((env, ctx) => {
     const mocks = env.BILLING_PROVIDER === "mock" || env.INTEGRATIONS_MODE === "mock";
@@ -108,6 +110,7 @@ let cached: ServerEnv | null = null;
 const ALIASES: Record<string, string> = {
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   REVENUECAT_WEBHOOK_SECRET: "REVENUECAT_WEBHOOK_AUTH",
+  CLAUDE_API_KEY: "ANTHROPIC_API_KEY",
 };
 
 function withAliases(env: NodeJS.ProcessEnv) {

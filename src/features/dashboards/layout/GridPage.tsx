@@ -7,6 +7,7 @@
 import type { PlatformId } from "@/features/accounts/platforms";
 import type { SampleExtraMetric } from "@/features/analytics/types";
 import {
+  isSalesProfile,
   metric as metricDef,
   type MetricId,
 } from "@/features/metrics/definitions";
@@ -20,12 +21,19 @@ import { PageView } from "../widgets/PageView";
 import { Widget, type WidgetContext } from "../widgets/Widgets";
 import { GridCanvas, type Block } from "./GridCanvas";
 import { PlatformMetricCard } from "./LayoutEditor";
+import { customSize, customSpec, customTitle, trendOptions } from "./custom-blocks";
 import { KPIS_ID, parseMetricCardId, widgetId } from "./model";
 import { platformLabel } from "./platform-metrics";
 import type { DashboardLayoutState } from "./useDashboardLayout";
 
 const WIDGET_LABEL: Record<WidgetSpec["type"], string> = {
   line: "Gráfico por dia",
+  trend: "Desempenho diário",
+  ranking: "Ranking de campanhas",
+  rank: "Ranking",
+  breakdown: "Quebra",
+  searchTerms: "Termos de pesquisa",
+  videos: "Retenção dos vídeos",
   funnel: "Funil",
   bars: "Barras",
   scatter: "Dispersão",
@@ -77,6 +85,7 @@ export function GridPage({
           ctx={ctx}
           kpiEdit={kpiEdit}
           extraCards={extraCards}
+          strip
         />
       ),
     };
@@ -87,6 +96,14 @@ export function GridPage({
     };
   });
   for (const it of items) {
+    // bloco pedido no editor: o id diz o que ele é; o nome é o que a pessoa deu (ou o do pedido)
+    const custom = customSpec(it.id);
+    if (custom) {
+      const title = it.title ?? customTitle(custom, ctx.profile);
+      const spec = custom.type === "trend" ? { ...custom, metrics: trendOptions(custom.metrics[0], isSalesProfile(ctx.profile)) } : custom;
+      blocks[it.id] = { label: title, node: <Widget spec={{ ...spec, title }} ctx={ctx} delay={440} /> };
+      continue;
+    }
     const m = parseMetricCardId(it.id);
     if (m)
       blocks[it.id] = {
@@ -114,11 +131,12 @@ export function GridPage({
       onHide={(id) => grid.hide(page, id)}
       onDropNew={(id, x, y) => grid.add(page, id, { x, y }, kpiCount)}
       canDrop={(id) => grid.accepts(page, id)}
-      sizeOf={(id) =>
-        id.startsWith("m:") || id === "_incoming"
-          ? { w: 3, h: 4 }
-          : (grid.base(page).find((b) => b.id === id) ?? { w: 6, h: 8 })
-      }
+      sizeOf={(id) => {
+        if (id.startsWith("m:") || id === "_incoming") return { w: 3, h: 4 };
+        const custom = customSpec(id);
+        if (custom) return customSize(custom);
+        return grid.base(page).find((b) => b.id === id) ?? { w: 6, h: 8 };
+      }}
     />
   );
 

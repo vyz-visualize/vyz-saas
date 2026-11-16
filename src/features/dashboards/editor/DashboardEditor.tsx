@@ -25,6 +25,7 @@ import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
 import { ATTRIBUTIONS, PERIODS, type PeriodId } from "@/features/workspace/types";
 import { saveDashboardLayout, saveDashboardMetricPrefs, updateDashboard } from "@/server/dashboards/actions";
+import { askLayout } from "@/server/dashboards/ask";
 import { removeBrandLogo, updateWorkspace, uploadBrandLogo } from "@/server/workspace/actions";
 import { DashboardBody } from "../DashboardBody";
 import { pageLayout } from "../data";
@@ -240,6 +241,7 @@ export function DashboardEditor({ dashboard, sources, tier, pagesTier, whiteLabe
             customizeId={dashboard.id}
             saveMetrics={saveDashboardMetricPrefs}
             saveLayout={saveDashboardLayout}
+            askLayout={askLayout}
             canArrange={canArrange}
           />
         </div>

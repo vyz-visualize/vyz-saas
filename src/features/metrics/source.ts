@@ -60,8 +60,11 @@ export type Creative = {
   tone: number;
   /** Imagem do anúncio (dados reais; vídeo: a capa). Sem ela, a miniatura de amostra. */
   imageUrl?: string | null;
+  /** Vídeo: quantas pessoas chegaram a 25%, 50%, 75% e 100%. */
+  video?: VideoRetention;
 };
 import type { FunnelStep } from "./funnel";
+import { sampleDetail, sampleVideo, type DatasetDetail, type VideoRetention } from "./detail";
 export type { FunnelStep };
 export type Project = { name: string; invest: number; cpl: number; bad?: boolean };
 export type AudienceRow = { label: string; share: number; cpa: number };
@@ -72,7 +75,7 @@ export type Alert = { level: "erro" | "atencao" | "info"; title: string; detail:
 /** Planilha do lançamento no período (metrics/launch-dataset.ts): de onde vêm os leads e o que foi vendido. Valor em centavos. */
 export type LaunchInfo = { from: string; to: string; origins: { name: string; leads: number; sales: number }[]; proposals: number; sales: number; value: number };
 
-export type Dataset = {
+export type Dataset = DatasetDetail & {
   spec: DataSpec;
   current: DayRow[];
   previous: DayRow[];
@@ -464,7 +467,9 @@ export const MockSource: DataSource = {
       previous,
       adPlatforms,
       campaigns,
-      creatives,
+      // vídeos: a retenção (semente própria, não mexe nos outros números)
+      creatives: creatives.map((c) => (c.format === "Vídeo" ? { ...c, video: sampleVideo(spec.seed, c) } : c)),
+      ...sampleDetail(spec.seed, current, adPlatforms, campaigns, !!p.roas),
       funnel: funnel(r, FUNNELS[spec.profile]),
       projects,
       audience,

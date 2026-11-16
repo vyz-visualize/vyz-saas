@@ -72,13 +72,37 @@ export function DeltaBadge({ delta, better, suffix }: { delta: number | null; be
   );
 }
 
-export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, metric, onHide, onRemove, editId }: { kpi: Kpi; currency: string; maturing: number; hideSpend?: boolean; featured?: boolean; /** Alvo do "Mostrar no painel" do assistente. */ metric?: string; /** Atalho de ocultar (só para quem pode editar). */ onHide?: () => void; /** Modo personalizar: o ✕. */ onRemove?: () => void; editId?: string }) {
+export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, metric, onHide, onRemove, editId, compact = false }: { kpi: Kpi; currency: string; maturing: number; hideSpend?: boolean; featured?: boolean; /** Alvo do "Mostrar no painel" do assistente. */ metric?: string; /** Atalho de ocultar (só para quem pode editar). */ onHide?: () => void; /** Modo personalizar: o ✕. */ onRemove?: () => void; editId?: string; /** Baixo (dashboards do painel): número e variação numa linha e a tendência curta embaixo. */ compact?: boolean }) {
   const hidden = hideSpend && kpi.spendBased;
   const value = hidden ? HIDDEN : formatValue(kpi.value, kpi.format, currency);
   const tone = deltaTone(kpi.delta, kpi.better);
   const filters = useDashFilters();
   // com um trecho de dias, a comparação diz qual trecho é
   const compared = filters?.compared && !kpi.unfiltered?.length ? `vs ${rangeLabel(filters.compared)}` : undefined;
+  if (compact)
+    return (
+      <article
+        className={`group/kpi @container relative flex min-w-0 flex-col overflow-hidden rounded-[14px] border px-3 py-2 ${featured ? "border-transparent bg-[linear-gradient(145deg,color-mix(in_srgb,var(--accent)_30%,var(--card)),var(--card))]" : "border-line/80 bg-[linear-gradient(165deg,color-mix(in_srgb,var(--fg)_4%,var(--card)),var(--card)_55%)]"}`}
+        aria-label={`${kpi.label}: ${value}`}
+        data-vyz-metric={metric}
+        data-edit-metric={editId}
+        title={kpi.help}
+      >
+        <h3 className="truncate text-[10px] leading-tight font-medium tracking-[0.06em] text-fg-2 uppercase">{kpi.label}</h3>
+        <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
+          <p className={`shrink-0 leading-none font-bold tracking-[-0.02em] whitespace-nowrap tnum text-fg ${value.length > 11 ? "text-[17px]" : "text-[20px]"}`}>{value}</p>
+          {!hidden && (
+            <span className="hidden min-w-0 @[170px]:inline-flex">
+              <DeltaBadge delta={kpi.delta} better={kpi.better} suffix={compared} />
+            </span>
+          )}
+        </div>
+        {kpi.note && <p className="mt-1 truncate text-[10.5px] text-fg-2">{kpi.note}</p>}
+        {!hidden && kpi.spark.length > 1 ? <TrendSpark values={kpi.spark} maturing={maturing} tone={tone === "bad" ? "bad" : "good"} line className="mt-auto h-7 pt-1" /> : <span className="mt-auto" />}
+        {onHide && <HideMetricButton label={kpi.label} onClick={onHide} />}
+        {onRemove && <RemoveMetricButton label={kpi.label} onClick={onRemove} />}
+      </article>
+    );
   return (
     <article
       className={`group/kpi relative flex min-w-0 flex-col rounded-card border p-3.5 ${featured ? "border-accent/40 bg-accent-soft/50" : "border-line bg-card"}`}

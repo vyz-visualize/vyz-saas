@@ -3,7 +3,7 @@
 // Galeria de criativos (Padrão em diante): preview, ordenar por e alerta de
 // fadiga. No Avançado, cada card ganha "Comparar".
 
-import { Check, GitCompareArrows } from "lucide-react";
+import { BarChart3, Check, GitCompareArrows } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import { TrendSpark } from "@/components/charts/TrendSpark";
@@ -18,6 +18,7 @@ import type { CreativeVM, CreativesData } from "../types";
 import { Chip, NoData, Roas, Thumb } from "../ui";
 import { MAX_COMPARE, MIN_COMPARE } from "./limits";
 import { RETENTION_HELP } from "./metrics";
+import { CreativeDetail } from "./CreativeDetail";
 import { resultTitle } from "./objectives";
 
 type CreativeSort = "spend" | "roas" | "ctr";
@@ -37,6 +38,7 @@ export function CreativeGallery({ data, compareHref }: Props) {
   const anyRevenue = gallery.some((c) => c.hasRevenue);
   const sort: CreativeSort = chosenSort === "roas" && !anyRevenue ? "spend" : chosenSort;
   const [picked, setPicked] = useState<string[]>([]);
+  const [open, setOpen] = useState<string | null>(null);
   const list = useMemo(() => {
     const key = (c: CreativeVM) => (sort === "roas" ? (c.roas ?? -1) : sort === "ctr" ? (c.linkCtr ?? -1) : (c.spend ?? 0));
     return [...gallery].sort((a, b) => key(b) - key(a));
@@ -69,10 +71,11 @@ export function CreativeGallery({ data, compareHref }: Props) {
       <ul className="grid grid-cols-1 gap-3 @[560px]:grid-cols-2 @[900px]:grid-cols-3 @[1240px]:grid-cols-4">
         {list.map((c) => (
           <li key={c.id}>
-            <CreativeCard c={c} data={data} compare={compareHref ? { on: picked.includes(c.id), full: picked.length >= MAX_COMPARE, toggle: () => toggle(c.id) } : undefined} />
+            <CreativeCard c={c} data={data} onDetail={() => setOpen(c.id)} compare={compareHref ? { on: picked.includes(c.id), full: picked.length >= MAX_COMPARE, toggle: () => toggle(c.id) } : undefined} />
           </li>
         ))}
       </ul>
+      <CreativeDetail c={gallery.find((c) => c.id === open) ?? null} data={data} onClose={() => setOpen(null)} />
       {compareHref && picked.length >= MIN_COMPARE && (
         <div className="sticky bottom-20 z-20 flex items-center justify-between gap-3 rounded-card border border-line bg-card px-3 py-2 md:bottom-4 print:hidden">
           <p className="min-w-0 truncate text-[13px] text-fg-2 tnum">{picked.length} anúncios marcados</p>
@@ -85,7 +88,7 @@ export function CreativeGallery({ data, compareHref }: Props) {
   );
 }
 
-function CreativeCard({ c, data, compare }: { c: CreativeVM; data: Props["data"]; compare?: { on: boolean; full: boolean; toggle: () => void } }) {
+function CreativeCard({ c, data, compare, onDetail }: { c: CreativeVM; data: Props["data"]; compare?: { on: boolean; full: boolean; toggle: () => void }; /** Abre o detalhe só deste anúncio. */ onDetail?: () => void }) {
   const { currency, hideSpend, breakEvenRoas } = data;
   const filters = useDashFilters();
   const clickable = !!filters?.interactive;
@@ -101,7 +104,7 @@ function CreativeCard({ c, data, compare }: { c: CreativeVM; data: Props["data"]
             }
           : undefined
       }
-      className={`flex h-full flex-col overflow-hidden rounded-card border bg-card ${clickable ? "cursor-pointer" : ""} ${tone === "selected" ? "border-accent ring-2 ring-accent" : c.fatigue ? "border-error/40" : "border-line"} ${tone === "dimmed" ? "opacity-45" : ""}`}
+      className={`flex h-full flex-col overflow-hidden rounded-[14px] border bg-card ${clickable ? "cursor-pointer" : ""} ${tone === "selected" ? "border-accent ring-2 ring-accent" : c.fatigue ? "border-error/40" : "border-line"} ${tone === "dimmed" ? "opacity-45" : ""}`}
       aria-label={c.name}
     >
       <Thumb seed={c.id} url={c.thumbnailUrl} label={c.headline ?? c.name} badge={c.format} className="aspect-[16/10]" />
@@ -135,18 +138,29 @@ function CreativeCard({ c, data, compare }: { c: CreativeVM; data: Props["data"]
               Cansando: frequência {pct(c.fatigue.frequencyChange, 0)} maior e CTR {pct(Math.abs(c.fatigue.ctrChange), 0)} menor na 2ª metade do período. Renove o criativo.
             </p>
           )}
-          {compare && (
-            <button
-              type="button"
-              aria-pressed={compare.on}
-              disabled={!compare.on && compare.full}
-              onClick={compare.toggle}
-              className={`mt-2.5 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-control border text-[12.5px] font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 ${compare.on ? "border-accent bg-accent-soft text-fg" : "border-line text-fg-2 hover:border-accent hover:text-fg"}`}
-            >
-              {compare.on ? <Check size={14} aria-hidden /> : <GitCompareArrows size={14} aria-hidden />}
-              Comparar
-            </button>
-          )}
+          <div className="mt-2.5 flex gap-2">
+            {onDetail && (
+              <button
+                type="button"
+                onClick={onDetail}
+                className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full bg-fg text-[12.5px] font-semibold whitespace-nowrap text-bg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <BarChart3 size={14} aria-hidden /> Ver detalhes
+              </button>
+            )}
+            {compare && (
+              <button
+                type="button"
+                aria-pressed={compare.on}
+                disabled={!compare.on && compare.full}
+                onClick={compare.toggle}
+                className={`inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full border text-[12.5px] font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 ${compare.on ? "border-accent bg-accent-soft text-fg" : "border-line text-fg-2 hover:border-accent hover:text-fg"}`}
+              >
+                {compare.on ? <Check size={14} aria-hidden /> : <GitCompareArrows size={14} aria-hidden />}
+                Comparar
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </article>

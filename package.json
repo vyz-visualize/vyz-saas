@@ -19,6 +19,7 @@
     "mmm:backfill": "tsx scripts/mmm/backfill.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.9.0",
     "@base-ui/react": "^1.9.0",
     "@number-flow/react": "^0.6.2",
     "@supabase/ssr": "^0.12.7",

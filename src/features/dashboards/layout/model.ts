@@ -4,6 +4,7 @@
 // painel, o servidor (validação) e os testes usam as mesmas.
 
 import type { PageId, PageLayout, WidgetSpec } from "@/features/templates/types";
+import { cleanTitle, CUSTOM_BLOCKS_MAX, isCustomId } from "./custom-blocks";
 
 export const COLS = 12;
 /** Altura de uma linha da grade, em px. */
@@ -14,12 +15,15 @@ export const GRID_MIN_WIDTH = 720;
 /** Cards de métrica por plataforma que cabem numa aba. */
 export const METRIC_CARDS_MAX = 12;
 
-export type LayoutItem = { id: string; x: number; y: number; w: number; h: number };
+/** Altura (linhas) da fileira de cards de KPI: uma fileira só, qualquer que seja a quantidade. */
+export const KPI_ROWS = 4;
+
+export type LayoutItem = { id: string; x: number; y: number; w: number; h: number; /** Nome que a pessoa deu ao bloco pedido (só blocos c:). */ title?: string };
 export type PageGrid = LayoutItem[];
 /** O que o banco guarda (dashboards.layout): só as abas mexidas. */
 export type DashboardLayout = Partial<Record<PageId, PageGrid>>;
 
-export type BlockKind = "kpis" | "widget" | "metric" | "skin";
+export type BlockKind = "kpis" | "widget" | "metric" | "skin" | "custom";
 export type Limits = { minW: number; maxW: number; minH: number; maxH: number };
 
 // ---- ids --------------------------------------------------------------------------------
@@ -37,6 +41,7 @@ export function parseMetricCardId(id: string): { platform: string; metric: strin
 export function kindOf(id: string): BlockKind {
   if (id === KPIS_ID) return "kpis";
   if (id.startsWith("s-")) return "skin";
+  if (isCustomId(id)) return "custom";
   return id.startsWith("m:") ? "metric" : "widget";
 }
 
@@ -45,6 +50,12 @@ export function kindOf(id: string): BlockKind {
 /** Altura padrão (linhas) de cada tipo de bloco do template. */
 const WIDGET_H: Record<WidgetSpec["type"], number> = {
   line: 10,
+  trend: 12,
+  ranking: 12,
+  rank: 11,
+  breakdown: 11,
+  searchTerms: 14,
+  videos: 11,
   funnel: 9,
   bars: 10,
   scatter: 10,
@@ -60,12 +71,12 @@ const WIDGET_H: Record<WidgetSpec["type"], number> = {
   audio: 8,
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- a quantidade de cards já não muda a altura (fileira única); fica na assinatura dos chamadores
 export function limitsOf(id: string, kpiCount = 4): Limits {
   const kind = kindOf(id);
-  if (kind === "kpis") {
-    const rows = Math.ceil(Math.max(1, kpiCount) / 4);
-    return { minW: 6, maxW: COLS, minH: rows * 4, maxH: 24 };
-  }
+  // os cards ficam numa fileira só (a fileira rola de lado quando não cabem): 4 linhas bastam
+  // (disposições antigas, com a fileira mais alta, voltam para esta altura ao abrir)
+  if (kind === "kpis") return { minW: 6, maxW: COLS, minH: KPI_ROWS, maxH: KPI_ROWS };
   if (kind === "metric") return { minW: 2, maxW: 4, minH: 4, maxH: 6 };
   if (kind === "skin") return { minW: 2, maxW: COLS, minH: 2, maxH: 30 };
   return { minW: 3, maxW: COLS, minH: 6, maxH: 20 };
@@ -110,7 +121,7 @@ export function constrain(mode: "move" | "resize", wanted: LayoutItem, limits: L
 /** Os blocos que o template dá a esta aba, com o tamanho padrão de cada um. */
 export function templateBlocks(layout: PageLayout): { id: string; w: number; h: number }[] {
   const out: { id: string; w: number; h: number }[] = [];
-  if (layout.kpis.length) out.push({ id: KPIS_ID, w: COLS, h: Math.ceil(layout.kpis.length / 4) * 4 });
+  if (layout.kpis.length) out.push({ id: KPIS_ID, w: COLS, h: KPI_ROWS });
   layout.widgets.forEach((w, i) => out.push({ id: widgetId(i), w: (w.span ?? 2) * 3, h: w.rows ?? WIDGET_H[w.type] }));
   return out;
 }
@@ -171,10 +182,10 @@ export const gridRows = (items: PageGrid) => items.reduce((a, i) => Math.max(a, 
 
 /** Fileira só de cards (KPI, métrica, número do visual) no aperto: o mínimo em que o card ainda cabe inteiro. */
 export const FIT_COMPACT_MIN = 25;
-/** Os gráficos ficam com pelo menos isto por fileira antes de os cards voltarem à altura cheia (ROW). */
-export const FIT_COMFORT_ROW = 20;
+/** Os gráficos ficam com pelo menos isto por fileira antes de os cards voltarem à altura cheia (ROW). Acima de FIT_MIN_ROW: os cards cedem antes de a aba virar telas. */
+export const FIT_COMFORT_ROW = 24;
 /** Abaixo disso os gráficos ficam ilegíveis: a grade desiste de caber e a página volta a rolar. */
-export const FIT_MIN_ROW = 13;
+export const FIT_MIN_ROW = 22;
 
 const clampTo = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -199,6 +210,77 @@ export function fitRows(items: PageGrid, height: number, isCompact: (id: string)
   const rest = (total - fixed * card) / flex;
   if (rest < FIT_MIN_ROW) return null;
   return compact.map((c) => (c ? card : rest));
+}
+
+// ---- telas (paginação no encaixe) --------------------------------------------------------
+//
+// O dashboard nunca rola: quando os blocos da aba não cabem na altura da tela com um tamanho
+// legível (FIT_MIN_ROW), a aba vira telas. A faixa de cards do topo fica em todas; as outras
+// faixas (blocos lado a lado) entram em ordem até a tela encher. Tela alta: tudo numa só;
+// notebook baixo: duas ou três. Vale também para a disposição personalizada.
+
+/** Altura da barra das telas (setas e nomes), descontada da altura livre quando há mais de uma. */
+export const PAGER_H = 54;
+
+export type FitPage = { items: PageGrid; heights: number[] };
+
+/** As faixas empilhadas sem buraco, na ordem dada (y recomeça do zero). */
+function stack(bands: readonly LayoutItem[][]): PageGrid {
+  const out: LayoutItem[] = [];
+  let y = 0;
+  for (const band of bands) {
+    const top = Math.min(...band.map((i) => i.y));
+    const bottom = Math.max(...band.map((i) => i.y + i.h));
+    for (const it of band) out.push({ ...it, y: y + it.y - top });
+    y += bottom - top;
+  }
+  return out;
+}
+
+/** Fileiras quando nem uma faixa sozinha cabe no mínimo: divide o que há, sem piso. */
+function squeezeRows(items: PageGrid, height: number, isCompact: (id: string) => boolean): number[] {
+  const rows = gridRows(items);
+  const total = height + GAP;
+  const compactRow = Array.from({ length: rows }, (_, r) => {
+    const here = items.filter((it) => it.y <= r && r < it.y + it.h);
+    return here.length > 0 && here.every((it) => isCompact(it.id));
+  });
+  const fixed = compactRow.filter(Boolean).length;
+  const card = fixed ? FIT_COMPACT_MIN : 0;
+  const rest = Math.max(4, (total - fixed * card) / Math.max(1, rows - fixed));
+  return compactRow.map((c) => (c ? card : rest));
+}
+
+/**
+ * As telas da aba para a altura livre `height` (px). Uma tela só quando tudo cabe; senão, a
+ * faixa de cards do topo (se a primeira faixa for só de cards) repete em cada tela e as outras
+ * faixas se dividem em ordem. Cada tela já vem com a altura de cada fileira.
+ */
+export function paginate(items: PageGrid, height: number, isCompact: (id: string) => boolean): FitPage[] | null {
+  if (!items.length || !(height > 0)) return null;
+  const all = compact(items);
+  const whole = fitRows(all, height, isCompact);
+  if (whole) return [{ items: all, heights: whole }];
+  const room = height - PAGER_H;
+  const bands = bandsOf(all);
+  const pinned = bands[0]?.every((i) => isCompact(i.id)) ? bands[0] : null;
+  const rest = pinned ? bands.slice(1) : bands;
+  if (!rest.length) return [{ items: all, heights: squeezeRows(all, height, isCompact) }];
+  const pages: LayoutItem[][][] = [];
+  let cur: LayoutItem[][] = [];
+  for (const band of rest) {
+    const next = [...cur, band];
+    if (!cur.length || fitRows(stack(pinned ? [pinned, ...next] : next), room, isCompact)) cur = next;
+    else {
+      pages.push(cur);
+      cur = [band];
+    }
+  }
+  if (cur.length) pages.push(cur);
+  return pages.map((p) => {
+    const grid = stack(pinned ? [pinned, ...p] : p);
+    return { items: grid, heights: fitRows(grid, room, isCompact) ?? squeezeRows(grid, room, isCompact) };
+  });
 }
 
 /** Onde cada fileira começa (px), com uma posição a mais no fim (o pé da grade). */
@@ -303,6 +385,41 @@ export function withMetricCards(grid: PageGrid, ids: readonly string[]): PageGri
   return out;
 }
 
+/** Fora do Avançado: os cards de plataforma e os blocos pedidos entram, cada um no primeiro espaço livre, com o tamanho dele. */
+export function withAddedBlocks(grid: PageGrid, items: readonly LayoutItem[]): PageGrid {
+  let out = grid;
+  for (const it of items) out = [...out, { ...it, ...firstFree(out, it.w, it.h) }];
+  return out;
+}
+
+/**
+ * Blocos pedidos entram logo abaixo da fileira de cards (o que a pessoa pediu fica à vista),
+ * lado a lado enquanto couberem; o resto da aba desce.
+ */
+export function insertBlocks(grid: PageGrid, blocks: readonly LayoutItem[]): PageGrid {
+  const fresh = blocks.filter((b) => !grid.some((i) => i.id === b.id));
+  if (!fresh.length) return grid;
+  const kpis = grid.find((i) => i.id === KPIS_ID);
+  const top = kpis ? kpis.y + kpis.h : 0;
+  const placed: LayoutItem[] = [];
+  let x = 0;
+  let y = top;
+  let rowH = 0;
+  for (const b of fresh) {
+    if (x + b.w > COLS) {
+      x = 0;
+      y += rowH;
+      rowH = 0;
+    }
+    placed.push({ ...b, x, y });
+    x += b.w;
+    rowH = Math.max(rowH, b.h);
+  }
+  const added = y + rowH - top;
+  const moved = grid.map((i) => (i.y >= top ? { ...i, y: i.y + added } : i));
+  return compact([...moved, ...placed]);
+}
+
 // ---- validação --------------------------------------------------------------------------
 
 const isInt = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
@@ -316,13 +433,16 @@ export function normalizeGrid(raw: unknown, allowed: (id: string) => boolean, kp
   const seen = new Set<string>();
   const items: LayoutItem[] = [];
   let metrics = 0;
+  let custom = 0;
   for (const r of raw.slice(0, 60)) {
     if (!r || typeof r !== "object") continue;
-    const { id, x, y, w, h } = r as Record<string, unknown>;
+    const { id, x, y, w, h, title } = r as Record<string, unknown>;
     if (typeof id !== "string" || seen.has(id) || !allowed(id) || ![x, y, w, h].every(isInt)) continue;
     if (kindOf(id) === "metric" && ++metrics > METRIC_CARDS_MAX) continue;
+    if (kindOf(id) === "custom" && ++custom > CUSTOM_BLOCKS_MAX) continue;
     seen.add(id);
-    items.push(fitLimits({ id, x: x as number, y: Math.min(y as number, 400), w: w as number, h: h as number }, limitsOf(id, kpiCount)));
+    const name = kindOf(id) === "custom" ? cleanTitle(title) : undefined;
+    items.push(fitLimits({ id, x: x as number, y: Math.min(y as number, 400), w: w as number, h: h as number, ...(name ? { title: name } : {}) }, limitsOf(id, kpiCount)));
   }
   // sem sobreposição: cada um desce até achar lugar, na ordem guardada
   const placed: LayoutItem[] = [];
@@ -346,7 +466,7 @@ export function parseLayout(raw: unknown): DashboardLayout {
 /** Igual ao padrão? (aí não precisa guardar). */
 export function sameGrid(a: PageGrid, b: PageGrid): boolean {
   if (a.length !== b.length) return false;
-  const key = (i: LayoutItem) => `${i.id}:${i.x}:${i.y}:${i.w}:${i.h}`;
+  const key = (i: LayoutItem) => `${i.id}:${i.x}:${i.y}:${i.w}:${i.h}:${i.title ?? ""}`;
   const sa = new Set(a.map(key));
   return b.every((i) => sa.has(key(i)));
 }

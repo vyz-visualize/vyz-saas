@@ -21,6 +21,8 @@ export const RATE_RULES = {
   whatsapp_code_user: { windowSeconds: 60 * 60, max: 5 },
   whatsapp_code_phone: { windowSeconds: 60 * 60, max: 3 },
   whatsapp_test_user: { windowSeconds: 60 * 60, max: 3 },
+  /** "Pedir ao Vyz" com o Claude: cada pedido custa uma chamada à API. */
+  ask_layout_user: { windowSeconds: 60 * 60, max: 40 },
 } as const;
 
 export type RateRule = keyof typeof RATE_RULES;

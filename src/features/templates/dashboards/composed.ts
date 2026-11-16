@@ -101,7 +101,7 @@ export const PAGE_PLATFORM: Partial<Record<PageId, PlatformId>> = { "meta-ads": 
 /**
  * As páginas que as contas escolhidas pedem, na ordem das abas:
  *   - Visão geral primeiro quando há anúncio (com mais de uma fonte, ela une todas; com uma, é a dela);
- *   - Meta: página da Meta (com mais fontes), Criativos e Público;
+ *   - Meta: página da Meta (com mais fontes, já com o público dentro) e Criativos; só com a Meta, Criativos e Público;
  *   - Google Ads: página do Google (com mais fontes) e Termos de pesquisa;
  *   - GA4: Site e, com anúncios, a Força dos canais;
  *   - CRM (RD Station, HubSpot, Pipedrive, Kommo): a página do CRM, cruzada com a mídia;
@@ -122,7 +122,8 @@ export function composePages(platforms: readonly string[], features: readonly Fe
   const many = sources > 1;
   // a Visão geral é de anúncios: sem Meta nem Google, o dashboard começa pelo site ou pelo orgânico
   const out: PageId[] = ads.length || sheets.length ? ["visao-geral"] : [];
-  if (has("meta")) out.push(...(many ? (["meta-ads"] as PageId[]) : []), "criativos", "publico");
+  // com a página da Meta, o público fica dentro dela; sem ela (só a Meta), ganha página própria
+  if (has("meta")) out.push(...(many ? (["meta-ads", "criativos"] as PageId[]) : (["criativos", "publico"] as PageId[])));
   if (has("google")) out.push(...(many ? (["google-ads"] as PageId[]) : []), "termos");
   if (has("ga4")) out.push("site", ...(ads.length ? (["canais-site"] as PageId[]) : []));
   if (crm) out.push("crm");
@@ -194,11 +195,70 @@ export function composedLayout(page: PageId, profile: Profile): PageLayout | nul
   const kpis = KPIS_BY_PROFILE[profile];
   if (!kpis) return null;
   const efficiency = profile === "leads" || profile === "educacao" || profile === "saude" ? "cpl" : profile === "imob" ? "cplq" : "cpa";
-  const trend = { type: "line" as const, metric: efficiency as "cpa", goal: true, span: 2 as const, title: "Custo por resultado · média móvel 7 dias" };
+  // o gráfico diário troca de métrica: as do topo da página, começando pela eficiência
+  const trend = { type: "trend" as const, metrics: [efficiency as "cpa", ...kpis.map((k) => k.metric).filter((m) => m !== efficiency)], span: 2 as const, rows: 12 };
   const byCampaign = isSales(profile)
-    ? { type: "bars" as const, source: "campaigns" as const, metric: "roas" as const, reference: "breakEven" as const, span: 1 as const, title: "ROAS por campanha" }
-    : { type: "bars" as const, source: "campaigns" as const, metric: "cpa" as const, reference: "goal" as const, span: 1 as const, title: "Custo por resultado, por campanha" };
+    ? { type: "ranking" as const, metric: "roas" as const, span: 1 as const, title: "ROAS por campanha" }
+    : { type: "ranking" as const, metric: "cpa" as const, span: 1 as const, title: "Custo por resultado, por campanha" };
   if (page === "visao-geral") return { kpis, widgets: [trend, { type: "funnel", span: 1, title: "Funil" }, byCampaign] };
-  if (page === "meta-ads" || page === "google-ads") return { kpis, widgets: [trend, byCampaign, { type: "table", source: "campaigns", span: 3, title: page === "meta-ads" ? "Campanhas da Meta" : "Campanhas do Google Ads" }] };
+  // Meta: tendência e ranking em cima; público, posicionamentos, estados e horas no meio; campanhas embaixo
+  if (page === "meta-ads")
+    return {
+      kpis: [...kpis.filter((k) => k.metric !== "cpm"), { metric: "frequency", sub: "delta" }],
+      widgets: [
+        trend,
+        byCampaign,
+        { type: "breakdown", dimension: "placement", platform: "meta", span: 1, rows: 12, title: "Posicionamentos" },
+        { type: "audience", span: 2, rows: 11, title: "Público que converte" },
+        { type: "breakdown", dimension: "region", platform: "meta", span: 1, rows: 11, title: "Estados" },
+        { type: "breakdown", dimension: "hour", platform: "meta", span: 1, rows: 11, title: "Horários" },
+        { type: "table", source: "campaigns", span: 4, title: "Campanhas da Meta" },
+      ],
+    };
+  // Google: tendência, ranking e termos que só gastam; vídeos do YouTube, dispositivos e horas; campanhas
+  if (page === "google-ads")
+    return {
+      kpis,
+      widgets: [
+        trend,
+        byCampaign,
+        { type: "searchTerms", view: "waste", span: 1, rows: 12, title: "Termos que gastam sem converter" },
+        { type: "videos", platform: "google", span: 2, rows: 11, title: "YouTube · retenção dos vídeos" },
+        { type: "breakdown", dimension: "device", platform: "google", span: 1, rows: 11, title: "Dispositivos" },
+        { type: "breakdown", dimension: "hour", platform: "google", span: 1, rows: 11, title: "Horários" },
+        { type: "table", source: "campaigns", span: 4, title: "Campanhas do Google Ads" },
+      ],
+    };
+  // Público (dashboard só com a Meta, sem a página dela): quem converte e onde
+  if (page === "publico")
+    return {
+      kpis: [],
+      widgets: [
+        { type: "audience", span: 2, rows: 12, title: "Público que converte" },
+        { type: "breakdown", dimension: "placement", platform: "meta", span: 1, rows: 12, title: "Posicionamentos" },
+        { type: "breakdown", dimension: "region", platform: "meta", span: 1, rows: 12, title: "Estados" },
+        { type: "breakdown", dimension: "hour", platform: "meta", span: 2, rows: 10, title: "Horários" },
+        { type: "breakdown", dimension: "device", platform: "meta", span: 2, rows: 10, title: "Dispositivos" },
+      ],
+    };
+  // Termos de pesquisa: a tabela completa e o desperdício; palavras, correspondência e dispositivos
+  if (page === "termos")
+    return {
+      kpis: [
+        { metric: "clicks", sub: "delta" },
+        { metric: "ctr", sub: "delta" },
+        { metric: "cpc", sub: "delta" },
+        { metric: "conversions", sub: "delta" },
+        { metric: efficiency as "cpa", sub: "goal", highlight: true },
+        ...(isSales(profile) ? [{ metric: "roas" as const, sub: "breakEven" as const }] : []),
+      ],
+      widgets: [
+        { type: "searchTerms", view: "table", span: 3, rows: 16, title: "Termos de pesquisa" },
+        { type: "searchTerms", view: "waste", span: 1, rows: 16, title: "Gastam sem converter" },
+        { type: "searchTerms", view: "words", span: 2, rows: 9, title: "Palavras que convertem" },
+        { type: "searchTerms", view: "match", span: 1, rows: 9, title: "Tipo de correspondência" },
+        { type: "breakdown", dimension: "device", platform: "google", span: 1, rows: 9, title: "Dispositivos" },
+      ],
+    };
   return null;
 }
