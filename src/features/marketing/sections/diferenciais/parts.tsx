@@ -121,10 +121,9 @@ export function MadeBy({ tone = "default" }: { tone?: "default" | "inverse" }) {
           >
             <h3 className="title text-[1.25rem]">{r.role}</h3>
             {r.since && (
-              // marcador de texto pendente: some quando o texto for confirmado
+              // a experiência de quem fez, logo abaixo do papel
               <p
-                className="mt-1 text-[13px] font-medium text-warning"
-                data-pendente
+                className="mt-1 text-[13px] font-medium text-accent"
               >
                 {r.since}
               </p>

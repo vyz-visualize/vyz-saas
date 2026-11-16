@@ -1,8 +1,8 @@
 // Textos da dobra Diferenciais ("Prompt × Pronto"). Objeção a derrubar: "por que pagar o
 // VYZ se eu faço isso numa IA?".
 // Regras: nenhuma IA ou empresa citada pelo nome ("IA genérica" basta), nada de prova social,
-// número inventado ou preço. [ANOS] fica marcado até o texto exato ser confirmado; o deploy de
-// produção falha enquanto ele existir (scripts/check-placeholders.ts, no postbuild).
+// número inventado ou preço. Um marcador de texto pendente aqui derruba o deploy de produção
+// (scripts/build/check-placeholders.ts, no postbuild).
 
 /** O caminho com uma IA genérica, na ordem em que acontece. Cada um é um passo de verdade. */
 export const GENERIC_STEPS = [
@@ -54,8 +54,8 @@ export const ANSWERS = [
 export const ROLES = [
   {
     role: "Gestores de tráfego",
-    // [ANOS]: aguardando o texto exato (não usar "mais de 10 anos" até confirmar)
-    since: "[ANOS] de mídia paga",
+    // texto confirmado em 16/11/2026 (sem número: nada de "mais de 10 anos")
+    since: "Anos de mídia paga",
     items: [
       "Números que batem com o Gerenciador",
       "Janela de atribuição de cada plataforma",
