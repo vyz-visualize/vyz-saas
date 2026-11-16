@@ -60,12 +60,13 @@ export async function openSharedDashboard(token: string): Promise<SharedDashboar
 
   const dashboard = fromJoined(dash.data as unknown as JoinedDashboard);
   const whiteLabel = !!access.data.white_label;
-  // a logo do workspace (cliente) do dashboard, quando tem, entra no lugar da logo da organização
-  const project = whiteLabel && dashboard.projectId ? await admin.from("projects").select("logo_path").eq("id", dashboard.projectId).eq("workspace_id", link.workspace_id).maybeSingle() : null;
+  // logo e cor valem em todos os planos: a logo do workspace (cliente) do dashboard, quando tem,
+  // entra no lugar da logo da organização. A cor só deste dashboard e esconder a VYZ, no Personalizado.
+  const project = dashboard.projectId ? await admin.from("projects").select("logo_path").eq("id", dashboard.projectId).eq("workspace_id", link.workspace_id).maybeSingle() : null;
   if (project?.error) console.error("[vyz] logo do workspace no link", project.error.message);
   const brand: PublicBrand = {
-    color: whiteLabel ? dashboard.brand?.color || ws.data?.brand_color || null : null,
-    logoUrl: whiteLabel ? publicAssetUrl(project?.data?.logo_path || ws.data?.brand_logo_path) : null,
+    color: (whiteLabel && dashboard.brand?.color) || ws.data?.brand_color || null,
+    logoUrl: publicAssetUrl(project?.data?.logo_path || ws.data?.brand_logo_path),
     hideVyz: !!access.data.hide_vyz_brand_effective || (whiteLabel && !!dashboard.brand?.hideVyz),
   };
 

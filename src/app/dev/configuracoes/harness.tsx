@@ -18,7 +18,7 @@ const SESSION: WorkspaceSession = {
   user: { id: "u1", email: "pedro@exemplo.com", fullName: "Pedro Freitas", avatarUrl: null },
   workspace: { id: "ws1", name: "Agência Exemplo", slug: "agencia-exemplo", businessTypeId: "ecommerce", brandColor: "#4B5320", brandLogoUrl: null, hideVyzBrand: false, onboardingStep: "done", onboardingCompletedAt: NOW, timezone: "America/Sao_Paulo", currency: "BRL", product: "dash" },
   role: "owner",
-  // sem marca própria no plano: o cartão "sob consulta" aparece
+  // sem o Personalizado: logo e cor editáveis, "Esconder a marca VYZ" com o cadeado
   access: { hasAccess: true, tier: "avancado", status: "active", interval: "year", accountsQuantity: 2, currentPeriodEnd: null, cancelAtPeriodEnd: false, entitlements: null },
   usage: { dashboards: 1, landingPages: 0, publishedLandingPages: 0, enabledAdAccounts: 2, billableAccounts: 2, activeConnections: 1, projects: 1 },
   memberships: [{ id: "ws1", name: "Agência Exemplo", role: "owner" }],

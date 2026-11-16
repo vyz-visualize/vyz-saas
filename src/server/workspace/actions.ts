@@ -70,7 +70,7 @@ async function removeStoredLogo(path: string, actorId: string) {
 }
 
 /**
- * Envia o logo da marca própria (admin, plano com white-label). O tipo sai
+ * Envia o logo da organização (admin, qualquer plano ativo). O tipo sai
  * dos bytes (números mágicos), não do nome nem do Content-Type. O envio usa
  * a chave de serviço depois de autorizar: o nome do arquivo é do servidor e
  * a pasta é sempre a do workspace aberto. O caminho vai para o workspace
@@ -83,8 +83,8 @@ export async function uploadBrandLogo(formData: FormData): Promise<ActionResult<
     if (file.size === 0) throw appError("validation", LOGO_MESSAGES.empty);
     if (file.size > LOGO_MAX_BYTES) throw appError("validation", LOGO_MESSAGES.tooBig);
 
+    // logo e cor valem do Básico ao Avançado; só esconder a marca VYZ é do Personalizado
     const session = await authorize("admin");
-    if (!session.access.entitlements?.whiteLabel) throw appError("plan:white_label", LOGO_MESSAGES.plan);
 
     const bytes = new Uint8Array(await file.arrayBuffer());
     const type = sniffLogo(bytes);

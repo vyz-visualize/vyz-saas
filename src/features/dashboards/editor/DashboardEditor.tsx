@@ -456,7 +456,7 @@ export function DashboardEditor({ dashboard, sources, tier, pagesTier, whiteLabe
                       </div>
                       {workspaceBrand.canEdit ? (
                         <div className="min-w-0 space-y-1">
-                          <FileInput label="Logo (PNG, JPG ou SVG)" accept="image/png,image/jpeg,image/svg+xml,image/webp" onFile={sendLogo} compact />
+                          <FileInput label="Logo (PNG, JPG ou WebP)" accept="image/png,image/jpeg,image/webp" onFile={sendLogo} compact />
                           {logo && (
                             <button type="button" disabled={brandBusy} className="text-[12.5px] text-fg-2 underline-offset-2 hover:underline" onClick={() => startBrand(async () => { const r = await removeBrandLogo(); if (r.ok) setLogo(null); else setBrandError(r.error.message); })}>
                               Tirar logo

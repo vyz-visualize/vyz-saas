@@ -168,14 +168,23 @@ export function sampleExtraCatalog(sources: readonly PlatformId[]): CatalogMetri
 const SAMPLE_COLUMNS: MetricId[] = ["spend", "ctr", "conversions", "cpa", "roas", "revenue"];
 
 /** Catálogo de um dashboard de exemplo: os cards padrão são os das páginas dele. */
+/** Cards que repetem outro com o mesmo nome e o mesmo número (objetivo de leads: conversões = leads). */
+const SAME_AS: Partial<Record<MetricId, MetricId>> = { conversions: "leads", cpa: "cpl" };
+
 export function sampleCatalog(profile: Profile, defaultKpis: readonly MetricId[], sources: readonly PlatformId[] = []): CatalogMetric[] {
-  const base: CatalogMetric[] = (Object.keys(SAMPLE_INFO) as MetricId[]).map((id) => ({
-    id,
-    label: baseMetric(id, profile).label,
-    ...SAMPLE_INFO[id],
-    kpi: defaultKpis.includes(id) ? ("default" as const) : ("optional" as const),
-    column: SAMPLE_COLUMNS.includes(id),
-  }));
+  const label = (id: MetricId) => baseMetric(id, profile).label;
+  const base: CatalogMetric[] = (Object.keys(SAMPLE_INFO) as MetricId[]).map((id) => {
+    const twin = SAME_AS[id];
+    // fica a coluna da tabela; o card é o do outro (Leads, Custo por lead)
+    const duplicate = !!twin && label(twin) === label(id);
+    return {
+      id,
+      label: label(id),
+      ...SAMPLE_INFO[id],
+      kpi: duplicate ? undefined : defaultKpis.includes(id) ? ("default" as const) : ("optional" as const),
+      column: SAMPLE_COLUMNS.includes(id),
+    };
+  });
   return [...base, ...sampleExtraCatalog(sources)];
 }
 

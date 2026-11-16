@@ -4,7 +4,7 @@
 // só as que as contas pedem (composePages).
 
 import type { PlatformId } from "@/features/accounts/platforms";
-import type { Profile } from "@/features/metrics/definitions";
+import { metric, type Profile } from "@/features/metrics/definitions";
 import type { Tier } from "@/features/pricing/entitlements";
 import { VISUAL_LIST } from "./visuais";
 import { API_AD_PLATFORMS, IMPORT_PLATFORMS, isGenericAdPlatform } from "@/features/accounts/connection-modes";
@@ -192,8 +192,17 @@ const isSales = (p: Profile) => p === "ecommerce" || p === "infoproduto";
 
 /** Layout das páginas principais dos modelos novos (null = o padrão da página). */
 export function composedLayout(page: PageId, profile: Profile): PageLayout | null {
-  const kpis = KPIS_BY_PROFILE[profile];
-  if (!kpis) return null;
+  const listed = KPIS_BY_PROFILE[profile];
+  if (!listed) return null;
+  // nome repetido não entra duas vezes: no objetivo de leads, conversões também se chamam "Leads"
+  // e o custo por conversão, "Custo por lead" (e os números são os mesmos)
+  const names = new Set<string>();
+  const kpis = listed.filter((k) => {
+    const name = metric(k.metric, profile).label;
+    if (names.has(name)) return false;
+    names.add(name);
+    return true;
+  });
   const efficiency = profile === "leads" || profile === "educacao" || profile === "saude" ? "cpl" : profile === "imob" ? "cplq" : "cpa";
   // o gráfico diário troca de métrica: as do topo da página, começando pela eficiência
   const trend = { type: "trend" as const, metrics: [efficiency as "cpa", ...kpis.map((k) => k.metric).filter((m) => m !== efficiency)], span: 2 as const, rows: 12 };

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { COMPOSED_PAGES, COMPOSED_SOURCES, COMPOSED_TEMPLATES, composePages, LINKABLE_SOURCES, objectiveForBusiness, VISUALS } from "./composed";
+import { COMPOSED_PAGES, COMPOSED_SOURCES, COMPOSED_TEMPLATES, composedLayout, composePages, LINKABLE_SOURCES, objectiveForBusiness, VISUALS } from "./composed";
+import { metric, type Profile } from "@/features/metrics/definitions";
 import { BUSINESS_TYPES } from "@/features/catalog/business-types";
 import { IMPORT_PLATFORMS } from "@/features/accounts/connection-modes";
 
@@ -55,5 +56,17 @@ describe("catálogo dos modelos novos", () => {
   });
   it("todo nicho do onboarding tem objetivo", () => {
     for (const b of BUSINESS_TYPES) expect(COMPOSED_TEMPLATES.some((t) => t.composed?.objective === objectiveForBusiness(b.id))).toBe(true);
+  });
+});
+
+describe("cards do topo", () => {
+  it("nenhum objetivo mostra dois cards com o mesmo nome (leads: conversões também se chamam Leads)", () => {
+    for (const profile of ["ecommerce", "leads", "educacao", "saude", "imob", "local", "agencia"] as Profile[]) {
+      for (const page of ["visao-geral", "meta-ads", "google-ads"] as const) {
+        const names = composedLayout(page, profile)?.kpis.map((k) => metric(k.metric, profile).label) ?? [];
+        expect([profile, page, names.length]).toEqual([profile, page, new Set(names).size]);
+      }
+    }
+    expect(composedLayout("visao-geral", "leads")?.kpis.map((k) => k.metric)).toEqual(["spend", "leads", "cpl", "ctr", "cpc", "cpm"]);
   });
 });

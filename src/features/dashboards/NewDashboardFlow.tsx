@@ -396,7 +396,7 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
               </div>
             ) : (
               <div className="flex flex-col gap-3 text-[14px] sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-fg-2">Seu logo e suas cores no dashboard, no link e no PDF, sem a marca VYZ.</p>
+                <p className="text-fg-2">Uma cor só deste dashboard e o link e o PDF sem a marca VYZ. A logo e a cor da organização já entram em todos os planos.</p>
                 <Link href="/painel/plano" className={`${btn.small} shrink-0`}>
                   Ver planos
                 </Link>

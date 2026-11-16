@@ -384,7 +384,7 @@ export function NewDashboardDialog({
                 <div className="space-y-3">
                   <p className="text-[13.5px] text-fg-2">A logo e a cor da sua empresa vestem o dashboard (e os próximos). Dá para trocar depois em Configurações.</p>
                   <div className="flex flex-wrap items-end gap-3">
-                    <FileInput label="Logo (PNG, JPG ou SVG)" accept="image/png,image/jpeg,image/svg+xml,image/webp" onFile={sendLogo} compact />
+                    <FileInput label="Logo (PNG, JPG ou WebP)" accept="image/png,image/jpeg,image/webp" onFile={sendLogo} compact />
                     {logo && (
                       <button type="button" className="text-[12.5px] text-fg-2 underline-offset-2 hover:underline" onClick={() => startBrand(async () => { const r = await removeBrandLogo(); if (r.ok) setLogo(null); })}>
                         Tirar logo

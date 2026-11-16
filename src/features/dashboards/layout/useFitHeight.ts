@@ -30,7 +30,9 @@ export function useFitHeight(ref: RefObject<HTMLElement | null>, enabled: boolea
       const rect = el.getBoundingClientRect();
       const view = box ? box.clientHeight : window.innerHeight;
       const top = box ? rect.top - box.getBoundingClientRect().top + box.scrollTop : rect.top + window.scrollY;
-      const next = Math.max(0, Math.floor(view - top - bottom));
+      // barra fixa no pé (a da pré-visualização do editor): o dashboard termina acima dela
+      const reserve = Number(el.closest<HTMLElement>("[data-fit-reserve]")?.dataset.fitReserve) || 0;
+      const next = Math.max(0, Math.floor(view - top - bottom - reserve));
       setHeight((h) => (h === next ? h : next));
     };
     const schedule = () => {

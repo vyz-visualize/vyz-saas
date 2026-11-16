@@ -4,7 +4,7 @@
 // topo, encaixes na fileira de cards e bandeja embaixo. Mexe só no rascunho de
 // useMetricPrefsState; quem decide o que pode e o que grava continua em metric-prefs.ts.
 
-import { Check, ChevronDown, ChevronUp, Info, LayoutGrid, Pencil, Plus, RotateCcw, Search, Settings2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Eye, Info, LayoutGrid, Pencil, Plus, RotateCcw, Search, Settings2, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal, flushSync } from "react-dom";
@@ -153,6 +153,13 @@ export function useMetricEditorState(input: EditorInput) {
   const { catalog, prefs, toggle } = metrics;
   const [section, setSection] = useState<MetricSection>("kpis");
   const [collapsed, setCollapsed] = useState(false);
+  // "Ver em tela cheia": o dashboard como vai ficar, sem o editor, antes de salvar
+  const [previewing, setPreviewing] = useState(false);
+  const [wasOpen, setWasOpen] = useState(metrics.open);
+  if (wasOpen !== metrics.open) {
+    setWasOpen(metrics.open);
+    if (!metrics.open) setPreviewing(false);
+  }
   const [focusTick, setFocusTick] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [announcement, setAnnouncement] = useState("");
@@ -190,7 +197,7 @@ export function useMetricEditorState(input: EditorInput) {
 
   const editor = useMemo<MetricEditor | null>(
     () =>
-      metrics.open
+      metrics.open && !previewing
         ? {
             section,
             slots: max,
@@ -212,7 +219,7 @@ export function useMetricEditorState(input: EditorInput) {
             },
           }
         : null,
-    [add, columns.length, dragging, max, metrics.open, remove, section, visibleKpis.length],
+    [add, columns.length, dragging, max, metrics.open, previewing, remove, section, visibleKpis.length],
   );
 
   const cancel = useCallback(() => {
@@ -220,39 +227,47 @@ export function useMetricEditorState(input: EditorInput) {
     setSection("kpis");
     setDragging(false);
     setCollapsed(false);
+    setPreviewing(false);
     setAnnouncement("Mudanças descartadas");
   }, [metrics]);
 
   const guard = useLeaveGuard(metrics.open && metrics.dirty, metrics.close);
 
-  // Esc descarta tudo, como o Cancelar (a janela de sair trata o próprio Esc)
+  // Esc descarta tudo, como o Cancelar (a janela de sair trata o próprio Esc); na tela cheia, volta ao editor
   useEffect(() => {
     if (!metrics.open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !e.defaultPrevented && !guard.open) cancel();
+      if (e.key !== "Escape" || e.defaultPrevented || guard.open) return;
+      if (previewing) setPreviewing(false);
+      else cancel();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [cancel, guard.open, metrics.open]);
+  }, [cancel, guard.open, metrics.open, previewing]);
 
-  return { input, editor, section, setSection, collapsed, setCollapsed, focusTick, setDragging, announcement, max, columns, canAdd, add, cancel, guard };
+  return { input, editor, section, setSection, collapsed, setCollapsed, previewing, setPreviewing, focusTick, setDragging, announcement, max, columns, canAdd, add, cancel, guard };
 }
 
 type EditorState = ReturnType<typeof useMetricEditorState>;
 
-// ---- faixa do rodapé -----------------------------------------------------------------------------
+// ---- painel do editor ------------------------------------------------------------------------------
 //
-// O modo edição é uma faixa presa no rodapé, na largura toda (o dashboard fica com a proporção
-// real em cima; a página rola na edição). Três colunas, sempre na mesma ordem: à esquerda, o que
-// está sendo editado (Cards, Colunas, Por plataforma) e "Na tela" (com o ✕); no meio, "Adicionar"
-// (busca, categorias e a lista); à direita, as ações (alinhar, restaurar, configurações) e
-// Cancelar / Salvar. Dá para minimizar a faixa e ver mais do dashboard. No celular, uma folha
-// que sobe de baixo, com as partes empilhadas.
+// No computador (xl), o modo edição é um painel na lateral direita, de cima a baixo, numa cor
+// própria (não se confunde com o dashboard). O dashboard não fica por baixo: ele estreita e cabe
+// inteiro ao lado (DashboardBody reserva a largura). As partes empilhadas, na mesma ordem: o que
+// está sendo editado (Cards, Colunas, Por plataforma) e "Na tela" (com o ✕), "Adicionar" (busca,
+// categorias e a lista) e, presos no pé, as ações, "Ver em tela cheia" e Cancelar / Salvar.
+// Entre o tablet e o notebook pequeno, a mesma coisa vira uma faixa no rodapé, em três colunas;
+// no celular, uma folha que sobe de baixo. Dá para minimizar e ver mais do dashboard.
+// "Ver em tela cheia" mostra o dashboard como vai ficar, sem o editor, antes de salvar.
 
 const BAR_BUTTON = "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-line bg-card px-3 text-[12.5px] font-medium whitespace-nowrap text-fg outline-none transition-colors hover:border-fg-2 focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50";
+/** A cor do editor: o fundo do dashboard puxado para a cor de destaque, com a borda dela. Fica claro onde acaba o dashboard. */
+const PANEL_TONE = "border-accent/45 bg-[color-mix(in_srgb,var(--accent)_13%,var(--bg))]";
+const SAVE_BUTTON = "inline-flex items-center justify-center rounded-full bg-accent px-4 font-semibold whitespace-nowrap text-on-accent outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50";
 
 export function MetricTray({ state }: { state: EditorState }) {
-  const { input, section, setSection, focusTick, setDragging, canAdd, add, guard, announcement, columns, editor, max, cancel, collapsed, setCollapsed } = state;
+  const { input, section, setSection, focusTick, setDragging, canAdd, add, guard, announcement, columns, editor, max, cancel, collapsed, setCollapsed, previewing, setPreviewing } = state;
   const { metrics, visibleKpis, hasData, valueOf, unavailable, kpiNote, kpiPlace, noKpis, goToCards } = input;
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<MetricGroup | "todas">("todas");
@@ -300,13 +315,31 @@ export function MetricTray({ state }: { state: EditorState }) {
       {metrics.open &&
         createPortal(
           <TrayAsk host={input.ask} kpi={{ add: (id) => add("kpis", id), canAdd: (id) => canAdd("kpis", id), labelOf }} onApplied={() => setCollapsed(true)}>
-          {(ask) => (
+          {(ask) =>
+          previewing ? (
+            // tela cheia: o dashboard como vai ficar; o editor volta com tudo como estava
+            <div role="region" aria-label="Pré-visualização" style={anchor?.vars} className="fixed inset-x-3 bottom-3 z-[85] flex justify-center print:hidden">
+              <div className={`flex max-w-full items-center gap-2 rounded-full border py-1.5 pr-1.5 pl-4 text-fg shadow-[0_18px_50px_-18px_rgb(0_0_0/0.6)] ${PANEL_TONE}`}>
+                <Eye size={15} aria-hidden className="shrink-0 text-fg-2" />
+                <p className="min-w-0 truncate text-[13px]">
+                  <strong className="font-semibold">Pré-visualização</strong>
+                  <span className="text-fg-2 max-sm:hidden"> · as mudanças ainda não foram salvas</span>
+                </p>
+                <button type="button" onClick={() => setPreviewing(false)} className={BAR_BUTTON}>
+                  <Pencil size={13} aria-hidden /> Voltar a editar
+                </button>
+                <button type="button" onClick={() => void metrics.save()} disabled={metrics.pending} className={`${SAVE_BUTTON} h-9 text-[13px]`}>
+                  {metrics.pending ? "Salvando…" : "Salvar"}
+                </button>
+              </div>
+            </div>
+          ) : (
           <section
             data-metric-tray
             data-collapsed={collapsed ? "" : undefined}
             aria-label="Editar dashboard"
             style={anchor?.vars}
-            className={`fixed inset-x-0 bottom-0 z-[85] flex flex-col overflow-hidden rounded-t-[22px] border-t border-line bg-card text-fg shadow-[0_-20px_60px_-20px_rgb(0_0_0/0.5)] md:inset-x-3 md:bottom-3 md:rounded-[22px] md:border print:hidden ${collapsed ? "" : input.ask ? "h-[82dvh] md:h-[356px]" : "h-[78dvh] md:h-[300px]"}`}
+            className={`fixed inset-x-0 bottom-0 z-[85] flex flex-col overflow-hidden rounded-t-[22px] border-t text-fg shadow-[0_-20px_60px_-20px_rgb(0_0_0/0.5)] md:inset-x-3 md:bottom-3 md:rounded-[22px] md:border print:hidden ${PANEL_TONE} ${collapsed ? "xl:left-auto xl:w-[560px]" : `${input.ask ? "h-[82dvh] md:h-[396px]" : "h-[78dvh] md:h-[340px]"} xl:top-3 xl:left-auto xl:h-auto xl:w-[400px] xl:shadow-[-24px_0_60px_-24px_rgb(0_0_0/0.55)]`}`}
           >
             {/* minimizada: só o que está sendo editado e Cancelar / Salvar */}
             {collapsed ? (
@@ -324,23 +357,32 @@ export function MetricTray({ state }: { state: EditorState }) {
                 <button type="button" onClick={cancel} disabled={metrics.pending} className={BAR_BUTTON}>
                   Cancelar
                 </button>
-                <button type="button" onClick={() => void metrics.save()} disabled={metrics.pending} className="inline-flex h-9 items-center justify-center rounded-full bg-accent px-4 text-[13px] font-semibold whitespace-nowrap text-on-accent outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50">
+                <button type="button" onClick={() => void metrics.save()} disabled={metrics.pending} className={`${SAVE_BUTTON} h-9 text-[13px]`}>
                   {metrics.pending ? "Salvando…" : "Salvar"}
                 </button>
               </div>
             ) : (
               <>
               <AskInput ask={ask} />
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto [scrollbar-width:thin] md:flex-row md:overflow-hidden xl:flex-col xl:overflow-y-auto">
                 {/* 1. o que editar e o que está na tela */}
-                <div className="flex shrink-0 flex-col gap-3 border-b border-line p-4 md:w-[350px] md:border-r md:border-b-0 md:overflow-y-auto md:[scrollbar-width:thin]">
+                <div className="flex shrink-0 flex-col gap-3 border-b border-line p-4 md:w-[350px] md:border-r md:border-b-0 md:overflow-y-auto md:[scrollbar-width:thin] xl:w-auto xl:border-r-0 xl:border-b xl:overflow-visible">
                   <header data-metric-edit-bar className="flex items-start gap-2.5">
                     <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent" aria-hidden>
                       <Pencil size={14} />
                     </span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[10.5px] font-medium tracking-[0.06em] text-fg-2 uppercase">Editando</p>
                       <h2 className="text-[14px] leading-tight font-semibold">Personalizar dashboard</h2>
+                    </div>
+                    {/* no painel lateral, minimizar e fechar ficam no topo */}
+                    <div className="hidden shrink-0 items-center gap-1 xl:flex">
+                      <button type="button" onClick={() => setCollapsed(true)} aria-label="Minimizar o editor" title="Minimizar o editor" className="inline-flex size-8 items-center justify-center rounded-full text-fg-2 outline-none hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-accent">
+                        <ChevronDown size={16} aria-hidden />
+                      </button>
+                      <button type="button" onClick={cancel} disabled={metrics.pending} aria-label="Fechar sem salvar" title="Fechar sem salvar" className="inline-flex size-8 items-center justify-center rounded-full text-fg-2 outline-none hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-accent">
+                        <X size={16} aria-hidden />
+                      </button>
                     </div>
                   </header>
                   <Segmented<MetricSection | "extra">
@@ -408,7 +450,7 @@ export function MetricTray({ state }: { state: EditorState }) {
                 </div>
 
                 {/* 2. adicionar (ou a aba Por plataforma) */}
-                <div className="flex min-w-0 flex-1 flex-col gap-2 p-4 md:min-h-0">
+                <div className="flex min-w-0 flex-1 flex-col gap-2 p-4 md:min-h-0 xl:flex-none">
                   {ask.plan || ask.reading ? (
                     <AskPlan ask={ask} />
                   ) : onExtra ? (
@@ -417,7 +459,7 @@ export function MetricTray({ state }: { state: EditorState }) {
                     <>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="mr-1 text-[12px] font-semibold">Adicionar</h3>
-                        <label className="flex h-8 min-w-44 flex-1 items-center gap-2 rounded-full border border-line bg-field px-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent md:max-w-64">
+                        <label className="flex h-8 min-w-44 flex-1 items-center gap-2 rounded-full border border-line bg-field px-3 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent md:max-w-64 xl:max-w-none">
                           <Search size={13} aria-hidden className="shrink-0 text-fg-2" />
                           <span className="sr-only">Buscar métrica</span>
                           <input ref={searchRef} data-metric-search value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar métrica" className="h-full min-w-0 flex-1 bg-transparent text-[12.5px] outline-none placeholder:text-fg-2/70" />
@@ -441,7 +483,7 @@ export function MetricTray({ state }: { state: EditorState }) {
                       </p>
                       {!list.length && <p className="py-4 text-center text-[13px] text-fg-2">Nenhuma métrica com esse nome.</p>}
                       {list.length > 0 && !shown.length && <p className="py-4 text-center text-[12.5px] text-fg-2">Tudo desta categoria já está na tela.</p>}
-                      <ul className="grid min-h-0 flex-1 auto-rows-min grid-cols-1 gap-1.5 overflow-y-auto pr-1 [scrollbar-width:thin] sm:grid-cols-2 xl:grid-cols-3">
+                      <ul className="grid min-h-0 flex-1 auto-rows-min grid-cols-1 gap-1.5 overflow-y-auto pr-1 [scrollbar-width:thin] sm:grid-cols-2 xl:grid-cols-1 xl:overflow-visible">
                         {shown.map((m) => {
                           const reason = reasons.get(m.id);
                           const used = !reason && visible.includes(m.id);
@@ -498,8 +540,8 @@ export function MetricTray({ state }: { state: EditorState }) {
                 </div>
 
                 {/* 3. ações e salvar */}
-                <div className="flex shrink-0 flex-col gap-2 border-t border-line p-4 md:w-[220px] md:border-t-0 md:border-l">
-                  <div className="flex items-center justify-end gap-1">
+                <div className="flex shrink-0 flex-col gap-2 border-t border-line p-4 md:w-[220px] md:border-t-0 md:border-l xl:sticky xl:bottom-0 xl:mt-auto xl:w-auto xl:border-t xl:border-l-0 xl:bg-[color-mix(in_srgb,var(--accent)_13%,var(--bg))]">
+                  <div className="flex items-center justify-end gap-1 xl:hidden">
                     <button type="button" onClick={() => setCollapsed(true)} aria-label="Minimizar o editor" title="Minimizar o editor" className="hidden size-8 items-center justify-center rounded-full text-fg-2 outline-none hover:bg-surface-2 hover:text-fg focus-visible:ring-2 focus-visible:ring-accent md:inline-flex">
                       <ChevronDown size={16} aria-hidden />
                     </button>
@@ -507,7 +549,7 @@ export function MetricTray({ state }: { state: EditorState }) {
                       <X size={16} aria-hidden />
                     </button>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 md:flex-col">
+                  <div className="flex flex-wrap gap-1.5 md:flex-col xl:flex-row">
                     {input.align && section !== "columns" && !onExtra && (
                       <button type="button" onClick={input.align} disabled={metrics.pending} title="Fecha as fileiras e iguala as alturas, sem trocar a ordem dos blocos" className={`${BAR_BUTTON} md:justify-start`}>
                         <LayoutGrid size={14} aria-hidden /> Alinhar grade
@@ -521,17 +563,20 @@ export function MetricTray({ state }: { state: EditorState }) {
                         <Settings2 size={14} aria-hidden /> Nome, contas e metas
                       </Link>
                     )}
+                    <button type="button" onClick={() => setPreviewing(true)} title="O dashboard como vai ficar, sem o editor. As mudanças continuam sem salvar." className={`${BAR_BUTTON} md:justify-start`}>
+                      <Eye size={14} aria-hidden /> Ver em tela cheia
+                    </button>
                   </div>
                   {metrics.error && (
                     <p role="alert" className="rounded-[10px] bg-error-soft px-3 py-1.5 text-[12px] text-error-fg">
                       {metrics.error}
                     </p>
                   )}
-                  <div className="mt-auto flex gap-2 md:flex-col">
-                    <button type="button" onClick={() => void metrics.save()} disabled={metrics.pending} className="inline-flex h-10 flex-1 items-center justify-center rounded-full bg-accent px-4 text-[13.5px] font-semibold whitespace-nowrap text-on-accent outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:opacity-50 md:flex-none">
+                  <div className="mt-auto flex gap-2 md:flex-col xl:flex-row-reverse">
+                    <button type="button" onClick={() => void metrics.save()} disabled={metrics.pending} className={`${SAVE_BUTTON} h-10 flex-1 text-[13.5px] focus-visible:ring-offset-2 focus-visible:ring-offset-card md:flex-none xl:flex-1`}>
                       {metrics.pending ? "Salvando…" : "Salvar"}
                     </button>
-                    <button type="button" onClick={cancel} disabled={metrics.pending} className={`${BAR_BUTTON} h-10 flex-1 md:flex-none`}>
+                    <button type="button" onClick={cancel} disabled={metrics.pending} className={`${BAR_BUTTON} h-10 flex-1 md:flex-none xl:flex-1`}>
                       Cancelar
                     </button>
                   </div>

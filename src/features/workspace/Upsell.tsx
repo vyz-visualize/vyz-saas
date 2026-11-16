@@ -56,7 +56,7 @@ const FEATURES: Record<Product, Feature[]> = {
       preview: <Preview chips={8} bars={[30, 55, 45, 70, 60, 85]} />,
     },
     { required: "avancado", feature: "Análise por áudio", text: "Pergunte em voz alta e ouça a leitura dos números.", preview: <Preview bars={[20, 70, 35, 90, 45, 75, 30, 60]} /> },
-    { required: "personalizado", feature: "Marca própria", text: "Seu logo e suas cores no dashboard, no link e no PDF.", preview: <Preview rows={4} /> },
+    { required: "personalizado", feature: "Sem a marca VYZ", text: "O dashboard, o link e o PDF só com a sua marca, e uma cor para cada dashboard.", preview: <Preview rows={4} /> },
   ],
   lp: [
     { required: "pro", feature: "3 landing pages e leads com UTM", text: "Teste ofertas e públicos e veja de onde veio cada lead.", preview: <Preview rows={4} /> },

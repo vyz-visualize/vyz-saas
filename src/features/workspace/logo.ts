@@ -1,4 +1,4 @@
-// Logo do workspace (marca própria): o tipo vem dos primeiros bytes do
+// Logo da organização e dos workspaces (todos os planos): o tipo vem dos primeiros bytes do
 // arquivo, nunca do nome nem do Content-Type que o navegador manda. Só PNG,
 // JPEG e WebP (o bucket brand-assets recusa SVG: SVG executa script).
 
@@ -30,7 +30,6 @@ export const LOGO_MESSAGES = {
   empty: "O arquivo está vazio.",
   tooBig: "O logo pode ter até 2 MB.",
   type: "Use uma imagem PNG, JPEG ou WebP.",
-  plan: "Marca própria é do plano Personalizado.",
 } as const;
 
 /** Conferência rápida no navegador (o servidor confere de novo, pelos bytes). */

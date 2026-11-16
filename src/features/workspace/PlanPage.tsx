@@ -657,7 +657,7 @@ export function PlanPage({
             </table>
           </div>
           <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <p className="text-[14px] text-fg">Marca própria e implementação sob medida: plano Personalizado, sob consulta.</p>
+            <p className="text-[14px] text-fg">Sem a marca VYZ e implementação sob medida: plano Personalizado, sob consulta.</p>
             {!custom && (
               <a href={waLink(msgUpgrade(tier ? TIER_LABEL[tier] : "sem plano", TIER_LABEL.personalizado))} target="_blank" rel="noopener noreferrer" className={`${btn.small} shrink-0 max-sm:h-11`}>
                 <WhatsAppIcon size={15} /> Falar com especialista

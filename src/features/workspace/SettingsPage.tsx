@@ -150,9 +150,9 @@ function WorkspaceForm({ canEdit, notify }: { canEdit: boolean; notify: Notify }
   );
 }
 
-// ---- marca própria ----------------------------------------------------------------------
+// ---- marca: logo e cor (todos os planos); esconder a VYZ (Personalizado) -----------------
 
-function BrandForm({ canEdit, notify }: { canEdit: boolean; notify: Notify }) {
+function BrandForm({ canEdit, canHideVyz, notify }: { canEdit: boolean; canHideVyz: boolean; notify: Notify }) {
   const { workspace } = useWorkspaceSession();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -211,13 +211,19 @@ function BrandForm({ canEdit, notify }: { canEdit: boolean; notify: Notify }) {
             Cor: <span className="inline-block size-3 rounded-[3px] align-middle" style={{ background: workspace.brandColor }} /> {workspace.brandColor.toUpperCase()}
           </p>
         )}
-        <Switch
-          label="Esconder a marca VYZ"
-          hint="No dashboard, no link compartilhado e no PDF."
-          checked={workspace.hideVyzBrand}
-          disabled={!canEdit || pending}
-          onChange={(hideVyzBrand) => run(() => updateWorkspace({ hideVyzBrand }), hideVyzBrand ? "Marca VYZ escondida." : "Marca VYZ de volta.")}
-        />
+        {canHideVyz ? (
+          <Switch
+            label="Esconder a marca VYZ"
+            hint="No dashboard, no link compartilhado e no PDF."
+            checked={workspace.hideVyzBrand}
+            disabled={!canEdit || pending}
+            onChange={(hideVyzBrand) => run(() => updateWorkspace({ hideVyzBrand }), hideVyzBrand ? "Marca VYZ escondida." : "Marca VYZ de volta.")}
+          />
+        ) : (
+          <p className="flex flex-wrap items-center gap-2 text-[13px] text-fg-2">
+            Esconder a marca VYZ <LockBadge label="Personalizado" />
+          </p>
+        )}
       </div>
       {pending && <p className="text-[13px] text-fg-2">Salvando…</p>}
       {error && <ErrorLine>{error}</ErrorLine>}
@@ -375,12 +381,12 @@ export function SettingsPage({ data }: { data: SettingsData }) {
             <WorkspaceForm canEdit={admin} notify={toast.show} />
           </Section>
 
-          <Section id="h-marca" title="Marca própria (white-label)" aside={!white && <LockBadge label="Sob consulta" />} text="Seu logo e suas cores no dashboard, no link e no PDF, sem a marca VYZ.">
-            {white ? (
-              <BrandForm canEdit={admin} notify={toast.show} />
+          <Section id="h-marca" title="Marca" text="Sua logo e sua cor no dashboard, no link do cliente e no PDF.">
+            {access.hasAccess ? (
+              <BrandForm canEdit={admin} canHideVyz={white} notify={toast.show} />
             ) : (
-              <Paywall current={access.hasAccess ? access.tier : null} required="personalizado" feature="Marca própria" text="Para agências que entregam o dashboard como se fosse delas.">
-                <BrandForm canEdit={false} notify={toast.show} />
+              <Paywall current={null} required="base" feature="Logo e cor" text="Com um plano ativo, a sua marca entra em todos os dashboards.">
+                <BrandForm canEdit={false} canHideVyz={false} notify={toast.show} />
               </Paywall>
             )}
           </Section>

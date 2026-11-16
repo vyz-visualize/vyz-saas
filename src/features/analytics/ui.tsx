@@ -90,7 +90,7 @@ export function KpiCard({ kpi, currency, maturing, hideSpend, featured = false, 
       >
         <h3 className="truncate text-[10px] leading-tight font-medium tracking-[0.06em] text-fg-2 uppercase">{kpi.label}</h3>
         <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
-          <p className={`shrink-0 leading-none font-bold tracking-[-0.02em] whitespace-nowrap tnum text-fg ${value.length > 11 ? "text-[17px]" : "text-[20px]"}`}>{value}</p>
+          <p className={`shrink-0 leading-none font-bold tracking-[-0.02em] whitespace-nowrap tnum text-fg ${value.length > 11 ? "text-[15px] @[150px]:text-[17px]" : "text-[17px] @[150px]:text-[20px]"}`}>{value}</p>
           {!hidden && (
             <span className="hidden min-w-0 @[170px]:inline-flex">
               <DeltaBadge delta={kpi.delta} better={kpi.better} suffix={compared} />

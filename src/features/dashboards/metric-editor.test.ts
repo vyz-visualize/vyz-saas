@@ -369,6 +369,49 @@ describe("arrastar", () => {
 
 });
 
+describe("ver em tela cheia", () => {
+  const preview = () => document.querySelector('[aria-label="Pré-visualização"]');
+  const shown = () => [...host.querySelectorAll<HTMLElement>("[data-vyz-metric]")].map((e) => e.dataset.vyzMetric);
+
+  it("mostra o dashboard sem o editor, com a mudança ainda sem salvar, e volta", async () => {
+    await sample();
+    await enter();
+    await add("Investimento");
+    await click(button("Ver em tela cheia"));
+    expect(tray()).toBeNull();
+    expect(preview()?.textContent).toContain("ainda não foram salvas");
+    expect(shown()).toContain("spend");
+    expect(host.querySelector('button[aria-label^="Remover"]')).toBeNull();
+    expect(button("Editar dashboard")).toBeUndefined();
+    expect(save).not.toHaveBeenCalled();
+    await click(button("Voltar a editar"));
+    expect(preview()).toBeNull();
+    expect(tray()).toBeTruthy();
+    expect(counter()).toContain("4 de 10");
+  });
+
+  it("Esc na tela cheia volta ao editor sem descartar", async () => {
+    await sample();
+    await enter();
+    await add("Investimento");
+    await click(button("Ver em tela cheia"));
+    await act(async () => void document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    expect(tray()).toBeTruthy();
+    expect(counter()).toContain("4 de 10");
+  });
+
+  it("salvar da tela cheia grava e fecha", async () => {
+    await sample();
+    await enter();
+    await add("Investimento");
+    await click(button("Ver em tela cheia"));
+    await click([...document.querySelectorAll<HTMLButtonElement>('[aria-label="Pré-visualização"] button')].find((b) => b.textContent?.trim() === "Salvar"));
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(preview()).toBeNull();
+    expect(tray()).toBeNull();
+  });
+});
+
 describe("sair com mudança não salva", () => {
   const withLink = (extra = {}) =>
     mount(

@@ -14,7 +14,8 @@ const SPAN: Record<Span, string> = {
 };
 
 /** Card na fileira única: largura igual entre todos, nunca menos que o número inteiro. */
-const STRIP_CELL = "@[720px]:min-w-[148px] @[720px]:flex-1 @[720px]:basis-0 @[720px]:snap-start";
+// estreitos o bastante para 8 a 10 cards caberem lado a lado mesmo com o editor aberto na lateral (sem cortar o último)
+const STRIP_CELL = "@[720px]:min-w-[118px] @[720px]:flex-1 @[720px]:basis-0 @[720px]:snap-start";
 
 type PageViewProps = {
   layout: PageLayout;

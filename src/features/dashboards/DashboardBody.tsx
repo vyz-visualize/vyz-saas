@@ -262,7 +262,8 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
           }
         : undefined,
   });
-  const editing = metrics.open;
+  // "Ver em tela cheia" no editor: o dashboard volta ao normal (com as mudanças ainda não salvas)
+  const editing = metrics.open && !edit.previewing;
   const filterLabels = useMemo(
     () => ({
       campaigns: Object.fromEntries(ds.campaigns.map((c) => [c.id, c.name])),
@@ -423,7 +424,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       <div inert={editing || undefined} className={`contents ${editing ? "[&>*]:opacity-50" : ""}`}>
         {periodControl()}
       </div>
-      {customizeId && !editing && !presenting && <CustomizeButton onClick={() => metrics.openPanel()} />}
+      {customizeId && !metrics.open && !presenting && <CustomizeButton onClick={() => metrics.openPanel()} />}
       {screen && periodHint}
       <span className="mb-2 shrink-0 rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium whitespace-nowrap text-fg">{realLabel}</span>
       {isReal && syncStamp && <span className="mb-2 shrink-0">{syncStamp}</span>}
@@ -485,8 +486,10 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       data-skin-screen={screen ? "" : undefined}
       data-presenting={presenting ? "" : undefined}
       data-metric-editing={editing ? edit.section : undefined}
+      data-fit-reserve={edit.previewing ? 64 : undefined}
       // apresentação: o dashboard cobre a tela (e entra em tela cheia, onde o navegador deixa); rola por dentro
-      className={presenting ? presentingClass(framed) : editing ? (edit.collapsed ? "pb-24" : "pb-[80dvh] md:pb-[324px]") : ""}
+      // editor aberto: no computador ele fica na lateral e o dashboard estreita ao lado (não fica por baixo); abaixo disso, a faixa do rodapé
+      className={presenting ? presentingClass(framed) : editing ? (edit.collapsed ? "pb-24" : "pb-[80dvh] md:pb-[412px] xl:pr-[412px] xl:pb-4") : edit.previewing ? "pb-20" : ""}
     >
     {/* o espaçamento vale só entre as partes visíveis: a bandeja e o aviso (abaixo) não empurram a página */}
     <div className={screen ? "" : "space-y-4"}>
@@ -536,7 +539,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
           }}
           period={(compact) => <div inert={editing || undefined} className={editing ? "opacity-50" : ""}>{periodControl(compact)}</div>}
           hint={periodHint}
-          edit={customizeId && !editing && !presenting ? <CustomizeButton onClick={() => metrics.openPanel()} /> : undefined}
+          edit={customizeId && !metrics.open && !presenting ? <CustomizeButton onClick={() => metrics.openPanel()} /> : undefined}
           actions={presenting ? undefined : actions}
         />
       )}

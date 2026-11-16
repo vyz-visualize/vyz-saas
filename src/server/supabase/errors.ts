@@ -34,7 +34,7 @@ const MESSAGES: Record<string, string> = {
   "plan:template": "Este template é de um plano acima do seu.",
   "plan:page": "Esta página é de um plano acima do seu.",
   "plan:platform": "Esta plataforma é de um plano acima do seu. No Básico, contrate a plataforma extra.",
-  "plan:white_label": "Marca própria é do plano Personalizado.",
+  "plan:white_label": "Esconder a marca VYZ e usar uma cor só deste dashboard são do plano Personalizado.",
   "plan:unknown": "Não encontramos o seu plano.",
   "limit:dashboards": "Você chegou ao limite de dashboards do seu plano.",
   "limit:landing_pages": "Você chegou ao limite de landing pages publicadas do seu plano.",

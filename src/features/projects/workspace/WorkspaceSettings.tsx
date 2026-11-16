@@ -14,7 +14,6 @@ import { btn } from "@/components/ui/styles";
 import { useToast } from "@/components/ui/Toast";
 import { shortDate } from "@/features/integrations/sync-label";
 import { LOGO_ACCEPT, LOGO_HINT, logoProblem } from "@/features/workspace/logo";
-import { useOptionalWorkspaceSession } from "@/features/workspace/WorkspaceProvider";
 import { archiveProject, renameProject } from "@/server/projects/actions";
 import { removeProjectLogo, setProjectColor, uploadProjectLogo } from "@/server/projects/identity";
 import { normalizeProjectColor, PROJECT_COLORS, textOn } from "../identity";
@@ -44,8 +43,6 @@ function Swatch({ hex, label, selected, disabled, onPick }: { hex: string | null
 export function WorkspaceSettings({ summary, timeZone }: { summary: ProjectSummary; timeZone: string }) {
   const toast = useToast();
   const router = useRouter();
-  const session = useOptionalWorkspaceSession();
-  const whiteLabel = !!session?.access.entitlements?.whiteLabel;
   const [name, setName] = useState(summary.name);
   const [error, setError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
@@ -127,7 +124,7 @@ export function WorkspaceSettings({ summary, timeZone }: { summary: ProjectSumma
         <SectionHeader
           id="h-identidade"
           title="Logo e cor"
-          text={`Identificam o workspace no menu, nas listas e no cabeçalho. Nos dashboards deste cliente, a logo entra no lugar da logo da organização${whiteLabel ? "" : " (no link do cliente, com a marca própria do plano)"}.`}
+          text="Identificam o workspace no menu, nas listas e no cabeçalho. Nos dashboards deste cliente (e no link dele), a logo entra no lugar da logo da organização."
         />
 
         <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-center">

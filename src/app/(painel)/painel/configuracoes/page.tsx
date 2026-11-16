@@ -16,7 +16,7 @@ export default function Page() {
 }
 
 // Perfil, senha e histórico não dependem do plano: abrem mesmo sem assinatura
-// ativa (a marca própria confere o plano por conta própria).
+// ativa (logo e cor pedem um plano ativo; esconder a VYZ, o Personalizado).
 async function Configuracoes() {
   await requireWorkspace({ access: false, onboarding: false, next: "/painel/configuracoes" });
   return <SettingsPage data={await getSettingsData()} />;
