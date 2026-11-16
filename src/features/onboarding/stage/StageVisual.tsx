@@ -5,7 +5,9 @@
 // ligado às plataformas. Modelo: o modelo escolhido, com o nome do cliente. Montando: a
 // prévia se montando.
 
+import { ContactRound } from "lucide-react";
 import { useSyncExternalStore } from "react";
+import { siGoogleads, siGoogleanalytics, siMeta, type SimpleIcon } from "simple-icons";
 import { ScaledPreview } from "@/components/ui/ScaledPreview";
 import { TemplatePreview, TemplateThumb } from "@/features/dashboards/TemplatePreview";
 import type { ProviderId } from "@/features/integrations/providers";
@@ -49,6 +51,11 @@ function ClientCard({ client, segment, compact = false }: { client: string; segm
   );
 }
 
+// Logos no hub: a marca oficial de cada plataforma (simple-icons, CC0), na cor da marca, sobre
+// fundo branco e com respiro em volta (nada esticado, recolorido nem com efeito). O CRM é
+// genérico (RD Station e HubSpot): ícone neutro, sem logo de uma marca só.
+const HUB_LOGO: Partial<Record<string, SimpleIcon>> = { meta: siMeta, google: siGoogleads, ga4: siGoogleanalytics };
+
 function Hub({ connected, justConnected, compact = false }: { connected: readonly ProviderId[]; justConnected: ProviderId | null; compact?: boolean }) {
   const nodes = [
     { id: "meta", label: "Meta Ads", x: 70, y: 70 },
@@ -79,21 +86,36 @@ function Hub({ connected, justConnected, compact = false }: { connected: readonl
       {nodes.map((n) => {
         const on = connected.includes(n.id as ProviderId);
         const fresh = justConnected === n.id;
+        const logo = HUB_LOGO[n.id];
+        const LOGO = 26;
         return (
           <g key={n.label} data-node={n.id} data-on={on || undefined}>
-            <circle cx={n.x} cy={n.y} r="26" fill={on ? "var(--accent)" : "var(--card)"} stroke={on ? "var(--accent)" : "var(--line)"} strokeWidth="2" opacity={n.extra ? 0.7 : 1} />
+            {/* o círculo é sempre branco (as marcas pedem fundo claro); conectado, ganha o anel da VYZ */}
+            <circle cx={n.x} cy={n.y} r="26" fill="#fff" stroke={on ? "var(--accent)" : "var(--line)"} strokeWidth={on ? 3 : 2} />
+            <g opacity={on || !n.extra ? 1 : 0.75}>
+              {logo ? (
+                <svg x={n.x - LOGO / 2} y={n.y - LOGO / 2} width={LOGO} height={LOGO} viewBox="0 0 24 24" data-logo={n.id}>
+                  <path d={logo.path} fill={`#${logo.hex}`} />
+                </svg>
+              ) : (
+                <ContactRound x={n.x - 12} y={n.y - 12} width={24} height={24} color="#4b5563" strokeWidth={2} data-logo={n.id} />
+              )}
+            </g>
             {on && (
-              <path
-                d={`M${n.x - 9},${n.y} l5.5,6.5 l12,-13`}
-                fill="none"
-                stroke="var(--on-accent)"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeDasharray="30"
-                strokeDashoffset={fresh ? 30 : 0}
-                style={fresh ? { animation: "fa-draw 420ms 200ms var(--ease) forwards" } : undefined}
-              />
+              <g>
+                <circle cx={n.x + 19} cy={n.y - 19} r="10" fill="var(--accent)" stroke="var(--card)" strokeWidth="2" />
+                <path
+                  d={`M${n.x + 14.5},${n.y - 19} l3,3.5 l6,-6.5`}
+                  fill="none"
+                  stroke="var(--on-accent)"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray="16"
+                  strokeDashoffset={fresh ? 16 : 0}
+                  style={fresh ? { animation: "fa-draw 420ms 200ms var(--ease) forwards" } : undefined}
+                />
+              </g>
             )}
             <text x={n.x} y={n.y + 44} textAnchor="middle" fontSize="12.5" fill="var(--fg)" opacity={n.extra ? 0.7 : 1}>
               {n.label}
