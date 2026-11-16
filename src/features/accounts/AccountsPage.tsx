@@ -91,8 +91,11 @@ function ProviderSection({
   timeZone,
   onRemove,
   showTestBadges,
+  only,
 }: {
   provider: ProviderId;
+  /** Mostra só um tipo de conta do login (Meta: anúncio, Instagram ou Página), cada um com o seu cartão na lista. */
+  only?: PlatformId;
   state: ConnectState;
   now: string;
   timeZone: string;
@@ -102,7 +105,8 @@ function ProviderSection({
   const info = PROVIDERS[provider];
   const platform = state.platforms[provider];
   // Meta: contas de anúncio, Instagram e Página em abas (o mesmo login traz os três)
-  const tabs = [{ id: info.platformId as PlatformId, label: platform.extras?.length ? "Contas de anúncio" : "Contas", accounts: platform.accounts, extra: false }, ...(platform.extras ?? []).map((e) => ({ id: e.platformId, label: PLATFORMS[e.platformId].name, accounts: e.accounts, extra: true }))];
+  const allTabs = [{ id: info.platformId as PlatformId, label: platform.extras?.length ? "Contas de anúncio" : "Contas", accounts: platform.accounts, extra: false }, ...(platform.extras ?? []).map((e) => ({ id: e.platformId, label: PLATFORMS[e.platformId].name, accounts: e.accounts, extra: true }))];
+  const tabs = only ? allTabs.filter((t) => t.id === only) : allTabs;
   const [tab, setTab] = useState(tabs[0].id);
   const current = tabs.find((t) => t.id === tab) ?? tabs[0];
 
@@ -201,9 +205,9 @@ function ProviderSection({
 }
 
 /** Situação de uma ferramenta, para o cartão. */
-function providerStatus(state: ConnectState, provider: ProviderId, now: string, timeZone: string) {
+function providerStatus(state: ConnectState, provider: ProviderId, now: string, timeZone: string, only?: PlatformId) {
   const p = state.platforms[provider];
-  const all = [...p.accounts, ...(p.extras ?? []).flatMap((e) => e.accounts)];
+  const all = only ? (only === PROVIDERS[provider].platformId ? p.accounts : (p.extras?.find((e) => e.platformId === only)?.accounts ?? [])) : [...p.accounts, ...(p.extras ?? []).flatMap((e) => e.accounts)];
   const on = all.filter((a) => a.isEnabled);
   const errors = on.filter((a) => syncSummary(a, now, timeZone)?.tone === "error").length;
   // logins que pararam (expirado, revogado, com erro): pedem reconexão mesmo com outro login no ar
@@ -254,7 +258,8 @@ export function AccountsPage({ state, manual, imported, result, now, timeZone, s
   const [removing, setRemoving] = useState<AdAccountDTO | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const [openProvider, setOpenProvider] = useState<ProviderId | null>(null);
+  const [openProvider, setOpenProviderState] = useState<{ provider: ProviderId; only?: PlatformId } | null>(null);
+  const setOpenProvider = (provider: ProviderId | null, only?: PlatformId) => setOpenProviderState(provider ? { provider, only } : null);
   const [openExtra, setOpenExtra] = useState<"import" | "manual" | null>(null);
   const askRemove = (a: AdAccountDTO) => {
     setRemoveError(null);
@@ -360,7 +365,15 @@ export function AccountsPage({ state, manual, imported, result, now, timeZone, s
       </section>
 
       {PROVIDER_CATEGORIES.map((cat) => {
-        const tools = statuses.filter((s) => PROVIDERS[s.provider].category === cat.id);
+        // Meta: um cartão por tipo de conta (anúncio, Instagram, Página); o login é o mesmo
+        const tools = statuses
+          .filter((s) => PROVIDERS[s.provider].category === cat.id)
+          .flatMap((s) => {
+            const extras = state.platforms[s.provider].extras ?? [];
+            if (!extras.length) return [{ ...s, only: undefined as PlatformId | undefined, key: s.provider as string }];
+            const base = PROVIDERS[s.provider].platformId as PlatformId;
+            return [base, ...extras.map((e) => e.platformId)].map((id, i) => ({ ...providerStatus(state, s.provider, now, timeZone, id), provider: s.provider, only: id, key: id as string, brokenLogins: i === 0 ? s.brokenLogins : 0 }));
+          });
         if (tools.length === 0) return null;
         return (
           <section key={cat.id} aria-labelledby={`cat-${cat.id}`} className="space-y-3.5">
@@ -369,14 +382,15 @@ export function AccountsPage({ state, manual, imported, result, now, timeZone, s
               {tools.map((st) => {
                 const p = st.provider;
                 const info = PROVIDERS[p];
+                const sub = st.only && st.only !== info.platformId ? PLATFORMS[st.only] : null;
                 // login parado sem nenhum outro no ar: a ferramenta está fora, mas o painel dela ainda abre (lá está o login para reconectar)
                 const stopped = !st.connected && st.logins > 0;
                 return (
                   <ToolCard
-                    key={p}
-                    icon={p}
-                    name={info.name}
-                    text={p === "meta" ? "Anúncios, Instagram e Página do Facebook." : TOOL_TEXT[cat.id]}
+                    key={st.key}
+                    icon={sub ? sub.id : p}
+                    name={sub ? sub.name : info.name}
+                    text={sub ? `Orgânico, pelo mesmo login do ${info.name}.` : TOOL_TEXT[cat.id]}
                     attention={st.errors > 0 || st.brokenLogins > 0}
                     badge={
                       st.connected ? (
@@ -412,7 +426,7 @@ export function AccountsPage({ state, manual, imported, result, now, timeZone, s
                         <span className="text-fg-2">Não conectado</span>
                       )
                     }
-                    onOpen={st.connected || stopped ? () => setOpenProvider(p) : undefined}
+                    onOpen={st.connected || stopped ? () => setOpenProvider(p, st.only) : undefined}
                     action={
                       st.connected ? null : stopped ? (
                         <ConnectButton provider={p} next={RETURN_PATH} canManage={state.canManage} connected />
@@ -449,8 +463,8 @@ export function AccountsPage({ state, manual, imported, result, now, timeZone, s
         </ul>
       </section>
 
-      <Modal open={openProvider !== null} onClose={() => setOpenProvider(null)} title={openProvider ? PROVIDERS[openProvider].name : ""} wide>
-        {openProvider && <ProviderSection provider={openProvider} state={state} now={now} timeZone={timeZone} onRemove={askRemove} showTestBadges={showTestBadges} />}
+      <Modal open={openProvider !== null} onClose={() => setOpenProvider(null)} title={openProvider ? (openProvider.only && openProvider.only !== PROVIDERS[openProvider.provider].platformId ? PLATFORMS[openProvider.only].name : PROVIDERS[openProvider.provider].name) : ""} wide>
+        {openProvider && <ProviderSection key={openProvider.only ?? openProvider.provider} provider={openProvider.provider} only={openProvider.only} state={state} now={now} timeZone={timeZone} onRemove={askRemove} showTestBadges={showTestBadges} />}
       </Modal>
 
       <Modal open={openExtra === "import"} onClose={() => setOpenExtra(null)} title="Planilha" wide>
