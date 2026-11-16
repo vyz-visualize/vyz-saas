@@ -9,6 +9,7 @@
 -- Assinaturas ativas dos planos de dashboard passam para o número novo (ninguém
 -- hoje tem mais workspaces ativos do que o novo limite; quem tiver no futuro
 -- continua com os que já tem, só não cria nem desarquiva acima do limite).
+-- No Avançado, a mensagem do limite não traz o número.
 
 alter table public.plan_entitlements
   add column max_projects smallint not null default 200 check (max_projects between 1 and 200);
@@ -51,6 +52,11 @@ begin
   select count(*) into v_active from public.projects p
   where p.workspace_id = new.workspace_id and p.archived_at is null and p.id <> new.id;
   if v_active + 1 > v_limit then
+    -- o Avançado não mostra o teto interno (no site, "+5 workspaces")
+    if e.plan_id = 'avancado' then
+      raise exception using errcode = 'P0001', message = 'limit:projects',
+        hint = 'Você chegou ao limite do seu plano. Fale com a gente para ampliar.';
+    end if;
     raise exception using errcode = 'P0001', message = 'limit:projects',
       hint = format('Seu plano tem até %s %s.', v_limit, case when v_limit = 1 then 'workspace' else 'workspaces' end);
   end if;

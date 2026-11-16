@@ -65,6 +65,12 @@ export const ENTITLEMENTS: Record<Tier, Entitlements> = {
 /** O que a página de Criativos mostra neste plano (sem plano: só a lista). */
 export const creativesLevel = (tier: Tier | null | undefined): Entitlements["creatives"] => (tier ? ENTITLEMENTS[tier].creatives : "list");
 
+/** O Avançado não mostra o teto interno de workspaces (no site, "+5"): o painel mostra só o uso. */
+export const hidesProjectTotal = (tier: Tier | null | undefined): boolean => tier === "avancado";
+
+/** Limite de workspaces sem número (Avançado). */
+export const PROJECT_LIMIT_HIDDEN_MESSAGE = "Você chegou ao limite do seu plano. Fale com a gente para ampliar.";
+
 /** O plano `tier` cobre o que exige `required`? */
 export function canUse(tier: Tier, required: Tier): boolean {
   return RANK[tier] >= RANK[required];

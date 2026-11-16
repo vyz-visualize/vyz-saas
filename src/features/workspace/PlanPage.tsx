@@ -29,7 +29,7 @@ import {
   TRANSACTION_STATUS_LABEL,
 } from "@/features/checkout/labels";
 import { planChangeBlocker, planSelection, quotePlanChange, samePlan, type PlanSelection, type PlanUsage } from "@/features/checkout/plan-change";
-import { ENTITLEMENTS, LIMIT_ROWS, LIMIT_TIERS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, hidesProjectTotal, LIMIT_ROWS, LIMIT_TIERS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
 import { annualSavingPct, LP_PLAN_PAGES, projectsLabel, lpMonthly, lpSetup, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";
 import { msgUpgrade, waLink } from "@/lib/whatsapp";
@@ -77,7 +77,16 @@ function StatusChip({ status, label }: { status: string; label: string }) {
 }
 
 /** Barra de uso do plano: quanto já foi do limite. */
-function Meter({ used, limit, label }: { used: number; limit: number; label: string }) {
+/** Uso do plano. Sem limite (Avançado, que não mostra o teto interno), só o número. */
+function Meter({ used, limit, label }: { used: number; limit?: number; label: string }) {
+  if (limit === undefined) {
+    return (
+      <p className="flex items-baseline justify-between gap-3 text-[13.5px]">
+        <span className="text-fg-2">{label}</span>
+        <span className="font-semibold text-fg tnum">{used}</span>
+      </p>
+    );
+  }
   const ratio = Math.min(1, used / Math.max(1, limit));
   const over = used > limit;
   return (
@@ -483,7 +492,9 @@ export function PlanPage({
     : tier
       ? lp
         ? `${ent.maxLandingPages} landing pages no plano`
-        : `${access.accountsQuantity} ${access.accountsQuantity === 1 ? "workspace contratado" : "workspaces contratados"}`
+        : hidesProjectTotal(tier)
+          ? `${usage.projects} ${usage.projects === 1 ? "workspace em uso" : "workspaces em uso"}`
+          : `${access.accountsQuantity} ${access.accountsQuantity === 1 ? "workspace contratado" : "workspaces contratados"}`
       : lp
         ? "Escolha um plano para publicar as landing pages."
         : "Escolha um plano para usar os dashboards.";
@@ -571,7 +582,7 @@ export function PlanPage({
                   <Meter used={usage.publishedLandingPages} limit={ent.maxLandingPages} label="Landing pages publicadas" />
                 ) : (
                   <div className="space-y-5">
-                    <Meter used={usage.projects} limit={access.accountsQuantity} label="Workspaces" />
+                    <Meter used={usage.projects} limit={hidesProjectTotal(tier) ? undefined : access.accountsQuantity} label="Workspaces" />
                     <Meter used={usage.dashboards} limit={ent.maxDashboards} label="Dashboards" />
                   </div>
                 )}

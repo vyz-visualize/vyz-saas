@@ -24,7 +24,7 @@ import { useAgent } from "@/features/agent/AgentProvider";
 import { initials } from "@/features/projects/identity";
 import { WorkspaceAvatar } from "@/features/projects/WorkspaceAvatar";
 import { Mascot } from "@/features/agent/Mascot";
-import { TIER_LABEL } from "@/features/pricing/entitlements";
+import { hidesProjectTotal, TIER_LABEL } from "@/features/pricing/entitlements";
 import type { Product } from "@/features/pricing/pricing";
 import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
@@ -62,7 +62,7 @@ export function planLine(session: Pick<ReturnType<typeof useWorkspaceSession>, "
   const { access, usage } = session;
   if (!access.hasAccess || !access.tier) return "Sem plano ativo";
   if (product === "lp") return `${TIER_LABEL[access.tier]} · Landing pages`;
-  return planBadge(TIER_LABEL[access.tier], usage.projects, access.accountsQuantity);
+  return planBadge(access.tier, usage.projects, access.accountsQuantity);
 }
 
 // rótulos somem antes de recolher e voltam depois de expandir, sem quebrar linha
@@ -315,17 +315,23 @@ function UsageCard() {
   if (workspace.product !== "dash" || !access.hasAccess || !access.tier) return null;
   const limit = Math.max(1, access.accountsQuantity);
   const ratio = Math.min(1, usage.projects / limit);
+  // Avançado: só o uso, sem o teto interno (nem a barra, que o revelaria)
+  const hidden = hidesProjectTotal(access.tier);
   return (
     <Link href="/painel/plano" className={`group mb-2 block rounded-[14px] bg-[var(--frame-hover)] p-3 transition-colors hover:bg-[var(--frame-hover-2)] sb-closed:hidden [@media(max-height:820px)]:hidden ${frameFocus}`}>
       <span className="flex items-center justify-between gap-2 text-[12.5px]">
         <span className="font-semibold text-[var(--frame-fg)]">Plano {TIER_LABEL[access.tier]}</span>
         <ArrowUpRight size={14} aria-hidden className="text-[var(--frame-muted)] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
       </span>
-      <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-[var(--frame-line)]">
-        <span className={`block h-full rounded-full ${ratio >= 1 ? "bg-warning" : "bg-[var(--frame-accent)]"}`} style={{ width: `${Math.max(4, ratio * 100)}%` }} />
-      </span>
+      {!hidden && (
+        <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-[var(--frame-line)]">
+          <span className={`block h-full rounded-full ${ratio >= 1 ? "bg-warning" : "bg-[var(--frame-accent)]"}`} style={{ width: `${Math.max(4, ratio * 100)}%` }} />
+        </span>
+      )}
       <span className="mt-1.5 block text-[12px] text-[var(--frame-muted)] tnum">
-        {usage.projects} de {access.accountsQuantity} {access.accountsQuantity === 1 ? "workspace" : "workspaces"}
+        {hidden
+          ? `${usage.projects} ${usage.projects === 1 ? "workspace" : "workspaces"}`
+          : `${usage.projects} de ${access.accountsQuantity} ${access.accountsQuantity === 1 ? "workspace" : "workspaces"}`}
       </span>
     </Link>
   );

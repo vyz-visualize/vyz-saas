@@ -8,7 +8,8 @@ import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { authorize } from "@/server/auth/workspace";
 import { logActivity } from "@/server/history/log";
-import { appError, toActionError, unwrap, type ActionResult } from "@/server/supabase/errors";
+import { hidesProjectTotal, PROJECT_LIMIT_HIDDEN_MESSAGE, type Tier } from "@/features/pricing/entitlements";
+import { AppError, appError, toActionError, unwrap, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 
 const Id = z.uuid();
@@ -23,9 +24,11 @@ function parseName(name: string): string {
 const duplicate = (err: unknown) => (err as { code?: string })?.code === "23505";
 
 export async function createProject(name: string): Promise<ActionResult<{ id: string }>> {
+  let tier: Tier | null = null;
   try {
     const clean = parseName(name);
     const session = await authorize("member");
+    tier = session.access.tier;
     const db = await createServerSupabase();
     const res = await db.from("projects").insert({ workspace_id: session.workspace.id, name: clean, created_by: session.user.id }).select("id").single();
     if (res.error && duplicate(res.error)) throw appError("conflict", "Já existe um workspace com esse nome.");
@@ -35,6 +38,8 @@ export async function createProject(name: string): Promise<ActionResult<{ id: st
     return { ok: true, data: { id: row.id } };
   } catch (err) {
     unstable_rethrow(err);
+    // Avançado: o limite sem o teto interno (o banco antigo ainda manda o número na dica)
+    if (err instanceof AppError && err.code === "limit:projects" && hidesProjectTotal(tier)) return toActionError(appError("limit:projects", PROJECT_LIMIT_HIDDEN_MESSAGE));
     return toActionError(err);
   }
 }

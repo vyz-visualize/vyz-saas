@@ -51,3 +51,19 @@ describe("limite de workspaces do plano", () => {
     await expect(db.query(`update public.projects set archived_at = null where id = $1`, [first.id])).rejects.toThrow(/limit:projects/);
   });
 });
+
+describe("limite de workspaces no Avançado", () => {
+  it("a mensagem não traz o teto interno", async () => {
+    const d = await freshDb();
+    const i = seeder(d);
+    await seedCatalog(d, i);
+    await i("plans", { id: "avancado", name: "Avançado", rank: 3 });
+    // o Avançado com as mesmas regras do Padrão do catálogo de teste e teto de 2 workspaces
+    await d.exec(`insert into public.plan_entitlements select (jsonb_populate_record(null::public.plan_entitlements, to_jsonb(e) || '{"plan_id": "avancado", "max_projects": 2}')).* from public.plan_entitlements e where e.plan_id = 'pro'`);
+    const u = await createUser(d, "avancado@exemplo.com");
+    const w = (await fullWorkspace(d, i, { userId: u, name: "Rede", slug: "rede" })).id;
+    await d.query(`update public.subscriptions set plan_id = 'avancado', accounts_quantity = 30 where workspace_id = $1`, [w]);
+    await i("projects", { workspace_id: w, name: "Dois", created_by: u });
+    await expect(i("projects", { workspace_id: w, name: "Três", created_by: u })).rejects.toMatchObject({ hint: "Você chegou ao limite do seu plano. Fale com a gente para ampliar." });
+  }, 120_000);
+});

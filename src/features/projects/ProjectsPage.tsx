@@ -35,6 +35,8 @@ import {
 } from "@/server/projects/actions";
 import type { ProjectDTO, ProjectsState } from "./types";
 import { WorkspaceAvatar } from "./WorkspaceAvatar";
+import { hidesProjectTotal, PROJECT_LIMIT_HIDDEN_MESSAGE } from "@/features/pricing/entitlements";
+import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 
 const plural = (n: number, one: string, many: string) =>
   `${n} ${n === 1 ? one : many}`;
@@ -76,7 +78,9 @@ function Metric({
 export function ProjectsPage({ state, openNew = false }: { state: ProjectsState; /** Abre o "Novo workspace" (?novo=1, do seletor da sidebar). */ openNew?: boolean }) {
   const toast = useToast();
   const router = useRouter();
-  const { workspace } = useWorkspaceSession();
+  const { workspace, access } = useWorkspaceSession();
+  // Avançado: sem o teto interno na tela
+  const hideTotal = hidesProjectTotal(access.tier);
   const [editing, setEditing] = useState<Editing>(openNew && state.canEdit && state.projects.length < state.quantity ? { mode: "new" } : null);
   const [q, setQ] = useState("");
   const [archiving, setArchiving] = useState<ProjectDTO | null>(null);
@@ -142,7 +146,11 @@ export function ProjectsPage({ state, openNew = false }: { state: ProjectsState;
               onClick={() => open({ mode: "new" })}
               disabled={full}
               title={
-                full ? "Todos os workspaces do plano estão em uso" : undefined
+                full
+                  ? hideTotal
+                    ? PROJECT_LIMIT_HIDDEN_MESSAGE
+                    : "Todos os workspaces do plano estão em uso"
+                  : undefined
               }
               className={btn.small}
             >
@@ -160,22 +168,37 @@ export function ProjectsPage({ state, openNew = false }: { state: ProjectsState;
       >
         <div className="min-w-0 flex-1">
           <p className="flex items-baseline justify-between gap-3 text-[13px]">
-            <span className="font-medium text-fg-2">Workspaces do plano</span>
+            <span className="font-medium text-fg-2">{hideTotal ? "Workspaces ativos" : "Workspaces do plano"}</span>
             <span
-              className={`font-semibold tnum ${full ? "text-error-fg" : "text-fg"}`}
+              className={`font-semibold tnum ${full && !hideTotal ? "text-error-fg" : "text-fg"}`}
             >
-              {used} de {state.quantity}
+              {hideTotal ? used : `${used} de ${state.quantity}`}
             </span>
           </p>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
-            <div
-              className={`h-full rounded-full transition-[width] duration-500 ease-brand ${full ? "bg-error" : ratio >= 0.8 ? "bg-warning" : "bg-accent"}`}
-              style={{ width: `${Math.max(used ? 3 : 0, ratio * 100)}%` }}
-            />
-          </div>
+          {/* a barra revelaria o teto: no Avançado, só o número */}
+          {!hideTotal && (
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+              <div
+                className={`h-full rounded-full transition-[width] duration-500 ease-brand ${full ? "bg-error" : ratio >= 0.8 ? "bg-warning" : "bg-accent"}`}
+                style={{ width: `${Math.max(used ? 3 : 0, ratio * 100)}%` }}
+              />
+            </div>
+          )}
         </div>
         <p className="text-[13px] leading-snug text-fg-2 sm:max-w-xs sm:text-right">
-          {full ? (
+          {full && hideTotal ? (
+            <>
+              Você chegou ao limite do seu plano.{" "}
+              <a
+                href={waLink(MSG_SPECIALIST)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-accent underline-offset-4 hover:underline"
+              >
+                Fale com a gente para ampliar.
+              </a>
+            </>
+          ) : full ? (
             <>
               Todos os workspaces do plano estão em uso.{" "}
               <Link

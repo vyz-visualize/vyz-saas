@@ -89,7 +89,7 @@ const PROJECTS: ProjectsState = {
     { id: P2, name: "Clínica Sol", createdAt: day(40), color: "#2563eb", enabledAccounts: 1, dashboards: 1 },
     { id: P3, name: "Imobiliária Vista do Parque Empreendimentos", createdAt: day(8), enabledAccounts: 1, dashboards: 1 },
   ],
-  quantity: 15,
+  quantity: PLAN_PROJECTS.pro,
   maxAccountsPerPlatform: 3,
   canEdit: true,
   canArchive: true,
@@ -235,6 +235,8 @@ const SCREENS: Record<string, Screen> = {
   "inicio-novo": { path: "/painel", node: () => <HomePage data={HOME_NEW} /> },
   workspaces: { path: "/painel/workspaces", node: () => <ProjectsPage state={PROJECTS} /> },
   "workspaces-vazio": { path: "/painel/workspaces", node: () => <ProjectsPage state={{ ...PROJECTS, projects: [] }} /> },
+  // todos os workspaces do plano em uso (no Avançado, a mensagem sem o teto)
+  "workspaces-cheio": { path: "/painel/workspaces", node: () => <ProjectsPage state={{ ...PROJECTS, quantity: PROJECTS.projects.length }} /> },
   dashboards: {
     path: "/painel/dashboards",
     node: (tier, role) => (
