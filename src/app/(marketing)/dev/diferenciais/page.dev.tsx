@@ -1,6 +1,5 @@
 // Bancada da dobra Diferenciais: só existe no `next dev` (a extensão .dev.tsx só vira rota
-// fora de produção; ver pageExtensions no next.config.ts). Compara as duas direções antes de
-// irem para o site. Endereço: /dev/diferenciais?direcao=1|2|atual&frase=1|2|3
+// fora de produção; ver pageExtensions no next.config.ts). Endereço: /dev/diferenciais
 
 import { notFound } from "next/navigation";
 import { Suspense } from "react";

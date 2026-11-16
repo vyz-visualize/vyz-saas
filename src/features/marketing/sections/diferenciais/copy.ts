@@ -1,7 +1,8 @@
-// Textos da dobra Diferenciais ("Prompt × Pronto"), usados pelas duas direções da bancada
-// /dev/diferenciais. Objeção a derrubar: "por que pagar o VYZ se eu faço isso numa IA?".
+// Textos da dobra Diferenciais ("Prompt × Pronto"). Objeção a derrubar: "por que pagar o
+// VYZ se eu faço isso numa IA?".
 // Regras: nenhuma IA ou empresa citada pelo nome ("IA genérica" basta), nada de prova social,
-// número inventado ou preço. [ANOS] fica marcado até o texto exato ser confirmado.
+// número inventado ou preço. [ANOS] fica marcado até o texto exato ser confirmado; o deploy de
+// produção falha enquanto ele existir (scripts/check-placeholders.ts, no postbuild).
 
 /** O caminho com uma IA genérica, na ordem em que acontece. Cada um é um passo de verdade. */
 export const GENERIC_STEPS = [
@@ -76,14 +77,13 @@ export const ROLES = [
     items: [
       "Últimos 3 dias marcados como em maturação",
       "Base diária pronta para o MMM",
-      "Alerta só para queda de verdade",
+      "Dias fora do padrão, pelo dia da semana",
     ],
   },
 ] as const;
 
-/** Frases de fechamento para escolher (?frase=1|2|3 na bancada). */
-export const CLOSINGS = [
-  "A IA responde. O VYZ entrega.",
-  "Sem prompt. Sem crédito. Sem achismo.",
-  "Você não precisa pedir. Já está pronto.",
-] as const;
+/** Dias úteis da semana, para a conta "8 × 5 = 40 passos por semana". */
+export const WEEK_DAYS = 5;
+
+/** A frase de fechamento. */
+export const CLOSING = "A IA responde. O VYZ entrega.";

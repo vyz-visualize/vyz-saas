@@ -117,7 +117,7 @@ export function MadeBy({ tone = "default" }: { tone?: "default" | "inverse" }) {
         {ROLES.map((r, i) => (
           <Land
             key={r.role}
-            className={`border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6 ${rule} ${i === 0 ? "sm:border-l-0 sm:pl-0" : ""}`}
+            className={`border-t pt-4 sm:border-t-0 sm:pt-0 ${rule} ${i === 0 ? "" : "sm:border-l sm:pl-6"}`}
           >
             <h3 className="title text-[1.25rem]">{r.role}</h3>
             {r.since && (
