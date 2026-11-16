@@ -31,23 +31,15 @@ import { brl } from "@/lib/format";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 import { AudioWave } from "./AudioWave";
 import { SnapCarousel } from "./SnapCarousel";
-import { SoonBadge } from "./SoonBadge";
 
 // Planos: dois produtos (dashboards e landing pages, esta atrás de
 // SHOW_LANDING_PAGES), três planos cada, e um clique até o checkout. Cada plano de dashboards tem
-// um número fixo de projetos (5, 15 ou 30); acima disso, Personalizado. As perguntas ficam na dobra seguinte.
+// um número fixo de workspaces (até 3, até 5 ou +5); acima disso, Personalizado. As perguntas ficam na dobra seguinte.
 
 const TIERS: PlanId[] = ["base", "pro", "avancado"];
 
 // O que vale para qualquer plano: sai dos cartões e vira uma linha só, abaixo deles.
-const COMMON: ReactNode[] = [
-  "Dashboards responsivos",
-  "App para iOS e Android",
-  <>
-    Integre com sua IA (MCP)
-    <SoonBadge />
-  </>,
-];
+const COMMON: ReactNode[] = ["Dashboards responsivos", "App para iOS e Android"];
 
 type Card = {
   pitch: string;

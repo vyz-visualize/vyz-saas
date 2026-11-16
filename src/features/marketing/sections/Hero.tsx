@@ -1,7 +1,7 @@
 import { Reveal } from "@/components/motion/Reveal";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { brl } from "@/lib/format";
-import { startingPrice } from "@/features/pricing/pricing";
+import { projectsLabel, startingPrice } from "@/features/pricing/pricing";
 import { GridBackdrop } from "./GridBackdrop";
 import { HeroActions } from "./HeroActions";
 import { HeroStage } from "./HeroStage";
@@ -33,18 +33,16 @@ export function Hero() {
 
           <Reveal trigger="intro" delay={520}>
             <p className="mt-7 max-w-[34rem] text-[17px] leading-relaxed text-fg-2">
-              <strong className="font-semibold text-fg">Meta Ads</strong>, <strong className="font-semibold text-fg">Google Ads</strong>,{" "}
-              <strong className="font-semibold text-fg">TikTok Ads</strong> e outras plataformas de mídia digital, num painel só. Mande ao cliente
-              um dashboard que ele entende: com um clique numa campanha, o painel inteiro filtra.
-              {SHOW_LANDING_PAGES && " Quando a campanha precisar de página, a landing page sai com o GTM configurado."}
+              O VYZ junta <strong className="font-semibold text-fg">Meta Ads</strong>, <strong className="font-semibold text-fg">Google Ads</strong>,{" "}
+              <strong className="font-semibold text-fg">GA4</strong>, <strong className="font-semibold text-fg">TikTok Ads</strong> e os seus{" "}
+              <strong className="font-semibold text-fg">CRMs</strong> num painel só e manda ao cliente um dashboard que ele entende.
             </p>
           </Reveal>
 
           <Reveal trigger="intro" delay={640}>
             <HeroActions />
             <p className="mt-5 text-sm text-fg-2">
-              A partir de <strong className="font-semibold text-fg tnum">{brl(startingPrice("base", "anual"))}/mês</strong> no anual · até 5
-              workspaces
+              A partir de <strong className="font-semibold text-fg tnum">{brl(startingPrice("base", "anual"))}/mês</strong> no anual · {projectsLabel("base")}
             </p>
           </Reveal>
         </div>
