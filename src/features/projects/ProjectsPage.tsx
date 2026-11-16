@@ -35,7 +35,7 @@ import {
 } from "@/server/projects/actions";
 import type { ProjectDTO, ProjectsState } from "./types";
 import { WorkspaceAvatar } from "./WorkspaceAvatar";
-import { hidesProjectTotal, PROJECT_LIMIT_HIDDEN_MESSAGE } from "@/features/pricing/entitlements";
+import { unlimitedProjects, PROJECT_LIMIT_HIDDEN_MESSAGE } from "@/features/pricing/entitlements";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 
 const plural = (n: number, one: string, many: string) =>
@@ -79,8 +79,8 @@ export function ProjectsPage({ state, openNew = false }: { state: ProjectsState;
   const toast = useToast();
   const router = useRouter();
   const { workspace, access } = useWorkspaceSession();
-  // Avançado: sem o teto interno na tela
-  const hideTotal = hidesProjectTotal(access.tier);
+  // Avançado e Personalizado (ilimitados): só o uso, sem total
+  const hideTotal = unlimitedProjects(access.tier);
   const [editing, setEditing] = useState<Editing>(openNew && state.canEdit && state.projects.length < state.quantity ? { mode: "new" } : null);
   const [q, setQ] = useState("");
   const [archiving, setArchiving] = useState<ProjectDTO | null>(null);

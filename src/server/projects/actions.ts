@@ -8,7 +8,7 @@ import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { authorize } from "@/server/auth/workspace";
 import { logActivity } from "@/server/history/log";
-import { hidesProjectTotal, PROJECT_LIMIT_HIDDEN_MESSAGE, type Tier } from "@/features/pricing/entitlements";
+import { unlimitedProjects, PROJECT_LIMIT_HIDDEN_MESSAGE, type Tier } from "@/features/pricing/entitlements";
 import { AppError, appError, toActionError, unwrap, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 
@@ -38,8 +38,9 @@ export async function createProject(name: string): Promise<ActionResult<{ id: st
     return { ok: true, data: { id: row.id } };
   } catch (err) {
     unstable_rethrow(err);
-    // Avançado: o limite sem o teto interno (o banco antigo ainda manda o número na dica)
-    if (err instanceof AppError && err.code === "limit:projects" && hidesProjectTotal(tier)) return toActionError(appError("limit:projects", PROJECT_LIMIT_HIDDEN_MESSAGE));
+    // planos ilimitados: antes da migration 20261120090000, o banco ainda limita o Avançado pela
+    // quantidade antiga (30) e manda o número na dica; a mensagem sai sem ele
+    if (err instanceof AppError && err.code === "limit:projects" && unlimitedProjects(tier)) return toActionError(appError("limit:projects", PROJECT_LIMIT_HIDDEN_MESSAGE));
     return toActionError(err);
   }
 }

@@ -28,8 +28,8 @@ describe("pedido", () => {
   it("Avançado anual: só o plano, sem adicional", () => {
     const order = buildOrder(s({ plano: "avancado", periodo: "anual" }));
     expect(order.items).toHaveLength(1);
-    expect(order.items[0]).toMatchObject({ planPriceId: "avancado_year", quantity: 30, amountCents: 40825 });
-    expect(order.items[0].label).toBe("Plano Avançado · +5 workspaces");
+    expect(order.items[0]).toMatchObject({ planPriceId: "avancado_year", quantity: 200, amountCents: 40825 });
+    expect(order.items[0].label).toBe("Plano Avançado · workspaces ilimitados");
     expect(order.recurringCents).toBe(489900);
   });
 

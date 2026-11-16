@@ -12,7 +12,7 @@ const rows = ["product_id,nome,plano,periodo,ate_workspaces,preco_brl"];
 for (const tier of STORE_PLAN_TIERS) {
   for (const period of STORE_PLAN_PERIODS) {
     const projects = STORE_PLAN_PROJECTS[tier];
-    rows.push([storePlanProductId({ tier, period }), `"${LABEL[tier]} · ${tier === "avancado" ? "+5" : `até ${projects}`} workspaces"`, tier, period, projects, (STORE_PLAN_PRICE[tier][period] / 100).toFixed(2)].join(","));
+    rows.push([storePlanProductId({ tier, period }), `"${LABEL[tier]} · ${tier === "avancado" ? "workspaces ilimitados" : `até ${projects} workspaces`}"`, tier, period, projects, (STORE_PLAN_PRICE[tier][period] / 100).toFixed(2)].join(","));
   }
 }
 console.log(rows.join("\n"));

@@ -13,7 +13,7 @@ import { TestReset } from "@/features/checkout/TestReset";
 import { connectHref } from "@/features/integrations/providers";
 import { relativeTime } from "@/features/integrations/sync-label";
 import { ConnectNudge } from "@/features/onboarding/Nudge";
-import { ENTITLEMENTS, hidesProjectTotal, TIER_LABEL } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, unlimitedProjects, TIER_LABEL } from "@/features/pricing/entitlements";
 import { useHydrated } from "@/lib/hooks";
 import type { ProjectDTO } from "@/features/projects/types";
 import { WorkspaceAvatar } from "@/features/projects/WorkspaceAvatar";
@@ -269,7 +269,7 @@ export function HomePage({ data, projects = [] }: { data: HomeData; projects?: P
       </section>
 
       <section aria-label="Números da organização" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <StatLink href="/painel/workspaces" icon={<FolderKanban size={16} aria-hidden />} label="Workspaces" value={usage.projects} limit={hidesProjectTotal(tier) ? undefined : access.accountsQuantity} hint="Clientes ou marcas" />
+        <StatLink href="/painel/workspaces" icon={<FolderKanban size={16} aria-hidden />} label="Workspaces" value={usage.projects} limit={unlimitedProjects(tier) ? undefined : access.accountsQuantity} hint="Clientes ou marcas" />
         <StatLink href="/painel/dashboards?todos=1" icon={<BarChart3 size={16} aria-hidden />} label="Dashboards" value={usage.dashboards} limit={ent.maxDashboards} hint={`Limite do ${TIER_LABEL[tier]}`} />
         <StatLink
           href="/painel/contas"

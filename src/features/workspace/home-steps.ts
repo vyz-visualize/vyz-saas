@@ -3,7 +3,7 @@
 // Puro: a tela e os testes usam o mesmo.
 
 import { CORE_PROVIDER_IDS, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
-import { hidesProjectTotal, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
+import { unlimitedProjects, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
 
 export type HomeStepId = "connect" | "dashboard" | "share";
 export type HomeStep = { id: HomeStepId; label: string; text: string; done: boolean };
@@ -45,8 +45,8 @@ export function homeCta(steps: HomeStep[], connected: readonly ProviderId[], opt
   return { kind: "dashboard", label: "Novo dashboard", text: "Meta Ads e Google Ads com os dados das suas contas", href: "/painel/dashboards/novo?novo=1" };
 }
 
-/** "Padrão · 1 de 5 workspaces": deixa claro que é o limite do plano. No Avançado, sem o teto: "1 workspace · Avançado". */
+/** "Padrão · 1 de 5 workspaces": deixa claro que é o limite do plano. Com workspaces ilimitados (Avançado), sem total: "1 workspace · Avançado". */
 export function planBadge(tier: Tier, used: number, limit: number): string {
-  if (hidesProjectTotal(tier)) return `${used} ${used === 1 ? "workspace" : "workspaces"} · ${TIER_LABEL[tier]}`;
+  if (unlimitedProjects(tier)) return `${used} ${used === 1 ? "workspace" : "workspaces"} · ${TIER_LABEL[tier]}`;
   return `${TIER_LABEL[tier]} · ${used} de ${limit} ${limit === 1 ? "workspace" : "workspaces"}`;
 }

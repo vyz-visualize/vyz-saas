@@ -1,7 +1,8 @@
 // Limite de workspaces por plano (supabase/migrations/20261120090000_plan_projects.sql) num
 // Postgres em memória com as migrações reais: vale o menor entre o teto do plano
 // (plan_entitlements.max_projects) e a quantidade da assinatura; quem já passou do limite
-// continua com o que tem, só não cria nem desarquiva acima dele.
+// continua com o que tem, só não cria nem desarquiva acima dele. Avançado e Personalizado
+// (max_projects nulo) não têm limite.
 
 import type { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -52,18 +53,22 @@ describe("limite de workspaces do plano", () => {
   });
 });
 
-describe("limite de workspaces no Avançado", () => {
-  it("a mensagem não traz o teto interno", async () => {
+describe("workspaces ilimitados (Avançado e Personalizado)", () => {
+  it("max_projects nulo deixa passar, mesmo acima da quantidade da assinatura", async () => {
     const d = await freshDb();
     const i = seeder(d);
     await seedCatalog(d, i);
     await i("plans", { id: "avancado", name: "Avançado", rank: 3 });
-    // o Avançado com as mesmas regras do Padrão do catálogo de teste e teto de 2 workspaces
-    await d.exec(`insert into public.plan_entitlements select (jsonb_populate_record(null::public.plan_entitlements, to_jsonb(e) || '{"plan_id": "avancado", "max_projects": 2}')).* from public.plan_entitlements e where e.plan_id = 'pro'`);
+    // o Avançado com as mesmas regras do Padrão do catálogo de teste, sem teto de workspaces
+    await d.exec(`insert into public.plan_entitlements select (jsonb_populate_record(null::public.plan_entitlements, to_jsonb(e) || '{"plan_id": "avancado", "max_projects": null}')).* from public.plan_entitlements e where e.plan_id = 'pro'`);
     const u = await createUser(d, "avancado@exemplo.com");
     const w = (await fullWorkspace(d, i, { userId: u, name: "Rede", slug: "rede" })).id;
-    await d.query(`update public.subscriptions set plan_id = 'avancado', accounts_quantity = 30 where workspace_id = $1`, [w]);
-    await i("projects", { workspace_id: w, name: "Dois", created_by: u });
-    await expect(i("projects", { workspace_id: w, name: "Três", created_by: u })).rejects.toMatchObject({ hint: "Você chegou ao limite do seu plano. Fale com a gente para ampliar." });
+    // a quantidade gravada não importa: 1 não segura, e passa dos 30 de antes
+    await d.query(`update public.subscriptions set plan_id = 'avancado', accounts_quantity = 1 where workspace_id = $1`, [w]);
+    for (let n = 0; n < 35; n++) await i("projects", { workspace_id: w, name: `Cliente ${n}`, created_by: u });
+    expect(await count(d, `public.projects where workspace_id = $1 and archived_at is null`, [w])).toBe(36);
+    // sem plano ativo, continua barrando
+    await d.query(`update public.subscriptions set status = 'canceled' where workspace_id = $1`, [w]);
+    await expect(i("projects", { workspace_id: w, name: "Depois do cancelamento", created_by: u })).rejects.toThrow(/plan:/);
   }, 120_000);
 });

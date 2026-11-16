@@ -13,17 +13,24 @@ export type Product = "dash" | "lp";
 export const PRODUCTS: Product[] = ["dash", "lp"];
 export const PRODUCT_LABEL: Record<Product, string> = { dash: "Dashboards", lp: "Landing pages" };
 
-// Três planos fixos: cada um com um número fechado de workspaces (clientes ou
-// marcas; no banco, "projects"). Não se escolhe quantidade: mais workspaces = plano
-// de cima. Básico até 3, Padrão até 5 e Avançado "+5" (o teto interno é 30; acima
-// disso, plano Personalizado sob consulta). Preço por mês; o anual é o valor por
-// mês equivalente, cobrado 12× de uma vez. O banco aplica o mesmo limite
-// (plan_entitlements.max_projects, migration 20261120090000_plan_projects).
-export const PLAN_PROJECTS: Record<PlanId, number> = { base: 3, pro: 5, avancado: 30 };
+// Três planos fixos, cada um com o seu limite de workspaces (clientes ou marcas; no
+// banco, "projects"): Básico até 3, Padrão até 5 e Avançado ilimitado (como o
+// Personalizado). Não se escolhe quantidade: mais workspaces = plano de cima. Preço
+// por mês; o anual é o valor por mês equivalente, cobrado 12× de uma vez. O banco
+// aplica o mesmo limite (plan_entitlements.max_projects, nulo = sem limite; migration
+// 20261120090000_plan_projects).
 
-/** Como o limite aparece na tela: "até 3 workspaces"; o Avançado é só "+5 workspaces" (sem número exato). */
+/**
+ * Quantidade gravada na assinatura (accounts_quantity, obrigatória de 1 a 200) dos planos
+ * sem limite de workspaces. O banco não confere o limite deles (max_projects nulo).
+ */
+export const UNLIMITED_PROJECTS = 200;
+
+export const PLAN_PROJECTS: Record<PlanId, number> = { base: 3, pro: 5, avancado: UNLIMITED_PROJECTS };
+
+/** Como o limite aparece na tela: "até 3 workspaces"; o Avançado, "workspaces ilimitados". */
 export function projectsLabel(tier: PlanId, opts: { capital?: boolean } = {}): string {
-  const text = tier === "avancado" ? `+${PLAN_PROJECTS.pro} workspaces` : `até ${PLAN_PROJECTS[tier]} workspaces`;
+  const text = tier === "avancado" ? "workspaces ilimitados" : `até ${PLAN_PROJECTS[tier]} workspaces`;
   return opts.capital ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
 
@@ -37,7 +44,6 @@ export const DASH_CUSTOM = { unico: 190000, recorrente: { setup: 99000, mensal: 
 export const LP_TEAM_PRICE = 95000; // "Landing page feita pelo time", já com GTM
 export const LP_CARE_MONTHLY = 9900; // hospedagem e ajustes, por LP, opcional
 export const DASH_EXTRA_PRICE = 9900; // R$ 99
-export const MAX_PROJECTS_IN_PLAN = PLAN_PROJECTS.avancado; // acima disso: Personalizado, sob consulta
 export const WHATSAPP_NUMBER = "5571999575898"; // trocar quando a VYZ tiver número próprio
 
 /** Teto de cada extra. */

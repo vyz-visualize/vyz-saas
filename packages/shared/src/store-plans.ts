@@ -1,6 +1,6 @@
 // Assinaturas vendidas nas lojas (App Store / Google Play, via RevenueCat).
 // Mesma regra do site: 3 planos fixos, cada um com o seu limite de workspaces
-// (Básico até 3, Padrão até 5, Avançado "+5", com teto interno de 30), mensal ou anual.
+// (Básico até 3, Padrão até 5, Avançado ilimitado: grava 200, que o banco não confere).
 // 6 produtos, com o número antigo no id (os produtos já estão cadastrados nas lojas):
 //   vyz_<plano>_<mensal|anual>_ate<n>   ex.: vyz_pro_anual_ate15
 // O número do id é só identificação: o limite concedido é o de STORE_PLAN_PROJECTS.
@@ -16,7 +16,7 @@ export type StorePlanPeriod = (typeof STORE_PLAN_PERIODS)[number];
 export type StorePlan = { tier: StorePlanTier; period: StorePlanPeriod; accounts: number };
 
 /** Workspaces de cada plano (o mesmo PLAN_PROJECTS do site). */
-export const STORE_PLAN_PROJECTS: Record<StorePlanTier, number> = { base: 3, pro: 5, avancado: 30 };
+export const STORE_PLAN_PROJECTS: Record<StorePlanTier, number> = { base: 3, pro: 5, avancado: 200 };
 
 /** Número no id do produto nas lojas (o limite antigo; não muda para não recriar os produtos). */
 export const STORE_PLAN_ID_SUFFIX: Record<StorePlanTier, number> = { base: 5, pro: 15, avancado: 30 };
@@ -50,7 +50,7 @@ export const STORE_PLAN_HIGHLIGHTS: Record<StorePlanTier, string[]> = {
   base: ["Até 3 workspaces (clientes)", "Meta Ads, Google Ads e GA4", "Visão geral com tudo junto", "Assistente VYZ por chat", "1 usuário"],
   pro: ["Até 5 workspaces (clientes), compartilhados entre os usuários", "Tudo do Básico", "TikTok Ads e LinkedIn Ads", "CRMs: RD Station e HubSpot", "Galeria de criativos", "2 usuários"],
   avancado: [
-    "+5 workspaces (clientes)",
+    "Workspaces ilimitados (clientes)",
     "Tudo do Padrão",
     "+5 visuais de dashboard",
     "X Ads, Spotify Ads, Globo Ads, ChatGPT Ads e mais",

@@ -3,5 +3,5 @@ vyz_base_mensal_ate5,"Básico · até 3 workspaces",base,mensal,3,59.90
 vyz_base_anual_ate5,"Básico · até 3 workspaces",base,anual,3,579.00
 vyz_pro_mensal_ate15,"Padrão · até 5 workspaces",pro,mensal,5,219.90
 vyz_pro_anual_ate15,"Padrão · até 5 workspaces",pro,anual,5,2199.00
-vyz_avancado_mensal_ate30,"Avançado · +5 workspaces",avancado,mensal,30,499.90
-vyz_avancado_anual_ate30,"Avançado · +5 workspaces",avancado,anual,30,4899.00
+vyz_avancado_mensal_ate30,"Avançado · workspaces ilimitados",avancado,mensal,200,499.90
+vyz_avancado_anual_ate30,"Avançado · workspaces ilimitados",avancado,anual,200,4899.00

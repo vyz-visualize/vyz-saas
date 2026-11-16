@@ -44,7 +44,7 @@ const GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Quantos workspaces cabem em cada plano?",
-        a: `O Básico vai até ${PLAN_PROJECTS.base} workspaces e 1 usuário. O Padrão vai até ${PLAN_PROJECTS.pro} workspaces e ${ENTITLEMENTS.pro.maxMembers} usuários, que dividem os mesmos workspaces. O Avançado passa de ${PLAN_PROJECTS.pro} workspaces, com até ${ENTITLEMENTS.avancado.maxMembers} usuários. Uma operação maior, com marca própria ou sob medida? O plano Personalizado é sob consulta, com um especialista.`,
+        a: `O Básico vai até ${PLAN_PROJECTS.base} workspaces e 1 usuário. O Padrão vai até ${PLAN_PROJECTS.pro} workspaces e ${ENTITLEMENTS.pro.maxMembers} usuários, que dividem os mesmos workspaces. O Avançado tem workspaces ilimitados, com até ${ENTITLEMENTS.avancado.maxMembers} usuários. Marca própria ou algo sob medida? O plano Personalizado é sob consulta, com um especialista.`,
       },
       {
         q: "E se eu passar do limite de workspaces?",

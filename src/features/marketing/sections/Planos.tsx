@@ -34,7 +34,7 @@ import { SnapCarousel } from "./SnapCarousel";
 
 // Planos: dois produtos (dashboards e landing pages, esta atrás de
 // SHOW_LANDING_PAGES), três planos cada, e um clique até o checkout. Cada plano de dashboards tem
-// um número fixo de workspaces (até 3, até 5 ou +5); acima disso, Personalizado. As perguntas ficam na dobra seguinte.
+// um limite de workspaces (até 3, até 5 ou ilimitados); marca própria ou sob medida, Personalizado. As perguntas ficam na dobra seguinte.
 
 const TIERS: PlanId[] = ["base", "pro", "avancado"];
 
@@ -58,7 +58,7 @@ function dashCard(tier: PlanId, period: Period): Card {
   const base = {
     price: startingPrice(tier, period),
     caption: `${period === "anual" ? `no anual · ${brl(PLAN[tier].anual * 12)} por ano` : "no mensal"} · ${projectsLabel(tier)}`,
-    // o Avançado, como os workspaces, sem número exato: "+5"
+    // o Avançado sem número exato: "+5"
     templates: tier === "avancado" ? "+5 visuais de dashboard" : `${e.dashboardTemplates} visuais de dashboard`,
   };
   if (tier === "base") {

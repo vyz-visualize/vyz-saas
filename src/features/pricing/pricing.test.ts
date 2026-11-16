@@ -18,19 +18,19 @@ describe("casos que precisam bater", () => {
     expect(brl(annualTotal("pro"))).toBe("R$ 2.199,00");
   });
 
-  it("Avançado, +5 workspaces: R$ 499,90 no mensal e R$ 4.899,00 por ano", () => {
+  it("Avançado, workspaces ilimitados: R$ 499,90 no mensal e R$ 4.899,00 por ano", () => {
     expect(brl(quote(s({ plano: "avancado", periodo: "mensal" })).monthly)).toBe("R$ 499,90");
     expect(brl(quote(s({ plano: "avancado", periodo: "anual" })).monthly)).toBe("R$ 408,25");
     expect(brl(annualTotal("avancado"))).toBe("R$ 4.899,00");
   });
 
-  it("os workspaces são fixos por plano: 3, 5 e +5 (teto interno de 30)", () => {
-    expect(PLAN_PROJECTS).toEqual({ base: 3, pro: 5, avancado: 30 });
+  it("os workspaces são fixos por plano: 3, 5 e ilimitados (a assinatura grava 200)", () => {
+    expect(PLAN_PROJECTS).toEqual({ base: 3, pro: 5, avancado: 200 });
     expect(STORE_PLAN_PROJECTS).toEqual(PLAN_PROJECTS); // o app concede o mesmo limite do site
-    expect([projectsLabel("base"), projectsLabel("pro"), projectsLabel("avancado")]).toEqual(["até 3 workspaces", "até 5 workspaces", "+5 workspaces"]);
+    expect([projectsLabel("base"), projectsLabel("pro"), projectsLabel("avancado")]).toEqual(["até 3 workspaces", "até 5 workspaces", "workspaces ilimitados"]);
     expect(quote(s({ plano: "base" })).projects).toBe(3);
     expect(quote(s({ plano: "pro" })).projects).toBe(5);
-    expect(quote(s({ plano: "avancado" })).projects).toBe(30);
+    expect(quote(s({ plano: "avancado" })).projects).toBe(200);
     expect(quote(s({ plano: "sem" })).projects).toBe(0);
   });
 

@@ -6,7 +6,7 @@
 // para a prévia; o servidor, para cobrar e para recusar.
 
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
-import { ENTITLEMENTS, TIER_LABEL, canUse, hidesProjectTotal } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, TIER_LABEL, canUse, unlimitedProjects } from "@/features/pricing/entitlements";
 import { PLAN_PROJECTS, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
 
 export type PlanSelection = { tier: PlanId; period: Period; accounts: number };
@@ -88,8 +88,8 @@ export function planChangeBlocker(next: PlanSelection, usage: PlanUsage): { code
   if (usage.projects > next.accounts) {
     return {
       code: "limit:projects_in_use",
-      // o Avançado não mostra o teto interno
-      message: hidesProjectTotal(next.tier)
+      // planos ilimitados: só passa de 200 (o máximo que a assinatura grava), sem número na tela
+      message: unlimitedProjects(next.tier)
         ? `Você tem ${plural(usage.projects, "workspace ativo", "workspaces ativos")}, mais do que o ${tier} comporta. Fale com a gente para ampliar.`
         : `Você tem ${plural(usage.projects, "workspace ativo", "workspaces ativos")}. O ${tier} vai até ${next.accounts}. Arquive workspaces em Workspaces antes de trocar.`,
     };

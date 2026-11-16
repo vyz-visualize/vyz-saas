@@ -12,7 +12,7 @@ import { PLATFORMS, PLATFORM_ORDER, type PlatformId } from "@/features/accounts/
 import { PROVIDER_IDS, type ProviderId } from "@/features/integrations/providers";
 import { BUSINESS_TYPES, templateBusinessTypes } from "@/features/catalog/business-types";
 import { BILLING_ITEMS, INTERVAL, planPriceId } from "@/features/pricing/catalog";
-import { ENTITLEMENTS, TIER_LABEL, TIERS } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, TIER_LABEL, TIERS, unlimitedProjects } from "@/features/pricing/entitlements";
 import { LP_PLAN_PAGES, PLAN, PLAN_LABEL, PLAN_PROJECTS, lpMonthly, planDbId, type Period, type PlanId } from "@/features/pricing/pricing";
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
@@ -25,7 +25,7 @@ if (!url) throw new Error("SUPABASE_DB_URL não definido (.env.local)");
 
 const PRICED: PlanId[] = ["base", "pro", "avancado"];
 const PERIODS: Period[] = ["mensal", "anual"];
-/** max_projects sem teto próprio (migration 20261120090000_plan_projects). */
+/** max_projects das LPs: sem teto próprio, vale a quantidade contratada (migration 20261120090000_plan_projects). */
 const NO_PROJECT_CAP = 200;
 // Login que conecta cada plataforma (o YouTube entra pelo login do Google Ads).
 // Instagram e Página do Facebook (orgânico) chegam pelo login do Meta.
@@ -64,8 +64,8 @@ async function main() {
         max_landing_pages: e.maxLandingPages,
         max_members: e.maxMembers,
         max_accounts_per_platform: e.maxAccountsPerPlatform,
-        // teto de workspaces do plano; Personalizado e LPs: 200 (vale a quantidade contratada)
-        max_projects: id === "personalizado" ? NO_PROJECT_CAP : PLAN_PROJECTS[id],
+        // teto de workspaces do plano; nulo = ilimitado (Avançado e Personalizado)
+        max_projects: unlimitedProjects(id) ? null : PLAN_PROJECTS[id as PlanId],
       };
     });
     // landing pages: sem dashboards nem contas; LPs do pacote e templates por tier

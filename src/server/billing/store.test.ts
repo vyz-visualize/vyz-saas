@@ -26,7 +26,7 @@ describe("storeStateFrom", () => {
       { vyz_creditos_1: sub(), "vyz_base_mensal_ate5:mensal": sub({ store: "play_store", expires_date: "2026-11-05T00:00:00Z" }), vyz_avancado_mensal_ate30: sub({ store: "play_store" }) },
       now,
     );
-    expect(s?.plan).toEqual({ tier: "avancado", period: "mensal", accounts: 30 });
+    expect(s?.plan).toEqual({ tier: "avancado", period: "mensal", accounts: 200 });
   });
 
   it("vencido vira cancelado; em carência vira past_due; cancelamento agendado", () => {

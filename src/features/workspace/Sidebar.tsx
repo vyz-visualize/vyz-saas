@@ -24,7 +24,7 @@ import { useAgent } from "@/features/agent/AgentProvider";
 import { initials } from "@/features/projects/identity";
 import { WorkspaceAvatar } from "@/features/projects/WorkspaceAvatar";
 import { Mascot } from "@/features/agent/Mascot";
-import { hidesProjectTotal, TIER_LABEL } from "@/features/pricing/entitlements";
+import { unlimitedProjects, TIER_LABEL } from "@/features/pricing/entitlements";
 import type { Product } from "@/features/pricing/pricing";
 import { signOut } from "@/server/auth/actions";
 import { switchWorkspace } from "@/server/workspace/actions";
@@ -315,8 +315,8 @@ function UsageCard() {
   if (workspace.product !== "dash" || !access.hasAccess || !access.tier) return null;
   const limit = Math.max(1, access.accountsQuantity);
   const ratio = Math.min(1, usage.projects / limit);
-  // Avançado: só o uso, sem o teto interno (nem a barra, que o revelaria)
-  const hidden = hidesProjectTotal(access.tier);
+  // workspaces ilimitados: só o uso, sem total nem barra
+  const hidden = unlimitedProjects(access.tier);
   return (
     <Link href="/painel/plano" className={`group mb-2 block rounded-[14px] bg-[var(--frame-hover)] p-3 transition-colors hover:bg-[var(--frame-hover-2)] sb-closed:hidden [@media(max-height:820px)]:hidden ${frameFocus}`}>
       <span className="flex items-center justify-between gap-2 text-[12.5px]">
