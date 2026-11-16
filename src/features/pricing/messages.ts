@@ -1,8 +1,6 @@
 import { brl } from "@/lib/format";
 import { DASH_CUSTOM, LP_CARE_MONTHLY, NICHO_LABEL, PERIOD_LABEL, PLAN_LABEL, projectsLabel, type PlanState, type Quote } from "./pricing";
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
 export function describeProjects(s: PlanState): string {
   return s.plano === "sem" ? "" : projectsLabel(s.plano);
 }

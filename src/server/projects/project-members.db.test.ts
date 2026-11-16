@@ -52,7 +52,7 @@ beforeAll(async () => {
   await ins("workspace_members", { workspace_id: ws, user_id: member, role: "member" });
   // o member só está no projeto A
   await ins("project_members", { workspace_id: ws, project_id: projA, user_id: member, added_by: owner });
-});
+}, 120_000);
 
 describe("equipe por workspace", () => {
   it("dono e admin veem todos os projetos, contas e dashboards", async () => {

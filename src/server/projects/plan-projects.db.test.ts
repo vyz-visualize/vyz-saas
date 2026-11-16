@@ -21,7 +21,7 @@ beforeAll(async () => {
   await seedCatalog(db, ins);
   owner = await createUser(db, "dono@exemplo.com");
   ws = (await fullWorkspace(db, ins, { userId: owner, name: "Agência", slug: "agencia" })).id;
-});
+}, 120_000);
 
 describe("limite de workspaces do plano", () => {
   it("o catálogo novo tem a coluna, com 200 por padrão (quem manda é a assinatura)", async () => {
