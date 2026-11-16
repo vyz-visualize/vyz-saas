@@ -994,6 +994,72 @@ export type Database = {
           },
         ]
       }
+      dashboard_launch_sheets: {
+        Row: {
+          dashboard_id: string
+          workspace_id: string
+          link: string
+          spreadsheet_id: string
+          gid: string
+          via: string
+          rows: Json
+          summary: Json
+          read_at: string | null
+          last_error: string | null
+          last_attempt_at: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          dashboard_id: string
+          workspace_id: string
+          link: string
+          spreadsheet_id: string
+          gid: string
+          via: string
+          rows?: Json
+          summary?: Json
+          read_at?: string | null
+          last_error?: string | null
+          last_attempt_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          dashboard_id?: string
+          workspace_id?: string
+          link?: string
+          spreadsheet_id?: string
+          gid?: string
+          via?: string
+          rows?: Json
+          summary?: Json
+          read_at?: string | null
+          last_error?: string | null
+          last_attempt_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_launch_sheets_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: true
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dashboard_launch_sheets_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_page_types: {
         Row: {
           id: string
@@ -1255,57 +1321,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      dashboard_launch_sheets: {
-        Row: {
-          dashboard_id: string
-          workspace_id: string
-          link: string
-          spreadsheet_id: string
-          gid: string
-          via: string
-          rows: Json
-          summary: Json
-          read_at: string | null
-          last_error: string | null
-          last_attempt_at: string | null
-          created_by: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          dashboard_id: string
-          workspace_id: string
-          link: string
-          spreadsheet_id: string
-          gid: string
-          via: string
-          rows?: Json
-          summary?: Json
-          read_at?: string | null
-          last_error?: string | null
-          last_attempt_at?: string | null
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          dashboard_id?: string
-          workspace_id?: string
-          link?: string
-          spreadsheet_id?: string
-          gid?: string
-          via?: string
-          rows?: Json
-          summary?: Json
-          read_at?: string | null
-          last_error?: string | null
-          last_attempt_at?: string | null
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       dashboards: {
         Row: {
@@ -2631,6 +2646,7 @@ export type Database = {
           updated_at: string
           max_members: number
           max_accounts_per_platform: number
+          max_projects: number | null
         }
         Insert: {
           plan_id: string
@@ -2648,6 +2664,7 @@ export type Database = {
           updated_at?: string
           max_members?: number
           max_accounts_per_platform?: number
+          max_projects?: number | null
         }
         Update: {
           plan_id?: string
@@ -2665,6 +2682,7 @@ export type Database = {
           updated_at?: string
           max_members?: number
           max_accounts_per_platform?: number
+          max_projects?: number | null
         }
         Relationships: [
           {
