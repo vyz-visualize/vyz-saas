@@ -1,80 +1,37 @@
-"use client";
+// Dobra "Diferenciais": credibilidade. O VYZ foi feito por engenheiros de dados, cientistas de
+// dados e gestores de tráfego; o "cérebro de dados" mostra as plataformas entrando, o dado
+// tratado no meio e o dashboard saindo. A IA genérica aparece só no contraponto, curto.
+// Desktop: título, linha de apoio e contraponto à esquerda, cérebro à direita (cabe numa tela).
+// Celular: título, linha de apoio, cérebro e contraponto, nessa ordem.
+// O cérebro (diferenciais/BrainSvg) só carrega perto da tela; textos em diferenciais/copy.ts.
 
-// Dobra "Diferenciais" · "Prompt × Pronto": derruba o "por que pagar o VYZ se eu faço isso numa
-// IA?". À esquerda, a lista de tarefas com uma IA genérica se acumula ao rolar e termina em
-// "E amanhã, de novo."; à direita (fixa no computador), um login e o dashboard se montando.
-// Abaixo, quem fez o VYZ e a frase final. No celular, a lista vira uma pilha que cresce e o lado
-// VYZ vem em seguida. Sem citar nenhuma IA ou empresa; com "reduzir movimento", tudo parado.
-// Textos em ./diferenciais/copy.ts; a bancada fica em /dev/diferenciais (só no next dev).
-
-import { RotateCcw } from "lucide-react";
 import { CutReveal } from "@/components/motion/CutReveal";
-import { CLOSING, GENERIC_END, GENERIC_STEPS, WEEK_DAYS } from "./diferenciais/copy";
-import { Closing, Land, MadeBy, VyzSide } from "./diferenciais/parts";
-
-const N = GENERIC_STEPS.length;
+import { COUNTERPOINT, EYEBROW, SUPPORT, TITLE } from "./diferenciais/copy";
+import { LazyBrain } from "./diferenciais/LazyBrain";
 
 export function Diferenciais() {
   return (
     <section id="diferenciais" aria-labelledby="dif-title" className="relative">
-      <div className="mx-auto max-w-[1360px] px-4 pt-14 pb-14 sm:px-6 sm:pt-20 sm:pb-24 lg:px-10 lg:pt-28">
-        <p className="label-caps text-fg-2">Prompt × Pronto</p>
-        <CutReveal as="h2" id="dif-title" className="display mt-5 max-w-[16ch] text-[clamp(2.2rem,5.4vw,4.4rem)] text-fg" lines={["Dá para fazer numa IA.", <span key="a" className="text-accent">Toda vez.</span>]} />
-        <p className="mt-4 max-w-[38rem] text-[16px] leading-relaxed text-fg-2 sm:text-[17px]">
-          Uma IA genérica responde o que você pergunta. O relatório do cliente pede o mesmo trabalho todo dia, e o VYZ faz esse trabalho sozinho.
+      <div className="mx-auto grid max-w-[1360px] gap-7 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:grid-rows-[auto_auto] lg:gap-x-14 lg:gap-y-8 lg:px-10 lg:py-24">
+        <div className="lg:col-start-1 lg:row-start-1 lg:self-end">
+          <p className="label-caps text-fg-2">{EYEBROW}</p>
+          <CutReveal
+            as="h2"
+            id="dif-title"
+            className="display mt-4 text-[clamp(1.85rem,7.6vw,2.6rem)] leading-[1.04] text-fg sm:text-[clamp(2.2rem,3.4vw,2.95rem)]"
+            lines={[TITLE[0], <span key="b" className="text-accent">{TITLE[1]}</span>]}
+          />
+          <p className="mt-4 max-w-[34rem] text-[16px] leading-relaxed text-fg-2 sm:mt-5 sm:text-[18px]">{SUPPORT}</p>
+        </div>
+
+        {/* no celular entra entre a linha de apoio e o contraponto; no desktop, à direita */}
+        <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center">
+          <LazyBrain className="mx-auto max-w-[520px] lg:max-w-none" />
+        </div>
+
+        <p className="max-w-[34rem] border-l-2 border-accent pl-4 text-[15px] leading-relaxed text-fg-2 sm:text-[16px] lg:col-start-1 lg:row-start-2 lg:self-start" data-contraponto>
+          {COUNTERPOINT}
         </p>
-
-        <div className="mt-10 grid gap-12 sm:mt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-16">
-          {/* lado A: a pilha de tarefas */}
-          <div data-dif-generic>
-            <p className="flex items-baseline justify-between gap-3 border-b border-line pb-3">
-              <span className="title text-[1.15rem] text-fg">Com uma IA genérica</span>
-              <span className="text-[13px] text-fg-2 tnum">{N} passos, toda vez</span>
-            </p>
-            <ol className="mt-1">
-              {GENERIC_STEPS.map((s, i) => (
-                <Land key={s.title} className="flex gap-4 border-b border-dashed border-line py-3.5 sm:py-4">
-                  <span className="w-7 shrink-0 pt-0.5 text-[13px] font-semibold text-fg-2 tnum">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="min-w-0">
-                    <span className="block text-[16.5px] font-semibold text-fg sm:text-[18px]">{s.title}</span>
-                    <span className="block text-[14px] text-fg-2">{s.note}</span>
-                  </span>
-                </Land>
-              ))}
-              <Land className="pt-5">
-                <span className="flex items-center gap-3">
-                  <RotateCcw size={20} className="shrink-0 text-error" aria-hidden />
-                  <span className="display text-[clamp(1.5rem,3vw,2.1rem)] text-fg">{GENERIC_END}</span>
-                </span>
-                {/* a conta é só a lista acima vezes os dias úteis: passos, não horas */}
-                <span className="mt-2 block text-[14px] text-fg-2" data-dif-week>
-                  <strong className="font-semibold text-fg tnum">
-                    {N} × {WEEK_DAYS} = {N * WEEK_DAYS} passos por semana
-                  </strong>{" "}
-                  com uma IA genérica · <strong className="font-semibold text-accent">1 login</strong> no VYZ
-                </span>
-              </Land>
-            </ol>
-          </div>
-
-          {/* lado B: um login e pronto (fixo no computador enquanto a pilha cresce) */}
-          <div className="lg:sticky lg:top-24 lg:self-start">
-            <p className="flex items-baseline justify-between gap-3 border-b border-accent pb-3">
-              <span className="title text-[1.15rem] text-accent">Com o VYZ</span>
-              <span className="text-[13px] text-fg-2">1 login</span>
-            </p>
-            <div className="mt-5">
-              <VyzSide />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-16 sm:mt-24">
-          <MadeBy />
-        </div>
-        <div className="mt-14 sm:mt-20">
-          <Closing text={CLOSING} />
-        </div>
       </div>
     </section>
   );
