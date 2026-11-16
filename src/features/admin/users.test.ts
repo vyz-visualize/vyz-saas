@@ -54,3 +54,12 @@ describe("gerenciador de usuários", () => {
     expect(workspaceSlug("CAP Digital", "7e0c6494-b816")).toBe("cap-digital-7e0c64");
   });
 });
+
+describe("organização de teste na lista de usuários", () => {
+  it("assinatura de teste viva vira \"Teste\", não \"Com plano\"", () => {
+    const plan = { id: "pro", tier: "pro", status: "active", provider: "mock", periodEnd: null, courtesy: false };
+    expect(statusOf({ banned: false, openCheckout: null, plan: { ...plan, test: true } })).toBe("teste");
+    expect(statusOf({ banned: false, openCheckout: null, plan })).toBe("ativo");
+    expect(statusOf({ banned: false, openCheckout: null, plan: { ...plan, test: true, status: "canceled" } })).toBe("sem_plano");
+  });
+});

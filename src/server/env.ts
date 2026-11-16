@@ -27,6 +27,12 @@ const Schema = z
      * assinam sem pagar. Vazio = ninguém. Fora de produção, todos.
      */
     BILLING_FREE_EMAILS: z.string().default(""),
+    /**
+     * Checkout simulado com a cobrança real ligada: estes e-mails (vírgula) assinam numa
+     * organização de teste que nunca chama a Stripe e fica fora de receita e métricas.
+     * Só vale para quem entrou com Google ou Apple (server/billing/simulated.ts).
+     */
+    CHECKOUT_SIMULATED_EMAILS: z.string().default(""),
     ONBOARDING_REPLAY_EMAILS: z.string().default(""),
     /** Bearer da sincronização agendada (/api/cron/sync). */
     CRON_SECRET: z
@@ -143,9 +149,18 @@ export function canCheckout(email: string | null | undefined): boolean {
  */
 export function isTestAccount(email: string | null | undefined): boolean {
   const env = serverEnv();
-  if (env.BILLING_PROVIDER !== "mock" || !email) return false;
+  if (!email) return false;
+  // com a cobrança real ligada: só os e-mails do checkout simulado (o reset apaga só as organizações de teste)
+  if (env.BILLING_PROVIDER !== "mock") return isSimulatedCheckoutEmail(email);
   const list = env.BILLING_FREE_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
   if (list.length === 0) return env.NODE_ENV !== "production";
+  return list.includes(email.trim().toLowerCase());
+}
+
+/** O e-mail está em CHECKOUT_SIMULATED_EMAILS? (A conta ainda precisa ter entrado com Google ou Apple.) */
+export function isSimulatedCheckoutEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const list = serverEnv().CHECKOUT_SIMULATED_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
   return list.includes(email.trim().toLowerCase());
 }
 

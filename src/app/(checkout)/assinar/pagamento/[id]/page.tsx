@@ -12,7 +12,6 @@ import { StripePay } from "@/features/checkout/StripePay";
 import { toQuery } from "@/features/pricing/pricing";
 import { getSessionUser } from "@/server/auth/session";
 import { getCheckout, getCheckoutReceipt, type CheckoutView } from "@/server/billing/queries";
-import { isMockBilling } from "@/server/env";
 
 export const metadata: Metadata = { title: "Pagamento" };
 
@@ -63,7 +62,8 @@ async function Payment({ params, searchParams }: Pick<PageProps<"/assinar/pagame
           para conectar as contas.
         </p>
         <div className="mt-8">
-          {isMockBilling() ? (
+          {/* o pedido diz o provedor: a organização de teste paga no simulado mesmo com a Stripe ligada */}
+          {checkout.provider === "mock" ? (
             <PaymentForm checkoutId={checkout.id} amountCents={checkout.amountDueNowCents} holderName={checkout.fullName} sampleExpiry={sampleExpiry} simulated />
           ) : (
             <StripePay checkoutId={checkout.id} amountCents={checkout.amountDueNowCents} notice={notice} />

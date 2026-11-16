@@ -35,6 +35,20 @@ describe("acesso de teste com pagamento simulado", () => {
     expect(real.isTestAccount("a@vyz.dev")).toBe(false);
   });
 
+  it("checkout simulado com a Stripe ligada: só CHECKOUT_SIMULATED_EMAILS, e o Recomeçar teste vale para eles", async () => {
+    const stripe = { ...base, NODE_ENV: "production", BILLING_PROVIDER: "stripe", STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec_x", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_x" };
+    const env = await load({ ...stripe, CHECKOUT_SIMULATED_EMAILS: "equipe@vyz.dev, Suporte@vyz.dev", BILLING_FREE_EMAILS: "outra@vyz.dev" });
+    expect(env.isSimulatedCheckoutEmail("EQUIPE@vyz.dev")).toBe(true);
+    expect(env.isSimulatedCheckoutEmail("suporte@vyz.dev")).toBe(true);
+    expect(env.isSimulatedCheckoutEmail("cliente@vyz.dev")).toBe(false);
+    expect(env.isSimulatedCheckoutEmail(null)).toBe(false);
+    expect(env.isTestAccount("equipe@vyz.dev")).toBe(true);
+    // a lista do pagamento simulado (BILLING_FREE_EMAILS) não vale com a Stripe ligada
+    expect(env.isTestAccount("outra@vyz.dev")).toBe(false);
+    const empty = await load({ ...stripe, CHECKOUT_SIMULATED_EMAILS: "" });
+    expect(empty.isSimulatedCheckoutEmail("equipe@vyz.dev")).toBe(false);
+  });
+
   it("Refazer primeiro acesso: só a lista própria, com cobrança real ou simulada; vazia = ninguém", async () => {
     const sim = await load({ ...base, NODE_ENV: "production", ONBOARDING_REPLAY_EMAILS: "pedro@vyz.dev" });
     expect(sim.canReplayOnboarding("Pedro@vyz.dev")).toBe(true);

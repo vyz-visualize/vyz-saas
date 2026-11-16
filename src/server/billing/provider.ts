@@ -49,6 +49,12 @@ export interface BillingProvider {
   setCancelAtPeriodEnd(input: { subscriptionId: string | null; cancel: boolean }): Promise<void>;
 }
 
-export function getBillingProvider(): BillingProvider {
-  return serverEnv().BILLING_PROVIDER === "stripe" ? stripeBillingProvider : mockBillingProvider;
+/**
+ * O provedor ligado (BILLING_PROVIDER) ou, com `id` mock/stripe, o de um pedido ou assinatura já gravado:
+ * uma organização de teste (checkout simulado) continua no simulado com a Stripe ligada.
+ */
+export function getBillingProvider(id?: string | null): BillingProvider {
+  // assinaturas das lojas (app_store/play_store) seguem como antes: o provedor ligado
+  const which = id === "mock" || id === "stripe" ? id : serverEnv().BILLING_PROVIDER;
+  return which === "stripe" ? stripeBillingProvider : mockBillingProvider;
 }

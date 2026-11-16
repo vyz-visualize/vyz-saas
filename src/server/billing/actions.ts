@@ -133,6 +133,8 @@ export async function startCheckout(_prev: CheckoutFormState, formData: FormData
       checkoutId,
       state,
       order,
+      // checkout simulado (organização de teste): só para quem já estava logado, nunca para a conta criada aqui
+      providerId: viewer.simulated && viewer.user ? "mock" : undefined,
       customer: {
         userId,
         email,

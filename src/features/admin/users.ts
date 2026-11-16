@@ -11,7 +11,7 @@ export const GRANT_MONTHS = [1, 3, 6, 12, 0] as const;
 /** Projetos (contas) de cada plano; o banco aceita de 1 a 30. */
 export const projectsOf = (tier: GrantTier) => (tier === "personalizado" ? UNLIMITED_PROJECTS : PLAN_PROJECTS[tier]);
 
-export type UserStatus = "ativo" | "inativado" | "sem_plano" | "parou_no_pagamento";
+export type UserStatus = "ativo" | "teste" | "inativado" | "sem_plano" | "parou_no_pagamento";
 
 export type AdminUserRow = {
   id: string;
@@ -23,19 +23,20 @@ export type AdminUserRow = {
   signIns: number;
   banned: boolean;
   workspace: { id: string; name: string; role: string } | null;
-  plan: { id: string; tier: string; status: string; provider: string; periodEnd: string | null; courtesy: boolean } | null;
+  plan: { id: string; tier: string; status: string; provider: string; periodEnd: string | null; courtesy: boolean; /** Organização de teste (checkout simulado): fora de receita e métricas. */ test?: boolean } | null;
   /** Pedido aberto (escolheu o plano e parou no pagamento). */
   openCheckout: { id: string; planId: string | null; createdAt: string } | null;
 };
 
 export function statusOf(u: Pick<AdminUserRow, "banned" | "plan" | "openCheckout">): UserStatus {
   if (u.banned) return "inativado";
+  if (u.plan?.test && ["active", "trialing", "past_due"].includes(u.plan.status)) return "teste";
   if (u.plan && ["active", "trialing", "past_due"].includes(u.plan.status)) return "ativo";
   if (u.openCheckout) return "parou_no_pagamento";
   return "sem_plano";
 }
 
-export const STATUS_LABEL: Record<UserStatus, string> = { ativo: "Com plano", inativado: "Inativado", sem_plano: "Sem plano", parou_no_pagamento: "Parou no pagamento" };
+export const STATUS_LABEL: Record<UserStatus, string> = { ativo: "Com plano", teste: "Teste", inativado: "Inativado", sem_plano: "Sem plano", parou_no_pagamento: "Parou no pagamento" };
 
 /** Fim do período da cortesia (meses = 0: 100 anos, na prática sem prazo). */
 export function grantPeriodEnd(months: number, now = new Date()): Date {

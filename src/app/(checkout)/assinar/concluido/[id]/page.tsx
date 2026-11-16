@@ -13,7 +13,6 @@ import { PLAN_LABEL, PLAN_PROJECTS, PRODUCT_HOME, projectsLabel } from "@/featur
 import { brl } from "@/lib/format";
 import { getSessionUser } from "@/server/auth/session";
 import { getCheckout, getCheckoutReceipt, type CheckoutReceipt, type CheckoutView } from "@/server/billing/queries";
-import { isMockBilling } from "@/server/env";
 
 export const metadata: Metadata = { title: "Assinatura confirmada" };
 
@@ -109,7 +108,7 @@ async function Done({ params }: { params: PageProps<"/assinar/concluido/[id]">["
         </Link>
       )}
 
-      {isMockBilling() && (
+      {checkout.provider === "mock" && (
         <div className="mt-6">
           <PendingChip
             label="Pagamento simulado · nenhum valor foi cobrado"

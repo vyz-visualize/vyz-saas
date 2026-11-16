@@ -21,8 +21,8 @@ const ago = (iso: string | null) => {
   return d <= 0 ? "hoje" : d === 1 ? "ontem" : `há ${d} dias`;
 };
 const planLabel = (id: string) => GRANT_LABEL[id.replace(/^lp_/, "") as GrantTier] ?? id;
-const TONE: Record<UserStatus, BadgeTone> = { ativo: "ok", inativado: "error", sem_plano: "neutral", parou_no_pagamento: "warn" };
-const FILTERS = ["todos", "ativo", "parou_no_pagamento", "sem_plano", "inativado"] as const;
+const TONE: Record<UserStatus, BadgeTone> = { ativo: "ok", teste: "neutral", inativado: "error", sem_plano: "neutral", parou_no_pagamento: "warn" };
+const FILTERS = ["todos", "ativo", "teste", "parou_no_pagamento", "sem_plano", "inativado"] as const;
 
 const initials = (u: AdminUserRow) =>
   (u.name ?? u.email)

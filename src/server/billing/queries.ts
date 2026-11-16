@@ -28,6 +28,7 @@ import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
 import type { Json } from "@/lib/supabase/database.types";
 import { authorize, getViewer } from "@/server/auth/workspace";
 import { serverEnv } from "@/server/env";
+import { isSimulatedCheckoutUser, testWorkspaceIds } from "@/server/billing/simulated";
 import { createServerSupabase } from "@/server/supabase/server";
 
 const isPlanId = (v: string | null): v is PlanId => v === "base" || v === "pro" || v === "avancado";
@@ -43,15 +44,35 @@ export type CheckoutViewer = {
   target: { workspaceId: string; workspaceName: string } | null;
   /** Participa de workspaces de outras pessoas, mas não é dono de nenhum. */
   memberElsewhere: boolean;
+  /** Checkout simulado (CHECKOUT_SIMULATED_EMAILS): o pedido nasce numa organização de teste. */
+  simulated: boolean;
 };
 
 /** Para o /assinar e para startCheckout: decide se o pedido cria um workspace, assina um existente ou não cabe. */
 /** Quem está no checkout e qual workspace dele recebe o produto escolhido. */
 export const getCheckoutViewer = cache(async (product: Product = "dash"): Promise<CheckoutViewer> => {
   const viewer = await getViewer();
-  if (!viewer) return { user: null, subscribed: null, target: null, memberElsewhere: false };
+  if (!viewer) return { user: null, subscribed: null, target: null, memberElsewhere: false, simulated: false };
 
   const supabase = await createServerSupabase();
+  const user = {
+    id: viewer.user.id,
+    email: viewer.profile?.email || viewer.user.email || "",
+    fullName: viewer.profile?.full_name ?? "",
+  };
+  // checkout simulado: as organizações de verdade não contam; o pedido assina uma organização de
+  // teste nova, e só uma de teste viva barra (o "Recomeçar teste" apaga ela)
+  if (product === "dash" && (await isSimulatedCheckoutUser({ id: user.id, email: user.email }))) {
+    const [profile, tests] = await Promise.all([supabase.from("profiles").select("phone").eq("id", user.id).maybeSingle(), testWorkspaceIds(supabase, user.id)]);
+    const test = viewer.memberships.find((m) => m.workspace.id === tests[0])?.workspace;
+    return {
+      user: { ...user, phone: profile.data?.phone ?? null },
+      subscribed: test ? { workspaceId: test.id, workspaceName: test.name } : null,
+      target: null,
+      memberElsewhere: false,
+      simulated: true,
+    };
+  }
   // cada produto tem o seu workspace: comprar LP não mexe no workspace de dashboards
   const owned = viewer.memberships.filter((m) => m.role === "owner" && m.workspace.product === product).map((m) => m.workspace);
   const [profile, access] = await Promise.all([
@@ -75,15 +96,11 @@ export const getCheckoutViewer = cache(async (product: Product = "dash"): Promis
   const ref = first ? { workspaceId: first.id, workspaceName: first.name } : null;
 
   return {
-    user: {
-      id: viewer.user.id,
-      email: viewer.profile?.email || viewer.user.email || "",
-      fullName: viewer.profile?.full_name ?? "",
-      phone: profile.data?.phone ?? null,
-    },
+    user: { ...user, phone: profile.data?.phone ?? null },
     subscribed: first && active.has(first.id) ? ref : null,
     target: first && !active.has(first.id) ? ref : null,
     memberElsewhere: owned.length === 0 && viewer.memberships.length > 0,
+    simulated: false,
   };
 });
 
@@ -113,6 +130,8 @@ export type CheckoutView = {
   workspaceId: string | null;
   expiresAt: string;
   completedAt: string | null;
+  /** Provedor do pedido: "mock" no pagamento simulado (inclusive a organização de teste com a Stripe ligada). */
+  provider: "mock" | "stripe";
 };
 
 function asQuote(value: Json): Quote | null {
@@ -127,7 +146,7 @@ export async function getCheckout(id: string): Promise<CheckoutView | null> {
   const { data, error } = await supabase
     .from("checkout_sessions")
     .select(
-      "id, status, email, full_name, company_name, plan_id, product, interval, accounts_quantity, amount_due_now_cents, recurring_cents, currency, selection, quote, workspace_id, expires_at, completed_at, checkout_items(kind, label, quantity, amount_cents, position)",
+      "id, status, provider, email, full_name, company_name, plan_id, product, interval, accounts_quantity, amount_due_now_cents, recurring_cents, currency, selection, quote, workspace_id, expires_at, completed_at, checkout_items(kind, label, quantity, amount_cents, position)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -155,6 +174,7 @@ export async function getCheckout(id: string): Promise<CheckoutView | null> {
       .sort((a, b) => a.position - b.position)
       .map((i) => ({ kind: i.kind === "one_time" ? "one_time" : "recurring", label: i.label, quantity: i.quantity, amountCents: i.amount_cents })),
     workspaceId: data.workspace_id,
+    provider: data.provider === "stripe" ? "stripe" : "mock",
     expiresAt: data.expires_at,
     completedAt: data.completed_at,
   };

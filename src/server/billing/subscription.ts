@@ -25,7 +25,7 @@ async function loadLiveSubscription(db: DB, workspaceId: string) {
     await db
       .from("subscriptions")
       .select(
-        "id, plan_id, status, interval, accounts_quantity, provider_subscription_id, current_period_start, current_period_end, cancel_at_period_end, subscription_items(id, plan_price_id, billing_item_id, amount_cents)",
+        "id, plan_id, status, interval, accounts_quantity, provider, provider_subscription_id, current_period_start, current_period_end, cancel_at_period_end, subscription_items(id, plan_price_id, billing_item_id, amount_cents)",
       )
       .eq("workspace_id", workspaceId)
       .not("status", "in", "(canceled,incomplete_expired)")
@@ -118,7 +118,8 @@ export async function changeSubscriptionPlan(input: { workspaceId: string; actor
       .limit(1)
       .maybeSingle(),
   ]);
-  const provider = getBillingProvider();
+  // o provedor da assinatura: a organização de teste continua no simulado com a Stripe ligada
+  const provider = getBillingProvider(sub.provider);
   const charge = await provider.updateSubscription({
     changeId: randomUUID(),
     subscriptionId: sub.provider_subscription_id,
@@ -173,7 +174,7 @@ export async function setSubscriptionCancel(input: {
   if (!sub) throw appError("plan:inactive");
   const result = { subscriptionId: sub.id, periodEnd: sub.current_period_end };
   if (sub.cancel_at_period_end === input.cancel) return { changed: false, ...result };
-  await getBillingProvider().setCancelAtPeriodEnd({ subscriptionId: sub.provider_subscription_id, cancel: input.cancel });
+  await getBillingProvider(sub.provider).setCancelAtPeriodEnd({ subscriptionId: sub.provider_subscription_id, cancel: input.cancel });
   unwrap(await db.from("subscriptions").update({ cancel_at_period_end: input.cancel }).eq("id", sub.id));
   return { changed: true, ...result };
 }

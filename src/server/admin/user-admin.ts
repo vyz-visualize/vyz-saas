@@ -5,6 +5,7 @@ import "server-only";
 // inativar/reativar o login e excluir a conta (o mesmo fluxo da CLI de exclusão).
 
 import postgres from "postgres";
+import { isTestSubscription } from "@/server/billing/simulated";
 import { countSignIns, grantPeriodEnd, workspaceSlug, projectsOf, type ActionResult, type AdminUserRow, type GrantTier } from "@/features/admin/users";
 import type { Json } from "@/lib/supabase/database.types";
 import { createAdminSupabase } from "@/server/supabase/admin";
@@ -59,7 +60,7 @@ export async function loadAdminUsers(): Promise<AdminUserRow[]> {
         banned: !!u.banned_until && Date.parse(u.banned_until) > Date.now(),
         workspace: ws,
         plan: s
-          ? { id: s.plan_id, tier: s.plan_id, status: s.status, provider: s.provider, periodEnd: s.current_period_end, courtesy: meta.cortesia === true || meta.cortesia_upgrade === true }
+          ? { id: s.plan_id, tier: s.plan_id, status: s.status, provider: s.provider, periodEnd: s.current_period_end, courtesy: meta.cortesia === true || meta.cortesia_upgrade === true, test: isTestSubscription(s.metadata) }
           : null,
         openCheckout: ws ? null : (openOf.get(u.id) ?? null),
       };

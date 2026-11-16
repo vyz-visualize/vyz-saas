@@ -52,8 +52,12 @@ export async function loadUsers(): Promise<Source<UsersBlock>> {
       users.push(...data.users.map((u) => ({ created_at: u.created_at, last_sign_in_at: u.last_sign_in_at ?? null })));
       if (data.users.length < 1000) break;
     }
-    const { count } = await db.from("workspace_access").select("workspace_id", { count: "exact", head: true }).eq("has_access", true);
-    return { ok: true, data: summarizeUsers(users, count ?? 0) };
+    const [{ count }, tests] = await Promise.all([
+      db.from("workspace_access").select("workspace_id", { count: "exact", head: true }).eq("has_access", true),
+      // organizações de teste (checkout simulado) não entram nas métricas
+      db.from("subscriptions").select("workspace_id").eq("provider", "mock").eq("metadata->>teste", "true").in("status", ["active", "trialing", "past_due"]),
+    ]);
+    return { ok: true, data: summarizeUsers(users, Math.max(0, (count ?? 0) - (tests.data?.length ?? 0))) };
   } catch (err) {
     return { ok: false, reason: `Supabase: ${(err as Error).message.slice(0, 120)}` };
   }

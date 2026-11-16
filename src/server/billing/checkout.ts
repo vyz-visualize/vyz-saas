@@ -16,7 +16,9 @@ import { requestContext } from "@/server/http/request";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import { appError, fromPostgrest, unwrap } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
+import { serverEnv } from "@/server/env";
 import { getBillingProvider, type BillingProviderId } from "./provider";
+import { markTestSubscription, testWorkspaceIds } from "./simulated";
 
 export type CheckoutCustomer = {
   userId: string;
@@ -44,13 +46,15 @@ export async function createCheckoutSession(input: {
   state: PlanState;
   order: Order;
   checkoutId?: string;
+  /** Checkout simulado (organização de teste): "mock" mesmo com a Stripe ligada. Padrão: BILLING_PROVIDER. */
+  providerId?: BillingProviderId;
 }): Promise<{ id: string }> {
   const { customer, state, order } = input;
   if (order.blocked) throw appError(`checkout:${order.blocked}`, BLOCK_MESSAGE[order.blocked]);
 
   const id = input.checkoutId ?? randomUUID();
   const db = await billingAdmin(customer.userId);
-  const provider = getBillingProvider();
+  const provider = getBillingProvider(input.providerId);
   const { providerSessionId } = await provider.openCheckout({ checkoutId: id, email: customer.email, amountCents: order.amountDueNowCents, currency: "BRL" });
 
   unwrap(
@@ -102,8 +106,16 @@ export async function createCheckoutSession(input: {
   return { id };
 }
 
-/** O workspace (ou algum workspace do qual o usuário é dono) já tem assinatura ativa? */
-async function alreadySubscribed(db: DB, userId: string, workspaceId: string | null): Promise<boolean> {
+/**
+ * O workspace (ou algum workspace do qual o usuário é dono) já tem assinatura ativa?
+ * No checkout simulado com a Stripe ligada, só contam as organizações de teste: a pessoa
+ * pode ter a organização de verdade e, ao lado, uma de teste.
+ */
+async function alreadySubscribed(db: DB, userId: string, workspaceId: string | null, testOnly = false): Promise<boolean> {
+  if (testOnly) {
+    const tests = await testWorkspaceIds(db, userId);
+    return workspaceId ? tests.includes(workspaceId) : tests.length > 0;
+  }
   let ids = workspaceId ? [workspaceId] : [];
   if (!workspaceId) {
     const owned = unwrap(await db.from("workspace_members").select("workspace_id").eq("user_id", userId).eq("role", "owner")) ?? [];
@@ -143,7 +155,7 @@ export async function payCheckoutSession(input: { checkoutId: string; userId: st
   const checkout = unwrap(
     await db
       .from("checkout_sessions")
-      .select("id, status, workspace_id, email, full_name, plan_id, interval, amount_due_now_cents, currency, expires_at")
+      .select("id, status, provider, workspace_id, email, full_name, plan_id, interval, amount_due_now_cents, currency, expires_at")
       .eq("id", input.checkoutId)
       .eq("user_id", input.userId)
       .maybeSingle(),
@@ -157,7 +169,10 @@ export async function payCheckoutSession(input: { checkoutId: string; userId: st
     await db.from("checkout_sessions").update({ status: "expired" }).eq("id", checkout.id).eq("status", "open");
     throw appError("checkout:not_open", "Este pedido expirou. Monte o pedido de novo para continuar.");
   }
-  if (await alreadySubscribed(db, input.userId, checkout.workspace_id)) {
+  // o provedor é o do pedido: um pedido simulado nunca chama a Stripe, mesmo com ela ligada
+  const provider = getBillingProvider(checkout.provider);
+  const simulated = provider.id === "mock" && serverEnv().BILLING_PROVIDER !== "mock";
+  if (await alreadySubscribed(db, input.userId, checkout.workspace_id, simulated)) {
     throw appError("checkout:already_subscribed", "Você já tem uma assinatura ativa. Troque de plano em Plano, no painel.");
   }
 
@@ -165,7 +180,6 @@ export async function payCheckoutSession(input: { checkoutId: string; userId: st
     ? unwrap(await db.from("billing_customers").select("provider_customer_id").eq("workspace_id", checkout.workspace_id).maybeSingle())
     : null;
 
-  const provider = getBillingProvider();
   const charge = await provider.confirmPayment({
     checkoutId: checkout.id,
     amountCents: checkout.amount_due_now_cents,
@@ -219,6 +233,8 @@ export async function payCheckoutSession(input: { checkoutId: string; userId: st
     }),
   );
   if (!workspaceId) throw appError("unknown");
+  // organização de teste: fora de receita, relatórios de admin e métricas; o "Recomeçar teste" apaga
+  if (simulated) await markTestSubscription(db, workspaceId);
   if (provider.id === "mock") await recordProviderEvent(db, provider.id, "payment_intent.succeeded", { ...attempt, workspace_id: workspaceId });
   return { workspaceId, ...paid, alreadyCompleted: false };
 }
