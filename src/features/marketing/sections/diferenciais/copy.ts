@@ -1,89 +1,13 @@
-// Textos da dobra Diferenciais ("Prompt × Pronto"). Objeção a derrubar: "por que pagar o
-// VYZ se eu faço isso numa IA?".
-// Regras: nenhuma IA ou empresa citada pelo nome ("IA genérica" basta), nada de prova social,
-// número inventado ou preço. Um marcador de texto pendente aqui derruba o deploy de produção
-// (scripts/build/check-placeholders.ts, no postbuild).
+// Textos da dobra Diferenciais: o "cérebro de dados" e quem fez o VYZ. Regras: sem fotos nem
+// nomes do time, sem anos, números ou prova social inventados, sem citar IA ou empresa pelo
+// nome; a IA genérica só aparece no contraponto. Um marcador de texto pendente aqui derruba o
+// deploy de produção (scripts/build/check-placeholders.ts, no postbuild).
 
-/** O caminho com uma IA genérica, na ordem em que acontece. Cada um é um passo de verdade. */
-export const GENERIC_STEPS = [
-  {
-    title: "Conectar o MCP",
-    note: "e torcer para a integração aceitar a sua conta",
-  },
-  { title: "Gerar o token", note: "e guardar num lugar seguro" },
-  { title: "Colar no chat", note: "os dados ou o acesso, conta por conta" },
-  {
-    title: "Escrever o prompt",
-    note: "explicando métrica, período e o que é conversão",
-  },
-  { title: "Conferir se bate com o Gerenciador", note: "número por número" },
-  {
-    title: "Refazer quando a conversa esquece",
-    note: "o contexto, a janela, o cliente",
-  },
-  { title: "Acompanhar os créditos", note: "e o limite de mensagens do dia" },
-  {
-    title: "Montar algo para o cliente",
-    note: "um print, um PDF, uma planilha",
-  },
-] as const;
+export const EYEBROW = "Quem fez o VYZ";
 
-export const GENERIC_END = "E amanhã, de novo.";
+/** Título em duas linhas; a segunda vai em destaque. */
+export const TITLE = ["Inteligência de verdade", "não cabe num prompt."] as const;
 
-/** As quatro respostas à objeção. */
-export const ANSWERS = [
-  {
-    title: "Não precisa configurar nada",
-    text: "Sem conectar MCP, sem gerar token, sem escrever prompt. Um login na Meta ou no Google e pronto.",
-  },
-  {
-    title: "Não depende de crédito",
-    text: "Nem de limite de mensagens: o dashboard está sempre lá, sincronizando sozinho 3x por dia.",
-  },
-  {
-    title: "Dá para confiar no número",
-    text: "Números que batem com a plataforma, na janela de atribuição dela, com os últimos 3 dias marcados como em maturação.",
-  },
-  {
-    title: "O cliente recebe um link",
-    text: "Um dashboard que ele entende e filtra sozinho, não um print de conversa.",
-  },
-] as const;
+export const SUPPORT = "Feito por engenheiros de dados, cientistas de dados e gestores de tráfego.";
 
-/** Quem fez o VYZ e o que cada um garantiu no produto. */
-export const ROLES = [
-  {
-    role: "Gestores de tráfego",
-    // texto confirmado em 16/11/2026 (sem número: nada de "mais de 10 anos")
-    since: "Anos de mídia paga",
-    items: [
-      "Números que batem com o Gerenciador",
-      "Janela de atribuição de cada plataforma",
-      "Funil real, do clique à venda",
-    ],
-  },
-  {
-    role: "Engenheiro de dados",
-    since: null,
-    items: [
-      "Sincronização sozinha 3x por dia",
-      "Histórico guardado, conta por conta",
-      "Nada some quando a conversa acaba",
-    ],
-  },
-  {
-    role: "Cientista de dados",
-    since: null,
-    items: [
-      "Últimos 3 dias marcados como em maturação",
-      "Base diária pronta para o MMM",
-      "Dias fora do padrão, pelo dia da semana",
-    ],
-  },
-] as const;
-
-/** Dias úteis da semana, para a conta "8 × 5 = 40 passos por semana". */
-export const WEEK_DAYS = 5;
-
-/** A frase de fechamento. */
-export const CLOSING = "A IA responde. O VYZ entrega.";
+export const COUNTERPOINT = "Uma IA genérica faz o comum. O VYZ faz o que a sua operação precisa — todo dia, sem MCP e sem crédito.";
