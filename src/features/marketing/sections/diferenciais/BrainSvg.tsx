@@ -2,7 +2,7 @@
 
 // O "cérebro de dados" da dobra Diferenciais, em SVG puro. Pontos e conexões formam o cérebro;
 // os logos das plataformas entram pela esquerda, pulsos de luz percorrem as conexões e saem à
-// direita num mini dashboard. Rótulos: entrada, núcleo e saída.
+// direita num mini dashboard.
 // Movimento só com SMIL (animateMotion e animate): sem JS por quadro, e o PlayWhenVisible pausa
 // fora da tela. Parado ("reduzir movimento" ou aparelho fraco): os pulsos ficam no meio do caminho.
 
@@ -134,18 +134,6 @@ export function BrainSvg({ animate = true }: { animate?: boolean }) {
         ),
       )}
 
-      {/* legenda das regiões */}
-      <g fontSize={10.5} fill="#c9d0b4" textAnchor="middle" letterSpacing="0.08em">
-        <text x={OX + 75} y={318}>
-          ENTRADA
-        </text>
-        <text x={OX + 205} y={318}>
-          NÚCLEO
-        </text>
-        <text x={OX + 340} y={318}>
-          SAÍDA
-        </text>
-      </g>
     </svg>
   );
 }

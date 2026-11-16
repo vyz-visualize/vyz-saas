@@ -6,7 +6,7 @@
 // O cérebro (diferenciais/BrainSvg) só carrega perto da tela; textos em diferenciais/copy.ts.
 
 import { CutReveal } from "@/components/motion/CutReveal";
-import { COUNTERPOINT, EYEBROW, SUPPORT, TITLE } from "./diferenciais/copy";
+import { COUNTERPOINT, EYEBROW, ROLES, SUPPORT_LEAD, TITLE } from "./diferenciais/copy";
 import { LazyBrain } from "./diferenciais/LazyBrain";
 
 export function Diferenciais() {
@@ -21,7 +21,16 @@ export function Diferenciais() {
             className="display mt-4 text-[clamp(1.85rem,7.6vw,2.6rem)] leading-[1.04] text-fg sm:text-[clamp(2.2rem,3.4vw,2.95rem)]"
             lines={[TITLE[0], <span key="b" className="text-accent">{TITLE[1]}</span>]}
           />
-          <p className="mt-4 max-w-[34rem] text-[16px] leading-relaxed text-fg-2 sm:mt-5 sm:text-[18px]">{SUPPORT}</p>
+          {/* os três papéis em destaque: "Feito por Engenheiros de Dados, Cientistas de Dados e Gestores de Tráfego." */}
+          <p className="mt-4 max-w-[36rem] text-[16px] leading-relaxed text-fg-2 sm:mt-5 sm:text-[18px]" data-papeis>
+            {SUPPORT_LEAD}{" "}
+            {ROLES.map((r, i) => (
+              <span key={r}>
+                <strong className="font-semibold text-fg">{r}</strong>
+                {i === ROLES.length - 2 ? " e " : i < ROLES.length - 1 ? ", " : "."}
+              </span>
+            ))}
+          </p>
         </div>
 
         {/* no celular entra entre a linha de apoio e o contraponto; no desktop, à direita */}
