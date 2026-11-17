@@ -1,7 +1,30 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const { storeStateFrom } = await import("./store");
+
+// banco falso: store_customers devolve `customer`, subscriptions devolve `live`;
+// guarda os updates e responde às chamadas do rpc na ordem de `rpcs`
+type Fake = { customer: { workspace_id: string } | null; live: { id: string; provider: string }[]; rpcs: { data: unknown; error: { message: string } | null }[] };
+let fake: Fake;
+const updates: { table: string; values: Record<string, unknown> }[] = [];
+const rpc = vi.fn(async () => fake.rpcs.shift() ?? { data: null, error: null });
+function from(table: string) {
+  let updating = false;
+  const q: Record<string, unknown> = {};
+  for (const m of ["select", "eq", "not", "in"]) q[m] = () => q;
+  q.update = (values: Record<string, unknown>) => {
+    updating = true;
+    updates.push({ table, values });
+    return q;
+  };
+  q.maybeSingle = async () => ({ data: fake.customer, error: null });
+  q.then = (resolve: (v: unknown) => void) => resolve(updating ? { error: null } : { data: fake.live, error: null });
+  return q;
+}
+vi.mock("@/server/supabase/admin", () => ({ createAdminSupabase: () => ({ rpc, from }) }));
+vi.mock("@/server/env", () => ({ serverEnv: () => ({ REVENUECAT_SECRET_API_KEY: "sk_test" }) }));
+
+const { storeStateFrom, syncStoreSubscription } = await import("./store");
 
 const now = new Date("2026-10-30T12:00:00Z");
 const sub = (over: Record<string, unknown> = {}) => ({
@@ -40,5 +63,34 @@ describe("storeStateFrom", () => {
   it("sem plano = null; produtos antigos ou com limite errado não contam", () => {
     expect(storeStateFrom({ vyz_creditos_5: sub() }, now)).toBeNull();
     expect(storeStateFrom({ vyz_pro_anual_3: sub(), vyz_base_mensal_ate15: sub() }, now)).toBeNull();
+  });
+});
+
+describe("syncStoreSubscription com plano do site no workspace", () => {
+  const later = new Date(Date.now() + 30 * 86_400_000).toISOString();
+  const subscriber = { subscriber: { subscriptions: { vyz_base_mensal_ate5: sub({ expires_date: later, purchase_date: new Date().toISOString() }) } } };
+  const hasPlan = { data: null, error: { message: "store:workspace_has_plan" } };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    rpc.mockClear();
+    updates.length = 0;
+  });
+  const stubRevenueCat = () => vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(subscriber), { status: 200 })));
+
+  it("plano simulado (conta de teste): encerra o do site e grava o da loja", async () => {
+    stubRevenueCat();
+    fake = { customer: { workspace_id: "ws1" }, live: [{ id: "sub-mock", provider: "mock" }], rpcs: [hasPlan, { data: "sub-loja", error: null }] };
+    await expect(syncStoreSubscription("user-1")).resolves.toBe("sub-loja");
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(updates).toEqual([{ table: "subscriptions", values: expect.objectContaining({ status: "canceled" }) }]);
+  });
+
+  it("plano pago no cartão: não encerra e o erro continua", async () => {
+    stubRevenueCat();
+    fake = { customer: { workspace_id: "ws1" }, live: [{ id: "sub-stripe", provider: "stripe" }], rpcs: [hasPlan] };
+    await expect(syncStoreSubscription("user-1")).rejects.toThrow("store:workspace_has_plan");
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(updates).toEqual([]);
   });
 });

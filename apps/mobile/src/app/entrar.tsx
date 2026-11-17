@@ -10,6 +10,9 @@ import { useLayout } from "@/ui/layout";
 import { elevation, radius, type, useTheme } from "@/ui/theme";
 import { Wordmark } from "@/ui/Wordmark";
 
+/** Mesma altura do botão do Google (Button size "lg"); a Apple pede no mínimo 44. */
+const APPLE_BUTTON_HEIGHT = 52;
+
 export default function Entrar() {
   const t = useTheme();
   const auth = useAuth();
@@ -52,17 +55,22 @@ export default function Entrar() {
             <Text style={{ color: t.fg3, ...type.caption }}>ou continue com</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: t.line }} />
           </View>
+          {/* Apple em cima do Google, com o mesmo tamanho (revisão da Apple, diretriz 4):
+              largura total e 52 de altura, preto no tema claro e branco no escuro.
+              O texto ("Iniciar sessão com a Apple") vem do iOS, no idioma do app (pt-BR). */}
+          {Platform.OS === "ios" && (
+            <View style={{ width: "100%", opacity: busy && busy !== "apple" ? 0.45 : 1 }} pointerEvents={busy ? "none" : "auto"}>
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                buttonStyle={t.scheme === "dark" ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={radius.md}
+                style={{ width: "100%", height: APPLE_BUTTON_HEIGHT }}
+                onPress={() => run("apple", auth.signInWithApple)}
+              />
+            </View>
+          )}
           <Button tone="secondary" label="Continuar com Google" icon={<GoogleIcon />} busy={busy === "google"} disabled={!!busy && busy !== "google"} onPress={() => run("google", auth.signInWithGoogle)} />
           {Platform.OS === "android" && <Button tone="secondary" label="Continuar com Apple" busy={busy === "apple"} disabled={!!busy && busy !== "apple"} onPress={() => run("apple", auth.signInWithApple)} />}
-          {Platform.OS === "ios" && (
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-              buttonStyle={t.scheme === "dark" ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-              cornerRadius={radius.md}
-              style={{ height: 52 }}
-              onPress={() => run("apple", auth.signInWithApple)}
-            />
-          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

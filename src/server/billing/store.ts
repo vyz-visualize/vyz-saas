@@ -50,6 +50,44 @@ export function storeStateFrom(subscriptions: z.infer<typeof Subscriber>["subscr
   return best;
 }
 
+/**
+ * Provedores de assinatura que uma compra na loja pode assumir no mesmo workspace:
+ * a própria loja (troca de plano) e o pagamento simulado do site (contas de teste,
+ * como a da revisão das lojas). Plano pago no cartão (stripe) nunca: cobraria duas vezes.
+ */
+export const STORE_REPLACEABLE: ReadonlySet<string> = new Set(["app_store", "play_store", "mock"]);
+
+type Admin = ReturnType<typeof createAdminSupabase>;
+
+/**
+ * Encerra o plano simulado do site no workspace que vai receber a assinatura da
+ * loja (só um plano vivo por workspace). true = encerrou e dá para gravar a da loja.
+ */
+export async function endSimulatedSitePlan(db: Admin, userId: string): Promise<boolean> {
+  const customer = await db.from("store_customers").select("workspace_id").eq("user_id", userId).maybeSingle();
+  if (customer.error) throw new Error(customer.error.message);
+  if (!customer.data) return false;
+  const live = await db
+    .from("subscriptions")
+    .select("id, provider")
+    .eq("workspace_id", customer.data.workspace_id)
+    .not("status", "in", "(canceled,incomplete_expired)");
+  if (live.error) throw new Error(live.error.message);
+  const rows = live.data ?? [];
+  if (!rows.length || rows.some((s) => s.provider !== "mock")) return false;
+  const now = new Date().toISOString();
+  const ended = await db
+    .from("subscriptions")
+    .update({ status: "canceled", canceled_at: now, ended_at: now, cancel_at_period_end: false })
+    .in(
+      "id",
+      rows.map((s) => s.id),
+    )
+    .eq("provider", "mock");
+  if (ended.error) throw new Error(ended.error.message);
+  return true;
+}
+
 /** Lê o usuário no RevenueCat e grava a assinatura. null = sem plano da loja. */
 export async function syncStoreSubscription(userId: string): Promise<string | null> {
   const key = serverEnv().REVENUECAT_SECRET_API_KEY;
@@ -64,7 +102,8 @@ export async function syncStoreSubscription(userId: string): Promise<string | nu
   const state = storeStateFrom(parsed.data.subscriber.subscriptions);
   if (!state) return null;
 
-  const { data, error } = await createAdminSupabase().rpc("sync_store_subscription", {
+  const db = createAdminSupabase();
+  const args = {
     p_user_id: userId,
     p_store: state.store,
     p_plan_id: state.plan.tier,
@@ -74,7 +113,12 @@ export async function syncStoreSubscription(userId: string): Promise<string | nu
     p_period_start: state.periodStart.toISOString(),
     p_period_end: state.periodEnd.toISOString(),
     p_cancel_at_period_end: state.cancelAtPeriodEnd,
-  });
+  };
+  let { data, error } = await db.rpc("sync_store_subscription", args);
+  // workspace com plano simulado do site: a assinatura da loja assume o lugar dele
+  if (error?.message === "store:workspace_has_plan" && state.status !== "canceled" && (await endSimulatedSitePlan(db, userId))) {
+    ({ data, error } = await db.rpc("sync_store_subscription", args));
+  }
   if (error) throw new Error(error.message);
   return data ?? null;
 }

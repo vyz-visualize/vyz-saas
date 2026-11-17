@@ -1,9 +1,11 @@
 // POST /api/v1/workspaces/:id/store-plan: antes de assinar ou trocar o plano
 // pela loja, o app diz qual workspace recebe a assinatura. Só o dono; o
-// workspace não pode ter plano contratado pelo site.
+// workspace não pode ter plano pago no cartão pelo site (o simulado pode: a
+// assinatura da loja o substitui, ver syncStoreSubscription).
 
 import { z } from "zod";
 import { apiJson, bearerSession, unauthorized } from "@/server/auth/bearer";
+import { STORE_REPLACEABLE } from "@/server/billing/store";
 import { createAdminSupabase } from "@/server/supabase/admin";
 
 const fail = (code: string, message: string, status: number) => apiJson({ error: { code, message } }, status);
@@ -20,8 +22,10 @@ export async function POST(request: Request, ctx: RouteContext<"/api/v1/workspac
   ]);
   if (member.data?.role !== "owner") return fail("forbidden", "Só o dono da organização pode mudar o plano.", 403);
   const provider = access.data?.subscription_id ? access.data.provider : null;
-  if (provider && provider !== "app_store" && provider !== "play_store") {
-    return fail("store:workspace_has_plan", "O plano desta organização não é gerenciado pelo app.", 409);
+  // plano simulado do site (contas de teste, como a da revisão das lojas) passa para a
+  // loja; plano pago no cartão não (o cliente pagaria duas vezes)
+  if (provider && !STORE_REPLACEABLE.has(provider)) {
+    return fail("store:workspace_has_plan", "O plano desta organização é cobrado no cartão e não pode ser trocado pelo app.", 409);
   }
 
   // uma assinatura da loja por usuário: viva em outro workspace, troca lá

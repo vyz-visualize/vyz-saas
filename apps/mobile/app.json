@@ -19,9 +19,13 @@
         "UIBackgroundModes": [
           "remote-notification"
         ],
-        "NSHumanReadableCopyright": "© 2026 VYZ Intelligence"
+        "NSHumanReadableCopyright": "© 2026 VYZ Intelligence",
+        "CFBundleDevelopmentRegion": "pt-BR"
       },
-      "buildNumber": "7"
+      "buildNumber": "8"
+    },
+    "locales": {
+      "pt-BR": "./locales/pt-BR.json"
     },
     "android": {
       "adaptiveIcon": {
@@ -32,7 +36,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "app.vyz.painel",
-      "versionCode": 7,
+      "versionCode": 8,
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE"

@@ -119,6 +119,10 @@ export default function Conta() {
         )}
       </Card>
 
+      {/* plano logo depois do perfil: a revisão da Apple precisa achar as assinaturas */}
+      <SectionHeader title="Plano" caption="Assinaturas da App Store e do Google Play" />
+      {workspace ? <PlanCard key={workspace.id} workspace={workspace} onChanged={() => setTimeout(refresh, 1500)} /> : null}
+
       <SectionHeader title="Notificações" caption="Resumo diário e alertas das suas contas" />
       <Card style={{ gap: 14 }}>
         <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
@@ -138,9 +142,7 @@ export default function Conta() {
       </Card>
       <Notice text={message} tone="info" />
 
-      <SectionHeader title="Plano" />
-      {workspace ? <PlanCard key={workspace.id} workspace={workspace} onChanged={() => setTimeout(refresh, 1500)} /> : null}
-
+      {packages.length > 0 && <SectionHeader title="Créditos" />}
       {packages.length > 0 && (
         <Card style={{ gap: 12 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>

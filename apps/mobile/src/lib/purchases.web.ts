@@ -2,7 +2,7 @@
 // Mostra os planos e créditos com os preços do catálogo; comprar não faz nada.
 // Fica fora dos pacotes de iOS e Android (o Metro só usa .web.ts na web).
 
-import { CREDIT_PRODUCTS, STORE_PLAN_PRICE, storePlanProductId, type StorePlan } from "@vyz/shared";
+import { CREDIT_PRODUCTS, STORE_PLAN_PERIODS, STORE_PLAN_PRICE, STORE_PLAN_TIERS, storePlanProductId } from "@vyz/shared";
 import type { PurchasesPackage, PurchasesStoreProduct } from "react-native-purchases";
 
 const brl = (cents: number) => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -25,8 +25,14 @@ export async function buy(_pkg: PurchasesPackage): Promise<boolean> {
   return false;
 }
 
-export async function planProduct(plan: StorePlan): Promise<PurchasesStoreProduct | null> {
-  return product(storePlanProductId(plan), "", STORE_PLAN_PRICE[plan.tier][plan.period]);
+export const PLAN_PRODUCT_IDS = STORE_PLAN_TIERS.flatMap((tier) => STORE_PLAN_PERIODS.map((period) => storePlanProductId({ tier, period })));
+
+export type PlanCatalog = { products: Record<string, PurchasesStoreProduct>; error: string | null };
+
+export async function planCatalog(): Promise<PlanCatalog> {
+  const products: Record<string, PurchasesStoreProduct> = {};
+  for (const tier of STORE_PLAN_TIERS) for (const period of STORE_PLAN_PERIODS) products[storePlanProductId({ tier, period })] = product(storePlanProductId({ tier, period }), "", STORE_PLAN_PRICE[tier][period]);
+  return { products, error: null };
 }
 
 export async function buyPlan(_product: PurchasesStoreProduct): Promise<boolean> {

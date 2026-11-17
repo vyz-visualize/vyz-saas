@@ -134,9 +134,12 @@ Onde ver cada recurso:
 - Aba VYZ (o assistente): toque numa pergunta pronta.
 - Aba Conta: plano, notificações, termos, privacidade, sair e "Excluir conta" (exclui de verdade, com confirmação).
 
-Login: e-mail e senha, Entrar com Apple e Google.
-Assinaturas: vendidas pela compra dentro do app (aba Conta, Plano).
+Login: e-mail e senha, Iniciar sessão com a Apple e Google.
+Assinaturas (compra dentro do app): aba Conta, seção Plano, logo abaixo do nome. Os 3 planos aparecem com o preço da App Store, no mensal e no anual. Toque num plano e no botão Assinar ou Trocar. A conta de demonstração já tem um plano de teste; a compra no app troca esse plano pela assinatura da App Store. Restaurar compras fica no mesmo cartão.
 ```
+
+- Anexar as 6 assinaturas de plano (`vyz_<plano>_<período>_ate<n>`) e os créditos à versão, no mesmo envio (seção "Compras dentro do app e assinaturas" da versão). Sem isso o revisor não recebe os produtos e o app mostra "Não foi possível carregar os planos da loja".
+- Depois de cada revisão, conferir o plano da conta de demonstração: a compra de teste do revisor troca o plano simulado pela assinatura da loja, que expira sozinha no sandbox.
 
 ## 5. Privacidade
 
@@ -176,7 +179,8 @@ Os IDs são fixos (não mudar). A lista completa com preços está em `pacotes-l
 - **Créditos** (consumíveis): `vyz_creditos_1` (1 crédito, R$ 10) e `vyz_creditos_5` (5 créditos, R$ 40). Os antigos `vyz_creditos_100`/`vyz_creditos_500` foram abandonados: não enviar para revisão.
 - **RevenueCat:**
   - Projeto com os dois apps (iOS e Android).
-  - Offering `default` com os pacotes de créditos.
+  - Offering `default` com os pacotes de créditos. O app busca os planos direto pelos ids (`getProducts`), sem depender da oferta; se a oferta ganhar pacotes de plano, a tela de créditos ignora esses pacotes.
+  - Entitlements `base`, `pro` e `avancado`, cada um com os seus 2 produtos (mensal e anual).
   - Webhook para `https://www.vyzualize.com.br/api/webhooks/revenuecat`, com o mesmo valor de `REVENUECAT_WEBHOOK_SECRET` da Vercel.
   - As chaves públicas (`appl_...` e `goog_...`) vão em `EXPO_PUBLIC_REVENUECAT_IOS_KEY` e `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`, no `apps/mobile/.env.production.local`. Depois, gerar o build de novo.
   - Sem as chaves, o app funciona, mas esconde as compras.
