@@ -12,25 +12,25 @@ describe("pedido", () => {
     expect(order.planId).toBe("pro");
     expect(order.interval).toBe("year");
     expect(order.accountsQuantity).toBe(5);
-    expect(order.items).toEqual([{ kind: "recurring", planPriceId: "pro_year", quantity: 5, amountCents: 18325, label: "Plano Padrão · até 5 workspaces" }]);
-    expect(order.recurringCents).toBe(219900);
+    expect(order.items).toEqual([{ kind: "recurring", planPriceId: "pro_year", quantity: 5, amountCents: 12490, label: "Plano Padrão · até 5 workspaces" }]);
+    expect(order.recurringCents).toBe(149880);
     expect(order.amountDueNowCents).toBe(order.recurringCents);
     expect(order.blocked).toBeUndefined();
   });
 
-  it("Básico mensal cobra um mês: R$ 59,90", () => {
+  it("Básico mensal cobra um mês: R$ 49,90", () => {
     const order = buildOrder(s({ plano: "base", periodo: "mensal" }));
-    expect(order.items[0]).toMatchObject({ planPriceId: "base_month", quantity: 3, amountCents: 5990 });
-    expect(order.recurringCents).toBe(5990);
-    expect(order.amountDueNowCents).toBe(5990);
+    expect(order.items[0]).toMatchObject({ planPriceId: "base_month", quantity: 3, amountCents: 4990 });
+    expect(order.recurringCents).toBe(4990);
+    expect(order.amountDueNowCents).toBe(4990);
   });
 
   it("Avançado anual: só o plano, sem adicional", () => {
     const order = buildOrder(s({ plano: "avancado", periodo: "anual" }));
     expect(order.items).toHaveLength(1);
-    expect(order.items[0]).toMatchObject({ planPriceId: "avancado_year", quantity: 200, amountCents: 40825 });
+    expect(order.items[0]).toMatchObject({ planPriceId: "avancado_year", quantity: 200, amountCents: 24990 });
     expect(order.items[0].label).toBe("Plano Avançado · workspaces ilimitados");
-    expect(order.recurringCents).toBe(489900);
+    expect(order.recurringCents).toBe(299880);
   });
 
   it("o valor do plano fecha com a conta do banco (first + extra × (qtd − 1))", () => {

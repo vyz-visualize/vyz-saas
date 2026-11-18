@@ -1,5 +1,5 @@
 import { brl } from "@/lib/format";
-import { DASH_CUSTOM, LP_CARE_MONTHLY, NICHO_LABEL, PERIOD_LABEL, PLAN_LABEL, projectsLabel, type PlanState, type Quote } from "./pricing";
+import { DASH_CUSTOM, DASH_EXTRA_PRICE, LP_CARE_MONTHLY, NICHO_LABEL, PERIOD_LABEL, PLAN_LABEL, projectsLabel, type PlanState, type Quote } from "./pricing";
 
 export function describeProjects(s: PlanState): string {
   return s.plano === "sem" ? "" : projectsLabel(s.plano);
@@ -18,7 +18,7 @@ export function describeExtras(s: PlanState): string[] {
         : " (pagamento único)";
     items.push(`${s.sob}× Dashboard sob medida${billing}`);
   }
-  if (s.dash && s.plano !== "sem") items.push(`${s.dash}× Dashboard adicional`);
+  if (s.dash && s.plano !== "sem") items.push(`${s.dash}× Dashboard adicional (${brl(DASH_EXTRA_PRICE, { decimals: false })} cada, pagamento único)`);
   return items;
 }
 

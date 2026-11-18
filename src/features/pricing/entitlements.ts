@@ -41,10 +41,10 @@ export type Entitlements = {
   whatsappReports: boolean;
   /** Otimizações automáticas nas plataformas (com limites por projeto). Aplicar com aprovação vale para todos. */
   autoOptimize: boolean;
-  // Quantidades (provisórias, ver docs/PENDENCIAS.md)
+  // Quantidades (ver docs/PENDENCIAS.md)
   maxDashboards: number;
   maxLandingPages: number;
-  /** Pessoas com acesso ao workspace (membros; convites pendentes também contam). */
+  /** Pessoas com acesso ao workspace (membros; convites pendentes também contam). UNLIMITED_MEMBERS = ilimitado. */
   maxMembers: number;
   /** Contas da mesma plataforma em cada projeto (ex.: 3 contas de Meta Ads no mesmo cliente). */
   maxAccountsPerPlatform: number;
@@ -56,11 +56,18 @@ const RANK_OF = (t: Tier) => ({ base: 0, pro: 1, avancado: 2, personalizado: 3 }
 const dashCount = (t: Tier) => VISUALS.filter((x) => RANK_OF(x.tier) <= RANK_OF(t)).length;
 const lpCount = (t: Tier) => LANDING_TEMPLATES.filter((x) => RANK_OF(x.tier) <= RANK_OF(t)).length;
 
+/**
+ * Usuários dos planos sem limite (Padrão, Avançado e Personalizado). O banco grava este
+ * número em plan_entitlements.max_members (o trigger guard_member_limit confere um número);
+ * na tela ele nunca aparece: vale "usuários ilimitados" (membersLabel, unlimitedMembers).
+ */
+export const UNLIMITED_MEMBERS = 1000;
+
 export const ENTITLEMENTS: Record<Tier, Entitlements> = {
-  base: { dashboardTemplates: dashCount("base"), landingTemplates: lpCount("base"), platforms: "core", pages: "base", creatives: "list", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, todo: "basic", whatsappReports: false, autoOptimize: false, maxDashboards: 2, maxLandingPages: 1, maxMembers: 1, maxAccountsPerPlatform: 1 },
-  pro: { dashboardTemplates: dashCount("pro"), landingTemplates: lpCount("pro"), platforms: "all", pages: "pro", creatives: "gallery", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, todo: "basic", whatsappReports: false, autoOptimize: false, maxDashboards: 10, maxLandingPages: 3, maxMembers: 2, maxAccountsPerPlatform: 3 },
-  avancado: { dashboardTemplates: dashCount("avancado"), landingTemplates: lpCount("avancado"), platforms: "all", pages: "avancado", creatives: "compare", whiteLabel: false, audio: "soon", customDashboards: false, agentChat: true, agentVoice: true, todo: "full", whatsappReports: true, autoOptimize: true, maxDashboards: 20, maxLandingPages: 10, maxMembers: 5, maxAccountsPerPlatform: 3 },
-  personalizado: { dashboardTemplates: dashCount("personalizado"), landingTemplates: lpCount("personalizado"), platforms: "all", pages: "avancado", creatives: "compare", whiteLabel: true, audio: "soon", customDashboards: true, agentChat: true, agentVoice: true, todo: "full", whatsappReports: true, autoOptimize: true, maxDashboards: 50, maxLandingPages: 10, maxMembers: 10, maxAccountsPerPlatform: 10 },
+  base: { dashboardTemplates: dashCount("base"), landingTemplates: lpCount("base"), platforms: "core", pages: "base", creatives: "list", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, todo: "basic", whatsappReports: false, autoOptimize: false, maxDashboards: 3, maxLandingPages: 1, maxMembers: 1, maxAccountsPerPlatform: 1 },
+  pro: { dashboardTemplates: dashCount("pro"), landingTemplates: lpCount("pro"), platforms: "all", pages: "pro", creatives: "gallery", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, todo: "basic", whatsappReports: false, autoOptimize: false, maxDashboards: 10, maxLandingPages: 3, maxMembers: UNLIMITED_MEMBERS, maxAccountsPerPlatform: 3 },
+  avancado: { dashboardTemplates: dashCount("avancado"), landingTemplates: lpCount("avancado"), platforms: "all", pages: "avancado", creatives: "compare", whiteLabel: false, audio: "soon", customDashboards: false, agentChat: true, agentVoice: true, todo: "full", whatsappReports: true, autoOptimize: true, maxDashboards: 40, maxLandingPages: 10, maxMembers: UNLIMITED_MEMBERS, maxAccountsPerPlatform: 3 },
+  personalizado: { dashboardTemplates: dashCount("personalizado"), landingTemplates: lpCount("personalizado"), platforms: "all", pages: "avancado", creatives: "compare", whiteLabel: true, audio: "soon", customDashboards: true, agentChat: true, agentVoice: true, todo: "full", whatsappReports: true, autoOptimize: true, maxDashboards: 100, maxLandingPages: 10, maxMembers: UNLIMITED_MEMBERS, maxAccountsPerPlatform: 10 },
 };
 
 /** O que a página de Criativos mostra neste plano (sem plano: só a lista). */
@@ -68,6 +75,19 @@ export const creativesLevel = (tier: Tier | null | undefined): Entitlements["cre
 
 /** Workspaces ilimitados (Avançado e Personalizado): o painel mostra só o uso, sem total. */
 export const unlimitedProjects = (tier: Tier | null | undefined): boolean => tier === "avancado" || tier === "personalizado";
+
+/** Usuários ilimitados (Padrão, Avançado e Personalizado): o painel mostra só o uso, sem total. */
+export const unlimitedMembers = (tier: Tier | null | undefined): boolean => !!tier && ENTITLEMENTS[tier].maxMembers >= UNLIMITED_MEMBERS;
+
+/** O limite de usuários lido do banco (max_members) é o "ilimitado"? */
+export const isUnlimitedMemberLimit = (limit: number | null | undefined): boolean => limit == null || limit >= UNLIMITED_MEMBERS;
+
+/** Como o limite de usuários aparece na tela: "1 usuário"; nos outros planos, "usuários ilimitados". */
+export function membersLabel(tier: Tier, opts: { capital?: boolean } = {}): string {
+  const n = ENTITLEMENTS[tier].maxMembers;
+  const text = unlimitedMembers(tier) ? "usuários ilimitados" : `${n} ${n === 1 ? "usuário" : "usuários"}`;
+  return opts.capital ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
 
 /** Limite de workspaces sem número (planos ilimitados: só acima de 200, o máximo que a assinatura grava). */
 export const PROJECT_LIMIT_HIDDEN_MESSAGE = "Você chegou ao limite do seu plano. Fale com a gente para ampliar.";
@@ -125,5 +145,5 @@ export const LIMIT_ROWS: { label: string; value: (t: Tier) => string }[] = [
   { label: "Contas por plataforma em cada workspace", value: (t) => String(ENTITLEMENTS[t].maxAccountsPerPlatform) },
   { label: "Dashboards", value: (t) => String(ENTITLEMENTS[t].maxDashboards) },
   ...(SHOW_LANDING_PAGES ? [{ label: "Landing pages publicadas", value: (t: Tier) => String(ENTITLEMENTS[t].maxLandingPages) }] : []),
-  { label: "Usuários", value: (t) => String(ENTITLEMENTS[t].maxMembers) },
+  { label: "Usuários", value: (t) => (unlimitedMembers(t) ? "ilimitados" : String(ENTITLEMENTS[t].maxMembers)) },
 ];

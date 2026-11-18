@@ -23,9 +23,9 @@ export const STORE_PLAN_ID_SUFFIX: Record<StorePlanTier, number> = { base: 5, pr
 
 /** Preço de cada plano, em centavos, por cobrança (mês no mensal, ano no anual). */
 export const STORE_PLAN_PRICE: Record<StorePlanTier, Record<StorePlanPeriod, number>> = {
-  base: { mensal: 5990, anual: 57900 },
-  pro: { mensal: 21990, anual: 219900 },
-  avancado: { mensal: 49990, anual: 489900 },
+  base: { mensal: 4990, anual: 50280 }, // R$ 49,90/mês ou R$ 502,80/ano
+  pro: { mensal: 14990, anual: 149880 }, // R$ 149,90/mês ou R$ 1.498,80/ano
+  avancado: { mensal: 29990, anual: 299880 }, // R$ 299,90/mês ou R$ 2.998,80/ano
 };
 
 export const storePlan = (tier: StorePlanTier, period: StorePlanPeriod): StorePlan => ({ tier, period, accounts: STORE_PLAN_PROJECTS[tier] });
@@ -48,7 +48,7 @@ export function parseStorePlan(productId: string | null | undefined): StorePlan 
 /** O que cada plano traz (paywall do app). Mesma regra do site; cada plano inclui o de baixo. */
 export const STORE_PLAN_HIGHLIGHTS: Record<StorePlanTier, string[]> = {
   base: ["Até 3 workspaces (clientes)", "Meta Ads, Google Ads e GA4", "Visão geral com tudo junto", "Assistente VYZ por chat", "1 usuário"],
-  pro: ["Até 5 workspaces (clientes), compartilhados entre os usuários", "Tudo do Básico", "TikTok Ads e LinkedIn Ads", "CRMs: RD Station e HubSpot", "Galeria de criativos", "2 usuários"],
+  pro: ["Até 5 workspaces (clientes), compartilhados entre os usuários", "Tudo do Básico", "TikTok Ads e LinkedIn Ads", "CRMs: RD Station e HubSpot", "Galeria de criativos", "Usuários ilimitados"],
   avancado: [
     "Workspaces ilimitados (clientes)",
     "Tudo do Padrão",
@@ -57,6 +57,6 @@ export const STORE_PLAN_HIGHLIGHTS: Record<StorePlanTier, string[]> = {
     "Comparativo de criativos",
     "Análise preditiva e MMM",
     "Assistente VYZ por voz",
-    "5 usuários",
+    "Usuários ilimitados",
   ],
 };

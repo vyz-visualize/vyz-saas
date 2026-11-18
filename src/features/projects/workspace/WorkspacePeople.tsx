@@ -18,6 +18,7 @@ import { initials } from "@/features/workspace/Sidebar";
 import { assignableRoles, ROLE_HINT } from "@/features/workspace/team";
 import { addProjectMember, removeProjectMember } from "@/server/projects/actions";
 import { changeMemberRole, inviteMember, revokeInvitation, type InviteResult } from "@/server/workspace/team";
+import { seatsView } from "../seats";
 import type { ProjectPeopleData, ProjectPerson } from "../types";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -67,7 +68,7 @@ function Person({ p, actor, canManage, pending, onRole, onRemove }: { p: Project
 
 /** Convite por e-mail já para este workspace. */
 function Invite({ projectId, projectName, seats, onClose, notify }: { projectId: string; projectName: string; seats: ProjectPeopleData["seats"]; onClose: () => void; notify: (m: string) => void }) {
-  const full = seats.used >= seats.limit;
+  const { full, inviteNote } = seatsView(seats);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"member" | "viewer">("member");
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +120,7 @@ function Invite({ projectId, projectName, seats, onClose, notify }: { projectId:
       }}
     >
       <p className={`rounded-control px-3.5 py-2.5 text-[13px] ${full ? "bg-error-soft text-error-fg" : "bg-surface-2/70 text-fg-2"}`}>
-        {full ? `As ${seats.limit} vagas de usuário do plano estão em uso (convites pendentes contam). Suba de plano para convidar mais gente.` : `Gasta 1 vaga do plano: ${seats.used} de ${seats.limit} em uso.`}
+        {inviteNote}
       </p>
       <TextField label="E-mail" type="email" inputMode="email" value={email} onChange={setEmail} placeholder="nome@empresa.com.br" error={error} disabled={full} />
       <div className="space-y-1.5">
@@ -152,8 +153,7 @@ export function WorkspacePeople({ data, projectId, projectName }: { data: Projec
   const [pending, start] = useTransition();
   const team = data.people.filter((p) => p.inProject);
   const outside = data.people.filter((p) => !p.inProject);
-  const ratio = Math.min(1, data.seats.used / Math.max(1, data.seats.limit));
-  const free = Math.max(0, data.seats.limit - data.seats.used);
+  const seats = seatsView(data.seats);
 
   const act = (fn: () => Promise<{ ok: boolean; error?: { message: string } }>, done: string) =>
     start(async () => {
@@ -244,18 +244,20 @@ export function WorkspacePeople({ data, projectId, projectName }: { data: Projec
 
         <div className="min-w-0 space-y-5 lg:space-y-6">
           <section aria-labelledby="h-vagas" className="rounded-card border border-line bg-card p-5 shadow-card sm:p-6">
-            <SectionHeader id="h-vagas" title="Vagas do plano" text="Usuários da organização inteira; convites pendentes contam." />
+            <SectionHeader id="h-vagas" title={seats.unlimited ? "Usuários" : "Vagas do plano"} text="Usuários da organização inteira; convites pendentes contam." />
             <p className="mt-4 flex items-baseline gap-1.5">
               <span className="text-[28px] leading-none font-bold tracking-[-0.03em] tnum">{data.seats.used}</span>
-              <span className="text-[13px] text-fg-2 tnum">de {plural(data.seats.limit, "usuário", "usuários")}</span>
+              <span className="text-[13px] text-fg-2 tnum">{seats.countLabel}</span>
             </p>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2">
-              <div className={`h-full rounded-full ${ratio >= 1 ? "bg-error" : ratio >= 0.8 ? "bg-warning" : "bg-accent"}`} style={{ width: `${Math.max(3, ratio * 100)}%` }} />
-            </div>
+            {seats.ratio != null && (
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2" data-seats-bar>
+                <div className={`h-full rounded-full ${seats.ratio >= 1 ? "bg-error" : seats.ratio >= 0.8 ? "bg-warning" : "bg-accent"}`} style={{ width: `${Math.max(3, seats.ratio * 100)}%` }} />
+              </div>
+            )}
             <p className="mt-3 text-[13px] text-fg-2">
-              {free > 0 ? `Ainda ${free === 1 ? "cabe 1 pessoa" : `cabem ${free} pessoas`}.` : "Todas as vagas em uso. Pôr aqui quem já está na organização não gasta vaga."}{" "}
+              {seats.note}{" "}
               <Link href="/painel/plano" className="font-semibold text-accent underline-offset-4 hover:underline">
-                {free > 0 ? "Ver plano" : "Aumentar o plano"}
+                {seats.full ? "Aumentar o plano" : "Ver plano"}
               </Link>
             </p>
           </section>

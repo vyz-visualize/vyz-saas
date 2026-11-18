@@ -1,7 +1,7 @@
 product_id,nome,plano,periodo,ate_workspaces,preco_brl
-vyz_base_mensal_ate5,"Básico · até 3 workspaces",base,mensal,3,59.90
-vyz_base_anual_ate5,"Básico · até 3 workspaces",base,anual,3,579.00
-vyz_pro_mensal_ate15,"Padrão · até 5 workspaces",pro,mensal,5,219.90
-vyz_pro_anual_ate15,"Padrão · até 5 workspaces",pro,anual,5,2199.00
-vyz_avancado_mensal_ate30,"Avançado · workspaces ilimitados",avancado,mensal,200,499.90
-vyz_avancado_anual_ate30,"Avançado · workspaces ilimitados",avancado,anual,200,4899.00
+vyz_base_mensal_ate5,"Básico · até 3 workspaces",base,mensal,3,49.90
+vyz_base_anual_ate5,"Básico · até 3 workspaces",base,anual,3,502.80
+vyz_pro_mensal_ate15,"Padrão · até 5 workspaces",pro,mensal,5,149.90
+vyz_pro_anual_ate15,"Padrão · até 5 workspaces",pro,anual,5,1498.80
+vyz_avancado_mensal_ate30,"Avançado · workspaces ilimitados",avancado,mensal,200,299.90
+vyz_avancado_anual_ate30,"Avançado · workspaces ilimitados",avancado,anual,200,2998.80

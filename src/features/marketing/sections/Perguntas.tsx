@@ -7,7 +7,7 @@ import { CutReveal } from "@/components/motion/CutReveal";
 import { btn } from "@/components/ui/styles";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
 import { VyzFace } from "@/features/marketing/demo/VyzFace";
-import { ENTITLEMENTS } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, membersLabel } from "@/features/pricing/entitlements";
 import { PLAN_PROJECTS } from "@/features/pricing/pricing";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
 
@@ -44,7 +44,7 @@ const GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Quantos workspaces cabem em cada plano?",
-        a: `O Básico vai até ${PLAN_PROJECTS.base} workspaces e 1 usuário. O Padrão vai até ${PLAN_PROJECTS.pro} workspaces e ${ENTITLEMENTS.pro.maxMembers} usuários, que dividem os mesmos workspaces. O Avançado tem workspaces ilimitados, com até ${ENTITLEMENTS.avancado.maxMembers} usuários. Marca própria ou algo sob medida? O plano Personalizado é sob consulta, com um especialista.`,
+        a: `O Básico vai até ${PLAN_PROJECTS.base} workspaces, ${ENTITLEMENTS.base.maxDashboards} dashboards e ${membersLabel("base")}. O Padrão vai até ${PLAN_PROJECTS.pro} workspaces e ${ENTITLEMENTS.pro.maxDashboards} dashboards, com ${membersLabel("pro")} dividindo os mesmos workspaces. O Avançado tem workspaces ilimitados, ${ENTITLEMENTS.avancado.maxDashboards} dashboards e ${membersLabel("avancado")}. Marca própria ou algo sob medida? O plano Personalizado é sob consulta, com um especialista.`,
       },
       {
         q: "E se eu passar do limite de workspaces?",

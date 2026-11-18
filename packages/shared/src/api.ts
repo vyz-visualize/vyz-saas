@@ -19,7 +19,10 @@ export type MeResponse = {
     accounts: number;
     cancelAtPeriodEnd: boolean;
     periodEnd: string | null;
+    /** Limite de usuários do plano. Ilimitado (Padrão para cima) vem como um número interno alto: use unlimitedMembers e nunca mostre este número. */
     maxMembers: number;
+    /** Usuários ilimitados no plano: mostrar só o uso, sem total e sem bloquear convite. */
+    unlimitedMembers: boolean;
   }[];
 };
 

@@ -10,13 +10,14 @@ import { Wordmark } from "@/components/brand/Wordmark";
 import { PendingChip } from "@/components/ui/kit";
 import { brl } from "@/lib/format";
 import { platformsForTier } from "@/features/accounts/platforms";
-import { ENTITLEMENTS } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, membersLabel } from "@/features/pricing/entitlements";
 import { waLink } from "@/lib/whatsapp";
 import {
   LP_PLAN_PAGES,
   PLAN_LABEL,
   projectsLabel,
   annualSavingPct,
+  maxAnnualSavingPct,
   type Period,
   type PlanId,
   type PlanState,
@@ -58,8 +59,8 @@ function PlanSwitch({ plan, onChange }: { plan: PlanId; onChange: (p: PlanId) =>
   );
 }
 
-/** Mensal × anual, com o desconto do anual no próprio botão. */
-function PeriodSwitch({ plan, period, onChange }: { plan: PlanId; period: Period; onChange: (p: Period) => void }) {
+/** Mensal × anual, com o maior desconto do anual no botão ("até −17%", igual à LP e à tela Plano). */
+function PeriodSwitch({ period, onChange }: { period: Period; onChange: (p: Period) => void }) {
   const item = (p: Period, label: string, badge?: string) => (
     <button
       type="button"
@@ -76,7 +77,7 @@ function PeriodSwitch({ plan, period, onChange }: { plan: PlanId; period: Period
   return (
     <div className="flex rounded-full border border-line bg-bg p-1" role="group" aria-label="Período de cobrança">
       {item("mensal", "Mensal")}
-      {item("anual", "Anual", `−${annualSavingPct(plan)}%`)}
+      {item("anual", "Anual", `até −${maxAnnualSavingPct()}%`)}
     </div>
   );
 }
@@ -176,7 +177,7 @@ export function OrderSummary({
         {dash && onAdjust && (
           <div className="mt-4 space-y-2">
             <PlanSwitch plan={plan} onChange={(plano) => onAdjust(() => ({ plano }))} />
-            <PeriodSwitch plan={plan} period={state.periodo} onChange={(periodo) => onAdjust(() => ({ periodo }))} />
+            <PeriodSwitch period={state.periodo} onChange={(periodo) => onAdjust(() => ({ periodo }))} />
           </div>
         )}
 
@@ -188,7 +189,7 @@ export function OrderSummary({
               {[
                 `${projectsLabel(plan, { capital: true })} (clientes ou marcas)${plan === "pro" ? ", compartilhados entre os usuários" : ""}`,
                 `${ENTITLEMENTS[plan].maxDashboards} dashboards`,
-                `${ENTITLEMENTS[plan].maxMembers} ${ENTITLEMENTS[plan].maxMembers === 1 ? "usuário" : "usuários"}`,
+                membersLabel(plan, { capital: true }),
                 platformsForTier(plan)
                   .map((p) => p.name)
                   .join(", "),
@@ -230,7 +231,7 @@ export function OrderSummary({
               <span className="shrink-0 text-right font-medium text-fg-2 tnum">
                 {brl(l.amount)}
                 {l.kind === "monthly" && "/mês"}
-                {l.kind === "once" && <span className="block text-[11.5px] font-normal">uma vez</span>}
+                {l.kind === "once" && !l.detail?.includes("pagamento único") && <span className="block text-[11.5px] font-normal">pagamento único</span>}
               </span>
             </li>
           ))}

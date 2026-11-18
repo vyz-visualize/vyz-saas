@@ -8,7 +8,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { SectionHeader } from "@/components/ui/kit";
 import { Paywall } from "@/components/ui/Paywall";
-import { ENTITLEMENTS, canUse, type Tier } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, canUse, membersLabel, type Tier } from "@/features/pricing/entitlements";
 import { brl } from "@/lib/format";
 import { lpMonthly, startingPrice, type Product } from "@/features/pricing/pricing";
 import { useWorkspaceSession } from "./WorkspaceProvider";
@@ -51,7 +51,7 @@ const FEATURES: Record<Product, Feature[]> = {
   dash: [
     {
       required: "pro",
-      feature: `${ENTITLEMENTS.pro.dashboardTemplates} templates, ${ENTITLEMENTS.pro.maxDashboards} dashboards e ${ENTITLEMENTS.pro.maxMembers} usuários`,
+      feature: `${ENTITLEMENTS.pro.dashboardTemplates} templates, ${ENTITLEMENTS.pro.maxDashboards} dashboards e ${membersLabel("pro")}`,
       text: "Mais templates, mais dashboards e mais gente na mesma organização.",
       preview: <Preview chips={8} bars={[30, 55, 45, 70, 60, 85]} />,
     },

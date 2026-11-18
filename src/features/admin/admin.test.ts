@@ -71,7 +71,7 @@ describe("weeklyEmail", () => {
       generatedAt: at(0),
       users: { ok: true, data: summarizeUsers([{ created_at: at(1), last_sign_in_at: at(0) }], 0, NOW) },
       ga4: { ok: false, reason: "sem dados" },
-      stripe: { ok: true, data: { mrr: { BRL: 59.9 }, subscribers: 1, revenue30: { BRL: 59.9 }, churned30: 0, churnRate: 0, refunds30: {}, refundCount30: 0 } },
+      stripe: { ok: true, data: { mrr: { BRL: 49.9 }, subscribers: 1, revenue30: { BRL: 49.9 }, churned30: 0, churnRate: 0, refunds30: {}, refundCount30: 0 } },
       appStore: { ok: false, reason: "A Apple <ainda> não gerou" },
       googlePlay: { ok: false, reason: "403" },
       revenueCat: { ok: false, reason: "x" },
@@ -79,6 +79,6 @@ describe("weeklyEmail", () => {
     const m = weeklyEmail(r);
     expect(m.subject).toContain("1 cadastros");
     expect(m.html).toContain("&lt;ainda&gt;");
-    expect(m.html).toMatch(/R\$\s?59,90/);
+    expect(m.html).toMatch(/R\$\s?49,90/);
   });
 });

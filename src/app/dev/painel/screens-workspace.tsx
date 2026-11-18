@@ -8,6 +8,7 @@ import { DashboardsList } from "@/features/dashboards/DashboardsList";
 import type { DashboardListItem } from "@/features/dashboards/model";
 import type { AdAccountDTO, ConnectionDTO } from "@/features/integrations/types";
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
+import { seatsLimit } from "@/features/projects/seats";
 import type { ProjectAccountsData, ProjectHighlights, ProjectOverviewData, ProjectPeopleData, ProjectSummary } from "@/features/projects/types";
 import { Highlights, Overview } from "@/features/projects/workspace/Overview";
 import { WorkspaceAccounts } from "@/features/projects/workspace/WorkspaceAccounts";
@@ -146,7 +147,7 @@ const PEOPLE: ProjectPeopleData = {
     { userId: "u3", name: "Rafael Costa", email: "rafael@exemplo.com", role: "viewer", allAccess: false, inProject: false, isYou: false },
   ],
   invitations: [{ id: "i1", email: "cliente@lojaaurora.com.br", role: "viewer", expiresAt: day(-5) }],
-  seats: { used: 5, limit: 5 },
+  seats: { used: 5, limit: null },
   actorRole: "owner",
   canManage: true,
 };
@@ -199,6 +200,10 @@ export const SCREENS_WORKSPACE: Record<string, Screen> = {
   },
   "workspace-contas": { path: `/painel/workspaces/${P1}/contas`, node: () => withHeader(<WorkspaceAccounts data={ACCOUNTS} projectId={P1} projectName="Loja Aurora" />) },
   "workspace-contas-vazio": { path: `/painel/workspaces/${P1}/contas`, node: () => withHeader(<WorkspaceAccounts data={{ ...ACCOUNTS, accounts: [] }} projectId={P1} projectName="Loja Aurora" />) },
-  "workspace-pessoas": { path: `/painel/workspaces/${P1}/pessoas`, node: () => withHeader(<WorkspacePeople data={PEOPLE} projectId={P1} projectName="Loja Aurora" />) },
+  // vagas pelo plano do seletor: Básico 1 de 1 (convite bloqueado); Padrão e Avançado, ilimitados
+  "workspace-pessoas": {
+    path: `/painel/workspaces/${P1}/pessoas`,
+    node: (tier) => withHeader(<WorkspacePeople data={{ ...PEOPLE, seats: { used: tier === "base" ? 1 : 5, limit: seatsLimit(ENTITLEMENTS[tier].maxMembers) } }} projectId={P1} projectName="Loja Aurora" />),
+  },
   "workspace-ajustes": { path: `/painel/workspaces/${P1}/ajustes`, node: () => withHeader(<WorkspaceSettings summary={SUMMARY} timeZone="America/Sao_Paulo" />) },
 };

@@ -58,7 +58,7 @@ Regras: migration aplicada não se edita (corrige-se com outra); depois de toda 
 `workspace_access` junta a assinatura viva (só uma por workspace, por índice parcial) com `plan_entitlements`. `has_access` vale para `active`, `trialing` e `past_due` (carência). Os gatilhos da migration 09 conferem, com um *advisory lock* por workspace (sem corrida entre duas abas):
 
 - assinatura ativa para criar dashboards, LPs, links, relatórios e exportações e para ativar contas;
-- quantidade: dashboards (`max_dashboards`), LPs publicadas (`max_landing_pages`) e contas ativas (`accounts_quantity`, com cada Business Manager do Meta contando uma vez);
+- quantidade: dashboards (`max_dashboards`: Básico 3, Padrão 10, Avançado 40, Personalizado 100), LPs publicadas (`max_landing_pages`), usuários (`max_members`, membros + convites pendentes: Básico 1; nos outros, 1000 = ilimitado), workspaces (`max_projects`, nulo = ilimitado) e contas ativas (`accounts_quantity`, com cada Business Manager do Meta contando uma vez). Os valores vêm do código pelo `npm run db:catalog`;
 - plano mínimo de template, página e plataforma, e marca própria só com `white_label`.
 
 O app checa antes para mostrar a mensagem certa, mas quem garante é o banco: chamar a API direto com o próprio token não fura o plano.

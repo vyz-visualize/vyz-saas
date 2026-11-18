@@ -6,7 +6,7 @@
 // para a prévia; o servidor, para cobrar e para recusar.
 
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
-import { ENTITLEMENTS, TIER_LABEL, canUse, unlimitedProjects } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, TIER_LABEL, canUse, membersLabel, unlimitedMembers, unlimitedProjects } from "@/features/pricing/entitlements";
 import { PLAN_PROJECTS, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
 
 export type PlanSelection = { tier: PlanId; period: Period; accounts: number };
@@ -106,10 +106,11 @@ export function planChangeBlocker(next: PlanSelection, usage: PlanUsage): { code
       message: `O ${tier} permite até ${plural(limits.maxLandingPages, "landing page publicada", "landing pages publicadas")} e você tem ${usage.publishedLandingPages}. Despublique antes de trocar.`,
     };
   }
-  if ((usage.members ?? 0) > limits.maxMembers) {
+  // usuários ilimitados (Padrão para cima): nunca bloqueia nem mostra o número interno
+  if (!unlimitedMembers(next.tier) && (usage.members ?? 0) > limits.maxMembers) {
     return {
       code: "limit:members_in_use",
-      message: `O ${tier} permite até ${plural(limits.maxMembers, "usuário", "usuários")} e a equipe tem ${usage.members}. Remova pessoas ou cancele convites antes de trocar.`,
+      message: `O ${tier} permite ${membersLabel(next.tier)} e a equipe tem ${plural(usage.members ?? 0, "pessoa", "pessoas")} (convites pendentes contam). Remova pessoas ou cancele convites antes de trocar.`,
     };
   }
   const outside = usage.enabledPlatforms.map((id) => PLATFORMS[id as PlatformId]).find((p) => p && !canUse(next.tier, p.tier));

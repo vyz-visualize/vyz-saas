@@ -30,7 +30,7 @@ import {
 } from "@/features/checkout/labels";
 import { planChangeBlocker, planSelection, quotePlanChange, samePlan, type PlanSelection, type PlanUsage } from "@/features/checkout/plan-change";
 import { ENTITLEMENTS, unlimitedProjects, LIMIT_ROWS, LIMIT_TIERS, TIER_LABEL, type Tier } from "@/features/pricing/entitlements";
-import { annualSavingPct, LP_PLAN_PAGES, projectsLabel, lpMonthly, lpSetup, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
+import { maxAnnualSavingPct, LP_PLAN_PAGES, projectsLabel, lpMonthly, lpSetup, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
 import { brl } from "@/lib/format";
 import { msgUpgrade, waLink } from "@/lib/whatsapp";
 import { cancelSubscription, changePlan, resumeSubscription } from "@/server/billing/actions";
@@ -176,7 +176,7 @@ function ChangePlan({
           onChange={(period) => set({ period })}
           options={[
             { value: "mensal", label: "Mensal" },
-            { value: "anual", label: `Anual · ${annualSavingPct(next.tier)}% a menos` },
+            { value: "anual", label: `Anual · até ${maxAnnualSavingPct()}% a menos` },
           ]}
         />
       </div>
@@ -664,7 +664,6 @@ export function PlanPage({
               </a>
             )}
           </div>
-          <p className="text-[12.5px] text-fg-2">{SHOW_LANDING_PAGES ? "Os limites de dashboards e de landing pages publicadas são provisórios." : "Os limites de dashboards são provisórios."}</p>
         </section>
       )}
       {toast.node}
