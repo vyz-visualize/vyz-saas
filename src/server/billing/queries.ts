@@ -4,7 +4,7 @@ import "server-only";
 // criou; assinatura, faturas e transações, de owner e admin do workspace.
 // Devolvem DTOs no formato da tela, nunca as linhas cruas.
 
-import { PLAN_LABEL, parsePlanDbId, type Product } from "@/features/pricing/pricing";
+import { PLAN, PLAN_LABEL, annualTotal, parsePlanDbId, type Product } from "@/features/pricing/pricing";
 import { productEntryUrl } from "@/lib/product-hosts";
 import { cookies } from "next/headers";
 import { cache } from "react";
@@ -359,6 +359,11 @@ export async function getBillingOverview(): Promise<BillingOverview> {
         }))
     : [];
   const monthlyCents = items.reduce((sum, i) => sum + i.monthlyCents, 0);
+  // anual com o preço de hoje: o plano é o total exato do ano (o item guarda o por mês
+  // arredondado); assinatura antiga, com outro preço, segue o por mês × 12
+  const planItem = items.find((i) => i.kind === "plan");
+  const exactYear = !!s && s.interval === "year" && !sLp && !!planItem && planItem.monthlyCents === PLAN[sTier!].anual;
+  const recurringCents = !s ? 0 : exactYear ? annualTotal(sTier!) + (monthlyCents - planItem!.monthlyCents) * 12 : monthlyCents * (s.interval === "year" ? 12 : 1);
   const c = customer.data;
 
   return {
@@ -380,7 +385,7 @@ export async function getBillingOverview(): Promise<BillingOverview> {
           items,
           monthlyCents,
           extrasMonthlyCents: items.filter((i) => i.kind === "extra").reduce((sum, i) => sum + i.monthlyCents, 0),
-          recurringCents: monthlyCents * (s.interval === "year" ? 12 : 1),
+          recurringCents,
         }
       : null,
     customer: c ? { email: c.email, legalName: c.legal_name, taxId: maskTaxId(c.tax_id), phone: c.phone } : null,

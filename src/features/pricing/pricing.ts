@@ -15,9 +15,11 @@ export const PRODUCT_LABEL: Record<Product, string> = { dash: "Dashboards", lp: 
 
 // Três planos fixos, cada um com o seu limite de workspaces (clientes ou marcas; no
 // banco, "projects"): Básico até 3, Padrão até 5 e Avançado ilimitado (como o
-// Personalizado). Não se escolhe quantidade: mais workspaces = plano de cima. Preço
-// por mês; o anual é o valor por mês equivalente, cobrado 12× de uma vez (~16–17% a menos
-// nos três). Dashboards e usuários de cada plano: entitlements.ts. O banco
+// Personalizado). Não se escolhe quantidade: mais workspaces = plano de cima. Mensal: preço
+// por mês. Anual: o total do ano (PLAN_YEAR, igual ao das lojas, que só aceitam os pontos de
+// preço delas), cobrado de uma vez (~17% a menos nos três); PLAN.anual é esse total ÷ 12,
+// arredondado, só para mostrar "por mês" e para o catálogo do banco (os itens guardam o valor
+// por mês; a cobrança usa o total exato). Dashboards e usuários de cada plano: entitlements.ts. O banco
 // aplica o mesmo limite (plan_entitlements.max_projects, nulo = sem limite; migration
 // 20261120090000_plan_projects).
 
@@ -35,10 +37,18 @@ export function projectsLabel(tier: PlanId, opts: { capital?: boolean } = {}): s
   return opts.capital ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
 
+/** Anual: o total cobrado no ano. Iguais aos das lojas (packages/shared/src/store-plans.ts). */
+export const PLAN_YEAR: Record<PlanId, number> = {
+  base: 49990, // R$ 499,90/ano
+  pro: 149990, // R$ 1.499,90/ano
+  avancado: 299990, // R$ 2.999,90/ano
+};
+
+/** Por mês em cada período. No anual, o total do ano ÷ 12, arredondado (R$ 41,66): só para mostrar. */
 export const PLAN: Record<PlanId, Record<Period, number>> = {
-  base: { mensal: 4990, anual: 4190 }, // R$ 49,90/mês; anual R$ 502,80/ano (R$ 41,90/mês)
-  pro: { mensal: 14990, anual: 12490 }, // R$ 149,90/mês; anual R$ 1.498,80/ano (R$ 124,90/mês)
-  avancado: { mensal: 29990, anual: 24990 }, // R$ 299,90/mês; anual R$ 2.998,80/ano (R$ 249,90/mês)
+  base: { mensal: 4990, anual: Math.round(PLAN_YEAR.base / 12) }, // R$ 49,90/mês; anual ≈ R$ 41,66/mês
+  pro: { mensal: 14990, anual: Math.round(PLAN_YEAR.pro / 12) }, // R$ 149,90/mês; anual ≈ R$ 124,99/mês
+  avancado: { mensal: 29990, anual: Math.round(PLAN_YEAR.avancado / 12) }, // R$ 299,90/mês; anual ≈ R$ 249,99/mês
 };
 
 export const DASH_CUSTOM = { unico: 190000, recorrente: { setup: 99000, mensal: 19900 } }; // R$ 1.900 ou R$ 990 + R$ 199/mês
@@ -138,7 +148,7 @@ export type Quote = {
   /** Todo mês, se fosse mensal / anual. */
   monthlyMensal: number;
   monthlyAnual: number;
-  /** Total cobrado por ano no anual (todo mês × 12). */
+  /** Total cobrado por ano no anual: o total do plano (PLAN_YEAR) + extras mensais × 12. */
   yearly: number;
   /** (plano no mensal − plano no anual) × 12. */
   annualSaving: number;
@@ -161,16 +171,19 @@ export function startingPrice(plan: PlanId, period: Period): number {
 }
 
 /** Total cobrado por ano no anual. */
-export const annualTotal = (plan: PlanId) => PLAN[plan].anual * 12;
+export const annualTotal = (plan: PlanId) => PLAN_YEAR[plan];
+
+/** O que se cobra a cada período: o mês no mensal, o ano inteiro no anual. */
+export const periodCharge = (plan: PlanId, period: Period) => (period === "anual" ? PLAN_YEAR[plan] : PLAN[plan].mensal);
 
 /** Maior desconto do anual entre os planos (seletores de período: "até −17%"). */
 export function maxAnnualSavingPct(): number {
   return Math.max(...(["base", "pro", "avancado"] as const).map(annualSavingPct));
 }
 
-/** Desconto do anual sobre o mensal, em %, no preço de entrada. */
+/** Desconto do anual sobre 12 meses no mensal, em %. */
 export function annualSavingPct(plan: PlanId): number {
-  return Math.round((1 - PLAN[plan].anual / PLAN[plan].mensal) * 100);
+  return Math.round((1 - PLAN_YEAR[plan] / (PLAN[plan].mensal * 12)) * 100);
 }
 
 
@@ -217,6 +230,9 @@ export function quote(s: PlanState): Quote {
 
   const planMonthlyNow = s.periodo === "anual" ? planAnual : planMensal;
   const monthly = planMonthlyNow + extrasMonthly;
+  // no anual, o plano entra pelo total exato do ano (não por "por mês × 12")
+  const planYear = hasPlan ? annualTotal(s.plano as PlanId) : 0;
+  const yearly = planYear + extrasMonthly * 12;
   return {
     projects,
     planMonthly: planMonthlyNow,
@@ -224,10 +240,10 @@ export function quote(s: PlanState): Quote {
     monthly,
     monthlyMensal: planMensal + extrasMonthly,
     monthlyAnual: planAnual + extrasMonthly,
-    yearly: (planAnual + extrasMonthly) * 12,
-    annualSaving: (planMensal - planAnual) * 12,
+    yearly,
+    annualSaving: hasPlan ? planMensal * 12 - planYear : 0,
     oneTime,
-    twelveMonths: monthly * 12 + oneTime,
+    twelveMonths: (s.periodo === "anual" ? yearly : monthly * 12) + oneTime,
     lines,
   };
 }

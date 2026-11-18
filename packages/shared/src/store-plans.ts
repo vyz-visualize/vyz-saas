@@ -23,9 +23,9 @@ export const STORE_PLAN_ID_SUFFIX: Record<StorePlanTier, number> = { base: 5, pr
 
 /** Preço de cada plano, em centavos, por cobrança (mês no mensal, ano no anual). */
 export const STORE_PLAN_PRICE: Record<StorePlanTier, Record<StorePlanPeriod, number>> = {
-  base: { mensal: 4990, anual: 50280 }, // R$ 49,90/mês ou R$ 502,80/ano
-  pro: { mensal: 14990, anual: 149880 }, // R$ 149,90/mês ou R$ 1.498,80/ano
-  avancado: { mensal: 29990, anual: 299880 }, // R$ 299,90/mês ou R$ 2.998,80/ano
+  base: { mensal: 4990, anual: 49990 }, // R$ 49,90/mês ou R$ 499,90/ano
+  pro: { mensal: 14990, anual: 149990 }, // R$ 149,90/mês ou R$ 1.499,90/ano
+  avancado: { mensal: 29990, anual: 299990 }, // R$ 299,90/mês ou R$ 2.999,90/ano
 };
 
 export const storePlan = (tier: StorePlanTier, period: StorePlanPeriod): StorePlan => ({ tier, period, accounts: STORE_PLAN_PROJECTS[tier] });

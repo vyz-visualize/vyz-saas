@@ -39,6 +39,22 @@ describe("stripeLineItems", () => {
     expect(lines.reduce((n, l) => n + l.price_data.unit_amount, 0)).toBe(order.amountDueNowCents);
   });
 
+  it("anual com extras: a linha do plano leva o total exato do ano; os extras, × 12", () => {
+    const { order, row } = rows({ plano: "pro", periodo: "anual", lp: 1, lpcare: true, sob: 1, sobm: "recorrente" });
+    const lines = stripeLineItems(row);
+    const plan = lines.find((l) => l.price_data.product_data.metadata.kind === "plan")!;
+    expect(plan.price_data.unit_amount).toBe(149990);
+    expect(lines.reduce((n, l) => n + l.price_data.unit_amount, 0)).toBe(order.amountDueNowCents);
+  });
+
+  it("recusa diferença maior que o arredondamento do plano anual", () => {
+    const { row } = rows({ plano: "pro", periodo: "anual" });
+    expect(() => stripeLineItems({ ...row, recurring_cents: row.recurring_cents + 12, amount_due_now_cents: row.amount_due_now_cents + 12 })).toThrow(OrderMismatch);
+    // sem item de plano, nenhuma diferença passa
+    const extraOnly = { ...row, checkout_items: row.checkout_items.map((i) => ({ ...i, plan_price_id: null })) };
+    expect(() => stripeLineItems(extraOnly)).toThrow(OrderMismatch);
+  });
+
   it("recusa itens que não batem com o total", () => {
     const { row } = rows({ plano: "pro", periodo: "mensal" });
     expect(() => stripeLineItems({ ...row, amount_due_now_cents: row.amount_due_now_cents + 1 })).toThrow(OrderMismatch);
