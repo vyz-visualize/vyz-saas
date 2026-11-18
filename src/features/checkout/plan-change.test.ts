@@ -30,7 +30,7 @@ describe("troca de plano no mesmo período", () => {
       now: half,
     });
     expect(q.prorationCents).toBe(0);
-    expect(q.creditCents).toBe(Math.round((21990 - 5990) / 2));
+    expect(q.creditCents).toBe(Math.round((14990 - 4990) / 2));
   });
 
   it("a seleção do plano traz os projetos fixos", () => {
@@ -124,6 +124,28 @@ describe("uso atual no plano novo", () => {
     expect(planChangeBlocker({ tier: "base", period: "anual", accounts: 2 }, { ...usage, publishedLandingPages: 2 })?.message).toBe(
       "O Básico permite até 1 landing page publicada e você tem 2. Despublique antes de trocar.",
     );
+  });
+
+  it("dashboards: o Básico vai até 3, o Padrão até 10 e o Avançado até 40", () => {
+    expect(planChangeBlocker({ tier: "base", period: "anual", accounts: 3 }, { ...usage, dashboards: 3 })).toBeNull();
+    expect(planChangeBlocker({ tier: "base", period: "anual", accounts: 3 }, { ...usage, dashboards: 4 })?.message).toBe("O Básico permite até 3 dashboards e você tem 4. Apague alguns antes de trocar.");
+    expect(planChangeBlocker({ tier: "pro", period: "anual", accounts: 5 }, { ...usage, dashboards: 11 })?.code).toBe("limit:dashboards_in_use");
+    expect(planChangeBlocker({ tier: "avancado", period: "anual", accounts: 200 }, { ...usage, dashboards: 40 })).toBeNull();
+    expect(planChangeBlocker({ tier: "avancado", period: "anual", accounts: 200 }, { ...usage, dashboards: 41 })?.code).toBe("limit:dashboards_in_use");
+  });
+
+  it("equipe com mais de 1 pessoa não desce para o Básico", () => {
+    expect(planChangeBlocker({ tier: "base", period: "mensal", accounts: 3 }, { ...usage, members: 1 })).toBeNull();
+    expect(planChangeBlocker({ tier: "base", period: "mensal", accounts: 3 }, { ...usage, members: 3 })).toEqual({
+      code: "limit:members_in_use",
+      message: "O Básico permite 1 usuário e a equipe tem 3 pessoas (convites pendentes contam). Remova pessoas ou cancele convites antes de trocar.",
+    });
+  });
+
+  it("usuários ilimitados: Padrão e Avançado nunca bloqueiam pela equipe nem mostram o número interno", () => {
+    for (const tier of ["pro", "avancado"] as const) {
+      expect(planChangeBlocker({ tier, period: "anual", accounts: tier === "pro" ? 5 : 200 }, { ...usage, members: 5000 })).toBeNull();
+    }
   });
 
   it("plataforma que o plano novo não tem", () => {

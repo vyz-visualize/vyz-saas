@@ -8,6 +8,7 @@ import { cache } from "react";
 import type { SourceOption } from "@/features/dashboards/model";
 import { syncSummary } from "@/features/integrations/sync-label";
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
+import { seatsLimit } from "@/features/projects/seats";
 import type { ProjectAccountsData, ProjectDashboardsData, ProjectHighlights, ProjectOverviewData, ProjectPeopleData, ProjectPerson, ProjectSummary } from "@/features/projects/types";
 import { hasRole, ROLE_RANK, type MemberRole } from "@/features/workspace/session";
 import { publicAssetUrl } from "@/lib/supabase/storage";
@@ -95,7 +96,7 @@ export async function getProjectPeople(projectId: string): Promise<ProjectPeople
   return {
     people,
     invitations: (invitations ?? []).map((i) => ({ id: i.id, email: i.email, role: i.role as "viewer" | "member" | "admin", expiresAt: i.expires_at })),
-    seats: { used: members + ((pending as { count: number | null }).count ?? 0), limit: ent.maxMembers },
+    seats: { used: members + ((pending as { count: number | null }).count ?? 0), limit: seatsLimit(ent.maxMembers) },
     actorRole: s.role,
     canManage,
   };

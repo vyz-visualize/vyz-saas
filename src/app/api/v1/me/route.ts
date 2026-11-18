@@ -1,6 +1,7 @@
 // GET /api/v1/me: quem está logado e seus workspaces (com plano). Usado pelo
 // app nativo logo depois do login.
 
+import { isUnlimitedMemberLimit } from "@/features/pricing/entitlements";
 import { apiJson, bearerSession, unauthorized } from "@/server/auth/bearer";
 
 export async function GET(request: Request) {
@@ -34,6 +35,8 @@ export async function GET(request: Request) {
         cancelAtPeriodEnd: !!a?.cancel_at_period_end,
         periodEnd: a?.current_period_end ?? null,
         maxMembers: a?.max_members ?? 1,
+        // o limite que o banco aplica (max_members); sem plano, 1
+        unlimitedMembers: !!a?.has_access && isUnlimitedMemberLimit(a?.max_members ?? 1),
       };
     }),
   });

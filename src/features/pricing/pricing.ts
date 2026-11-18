@@ -16,7 +16,8 @@ export const PRODUCT_LABEL: Record<Product, string> = { dash: "Dashboards", lp: 
 // Três planos fixos, cada um com o seu limite de workspaces (clientes ou marcas; no
 // banco, "projects"): Básico até 3, Padrão até 5 e Avançado ilimitado (como o
 // Personalizado). Não se escolhe quantidade: mais workspaces = plano de cima. Preço
-// por mês; o anual é o valor por mês equivalente, cobrado 12× de uma vez. O banco
+// por mês; o anual é o valor por mês equivalente, cobrado 12× de uma vez (~16–17% a menos
+// nos três). Dashboards e usuários de cada plano: entitlements.ts. O banco
 // aplica o mesmo limite (plan_entitlements.max_projects, nulo = sem limite; migration
 // 20261120090000_plan_projects).
 
@@ -35,15 +36,15 @@ export function projectsLabel(tier: PlanId, opts: { capital?: boolean } = {}): s
 }
 
 export const PLAN: Record<PlanId, Record<Period, number>> = {
-  base: { mensal: 5990, anual: 4825 }, // R$ 579,00/ano
-  pro: { mensal: 21990, anual: 18325 }, // R$ 2.199,00/ano
-  avancado: { mensal: 49990, anual: 40825 }, // R$ 4.899,00/ano
+  base: { mensal: 4990, anual: 4190 }, // R$ 49,90/mês; anual R$ 502,80/ano (R$ 41,90/mês)
+  pro: { mensal: 14990, anual: 12490 }, // R$ 149,90/mês; anual R$ 1.498,80/ano (R$ 124,90/mês)
+  avancado: { mensal: 29990, anual: 24990 }, // R$ 299,90/mês; anual R$ 2.998,80/ano (R$ 249,90/mês)
 };
 
 export const DASH_CUSTOM = { unico: 190000, recorrente: { setup: 99000, mensal: 19900 } }; // R$ 1.900 ou R$ 990 + R$ 199/mês
 export const LP_TEAM_PRICE = 95000; // "Landing page feita pelo time", já com GTM
 export const LP_CARE_MONTHLY = 9900; // hospedagem e ajustes, por LP, opcional
-export const DASH_EXTRA_PRICE = 9900; // R$ 99
+export const DASH_EXTRA_PRICE = 9900; // R$ 99, pagamento único (não é mensalidade)
 export const WHATSAPP_NUMBER = "5571999575898"; // trocar quando a VYZ tiver número próprio
 
 /** Teto de cada extra. */
@@ -162,6 +163,11 @@ export function startingPrice(plan: PlanId, period: Period): number {
 /** Total cobrado por ano no anual. */
 export const annualTotal = (plan: PlanId) => PLAN[plan].anual * 12;
 
+/** Maior desconto do anual entre os planos (seletores de período: "até −17%"). */
+export function maxAnnualSavingPct(): number {
+  return Math.max(...(["base", "pro", "avancado"] as const).map(annualSavingPct));
+}
+
 /** Desconto do anual sobre o mensal, em %, no preço de entrada. */
 export function annualSavingPct(plan: PlanId): number {
   return Math.round((1 - PLAN[plan].anual / PLAN[plan].mensal) * 100);
@@ -207,7 +213,7 @@ export function quote(s: PlanState): Quote {
   } else {
     once("sob", "Dashboard sob medida", s.sob, DASH_CUSTOM.unico);
   }
-  once("dash", "Dashboard adicional", hasPlan ? s.dash : 0, DASH_EXTRA_PRICE);
+  once("dash", "Dashboard adicional", hasPlan ? s.dash : 0, DASH_EXTRA_PRICE, `${s.dash} × ${brl(DASH_EXTRA_PRICE)} · pagamento único`);
 
   const planMonthlyNow = s.periodo === "anual" ? planAnual : planMensal;
   const monthly = planMonthlyNow + extrasMonthly;

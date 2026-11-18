@@ -11,12 +11,12 @@ import { Segmented } from "@/components/ui/Segmented";
 import { btn } from "@/components/ui/styles";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
 import { usePlan } from "@/features/marketing/state/PlanProvider";
-import { ENTITLEMENTS } from "@/features/pricing/entitlements";
+import { ENTITLEMENTS, membersLabel } from "@/features/pricing/entitlements";
 import {
   DEFAULT_STATE,
   PLAN,
   projectsLabel,
-  annualSavingPct,
+  maxAnnualSavingPct,
   LP_PLAN_PAGES,
   PLAN_LABEL,
   lpMonthly,
@@ -65,7 +65,7 @@ function dashCard(tier: PlanId, period: Period): Card {
     return {
       ...base,
       pitch: "Você conecta as contas e escolhe o template. Pronto em minutos.",
-      features: [`${projectsLabel("base", { capital: true })} (clientes)`, "Meta Ads, Google Ads e GA4, com visão geral", "1 conta por plataforma em cada workspace", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", "1 usuário"],
+      features: [`${projectsLabel("base", { capital: true })} (clientes)`, "Meta Ads, Google Ads e GA4, com visão geral", "1 conta por plataforma em cada workspace", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", membersLabel("base", { capital: true })],
     };
   }
   if (tier === "pro") {
@@ -78,7 +78,7 @@ function dashCard(tier: PlanId, period: Period): Card {
         `Até ${e.maxAccountsPerPlatform} contas por plataforma em cada workspace`,
         "+ TikTok Ads, LinkedIn Ads e CRMs (RD Station e HubSpot)",
         "Criativos em galeria, com previews",
-        `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,
+        `${e.maxDashboards} dashboards · ${membersLabel("pro")}`,
       ],
     };
   }
@@ -92,7 +92,7 @@ function dashCard(tier: PlanId, period: Period): Card {
       "Todas as plataformas: + X, Spotify, Globo, ChatGPT, YouTube, Shopee Ads e Mercado Ads (em breve)",
       "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos",
       "MMM, análise preditiva, correlações e estatística avançada",
-      `${e.maxDashboards} dashboards · ${e.maxMembers} usuários`,
+      `${e.maxDashboards} dashboards · ${membersLabel("avancado")}`,
     ],
   };
 }
@@ -110,9 +110,9 @@ function lpCard(tier: PlanId): Card {
     return { ...base, pitch: "Uma landing page feita pelo time, pronta para anúncio.", features: ["1 landing page feita pelo time", "GTM e pixel configurados", "Formulário com os leads no painel", "Link lps.vyzualize.com.br"] };
   }
   if (tier === "pro") {
-    return { ...base, pitch: "Três páginas para testar ofertas e públicos.", features: ["Tudo do Básico", "3 landing pages feitas pelo time", "Leads com a origem do clique (UTM)", `${e.maxMembers} usuários`] };
+    return { ...base, pitch: "Três páginas para testar ofertas e públicos.", features: ["Tudo do Básico", "3 landing pages feitas pelo time", "Leads com a origem do clique (UTM)", membersLabel(tier, { capital: true })] };
   }
-  return { ...base, pitch: "Cinco páginas para quem roda várias campanhas.", features: ["Tudo do Padrão", "5 landing pages feitas pelo time", "Todos os templates", `${e.maxMembers} usuários`] };
+  return { ...base, pitch: "Cinco páginas para quem roda várias campanhas.", features: ["Tudo do Padrão", "5 landing pages feitas pelo time", "Todos os templates", membersLabel(tier, { capital: true })] };
 }
 
 function PlanCard({ tier, product, period, card, featured, delay }: { tier: PlanId; product: Product; period: Period; card: Card; featured: boolean; delay: number }) {
@@ -240,7 +240,7 @@ export function Planos() {
                   {
                     value: "anual",
                     label: "Anual",
-                    badge: <span className="rounded-chip bg-accent-soft px-1.5 py-px text-[11px] font-semibold text-fg">até −{Math.max(...TIERS.map(annualSavingPct))}%</span>,
+                    badge: <span className="rounded-chip bg-accent-soft px-1.5 py-px text-[11px] font-semibold text-fg">até −{maxAnnualSavingPct()}%</span>,
                   },
                 ]}
               />

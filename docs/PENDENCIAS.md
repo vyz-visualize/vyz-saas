@@ -53,10 +53,12 @@ O que hoje funciona só no navegador e depende de backend, de integração ou de
 
 ## Decisões em aberto
 
-- **Limites de quantidade por plano** (em `features/pricing/entitlements.ts`), definidos provisoriamente:
-  - Dashboards: Base 2 (como na LP), Pro 10, Avançado 20, Personalizado 50.
-  - Landing pages publicadas: Base 1, Pro 3, Avançado 10, Personalizado 10.
-  - Contas contratadas: vêm do plano simulado (padrão 2, como na simulação da LP).
+- **Limites de quantidade por plano** (em `features/pricing/entitlements.ts`; o banco recebe pelo `npm run db:catalog`):
+  - Workspaces: Básico até 3, Padrão até 5, Avançado e Personalizado ilimitados.
+  - Dashboards: Básico 3, Padrão 10, Avançado 40, Personalizado 100. Dashboard adicional: R$ 99, pagamento único.
+  - Usuários: Básico 1; Padrão, Avançado e Personalizado ilimitados (`UNLIMITED_MEMBERS` = 1000 no banco, nunca aparece na tela).
+  - Landing pages publicadas: Básico 1, Padrão 3, Avançado 10, Personalizado 10.
+  - Preços: Básico R$ 49,90/mês (anual R$ 502,80, R$ 41,90/mês), Padrão R$ 149,90/mês (anual R$ 1.498,80, R$ 124,90/mês), Avançado R$ 299,90/mês (anual R$ 2.998,80, R$ 249,90/mês). O anual sai ~16–17% mais barato.
 - **Subdomínio das LPs**: o painel mostra `slug.vyz.app` como exemplo; o domínio real ainda não existe.
 - **Número de WhatsApp**: provisório (`WHATSAPP_NUMBER` em `features/pricing/pricing.ts`).
 - **`robots: noindex`**: segue ligado em todas as áreas, com o `// TODO: remover no lançamento`.

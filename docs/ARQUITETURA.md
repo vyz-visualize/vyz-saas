@@ -35,7 +35,7 @@ O VYZ vende dois produtos separados, cada um com 3 planos (Básico, Padrão, Ava
 | | Dashboards | Landing pages |
 |---|---|---|
 | Plano no banco | `base`, `pro`, `avancado` (+ `personalizado`) | `lp_base`, `lp_pro`, `lp_avancado` |
-| Preço | por contas conectadas, mensal ou anual | por página: R$ 950 de criação + R$ 99/mês de hospedagem cada (1, 3 ou 5 páginas) |
+| Preço | 3 planos fixos, mensal ou anual (~16–17% a menos): Básico R$ 49,90, Padrão R$ 149,90, Avançado R$ 299,90 por mês; limites de workspaces, dashboards e usuários em `entitlements.ts` | por página: R$ 950 de criação + R$ 99/mês de hospedagem cada (1, 3 ou 5 páginas) |
 | Depois do pagamento | onboarding (`/comecar`) e o primeiro dashboard | popup de boas-vindas com a galeria de templates |
 | Endereço | `dash.vyzualize.com.br/<cliente>` | `lps.vyzualize.com.br/<cliente>` |
 | Menu do painel | Início, Dashboards, Contas, Compartilhar, Plano, Configurações | Landing pages, Leads, Plano, Configurações |

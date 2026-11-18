@@ -3,6 +3,7 @@
 
 import type { DashboardListItem, SourceOption } from "@/features/dashboards/model";
 import type { Tier } from "@/features/pricing/entitlements";
+import type { Seats } from "./seats";
 import type { AdAccountDTO, ConnectionDTO } from "@/features/integrations/types";
 import type { ProviderId } from "@/features/integrations/providers";
 import type { Insight } from "@/features/insights/insights";
@@ -64,8 +65,8 @@ export type ProjectPeopleData = {
   people: ProjectPerson[];
   /** Convites pendentes que já incluem este workspace (só admin vê). */
   invitations: { id: string; email: string; role: "viewer" | "member" | "admin"; expiresAt: string }[];
-  /** Vagas de usuário do plano (membros + convites pendentes contam). */
-  seats: { used: number; limit: number };
+  /** Vagas de usuário do plano (membros + convites pendentes contam). limit null = ilimitado. */
+  seats: Seats;
   /** Papel de quem está vendo (para saber o que pode mudar). */
   actorRole: ProjectPerson["role"];
   canManage: boolean;
