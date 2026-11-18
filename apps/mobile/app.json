@@ -22,7 +22,7 @@
         "NSHumanReadableCopyright": "© 2026 VYZ Intelligence",
         "CFBundleDevelopmentRegion": "pt-BR"
       },
-      "buildNumber": "8"
+      "buildNumber": "9"
     },
     "locales": {
       "pt-BR": "./locales/pt-BR.json"
@@ -36,7 +36,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "app.vyz.painel",
-      "versionCode": 8,
+      "versionCode": 9,
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE"
