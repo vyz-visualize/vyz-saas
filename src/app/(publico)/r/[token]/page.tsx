@@ -12,6 +12,7 @@ import { showsSampleData } from "@/features/dashboards/sample-gate";
 import { anyDashboardTemplate } from "@/features/templates/live";
 import { loadDashboardData } from "@/server/dashboards/real-data";
 import { PublicShell, ShareMessage } from "@/features/share/SharedDashboard";
+import { VisitTracker } from "@/features/share/VisitTracker";
 import { openSharedDashboard } from "@/server/share/public";
 
 // Sem título com o nome do dashboard: o link pode circular.
@@ -37,27 +38,30 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
   const filters = parseFilters(query);
   // o link mostra o que o plano do dono cobre, sem oferta de plano para o cliente final
   const access = { tier: shared.tier, tab: q.tab, ads: q.ads, upsell: false };
-  const note = "Somente leitura · dados das contas conectadas";
+  // LGPD: quem abre sabe que a visita fica registrada (aba Acessos de quem compartilhou)
+  const note = "Somente leitura · dados das contas conectadas · as visitas ficam registradas para quem compartilhou";
 
   if (d.live) {
     return (
-      <PublicShell brand={shared.brand} note={note}>
-        <Suspense key={`${period}:${customDays}`} fallback={<LiveDashboardSkeleton />}>
-          <LiveDashboard
-            dashboardId={d.id}
-            period={period}
-            customDays={customDays}
-            pageIds={d.pages}
-            initialPage={q.page}
-            creatives={access}
-            metricPrefs={d.metricPrefs}
-            hideSpend={shared.hideSpend}
-            filters={filters}
-            db={shared.db}
-            toolbar={<PeriodNav period={period} customDays={customDays} />}
-          />
-        </Suspense>
-      </PublicShell>
+      <VisitTracker token={token}>
+        <PublicShell brand={shared.brand} note={note}>
+          <Suspense key={`${period}:${customDays}`} fallback={<LiveDashboardSkeleton />}>
+            <LiveDashboard
+              dashboardId={d.id}
+              period={period}
+              customDays={customDays}
+              pageIds={d.pages}
+              initialPage={q.page}
+              creatives={access}
+              metricPrefs={d.metricPrefs}
+              hideSpend={shared.hideSpend}
+              filters={filters}
+              db={shared.db}
+              toolbar={<PeriodNav period={period} customDays={customDays} />}
+            />
+          </Suspense>
+        </PublicShell>
+      </VisitTracker>
     );
   }
 
@@ -67,17 +71,19 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
   const { realData, linkedPlatforms, sourceExtras } = showsSampleData(d) ? {} : await loadDashboardData(d, template, { period, customDays, db: shared.db });
   if (!realData) return <ShareMessage kind="sample" />;
   return (
-    <PublicShell brand={shared.brand} note={note}>
-      <SampleDashboard
-        dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays }, metricPrefs: d.metricPrefs, layout: d.layout }}
-        brand={{ color: shared.brand.color ?? "", logo: undefined, hideVyz: true }}
-        hideSpend={shared.hideSpend}
-        initialPage={q.page}
-        initialFilters={filters}
-        realData={realData}
-        linkedPlatforms={linkedPlatforms}
-        sourceExtras={sourceExtras}
-      />
-    </PublicShell>
+    <VisitTracker token={token}>
+      <PublicShell brand={shared.brand} note={note}>
+        <SampleDashboard
+          dashboard={{ id: d.id, templateId: d.templateId, name: d.name, client: d.client, pages: d.pages, settings: { ...d.settings, period, customDays }, metricPrefs: d.metricPrefs, layout: d.layout }}
+          brand={{ color: shared.brand.color ?? "", logo: undefined, hideVyz: true }}
+          hideSpend={shared.hideSpend}
+          initialPage={q.page}
+          initialFilters={filters}
+          realData={realData}
+          linkedPlatforms={linkedPlatforms}
+          sourceExtras={sourceExtras}
+        />
+      </PublicShell>
+    </VisitTracker>
   );
 }

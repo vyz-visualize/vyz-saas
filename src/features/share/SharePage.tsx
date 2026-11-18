@@ -203,7 +203,7 @@ export function SharePage({ center, now, timeZone, canEdit }: Props) {
                         sub={
                           <>
                             <span className="tnum">
-                              …{l.tokenHint} · criado em {date(l.createdAt)}
+                              {l.recipientName ? `Para ${l.recipientName} · ` : ""}…{l.tokenHint} · criado em {date(l.createdAt)}
                             </span>
                             {l.hideSpend && <Badge tone="outline">sem investimento</Badge>}
                           </>

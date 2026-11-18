@@ -4,6 +4,7 @@
 // dashboards dele. O plano limita os projetos ativos; arquivar libera espaço.
 
 import {
+  Activity,
   Archive,
   BarChart3,
   MoreHorizontal,
@@ -16,6 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
+  Badge,
   EmptyState,
   Modal,
   ModalActions,
@@ -25,7 +27,7 @@ import {
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/Menu";
 import { btn } from "@/components/ui/styles";
 import { useToast } from "@/components/ui/Toast";
-import { shortDate } from "@/features/integrations/sync-label";
+import { relativeTime, shortDate } from "@/features/integrations/sync-label";
 import { projectHref, rememberProject } from "@/features/workspace/nav";
 import { useWorkspaceSession } from "@/features/workspace/WorkspaceProvider";
 import {
@@ -33,6 +35,7 @@ import {
   createProject,
   renameProject,
 } from "@/server/projects/actions";
+import { CLIENT_STATUS, type ProjectClientPulse } from "./client-activity";
 import type { ProjectDTO, ProjectsState } from "./types";
 import { WorkspaceAvatar } from "./WorkspaceAvatar";
 import { unlimitedProjects, PROJECT_LIMIT_HIDDEN_MESSAGE } from "@/features/pricing/entitlements";
@@ -71,6 +74,25 @@ function Metric({
           {label}
         </span>
       </span>
+    </Link>
+  );
+}
+
+/** Se o cliente está abrindo os links: leva à aba Acessos do workspace. */
+function ClientPulse({ projectId, pulse, now, timeZone }: { projectId: string; pulse: ProjectClientPulse | null; now: string; timeZone?: string }) {
+  const status = pulse?.status ?? "sem_link";
+  const text =
+    status === "sem_link" ? "Cliente ainda sem link" : status === "nunca_abriu" || !pulse?.lastVisitAt ? "Cliente ainda não abriu o link" : `Cliente abriu ${relativeTime(pulse.lastVisitAt, now, timeZone)}`;
+  return (
+    <Link
+      href={projectHref(projectId, "acessos")}
+      className="relative z-10 mt-2 flex items-center justify-between gap-2 rounded-control px-1 py-1 text-[12.5px] text-fg-2 outline-none transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      <span className="flex min-w-0 items-center gap-1.5">
+        <Activity size={14} aria-hidden className="shrink-0" />
+        <span className="truncate">{text}</span>
+      </span>
+      {status !== "sem_link" && <Badge tone={CLIENT_STATUS[status].tone} title={CLIENT_STATUS[status].text}>{CLIENT_STATUS[status].label}</Badge>}
     </Link>
   );
 }
@@ -319,6 +341,7 @@ export function ProjectsPage({ state, openNew = false }: { state: ProjectsState;
                   label={p.dashboards === 1 ? "dashboard" : "dashboards"}
                 />
               </div>
+              <ClientPulse projectId={p.id} pulse={p.client ?? null} now={state.now} timeZone={workspace.timezone} />
             </li>
           ))}
         </ul>

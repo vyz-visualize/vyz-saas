@@ -36,7 +36,7 @@ Regras: migration aplicada não se edita (corrige-se com outra); depois de toda 
 | 04 cobrança | `billing_customers`, `checkout_sessions`, `checkout_items`, `subscriptions`, `subscription_items`, `invoices`, `payment_transactions`, `service_orders`, `billing_events`; view `workspace_access` | pedido → pagamento → assinatura; faturas, cada transação, serviços a entregar, eventos de webhook (idempotência) |
 | 05 integrações | `connections`, `connection_secrets`, `oauth_states`, `ad_accounts`, `sync_runs` | login OAuth no Meta/Google, tokens no Vault, contas de anúncio, cada sincronização |
 | 06 métricas | `ad_campaigns`, `ads`, `ad_products`, `insights_account_daily`, `insights_campaign_daily`, `insights_ad_daily`, `insights_breakdown_daily`, `insights_search_term_daily`, `insights_product_daily` | armazém de métricas diárias sincronizadas |
-| 07 dashboards | `dashboards`, `dashboard_pages`, `dashboard_sources`, `share_links`, `scheduled_reports`, `scheduled_report_recipients`, `report_deliveries`, `dashboard_exports` | dashboards, links públicos (hash do token), relatórios e envios, exportações |
+| 07 dashboards | `dashboards`, `dashboard_pages`, `dashboard_sources`, `share_links`, `share_visits`, `scheduled_reports`, `scheduled_report_recipients`, `report_deliveries`, `dashboard_exports` | dashboards, links públicos (hash do token e para quem é), visitas aos links (aba Acessos), relatórios e envios, exportações |
 | 08 landing pages | `landing_pages`, `landing_page_versions`, `landing_page_submissions` | páginas, versões publicadas, leads dos formulários |
 | 09 limites | view `workspace_usage` | gatilhos que aplicam o plano no banco |
 | 10 histórico | `audit_events`, `subscription_changes`, `auth_events`, `activity_events`, `legal_acceptances` | histórico de tudo (ver abaixo) |
@@ -102,6 +102,7 @@ O app checa antes para mostrar a mensagem certa, mas quem garante é o banco: ch
 | `checkout_sessions` + `checkout_items` | cada pedido, com a seleção e o orçamento da época | servidor | sem prazo |
 | `auth_events` | cadastro, login e falhas, saída, troca e recuperação de senha, com IP e navegador | servidor | 2 anos |
 | `activity_events` | uso do produto (dashboard aberto, exportado, link visto, relatório enviado, sincronização) | servidor | 13 meses |
+| `share_visits` | cada visita ao link público: quando, tempo com a aba visível (até 4 h), telas vistas e tipo de aparelho; sem IP nem navegador | servidor (`record_share_visit`) | enquanto o link existir (sai com ele e com o dashboard) |
 | `legal_acceptances` | aceite de termos, privacidade e comunicações, com versão, IP e navegador | servidor | sem prazo |
 | `sync_runs`, `report_deliveries`, `dashboard_exports`, `landing_page_versions`, `billing_events` | histórico de cada operação do seu domínio | servidor / gatilho | sem prazo |
 

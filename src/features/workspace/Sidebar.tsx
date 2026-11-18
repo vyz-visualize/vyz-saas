@@ -105,7 +105,7 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
     rememberProject(id);
     // na troca, a pessoa continua na mesma aba (Dashboards de um vai para Dashboards do outro)
     const tab = projectFromPath(path)?.tab ?? "";
-    router.push(projectHref(id, (["dashboards", "contas", "pessoas", "ajustes"].includes(tab) ? tab : "") as Parameters<typeof projectHref>[1]));
+    router.push(projectHref(id, (["dashboards", "contas", "pessoas", "acessos", "ajustes"].includes(tab) ? tab : "") as Parameters<typeof projectHref>[1]));
   };
 
   return (

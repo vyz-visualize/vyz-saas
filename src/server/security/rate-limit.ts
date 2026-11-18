@@ -17,6 +17,8 @@ export const RATE_RULES = {
   checkout_ip: { windowSeconds: 60 * 60, max: 20 },
   oauth_start_user: { windowSeconds: 10 * 60, max: 20 },
   share_view_ip: { windowSeconds: 60, max: 120 },
+  /** Sinais da página aberta do link (a cada 30 s por aba, mais troca de tela). */
+  share_ping_ip: { windowSeconds: 60, max: 60 },
   lp_submit_ip: { windowSeconds: 10 * 60, max: 20 },
   whatsapp_code_user: { windowSeconds: 60 * 60, max: 5 },
   whatsapp_code_phone: { windowSeconds: 60 * 60, max: 3 },
