@@ -22,7 +22,7 @@ const RANK: Record<Tier, number> = { base: 0, pro: 1, avancado: 2, personalizado
 export type Entitlements = {
   dashboardTemplates: number;
   landingTemplates: number;
-  /** "core" = Meta, Google Ads e GA4. */
+  /** "all" em todos os planos de dashboards (sem restrição de plataforma); "core" só nas LPs, que não conectam contas. */
   platforms: "core" | "all";
   /** Páginas do dashboard liberadas até este nível. */
   pages: Tier;
@@ -64,7 +64,7 @@ const lpCount = (t: Tier) => LANDING_TEMPLATES.filter((x) => RANK_OF(x.tier) <= 
 export const UNLIMITED_MEMBERS = 1000;
 
 export const ENTITLEMENTS: Record<Tier, Entitlements> = {
-  base: { dashboardTemplates: dashCount("base"), landingTemplates: lpCount("base"), platforms: "core", pages: "base", creatives: "list", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, todo: "basic", whatsappReports: false, autoOptimize: false, maxDashboards: 3, maxLandingPages: 1, maxMembers: 1, maxAccountsPerPlatform: 1 },
+  base: { dashboardTemplates: dashCount("base"), landingTemplates: lpCount("base"), platforms: "all", pages: "base", creatives: "list", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, todo: "basic", whatsappReports: false, autoOptimize: false, maxDashboards: 3, maxLandingPages: 1, maxMembers: 1, maxAccountsPerPlatform: 1 },
   pro: { dashboardTemplates: dashCount("pro"), landingTemplates: lpCount("pro"), platforms: "all", pages: "pro", creatives: "gallery", whiteLabel: false, audio: "none", customDashboards: false, agentChat: true, agentVoice: false, todo: "basic", whatsappReports: false, autoOptimize: false, maxDashboards: 10, maxLandingPages: 3, maxMembers: UNLIMITED_MEMBERS, maxAccountsPerPlatform: 3 },
   avancado: { dashboardTemplates: dashCount("avancado"), landingTemplates: lpCount("avancado"), platforms: "all", pages: "avancado", creatives: "compare", whiteLabel: false, audio: "soon", customDashboards: false, agentChat: true, agentVoice: true, todo: "full", whatsappReports: true, autoOptimize: true, maxDashboards: 40, maxLandingPages: 10, maxMembers: UNLIMITED_MEMBERS, maxAccountsPerPlatform: 3 },
   personalizado: { dashboardTemplates: dashCount("personalizado"), landingTemplates: lpCount("personalizado"), platforms: "all", pages: "avancado", creatives: "compare", whiteLabel: true, audio: "soon", customDashboards: true, agentChat: true, agentVoice: true, todo: "full", whatsappReports: true, autoOptimize: true, maxDashboards: 100, maxLandingPages: 10, maxMembers: UNLIMITED_MEMBERS, maxAccountsPerPlatform: 10 },
@@ -122,16 +122,8 @@ export const LIMIT_ROWS: { label: string; value: (t: Tier) => string }[] = [
   { label: "Workspaces", value: (t) => (unlimitedProjects(t) ? "ilimitados" : `até ${PLAN_PROJECTS[t as PlanId]}`) },
   { label: "Templates de dashboard", value: (t) => String(ENTITLEMENTS[t].dashboardTemplates) },
   ...(SHOW_LANDING_PAGES ? [{ label: "Templates de landing page", value: (t: Tier) => String(ENTITLEMENTS[t].landingTemplates) }] : []),
-  {
-    label: "Plataformas",
-    value: (t) =>
-      ({
-        base: "Meta Ads, Google Ads e GA4",
-        pro: "+ TikTok, LinkedIn, RD Station e HubSpot",
-        avancado: "todas: + X, Spotify, Globo, ChatGPT, YouTube, Shopee e Mercado (em breve)",
-        personalizado: "todas",
-      })[t],
-  },
+  // sem restrição: todas em todos os planos (as que ainda não estão prontas entram quando ficarem)
+  { label: "Plataformas", value: () => "todas" },
   {
     label: "Páginas do dashboard",
     value: (t) => ({ base: "essenciais", pro: "+ Padrão", avancado: "todas", personalizado: "todas" })[t],

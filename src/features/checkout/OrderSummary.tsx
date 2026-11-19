@@ -9,7 +9,7 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { PendingChip } from "@/components/ui/kit";
 import { brl } from "@/lib/format";
-import { platformsForTier } from "@/features/accounts/platforms";
+import { availablePlatformsText } from "@/features/accounts/platforms";
 import { ENTITLEMENTS, membersLabel } from "@/features/pricing/entitlements";
 import { waLink } from "@/lib/whatsapp";
 import {
@@ -190,9 +190,7 @@ export function OrderSummary({
                 `${projectsLabel(plan, { capital: true })} (clientes ou marcas)${plan === "pro" ? ", compartilhados entre os usuários" : ""}`,
                 `${ENTITLEMENTS[plan].maxDashboards} dashboards`,
                 membersLabel(plan, { capital: true }),
-                platformsForTier(plan)
-                  .map((p) => p.name)
-                  .join(", "),
+                `Todas as plataformas: ${availablePlatformsText()}`,
               ].map((t) => (
                 <li key={t} className="flex gap-2">
                   <Check size={14} strokeWidth={2.5} aria-hidden className="mt-0.5 shrink-0 text-accent" />
