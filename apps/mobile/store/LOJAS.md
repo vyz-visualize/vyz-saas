@@ -21,7 +21,7 @@ Regras que valem para tudo abaixo:
 |---|---|
 | Nome do app | Vyzualize (embaixo do ícone também: `name` no `app.json`) |
 | Bundle ID (iOS) / Package (Android) | `app.vyz.painel` |
-| Versão | 1.0.0 (iOS build 1, Android versionCode 1) |
+| Versão | 1.0.0 (iOS build 10, Android versionCode 10, em 19/11/2026; o número fica no `app.json`) |
 | Idioma principal | Português (Brasil) |
 | Categoria | Negócios (secundária: Produtividade) |
 | Copyright | © 2026 VYZ Intelligence |
@@ -34,11 +34,10 @@ Regras que valem para tudo abaixo:
 
 Se o nome "Vyzualize" já estiver em uso na App Store, use `Vyzualize: Análise de Anúncios` (30 caracteres).
 
-**Conta da Apple: confirmar com o Gustavo antes de criar o app.** O vendedor
-que aparece na loja é o nome da conta. O Xcode tem hoje "Gustavo Lemos"
-(pessoa física, time `93TPYZYG8P`) e "LL SERVICOS DIGITAIS LTDA" (time
-`875W4SVP8N`). O desejado é "VYZ Intelligence", o que exige a conta de
-organização da VYZ (o D-U-N-S já está no nome da empresa).
+**Conta da Apple.** O app está no time `93TPYZYG8P` (Gustavo Lemos, pessoa
+física); o vendedor que aparece na loja é o nome da conta. Passar para
+"VYZ Intelligence" exige a conta de organização da VYZ (o D-U-N-S já está no
+nome da empresa). Mudar de conta é decisão do Gustavo.
 
 ## 2. Textos da ficha
 
@@ -170,11 +169,18 @@ Rastreamento: **Não**. Nada é usado para publicidade nem compartilhado com cor
 
 ## 6. Compras dentro do app
 
-Os IDs são fixos (não mudar). A lista completa com preços está em `pacotes-lojas.csv`: são 168 assinaturas (3 planos × mensal ou anual × 3 a 30 projetos). Para gerar a lista de novo: `npx tsx scripts/store/plan-products.ts`, na raiz do repositório.
+Os IDs são fixos (não mudar). São 6 assinaturas: 3 planos × mensal ou anual, `vyz_<plano>_<período>_ate<n>`. A lista com preços está em `pacotes-lojas.csv`; para gerar de novo: `npx tsx scripts/store/plan-products.ts > apps/mobile/store/pacotes-lojas.csv`, na raiz do repositório (a fonte é `packages/shared/src/store-plans.ts`).
+
+| Plano | Mensal | Anual |
+|---|---|---|
+| Básico | R$ 49,90 | R$ 499,90 |
+| Padrão | R$ 149,90 | R$ 1.499,90 |
+| Avançado | R$ 299,90 | R$ 2.999,90 |
+
+Os mesmos valores do site. Na Apple, só o Brasil vende; o preço tem de ser um ponto de preço da Apple (conferir antes de mudar o site).
 
 - **Grupo de assinaturas** (App Store): `Vyzualize Planos`.
   - Ordem de nível, do maior para o menor: Avançado, Padrão, Básico.
-  - Dentro de cada plano, mais projetos ficam acima de menos.
 - **Google Play:** uma assinatura por `product_id`, com um base plan mensal ou anual conforme o id, renovação automática.
 - **Créditos** (consumíveis): `vyz_creditos_1` (1 crédito, R$ 10) e `vyz_creditos_5` (5 créditos, R$ 40). Os antigos `vyz_creditos_100`/`vyz_creditos_500` foram abandonados: não enviar para revisão.
 - **RevenueCat:**
@@ -213,7 +219,7 @@ SHA256: FB:6D:47:6A:FB:34:40:13:81:D9:8A:B2:64:89:6E:92:AA:9F:96:EE:88:DE:91:68:
 
 ```
 cd apps/mobile
-store/gerar/build.sh android                       # → store/build/vyz-1.0.0-1.aab
+store/gerar/build.sh android                       # → store/build/vyz-<versão>-<versionCode>.aab
 TEAM_ID=<time da Apple> store/gerar/build.sh ios   # → archive + .ipa (com DESTINATION=upload, envia direto)
 store/gerar/build.sh ios-check                     # só confere que o iOS compila
 ```
@@ -223,20 +229,12 @@ store/gerar/build.sh ios-check                     # só confere que o iOS compi
   - Guardar uma cópia dos dois num cofre de senhas.
   - No primeiro envio, aceitar o **Play App Signing**: o Google guarda a chave final, e se a chave de envio se perder dá para trocar pelo suporte.
 - **A cada novo envio:** subir `ios.buildNumber` e `android.versionCode` no `app.json`.
-- **Gerar o build de novo depois de pôr o `google-services.json` e as chaves do RevenueCat** (o build novo também traz o nome "Vyzualize" embaixo do ícone). O `.aab` que já existe serve para o teste interno, mas não tem push no Android nem compras.
+- **Enviar para as lojas:** pelas APIs da Apple e do Play, com as chaves e o script que ficam fora do git, em `~/Documents/VYZ/Publicar` (guia `PUBLICAR.md` lá). TestFlight e faixa interna do Play podem ir direto; revisão da Apple e produção do Play, só com o ok do Gustavo, a cada vez.
 - **Auditoria do iOS:** roda sozinha no `build.sh ios`. Os "Android" que sobram são mensagens internas de bibliotecas, que nunca aparecem na tela.
 
-## 9. Ordem sugerida
+## 9. Situação (19/11/2026)
 
-1. Confirmar com o Gustavo a conta da Apple (seção 1).
-2. Criar o app "Vyzualize" no App Store Connect e no Play Console com os dados da seção 1.
-3. Configurar as credenciais da seção 7 e fazer o redeploy da Vercel.
-4. Cadastrar os produtos e o RevenueCat (seção 6) e pôr as chaves no `.env.production.local`.
-5. Rodar `build.sh android` e `build.sh ios` e enviar os builds.
-6. Teste interno: TestFlight (testadores internos, sem revisão) e faixa de teste interno do Play.
-7. Testar no aparelho:
-   - login com Apple e com Google;
-   - push de teste;
-   - compra no sandbox;
-   - excluir conta.
-8. Preencher a ficha (seções 2 a 5), subir os prints e enviar para a revisão.
+- **Google Play:** versionCode 10 em produção.
+- **App Store:** build 10 anexado à versão 1.0.0, esperando o envio para a revisão. O envio está travado por um formulário de conformidade pendente na conta (App Store Connect); quem preenche é o Gustavo.
+- **Preços:** os 12 valores da tabela da seção 6 aplicados nas duas lojas.
+- **Antes de cada envio:** subir o build, rodar a auditoria do iOS e conferir o plano da conta de demonstração (seção 4).

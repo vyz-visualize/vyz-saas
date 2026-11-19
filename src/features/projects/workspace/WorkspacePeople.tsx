@@ -20,8 +20,7 @@ import { addProjectMember, removeProjectMember } from "@/server/projects/actions
 import { changeMemberRole, inviteMember, revokeInvitation, type InviteResult } from "@/server/workspace/team";
 import { seatsView } from "../seats";
 import type { ProjectPeopleData, ProjectPerson } from "../types";
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+import { plural } from "@/lib/format";
 
 const ROLES: { role: MemberRole; icon: typeof Eye; access: string }[] = [
   { role: "viewer", icon: Eye, access: "Só os workspaces onde está" },

@@ -1,80 +1,56 @@
-# VYZ · Pendências (fase 1: só front-end)
+# VYZ · Pendências
 
-O que hoje funciona só no navegador e depende de backend, de integração ou de uma decisão. No produto, cada item aparece com um aviso discreto (`PendingChip`).
+Só o que ainda falta: credencial, aprovação de plataforma, decisão ou código. Quando um item ficar pronto, apague a linha. No produto, o que depende de algo externo aparece com o selo `PendingChip`.
 
-## Precisa de backend (Supabase)
+O que é do lançamento da cobrança está em `docs/LANCAMENTO.md`; o que é do armazém de dados do MMM, em `docs/MMM.md` (seção 12).
 
-| Item | Como está hoje | Aviso no produto |
-|---|---|---|
-| Login real (link mágico + Google) e proteção de `/painel` | Login real (link mágico + Google) e proteção de `/painel` via `proxy.ts` precisam do Supabase. Hoje `/painel` é aberto: `/entrar` só avisa e leva ao painel de demonstração; "Sair" volta para `/entrar` | "Login precisa do Supabase" (`/entrar`) e "Modo demonstração · dados neste navegador" (topo do painel) |
-| Login, workspace e membros da equipe | Workspace único, salvo no navegador | "Precisa conectar Supabase" (topo do painel e Configurações) |
-| Plano real da conta | Seletor "Simular plano" (Base, Pro, Avançado, Personalizado) | "Precisa conectar Supabase · o plano real virá da conta" |
-| Persistência | `LocalStore` (localStorage, `vyz:v1:`). Trocar por `SupabaseStore` com a mesma interface `Store` (`src/lib/store/store.ts`) | — |
-| Links compartilhados com dados reais | `/r/[id]#payload`: configuração comprimida no fragmento, dados de amostra | "Links com dados reais e revogação precisam do Supabase" |
-| Revogar link | Vale só no navegador de quem revogou | idem |
-| Relatórios agendados (PDF por e-mail, resumo no WhatsApp) | Agendamento salvo localmente, sem envio | "Envio agendado precisa de backend" |
-| Histórico de exportações entre aparelhos | Só neste navegador | — |
-| Dashboards e LPs em outro aparelho | Só neste navegador (o link público e a prévia de LP funcionam em qualquer um) | Estado vazio explica |
+## Plataformas
+
+Situação de cada uma em `docs/PLATAFORMAS.md`. Funcionam de ponta a ponta hoje: Meta Ads, Instagram, Facebook, Google Ads e GA4 (`AVAILABLE_PLATFORMS` em `src/features/accounts/platforms.ts`).
+
+| Item | O que falta |
+|---|---|
+| Meta | Análise do App (Acesso Avançado para `ads_read`, `ads_management` e `business_management`) |
+| Google | Verificação do app no Google (escopos `adwords` e `analytics.readonly`); hoje no nível Exploração da API |
+| TikTok, LinkedIn, RD Station, HubSpot, Pipedrive, Kommo | Login pronto no código; falta o app aprovado na plataforma e as credenciais na Vercel |
+| Mercado Ads | Login pronto no código; app ainda não criado |
+| Planilha do Google fechada | Hoje a importação só lê planilha aberta por link; a do lançamento (Fachada) lê fechada com a conta de serviço em `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON`, que faltava criar e pôr na Vercel (13/11, `docs/TEMPLATES.md`) |
 
 ## Assistente VYZ
 
-| Item | Como está hoje | Aviso no produto |
+| Item | Como está | O que falta |
 |---|---|---|
-| `LlmEngine` (respostas abertas, via route handler no servidor) | Só o `LocalEngine`: intenções por palavra-chave, sem API. O ponto de troca está pronto em `features/agent/engine/index.ts` | "Motor local · dados da demo" no drawer |
-| "Pedir ao Vyz" no editor: ligado ao Claude (Opus 5.5, esforço baixo, ~5 s e ~US$ 0,01 por pedido) | Com `CLAUDE_API_KEY`, o pedido vai para `server/dashboards/ask.ts` (login com plano ativo, 40 pedidos por hora por pessoa); a resposta passa pelas regras da aba (`features/dashboards/ask/ai-plan.ts`). Sem chave, sem plano ou com erro, vale a leitura local (`planner.ts`). Falta: medir em produção quantos pedidos caem na leitura local e o custo por mês | Exemplos clicáveis quando não entende |
-| Persistência da conversa | Só na memória da aba; fechar a aba ou "limpar" apaga | — |
-| Reconhecimento de voz em todos os navegadores | Web Speech API: funciona no Chrome e no Edge; no Firefox e em parte do Safari o microfone some e fica o texto | — |
-| Dados reais nas respostas | Mesmos dados de amostra do painel (`datasetFor`) | "Amostra · dados fictícios" nos dashboards |
+| Respostas abertas (`LlmEngine`) | Só o `LocalEngine` (intenções por palavra-chave, com os dados da conta vindos do servidor). O ponto de troca é `src/features/agent/engine/index.ts` | Um motor que chame o modelo por um route handler, com a mesma interface `VyzEngine` |
+| "Pedir ao Vyz" no editor | Com `CLAUDE_API_KEY`, vai para `src/server/dashboards/ask.ts` (40 pedidos por hora por pessoa); sem chave ou com erro, vale a leitura local (`planner.ts`) | Medir em produção quantos pedidos caem na leitura local e o custo por mês |
+| Conversa | Só na memória da aba | Decidir se guarda |
+| Voz | Web Speech API: Chrome e Edge; no Firefox e em parte do Safari fica só o texto | Nada, enquanto o navegador não oferecer |
+| Análise por áudio | "Em breve" (`audio: "soon"` em `entitlements.ts`) | Construir |
 
-## Precisa de integração com as plataformas
+## Métricas e dashboards
 
-| Item | Como está hoje | Aviso no produto |
+| Item | Como está | O que falta |
 |---|---|---|
-| Conexão das contas (OAuth Meta, Google Ads, GA4, TikTok, LinkedIn, Mercado Ads, Shopee, CRMs) | Cadastro por ID com validação de formato; status "Aguardando conexão" | "Conexão automática (OAuth) em breve" |
-| Dados reais nos widgets | `MockSource` determinística (seed por dashboard). Criar `DbSource` com a interface `DataSource` (`src/features/metrics/source.ts`) | "Dados reais precisam de conexão" + "Amostra · dados fictícios" |
-| Venda deduplicada, CTR ponderado e maturação | Regras prontas em `features/metrics/compute.ts`, aplicadas aos dados de amostra | — |
-| Análise por áudio | Página "em breve" | "em breve" |
+| Alcance do período (Meta) | "Alcance médio por dia" | Pedir à Meta o alcance do intervalo inteiro (pessoas únicas não somam entre dias) e, com ele, a frequência do período |
+| Métricas no app | `/api/v1/dashboards/:id` e o app ignoram `metric_prefs` | Ler a personalização na API e no app |
+| Ordem dos cards | Segue o catálogo; soltar um card só adiciona | Guardar a ordem em `metric_prefs` |
+| Visitas ao perfil (Meta) | A coluna `insights_ad_daily.profile_visits` existe, mas só o gerador simulado preenche | Confirmar o campo na API da Meta e mapear em `src/server/sync/live/map.ts` |
+| Data de início do anúncio | O banco não guarda; "Dias veiculados" e "Dia 1" valem dentro do período | Guardar a data |
 
-## Métricas do dashboard ("Personalizar")
+## Landing pages e site
 
-| Item | Como está hoje | O que falta |
+| Item | Como está | O que falta |
 |---|---|---|
-| Alcance único do período (Meta) | "Alcance médio por dia": a média do alcance diário. A frequência é a média por dia (impressões ÷ alcance, dia a dia), coerente com ele | Pedir à Meta o alcance pelo intervalo inteiro: pessoas únicas não somam entre dias. Com isso dá para mostrar também a frequência do período |
-| App mobile | Mostra os cards padrão e não respeita a personalização nem esconde as colunas | Ler `metric_prefs` em `/api/v1/dashboards/:id` e no app |
-| Reordenar os cards | A ordem segue o padrão do template, e soltar um card só adiciona | Guardar a ordem no `metric_prefs` (hoje `normalizeSection` regrava na ordem do catálogo) |
-
-## Precisa de hospedagem
-
-| Item | Como está hoje | Aviso no produto |
-|---|---|---|
-| Publicar LP no subdomínio (`slug.vyz.app`) | Só a prévia em `/p/[id]#conteúdo` | "Publicação precisa de hospedagem" |
-| Teste do disparo de GTM, Pixel e conversões | Só validação de formato dos IDs | "Teste do disparo precisa de publicação" |
-| Domínio do site (`metadataBase`) | Não definido: a URL da imagem Open Graph sai relativa ao host | — |
-
-## Decisões em aberto
-
-- **Limites de quantidade por plano** (em `features/pricing/entitlements.ts`; o banco recebe pelo `npm run db:catalog`):
-  - Workspaces: Básico até 3, Padrão até 5, Avançado e Personalizado ilimitados.
-  - Dashboards: Básico 3, Padrão 10, Avançado 40, Personalizado 100. Dashboard adicional: R$ 99, pagamento único.
-  - Usuários: Básico 1; Padrão, Avançado e Personalizado ilimitados (`UNLIMITED_MEMBERS` = 1000 no banco, nunca aparece na tela).
-  - Landing pages publicadas: Básico 1, Padrão 3, Avançado 10, Personalizado 10.
-  - Preços: Básico R$ 49,90/mês ou R$ 499,90/ano, Padrão R$ 149,90/mês ou R$ 1.499,90/ano, Avançado R$ 299,90/mês ou R$ 2.999,90/ano. O anual sai ~17% mais barato.
-  - O anual é o total do ano (`PLAN_YEAR`), escolhido entre os pontos de preço da Apple (que não tem R$ 502,80 nem os outros "por mês × 12"). Não divide por 12: o catálogo e os itens guardam o por mês arredondado (R$ 41,66) e a cobrança usa o total exato; o banco aceita só essa diferença (migração `20261122090000_annual_exact_total`).
-- **Subdomínio das LPs**: o painel mostra `slug.vyz.app` como exemplo; o domínio real ainda não existe.
-- **Número de WhatsApp**: provisório (`WHATSAPP_NUMBER` em `features/pricing/pricing.ts`).
-- **`robots: noindex`**: segue ligado em todas as áreas, com o `// TODO: remover no lançamento`.
-- **Lighthouse mobile ≥ 90 na LP**: as medições locais oscilaram entre 83 e 93 (máquina carregada). O LCP real acontece na primeira pintura; a nota é puxada pelo JavaScript (React, runtime do Next e motion). Medir no PageSpeed depois do deploy.
-
-## Criativos
-
-- **Visitas ao perfil**: `insights_ad_daily.profile_visits` existe, mas o campo real na API da Meta ainda vai ser confirmado. Hoje só o gerador simulado preenche.
-- **Fonte real**: as colunas novas de `insights_ad_daily`, `insights_campaign_daily` e `ads.post_url` só têm dados simulados até a importação real existir (`liveSource`, em `server/sync/source.ts`). Ao ligar: usar `readMetaActions` e confirmar se os percentuais de topo do Google vêm como fração (a coluna só aceita de 0 a 1).
-- **Data de início do anúncio**: o banco não guarda. "Dias veiculados" e "Dia 1" valem dentro do período selecionado.
+| Venda de LP | Desligada (`SHOW_LANDING_PAGES = false` em `src/lib/flags.ts`); o painel mostra "em breve" e a lista de espera | Decidir quando abrir |
+| Publicar LP em subdomínio | Só em `/p/<slug>`; a tela mostra `slug.vyz.app` como exemplo | Domínio e hospedagem das LPs |
+| Teste de GTM e Pixel | As tags só rodam na página publicada | Depende da publicação |
+| Indexação do site | A home segue com `noindex` até `SITE_INDEXABLE = true` (`src/lib/flags.ts`); as páginas legais já são indexáveis | Virar no lançamento |
+| WhatsApp do site | Número provisório (`WHATSAPP_NUMBER` em `src/features/pricing/pricing.ts`) | Número próprio da VYZ |
+| Lighthouse mobile da home | Medições locais entre 83 e 93 | Medir no PageSpeed com o site no ar |
 
 ## Privacidade e exclusão de dados
 
-| Item | Como está hoje | O que falta |
+| Item | Como está | O que falta |
 |---|---|---|
-| Retenção dos eventos de pagamento | `billing_events` (Stripe) e `store_events` (App Store e Play Store) guardam o `payload` inteiro de cada webhook, que pode ter nome, e-mail e endereço de quem pagou. Não há prazo: nada apaga essas linhas, nem a exclusão de conta | Definir o prazo (o fiscal, 5 anos, ou menos se o payload não for prova fiscal) e incluir na rotina de manutenção, ou guardar só os campos necessários |
-| "Excluir conta" no app | `prepare_account_deletion` passa a propriedade (ou encerra a assinatura) e tira a pessoa dos workspaces. Não apaga os workspaces de que ela era o único membro, nem revoga o acesso na Meta e no Google, nem remove os arquivos do Storage | Fazer o app seguir o mesmo caminho do script interno (`scripts/admin/delete-account-data.ts`): lógica em `server/admin/account-deletion.ts` e revogação em `server/admin/revoke-access.ts` |
-| Retenção de 5 anos (aceites, atividade, auditoria) | Rotina criada em **simulação** (migração `20261109120000_retention_five_years.sql`): roda na limpeza diária (`vyz-housekeeping`, 06:00 UTC), conta as linhas com mais de 5 anos em `legal_acceptances`, `activity_events` e `audit_events` e registra em `private.retention_runs`, sem apagar. Cobre também a partição padrão (`*_default`), que a retenção por partição nunca derruba | Aplicar a migração; acompanhar `select * from private.retention_runs order by ran_at desc`; para liberar, uma migração com `update private.retention_policy set apply = true, updated_at = now();` |
+| Eventos de pagamento | `billing_events` (Stripe) e `store_events` (lojas) guardam o `payload` inteiro do webhook, que pode ter nome, e-mail e endereço. Nada apaga essas linhas, nem a exclusão de conta | Definir o prazo e incluir na limpeza, ou guardar só os campos necessários |
+| "Excluir conta" no app | `DELETE /api/v1/account` só chama `prepare_account_deletion` e apaga o login. Não apaga workspaces de que a pessoa era o único membro, não revoga o acesso na Meta e no Google e não remove arquivos do Storage | Seguir o caminho do script interno (`src/server/admin/account-deletion.ts` e `revoke-access.ts`; `docs/EXCLUSAO-DE-DADOS.md`) |
+| Retenção de 5 anos | Em **simulação** (migração `20261109120000_retention_five_years.sql`): a limpeza diária conta as linhas com mais de 5 anos em `legal_acceptances`, `activity_events` e `audit_events` e registra em `private.retention_runs`, sem apagar | Acompanhar `private.retention_runs` e, para liberar, uma migração com `update private.retention_policy set apply = true, updated_at = now();` |

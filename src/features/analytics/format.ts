@@ -6,8 +6,6 @@ import type { ValueFormat } from "./types";
 
 export const HIDDEN = "•••";
 
-export type Money = { currency: string };
-
 /** R$ 1.234,56 (ou "USD 1.234,56" fora do real). */
 export function money(v: number | null | undefined, cur = "BRL", { decimals = true }: { decimals?: boolean } = {}): string {
   if (v == null || !Number.isFinite(v)) return "—";

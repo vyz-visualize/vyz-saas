@@ -12,7 +12,6 @@ export type MetricScope = "meta" | "google" | "import" | "sample";
 
 export const METRIC_GROUP_LABEL: Record<MetricGroup, string> = { gerais: "Gerais", conversoes: "Conversões", custos: "Custos", taxas: "Taxas", video: "Vídeo", engajamento: "Engajamento" };
 export const METRIC_GROUPS: MetricGroup[] = ["gerais", "conversoes", "custos", "taxas", "video", "engajamento"];
-export const METRIC_SECTION_LABEL: Record<MetricSection, string> = { kpis: "Cards de KPI", columns: "Tabelas" };
 
 /** Quantos cards cabem sem quebrar a grade (2 linhas na largura maior). */
 export const KPI_MAX = 10;

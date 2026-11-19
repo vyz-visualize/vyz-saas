@@ -19,7 +19,7 @@ import { generateGoogle } from "./mock/google";
 import { generateMeta } from "./mock/meta";
 import type { MockAccountDataset, MockContext } from "./mock/shared";
 
-export type { MockAccountDataset, MockStories } from "./mock/shared";
+export type { MockAccountDataset,  } from "./mock/shared";
 
 export type GenerateAccountInput = {
   platform: SyncPlatform;

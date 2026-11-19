@@ -20,11 +20,10 @@ import { adStats, axisLabel, chartRange, compareTable, COMPARE_METRICS, defaultA
 import { MAX_COMPARE, MIN_COMPARE } from "./limits";
 import { OBJECTIVE_LABEL, objectiveKey } from "./objectives";
 import { useQueryParamWriter } from "./url-state";
+import { fold } from "@/lib/text";
 
 /** Uma cor por anúncio. Mesmas cores nos temas claro e escuro. */
 const COLORS = ["var(--accent)", "#C2703D", "#5B7FA6"] as const;
-
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const postPlace = (url: string) => (/instagram/i.test(url) ? "Instagram" : /facebook|fb\.com/i.test(url) ? "Facebook" : null);
 
 export function CompareView({ data }: { data: Pick<CreativesData, "compare" | "initialAds" | "hideSpend" | "currency"> }) {

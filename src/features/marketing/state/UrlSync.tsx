@@ -26,8 +26,3 @@ export function UrlSync() {
 
   return null;
 }
-
-/** URL atual da simulação (para WhatsApp e "Copiar link"). */
-export function simulationUrl(query: string): string {
-  return `${window.location.origin}${window.location.pathname}?${query}`;
-}

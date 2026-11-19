@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "check:unused": "npx knip@6 --no-progress",
     "db:push": "sh -c 'set -a; . ./.env.local; set +a; supabase db push --db-url \"$SUPABASE_DB_URL\"'",
     "db:new": "supabase migration new",
     "db:types": "tsx scripts/db/gen-types.ts",
@@ -20,7 +21,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.9.0",
-    "@base-ui/react": "^1.9.0",
     "@number-flow/react": "^0.6.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",

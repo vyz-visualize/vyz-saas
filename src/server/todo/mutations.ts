@@ -31,7 +31,6 @@ export const TaskPatch = z
 export type TaskPatchInput = z.infer<typeof TaskPatch>;
 
 export const TaskCreate = TaskPatch.extend({ title: z.string().trim().min(1, "Dê um título à tarefa.").max(200, "Até 200 caracteres.") });
-export type TaskCreateInput = z.infer<typeof TaskCreate>;
 
 const FULL_ONLY = ["assignees", "startDate", "groupId"] as const;
 

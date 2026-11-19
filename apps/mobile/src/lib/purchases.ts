@@ -46,7 +46,7 @@ export async function buy(pkg: PurchasesPackage): Promise<boolean> {
 }
 
 /** Os 6 produtos de plano (3 planos × mensal e anual), na ordem da tela. */
-export const PLAN_PRODUCT_IDS = STORE_PLAN_TIERS.flatMap((tier) => STORE_PLAN_PERIODS.map((period) => storePlanProductId({ tier, period })));
+const PLAN_PRODUCT_IDS = STORE_PLAN_TIERS.flatMap((tier) => STORE_PLAN_PERIODS.map((period) => storePlanProductId({ tier, period })));
 
 export type PlanCatalog = {
   /** Produto da loja por id (vyz_<plano>_<período>_ate<n>). */

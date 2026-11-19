@@ -4,12 +4,11 @@
 // ajustes → revisar. O estado vive na tela; quem grava é o servidor
 // (createDashboard / updateDashboard), que confere plano, páginas e contas de novo.
 
-import { ArrowDown, ArrowLeft, ArrowRight, Check, GripVertical, Lock } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, Check, GripVertical } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition, type ReactNode } from "react";
 import { ColorField } from "@/components/ui/ColorField";
-import { FileInput, readImage } from "@/components/ui/FileInput";
-import { Checkbox, LockBadge, PendingChip, SelectField, TextField } from "@/components/ui/kit";
+import { Checkbox, LockBadge, PendingChip } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { PLATFORMS } from "@/features/accounts/platforms";
 import { isGenericAdPlatform } from "@/features/accounts/connection-modes";
@@ -19,39 +18,21 @@ import { anyDashboardTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/featu
 import { composePages } from "@/features/templates/dashboards/composed";
 import { PAGES } from "@/features/templates/pages";
 import type { DashboardTemplate, PageId } from "@/features/templates/types";
-import { ATTRIBUTIONS, PERIODS, type PeriodId } from "@/features/workspace/types";
+import { ATTRIBUTIONS, PERIODS } from "@/features/workspace/types";
 import { brl } from "@/lib/format";
 import { createDashboard, updateDashboard } from "@/server/dashboards/actions";
+import { breakEvenRoas, draftBaseFrom, fieldsFromDraft, type DraftBase } from "./draft-fields";
 import { allowedPages, defaultPages, pageOptions, type DashboardDetail, type SourceOption } from "./model";
+import { SettingsFields } from "./SettingsFields";
 import type { DashboardFields } from "./schema";
 import { ModelPicker } from "./ModelPicker";
 
 const STEPS = ["Template", "Contas", "Páginas", "Metas e ajustes", "Revisar"];
 const DEFAULT_MARGIN = 0.4;
 
-const reais = (cents: number) => (cents ? String(Math.round(cents / 100)) : "");
-const cents = (v: string) => Math.round((Number(v.replace(/\./g, "").replace(",", ".")) || 0) * 100);
-const roas = (margin: number) => (1 / margin).toFixed(1).replace(".", ",");
+type Draft = DraftBase & { templateId: string | null };
 
-type Draft = Omit<DashboardFields, "pages"> & { templateId: string | null; pages: PageId[] };
-
-function draftFrom(d: DashboardDetail): Draft {
-  return {
-    templateId: d.templateId,
-    name: d.name,
-    client: d.client,
-    goal: d.settings.goal,
-    budget: d.settings.budget,
-    margin: d.margin,
-    period: d.settings.period,
-    customDays: d.settings.customDays,
-    attribution: d.settings.attribution,
-    pages: d.pages,
-    accountIds: d.sources.map((s) => s.id),
-    brandColor: d.brand?.color || null,
-    hideVyz: !!d.brand?.hideVyz,
-  };
-}
+const draftFrom = (d: DashboardDetail): Draft => ({ templateId: d.templateId, ...draftBaseFrom(d) });
 
 const EMPTY: Draft = {
   templateId: null,
@@ -173,20 +154,7 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
   function submit() {
     if (!t) return;
     setError(null);
-    const fields: DashboardFields = {
-      name: draft.name.trim() || t.name,
-      client: draft.client.trim(),
-      goal: draft.goal,
-      budget: draft.budget,
-      margin: draft.margin,
-      period: draft.period,
-      customDays: draft.customDays,
-      attribution: draft.attribution,
-      pages: draft.pages,
-      accountIds: pickAccounts ? draft.accountIds : [],
-      brandColor: whiteLabel ? draft.brandColor : null,
-      hideVyz: whiteLabel ? draft.hideVyz : false,
-    };
+    const fields: DashboardFields = fieldsFromDraft(draft, { fallbackName: t.name, pickAccounts, whiteLabel });
     start(async () => {
       const r = dashboard ? await updateDashboard(dashboard.id, fields) : await createDashboard({ ...fields, templateId: t.id });
       // sucesso redireciona para o dashboard; aqui só chegam os erros
@@ -336,49 +304,7 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
         <div className="space-y-4">
           <Section title="Metas e ajustes">
             <div className="grid gap-4 sm:grid-cols-2">
-              <TextField label="Nome do dashboard" value={draft.name} placeholder={t.name} error={error?.fields?.name} onChange={(name) => save({ name })} />
-              <TextField label="Cliente" value={draft.client} placeholder="Ex.: Loja Verde" error={error?.fields?.client} onChange={(client) => save({ client })} />
-              <TextField
-                label={isLeadProfile ? "Meta de CPL" : "Meta de CPA"}
-                prefix="R$"
-                inputMode="numeric"
-                value={reais(draft.goal)}
-                placeholder="60"
-                hint="Vira a linha tracejada nos gráficos."
-                onChange={(v) => save({ goal: cents(v) })}
-              />
-              <TextField
-                label="Margem"
-                suffix="%"
-                inputMode="numeric"
-                value={draft.margin ? String(Math.round(draft.margin * 100)) : ""}
-                placeholder="sem margem"
-                hint={draft.margin ? `ROAS de equilíbrio = 1 ÷ margem = ${roas(draft.margin)}` : "Sem margem, o equilíbrio é ROAS 1 (receita = investimento)."}
-                onChange={(v) => {
-                  const n = Number(v.replace(/\D/g, ""));
-                  save({ margin: n > 0 ? Math.min(100, n) / 100 : null });
-                }}
-              />
-              <TextField
-                label="Verba mensal"
-                prefix="R$"
-                inputMode="numeric"
-                value={reais(draft.budget)}
-                placeholder="50000"
-                hint="Usada no pacing e na projeção do mês."
-                onChange={(v) => save({ budget: cents(v) })}
-              />
-              <SelectField label="Período padrão" value={draft.period} onChange={(v) => save({ period: v as PeriodId })} options={PERIODS} />
-              {draft.period === "custom" && (
-                <TextField
-                  label="Dias do período personalizado"
-                  inputMode="numeric"
-                  value={String(draft.customDays)}
-                  hint="De 3 a 60 dias, terminando ontem."
-                  onChange={(v) => save({ customDays: Math.min(60, Math.max(3, Number(v.replace(/\D/g, "")) || 3)) })}
-                />
-              )}
-              <SelectField label="Janela de atribuição exibida" value={draft.attribution} onChange={(v) => save({ attribution: v })} options={ATTRIBUTIONS} />
+              <SettingsFields draft={draft} save={save} placeholderName={t.name} errors={error?.fields} goalLabel={isLeadProfile ? "Meta de CPL" : "Meta de CPA"} />
             </div>
           </Section>
 
@@ -417,7 +343,7 @@ export function NewDashboardFlow({ dashboard, sources, tier, pagesTier, whiteLab
             />
             <Info label="Páginas" value={draft.pages.map((p) => PAGES[p].name).join(", ") || "nenhuma"} />
             <Info label={isLeadProfile ? "Meta de CPL" : "Meta de CPA"} value={draft.goal ? brl(draft.goal, { decimals: false }) : "automática"} />
-            <Info label="Margem e equilíbrio" value={draft.margin ? `${Math.round(draft.margin * 100)}% · ROAS ${roas(draft.margin)}` : "sem margem · ROAS 1"} />
+            <Info label="Margem e equilíbrio" value={draft.margin ? `${Math.round(draft.margin * 100)}% · ROAS ${breakEvenRoas(draft.margin)}` : "sem margem · ROAS 1"} />
             <Info label="Verba mensal" value={draft.budget ? brl(draft.budget, { decimals: false }) : "automática"} />
             <Info label="Período e atribuição" value={`${PERIODS.find((p) => p.value === draft.period)?.label} · ${ATTRIBUTIONS.find((a) => a.value === draft.attribution)?.label}`} />
           </dl>
@@ -515,49 +441,6 @@ function Info({ label, value }: { label: string; value: string }) {
     <div>
       <dt className="text-[12.5px] text-fg-2">{label}</dt>
       <dd className="font-medium">{value}</dd>
-    </div>
-  );
-}
-
-/** Logo (upload em memória, guardado como dataURL), cor principal e "ocultar VYZ". */
-export function BrandFields({ value, onChange }: { value: { logo?: string; color: string; hideVyz: boolean }; onChange: (v: { logo?: string; color: string; hideVyz: boolean }) => void }) {
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <div className="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-start">
-      <div className="flex size-24 items-center justify-center overflow-hidden rounded-card border border-dashed border-line bg-bg">
-        {value.logo ? (
-          // eslint-disable-next-line @next/next/no-img-element -- dataURL local
-          <img src={value.logo} alt="Logo atual" className="max-h-20 max-w-20 object-contain" />
-        ) : (
-          <Lock size={18} aria-hidden className="text-fg-2" />
-        )}
-      </div>
-      <div className="space-y-3">
-        <FileInput
-          label="Logo"
-          hint="PNG, JPG, SVG ou WebP, até 300 KB"
-          accept="image/png,image/jpeg,image/svg+xml,image/webp"
-          error={error}
-          onFile={(f) =>
-            readImage(
-              f,
-              300_000,
-              (logo) => {
-                setError(null);
-                onChange({ ...value, logo });
-              },
-              setError,
-            )
-          }
-        />
-        <ColorField label="Cor principal" value={value.color} onChange={(color) => onChange({ ...value, color })} />
-        <Checkbox label="Ocultar a marca VYZ (dashboard, link e PDF)" checked={value.hideVyz} onChange={(hideVyz) => onChange({ ...value, hideVyz })} />
-        {value.logo && (
-          <button type="button" className={`${btn.ghost} h-8 px-2 text-[13px]`} onClick={() => onChange({ ...value, logo: undefined })}>
-            Remover logo
-          </button>
-        )}
-      </div>
     </div>
   );
 }

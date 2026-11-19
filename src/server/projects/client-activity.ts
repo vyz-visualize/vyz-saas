@@ -9,8 +9,8 @@ import { cache } from "react";
 import { projectPulses, summarizeClientActivity, type ClientLink, type ClientVisit, type ProjectClientActivity, type ProjectClientPulse, type VisitDevice } from "@/features/projects/client-activity";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
-import { getWorkspaceSession } from "@/server/auth/workspace";
-import { appError, unwrap } from "@/server/supabase/errors";
+import { currentWorkspaceSession } from "@/server/auth/workspace";
+import { unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 
 const DAY = 86_400_000;
@@ -20,14 +20,8 @@ const MAX_VISITS = 2000;
 
 const pageName = (id: string) => PAGES[id as PageId]?.name ?? id;
 
-async function session() {
-  const s = await getWorkspaceSession();
-  if (!s) throw appError("auth:required");
-  return s;
-}
-
 export const getProjectClientActivity = cache(async (projectId: string): Promise<ProjectClientActivity> => {
-  const s = await session();
+  const s = await currentWorkspaceSession();
   const db = await createServerSupabase();
   const ws = s.workspace.id;
   const now = new Date();
@@ -84,7 +78,7 @@ export const getProjectClientActivity = cache(async (projectId: string): Promise
 
 /** Situação do cliente em cada workspace (lista de workspaces). Falha de leitura não derruba a lista. */
 export const getProjectPulses = cache(async (): Promise<Record<string, ProjectClientPulse>> => {
-  const s = await session();
+  const s = await currentWorkspaceSession();
   const db = await createServerSupabase();
   const ws = s.workspace.id;
   const now = new Date();

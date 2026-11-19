@@ -11,6 +11,7 @@ import { isSalesProfile, type MetricId, type Profile } from "@/features/metrics/
 import { defaultDir, RANK_BY_PLATFORM, RANK_METRICS, RANK_NOUN, rankMetric } from "@/features/metrics/rank";
 import type { RankEntity, RankMetric } from "@/features/templates/types";
 import { customId, customTitle, type CustomSpec } from "../layout/custom-blocks";
+import { fold } from "@/lib/text";
 
 export type PlanContext = {
   profile: Profile;
@@ -41,8 +42,6 @@ export type LayoutPlan = {
 export const PLAN_MAX = 6;
 
 // ---- texto ------------------------------------------------------------------------------
-
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 /** Pedaços do pedido: "qual produto vende mais e qual campanha rende mais" vira dois. */
 function clauses(text: string): string[] {

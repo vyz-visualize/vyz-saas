@@ -5,16 +5,6 @@ import type { LandingContent } from "@/features/templates/landing-pages";
 import type { PageId } from "@/features/templates/types";
 import type { Brand } from "./workspace";
 
-export type Account = {
-  id: string;
-  platform: PlatformId;
-  name: string;
-  /** Valores dos campos (ex.: { account: "act_123", business: "456" }). */
-  values: Record<string, string>;
-  status: "aguardando";
-  createdAt: string;
-};
-
 export type PeriodId = "7d" | "30d" | "mes" | "custom";
 
 export const PERIODS: { value: PeriodId; label: string }[] = [
@@ -58,8 +48,6 @@ export type Dashboard = {
   updatedAt: string;
 };
 
-export type DashboardDraft = Partial<Omit<Dashboard, "settings">> & { step: number; settings?: Partial<DashboardSettings>; editingId?: string };
-
 export type Tracking = { gtm: string; pixel: string; adsConversion: string; ga4: string };
 
 export type LandingPage = {
@@ -74,32 +62,6 @@ export type LandingPage = {
 };
 
 export type LandingDraft = Partial<LandingPage> & { step: number };
-
-export type ShareLink = {
-  id: string;
-  dashboardId: string;
-  dashboardName: string;
-  url: string;
-  createdAt: string;
-  /** null = nunca expira. */
-  expiresAt: string | null;
-  hideSpend: boolean;
-  revoked: boolean;
-};
-
-export type Report = {
-  id: string;
-  dashboardId: string;
-  dashboardName: string;
-  frequency: "semanal" | "mensal";
-  /** Dia da semana (0–6) ou do mês (1–28). */
-  day: number;
-  format: "pdf" | "whatsapp";
-  recipients: string;
-  createdAt: string;
-};
-
-export type ExportRecord = { id: string; dashboardId: string; dashboardName: string; kind: "pdf"; createdAt: string };
 
 export function periodDays(s: Pick<DashboardSettings, "period" | "customDays">, today = new Date()): number {
   switch (s.period) {

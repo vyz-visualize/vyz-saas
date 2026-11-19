@@ -11,26 +11,18 @@ import { landingTemplate } from "@/features/templates/landing-pages";
 import type { AccessEvent, ActivityItem, HomeConnection, HomeData, SettingsData, TeamMember } from "@/features/workspace/dto";
 import { activityLabel, activityTone, auditLabel, authEventLabel, deviceLabel } from "@/features/workspace/history";
 import { hasRole, type MemberRole } from "@/features/workspace/session";
-import { getWorkspaceSession } from "@/server/auth/workspace";
+import { currentWorkspaceSession } from "@/server/auth/workspace";
 import { canReplayOnboarding, isTestAccount } from "@/server/env";
 import { getMyGuides } from "@/server/guides/queries";
 import { getConnectState } from "@/server/integrations/queries";
-import { appError } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
-
-async function currentSession() {
-  const session = await getWorkspaceSession();
-  if (!session) throw appError("auth:required");
-  return session;
-}
-
-const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+import { isRecord } from "@/lib/guards";
 
 // ---- Início ----------------------------------------------------------------------
 
 /** Recentes (dashboards e landing pages), conexões com a última sincronização e links ativos. */
 export async function getHomeData(): Promise<HomeData> {
-  const session = await currentSession();
+  const session = await currentWorkspaceSession();
   const ws = session.workspace.id;
   const supabase = await createServerSupabase();
   const [dashboards, pages, links, connect, sources, guides] = await Promise.all([
@@ -110,7 +102,7 @@ const AUDIT_SKIP = ["subscriptions", "subscription_items", "invoices", "payment_
 
 /** Perfil, equipe, acessos da conta e, para admin, a atividade do workspace. */
 export async function getSettingsData(): Promise<SettingsData> {
-  const session = await currentSession();
+  const session = await currentWorkspaceSession();
   const ws = session.workspace.id;
   const admin = hasRole(session.role, "admin");
   const supabase = await createServerSupabase();

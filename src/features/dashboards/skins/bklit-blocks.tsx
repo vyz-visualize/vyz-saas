@@ -614,7 +614,7 @@ export function Gauge({ value, max, color, label, summary, className = "" }: Gau
 
 // ---- funil ----------------------------------------------------------------------------
 
-export { StageFunnel, type FunnelStep } from "@/components/charts/StageFunnel";
+export { StageFunnel,  } from "@/components/charts/StageFunnel";
 
 // ---- ranking --------------------------------------------------------------------------
 

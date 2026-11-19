@@ -40,9 +40,7 @@ import type { ProjectDTO, ProjectsState } from "./types";
 import { WorkspaceAvatar } from "./WorkspaceAvatar";
 import { unlimitedProjects, PROJECT_LIMIT_HIDDEN_MESSAGE } from "@/features/pricing/entitlements";
 import { MSG_SPECIALIST, waLink } from "@/lib/whatsapp";
-
-const plural = (n: number, one: string, many: string) =>
-  `${n} ${n === 1 ? one : many}`;
+import { plural } from "@/lib/format";
 
 type Editing = { mode: "new" } | { mode: "rename"; project: ProjectDTO } | null;
 

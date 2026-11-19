@@ -26,10 +26,9 @@ import { AccountForm } from "./AccountForm";
 import { ImportSection } from "./ImportSection";
 import { manualIdLabel, MANUAL_PLATFORMS } from "./manual";
 import { PLATFORMS, type PlatformId } from "./platforms";
+import { plural } from "@/lib/format";
 
 const RETURN_PATH = "/painel/contas";
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** Uso de um limite do plano: rótulo, "usado/limite" e a barra (amarela a partir de 80%, vermelha acima do limite). */
 export function UsageBar({ used, limit, label }: { used: number; limit: number; label: string }) {

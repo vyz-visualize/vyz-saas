@@ -13,6 +13,7 @@ import { btn } from "@/components/ui/styles";
 import { projectFromPath, projectHref, rememberProject, usePanelPath } from "@/features/workspace/nav";
 import { WorkspaceAvatar } from "../WorkspaceAvatar";
 import type { ProjectSummary } from "../types";
+import { plural } from "@/lib/format";
 
 const TABS = [
   { tab: "", label: "Visão geral", icon: LayoutGrid },
@@ -23,7 +24,6 @@ const TABS = [
   { tab: "ajustes", label: "Ajustes", icon: Settings2 },
 ] as const;
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const crumb = "rounded-[6px] outline-none transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-accent";
 
 export function WorkspaceHeader({ summary, orgName }: { summary: ProjectSummary; orgName: string }) {

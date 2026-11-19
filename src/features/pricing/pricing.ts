@@ -10,8 +10,6 @@ export type Nicho = "ecommerce" | "imobiliario";
 export type CustomBilling = "unico" | "recorrente";
 /** Linha de produto: SaaS de dashboards ou SaaS de landing pages. */
 export type Product = "dash" | "lp";
-export const PRODUCTS: Product[] = ["dash", "lp"];
-export const PRODUCT_LABEL: Record<Product, string> = { dash: "Dashboards", lp: "Landing pages" };
 
 // Três planos fixos, cada um com o seu limite de workspaces (clientes ou marcas; no
 // banco, "projects"): Básico até 3, Padrão até 5 e Avançado ilimitado (como o

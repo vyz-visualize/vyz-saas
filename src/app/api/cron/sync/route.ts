@@ -7,20 +7,15 @@
 
 import { refreshSheetAccounts, type SheetRefreshSummary } from "@/server/import/scheduled";
 import { refreshLaunchSheets, type LaunchRefreshSummary } from "@/server/import/launch-scheduled";
-import { cronSecret, isAuthorizedCron } from "@/server/sync/cron";
+import { CRON_HEADERS, rejectCron } from "@/server/sync/cron";
 import { runBackfillRound, type BackfillSummary } from "@/server/mmm/backfill";
 import { syncDueAccounts } from "@/server/sync/scheduled";
 
 export const maxDuration = 300;
 
-const NO_STORE = { "Cache-Control": "no-store" };
-
 async function handle(request: Request) {
-  // ler o cabeçalho primeiro também deixa a rota fora da pré-renderização
-  const authorization = request.headers.get("authorization");
-  const secret = cronSecret();
-  if (!secret) return Response.json({ ok: false, error: "cron:not_configured", message: "Defina CRON_SECRET para liberar a sincronização agendada." }, { status: 503, headers: NO_STORE });
-  if (!isAuthorizedCron(authorization, secret)) return Response.json({ ok: false, error: "unauthorized" }, { status: 401, headers: NO_STORE });
+  const denied = rejectCron(request);
+  if (denied) return denied;
 
   try {
     // termina antes do limite da função, com folga para a resposta
@@ -56,10 +51,10 @@ async function handle(request: Request) {
         mmm = { error: "unknown" };
       }
     }
-    return Response.json({ ...summary, sheets, launch, mmm }, { headers: NO_STORE });
+    return Response.json({ ...summary, sheets, launch, mmm }, { headers: CRON_HEADERS });
   } catch (err) {
     console.error("[vyz] cron de sincronização", err instanceof Error ? err.message : err);
-    return Response.json({ ok: false, error: "unknown" }, { status: 500, headers: NO_STORE });
+    return Response.json({ ok: false, error: "unknown" }, { status: 500, headers: CRON_HEADERS });
   }
 }
 

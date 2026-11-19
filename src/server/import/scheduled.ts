@@ -15,12 +15,11 @@ import { createAdminSupabase } from "@/server/supabase/admin";
 import { AppError } from "@/server/supabase/errors";
 import { recordImportFailure, writeImport, type ImportAccount } from "./run";
 import { fetchSheetCsv } from "./sheets";
+import { isRecord } from "@/lib/guards";
 
 const HOUR = 60 * 60 * 1000;
 
 export type SheetRefreshSummary = { due: number; refreshed: number; failed: number; pending: number };
-
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 export async function refreshSheetAccounts(opts: { budgetMs?: number; minIntervalMs?: number; limit?: number } = {}): Promise<SheetRefreshSummary> {
   const startedAt = Date.now();

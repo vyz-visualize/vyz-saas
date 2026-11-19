@@ -1,4 +1,5 @@
 import type { Tier } from "@/features/pricing/entitlements";
+import { joinPt } from "@/lib/format";
 
 export type PlatformId =
   | "meta"
@@ -259,10 +260,7 @@ export const AVAILABLE_PLATFORM_LABEL: Record<(typeof AVAILABLE_PLATFORMS)[numbe
 };
 
 /** "Meta Ads, Instagram, Facebook, Google Ads e GA4". */
-export const availablePlatformsText = () => {
-  const names = AVAILABLE_PLATFORMS.map((id) => AVAILABLE_PLATFORM_LABEL[id]);
-  return `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
-};
+export const availablePlatformsText = () => joinPt(AVAILABLE_PLATFORMS.map((id) => AVAILABLE_PLATFORM_LABEL[id]));
 
 
 export const isAdPlatform = (id: PlatformId) => PLATFORMS[id].kind === "ads";

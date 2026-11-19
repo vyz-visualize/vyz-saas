@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { situationOf, sortTasks, todayIn } from "@/features/todo/logic";
 import { hasRole } from "@/features/workspace/session";
-import { apiJson, bearerSession, unauthorized } from "@/server/auth/bearer";
+import { apiJson, bearerSession, unauthorized, apiError } from "@/server/auth/bearer";
 import { bearerWorkspace } from "@/server/auth/bearer-workspace";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import { maybeGenerateAutoTasks } from "@/server/todo/automation";
@@ -13,16 +13,14 @@ import { describeAction } from "@/features/optimize/actions";
 import { listRuns } from "@/server/optimize/service";
 import { listTasks, todoLevel } from "@/server/todo/queries";
 
-const fail = (code: string, message: string, status: number) => apiJson({ error: { code, message } }, status);
-
 export async function GET(request: Request, ctx: RouteContext<"/api/v1/workspaces/[workspaceId]/tasks">) {
   const session = await bearerSession(request);
   if (!session) return unauthorized();
   const { workspaceId } = await ctx.params;
-  if (!z.uuid().safeParse(workspaceId).success) return fail("validation", "Workspace inválido.", 400);
+  if (!z.uuid().safeParse(workspaceId).success) return apiError("validation", "Workspace inválido.", 400);
   try {
     const ws = await bearerWorkspace(session, workspaceId);
-    if (!ws || ws.workspace.id !== workspaceId) return fail("forbidden", "Você não tem acesso a esta organização.", 403);
+    if (!ws || ws.workspace.id !== workspaceId) return apiError("forbidden", "Você não tem acesso a esta organização.", 403);
     const timeZone = ws.workspace.timezone || "America/Sao_Paulo";
     if (ws.access.hasAccess) await maybeGenerateAutoTasks(createAdminSupabase(), workspaceId, timeZone);
     const openOnly = new URL(request.url).searchParams.get("abertas") === "1";
@@ -37,6 +35,6 @@ export async function GET(request: Request, ctx: RouteContext<"/api/v1/workspace
     });
   } catch (err) {
     console.error("[vyz] api v1 tasks", err);
-    return fail("unknown", "Não foi possível carregar as tarefas.", 500);
+    return apiError("unknown", "Não foi possível carregar as tarefas.", 500);
   }
 }

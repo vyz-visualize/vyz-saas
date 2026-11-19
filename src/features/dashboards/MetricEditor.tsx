@@ -18,8 +18,7 @@ import { flipChange } from "./metric-flip";
 import { useEditAnchor } from "./useEditAnchor";
 import { METRIC_GROUP_LABEL, METRIC_GROUPS, sectionMax, toggleBlock, visibleIds, type CatalogMetric, type MetricGroup, type MetricSection } from "./metric-prefs";
 import type { useMetricPrefsState } from "./metric-prefs-context";
-
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+import { fold } from "@/lib/text";
 
 /** Entrada do modo edição: em destaque (cor da marca), para ninguém precisar procurar. */
 export function CustomizeButton({ onClick }: { onClick: () => void }) {

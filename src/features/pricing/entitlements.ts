@@ -108,12 +108,6 @@ export function templateCountsLabel(tier: Tier): string {
   return `${e.dashboardTemplates} visuais de dashboard · ${e.landingTemplates} de landing page`;
 }
 
-/** Próximo plano acima (para o botão de upgrade). */
-export function nextTier(tier: Tier): Tier | null {
-  const i = TIERS.indexOf(tier);
-  return i < TIERS.length - 1 ? TIERS[i + 1] : null;
-}
-
 /** Colunas da tabela de limites: o Personalizado é sob consulta e fica fora dela. */
 export const LIMIT_TIERS: Tier[] = ["base", "pro", "avancado"];
 

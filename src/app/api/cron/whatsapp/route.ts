@@ -4,24 +4,21 @@
 // Só com "Authorization: Bearer <CRON_SECRET>". Workspace que perdeu o plano
 // (ou a assinatura) para de receber; nada é apagado.
 
-import { isAuthorizedCron, cronSecret } from "@/server/sync/cron";
+import { CRON_HEADERS, rejectCron } from "@/server/sync/cron";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import { ReportContext, sendAlerts, sendReport, wants, workspaceAllowsWhatsapp } from "@/server/whatsapp/service";
 
 export const maxDuration = 300;
 
-const NO_STORE = { "Cache-Control": "no-store" };
-
 async function handle(request: Request) {
-  const secret = cronSecret();
-  if (!secret) return Response.json({ ok: false, error: "cron:not_configured" }, { status: 503, headers: NO_STORE });
-  if (!isAuthorizedCron(request.headers.get("authorization"), secret)) return Response.json({ ok: false, error: "unauthorized" }, { status: 401, headers: NO_STORE });
+  const denied = rejectCron(request);
+  if (denied) return denied;
   const mode = new URL(request.url).searchParams.get("mode") === "weekly" ? "weekly" : "daily";
 
   const started = Date.now();
   const db = createAdminSupabase();
   const { data: subs, error } = await db.from("whatsapp_subscriptions").select("*").not("verified_at", "is", null).is("opted_out_at", null).eq("paused", false);
-  if (error) return Response.json({ ok: false, error: "unknown" }, { status: 500, headers: NO_STORE });
+  if (error) return Response.json({ ok: false, error: "unknown" }, { status: 500, headers: CRON_HEADERS });
 
   const ctx = new ReportContext(db);
   const allowed = new Map<string, boolean>();
@@ -46,7 +43,7 @@ async function handle(request: Request) {
       console.error("[vyz] whatsapp cron", sub.id, err);
     }
   }
-  return Response.json({ ok: true, mode, reports, alerts, skippedPlan }, { headers: NO_STORE });
+  return Response.json({ ok: true, mode, reports, alerts, skippedPlan }, { headers: CRON_HEADERS });
 }
 
 export async function GET(request: Request) {

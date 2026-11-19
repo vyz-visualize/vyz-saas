@@ -1,6 +1,6 @@
 "use client";
 
-// Pontos de entrada do painel: barra "Pergunte ao VYZ… ⌘K" no topo e o mascote flutuante.
+// Ponto de entrada do painel: o mascote flutuante.
 
 import { useDragOffset } from "./useDragOffset";
 import { m } from "motion/react";
@@ -8,28 +8,6 @@ import { useSyncExternalStore } from "react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useAgent } from "./AgentProvider";
 import { Mascot } from "./Mascot";
-
-const noop = () => () => {};
-const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-const useShortcut = () => (useSyncExternalStore(noop, isMac, () => true) ? "⌘K" : "Ctrl K");
-
-export function AgentBar() {
-  const { setOpen } = useAgent();
-  const key = useShortcut();
-  return (
-    <button
-      type="button"
-      onClick={() => setOpen(true)}
-      data-tour="pergunte"
-      aria-keyshortcuts="Meta+K Control+K"
-      className="inline-flex h-9 w-60 items-center gap-2 rounded-control border border-line bg-card pr-2 pl-2.5 text-left text-[13px] text-fg-2 shadow-card outline-none transition-colors hover:border-fg-2/50 hover:text-fg focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent"
-    >
-      <Mascot size={18} />
-      <span className="flex-1 truncate">Pergunte ao VYZ…</span>
-      <kbd className="rounded-[5px] border border-line px-1.5 py-0.5 font-sans text-[11px] text-fg-2">{key}</kbd>
-    </button>
-  );
-}
 
 const desktopQuery = (cb: () => void) => {
   const mq = window.matchMedia("(min-width: 768px)");

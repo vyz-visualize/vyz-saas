@@ -16,8 +16,8 @@ import { projectHref } from "@/features/workspace/nav";
 import { ROLE_LABEL } from "@/features/workspace/session";
 import { initials } from "@/features/workspace/Sidebar";
 import type { ProjectHighlights, ProjectOverviewData, ProjectSummary } from "../types";
+import { plural } from "@/lib/format";
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const ring = "outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 const cardLink = "text-[13.5px] font-semibold text-accent underline-offset-4 hover:underline";
 

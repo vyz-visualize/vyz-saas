@@ -4,10 +4,9 @@
 // ilimitados). O número que o banco grava para o ilimitado (UNLIMITED_MEMBERS) nunca aparece.
 
 import { isUnlimitedMemberLimit } from "@/features/pricing/entitlements";
+import { plural } from "@/lib/format";
 
 export type Seats = { used: number; limit: number | null };
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** Limite do plano (max_members) → limite das vagas; null = ilimitado. */
 export const seatsLimit = (maxMembers: number | null | undefined): number | null => (isUnlimitedMemberLimit(maxMembers) ? null : (maxMembers as number));

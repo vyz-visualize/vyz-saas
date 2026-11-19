@@ -12,26 +12,20 @@ import { seatsLimit } from "@/features/projects/seats";
 import type { ProjectAccountsData, ProjectDashboardsData, ProjectHighlights, ProjectOverviewData, ProjectPeopleData, ProjectPerson, ProjectSummary } from "@/features/projects/types";
 import { hasRole, ROLE_RANK, type MemberRole } from "@/features/workspace/session";
 import { publicAssetUrl } from "@/lib/supabase/storage";
-import { getWorkspaceSession } from "@/server/auth/workspace";
+import { currentWorkspaceSession } from "@/server/auth/workspace";
 import { listDashboards, listSourceOptions } from "@/server/dashboards/queries";
 import { loadWorkspaceInsights } from "@/server/insights/load";
 import { getConnectState, listAdAccounts } from "@/server/integrations/queries";
-import { appError, unwrap } from "@/server/supabase/errors";
+import { unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-async function session() {
-  const s = await getWorkspaceSession();
-  if (!s) throw appError("auth:required");
-  return s;
-}
 
 const nameOf = (p: { full_name: string | null; email: string | null } | undefined) => p?.full_name?.trim() || p?.email?.split("@")[0] || "Pessoa";
 
 /** Quem acessa o workspace: dono e admins da organização (todos) e quem está nele. */
 async function loadPeople(projectId: string) {
-  const s = await session();
+  const s = await currentWorkspaceSession();
   const db = await createServerSupabase();
   const [members, inProject] = await Promise.all([
     db.from("workspace_members").select("user_id, role").eq("workspace_id", s.workspace.id).then(unwrap),
@@ -53,7 +47,7 @@ async function loadPeople(projectId: string) {
 
 /** Cabeçalho do workspace. null = não existe, arquivado ou a pessoa não acessa. */
 export const getProjectSummary = cache(async (projectId: string): Promise<ProjectSummary | null> => {
-  const s = await session();
+  const s = await currentWorkspaceSession();
   if (!UUID.test(projectId)) return null;
   const db = await createServerSupabase();
   const ws = s.workspace.id;
@@ -81,7 +75,7 @@ export const getProjectSummary = cache(async (projectId: string): Promise<Projec
 
 /** Aba Pessoas. */
 export async function getProjectPeople(projectId: string): Promise<ProjectPeopleData> {
-  const s = await session();
+  const s = await currentWorkspaceSession();
   const db = await createServerSupabase();
   const canManage = hasRole(s.role, "admin");
   const now = new Date().toISOString();
@@ -104,7 +98,7 @@ export async function getProjectPeople(projectId: string): Promise<ProjectPeople
 
 /** Aba Contas: as contas deste workspace, as que dá para trazer (dos logins) e os logins. */
 export async function getProjectAccounts(projectId: string): Promise<ProjectAccountsData> {
-  const s = await session();
+  const s = await currentWorkspaceSession();
   const [state, all] = await Promise.all([getConnectState(), listAdAccounts()]);
   const nameOf = new Map(state.projects.map((p) => [p.id, p.name]));
   const connections = [...new Map(Object.values(state.platforms).flatMap((p) => p.connections).map((c) => [c.id, c])).values()];
@@ -125,7 +119,7 @@ export async function getProjectAccounts(projectId: string): Promise<ProjectAcco
 
 /** Aba Dashboards: os deste workspace e as contas dele para o dashboard novo. */
 export async function getProjectDashboards(projectId: string): Promise<ProjectDashboardsData> {
-  const s = await session();
+  const s = await currentWorkspaceSession();
   const db = await createServerSupabase();
   const [items, sources, ids, accountIds] = await Promise.all([
     listDashboards(),
@@ -151,7 +145,7 @@ export async function getProjectDashboards(projectId: string): Promise<ProjectDa
 
 /** Visão geral: dashboards recentes, saúde das contas, equipe, tarefas e links. */
 export async function getProjectOverview(projectId: string): Promise<ProjectOverviewData> {
-  const s = await session();
+  const s = await currentWorkspaceSession();
   const db = await createServerSupabase();
   const ws = s.workspace.id;
   const now = new Date();
@@ -195,7 +189,7 @@ export async function getProjectOverview(projectId: string): Promise<ProjectOver
 
 /** Destaques dos últimos 7 dias: as análises dos dashboards com dados reais deste workspace. */
 export async function getProjectHighlights(projectId: string): Promise<ProjectHighlights> {
-  const s = await session();
+  const s = await currentWorkspaceSession();
   const db = await createServerSupabase();
   const loaded = await loadWorkspaceInsights(db, s.workspace.id, "7d", 8, [projectId]).catch(() => null);
   const pulse = loaded?.pulse ?? [];

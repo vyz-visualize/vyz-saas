@@ -201,9 +201,6 @@ const HANDLERS: Record<string, Handler> = {
   "charge.refunded": chargeRefunded,
 };
 
-/** Eventos para ligar no endpoint do webhook, no painel da Stripe. */
-export const STRIPE_WEBHOOK_EVENTS = Object.keys(HANDLERS);
-
 export async function processStripeEvent(event: StripeEvent): Promise<{ status: number; body: Record<string, unknown> }> {
   const admin = createAdminSupabase();
   const stored = await admin

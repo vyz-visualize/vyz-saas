@@ -7,17 +7,19 @@ não para o Bklit Studio).
 
 ## O que está instalado
 
-line-chart, area-chart, bar-chart, composed-chart, funnel-chart, sparkline,
-scatter-chart, heatmap-chart, ring-chart, legend, y-axis, reference-area,
-trend-line e o que eles puxam (chart-context, tooltip, grid, x-axis, patterns,
-gradients...). Dependências no package.json: d3-shape, d3-scale, d3-array,
-clsx, tailwind-merge, @number-flow/react, @base-ui/react e motion (já usada).
+Só as peças que o produto usa: line, area, bar e composed-chart, funnel-chart,
+sparkline, ring-chart, x-axis, y-axis, grid, tooltip e o que eles puxam
+(chart-context, patterns, gradients, series...). O resto do registry (heatmap,
+scatter, legend, candlestick-chart, trend-line, o componente reference-area...) foi tirado em
+2026-11-19 por não ter uso; para voltar a usar, instale de novo pelo registry.
+Dependências no package.json: d3-shape, d3-scale, d3-array, clsx,
+tailwind-merge, @number-flow/react e motion.
 
 ## O que mudamos em relação ao original
 
 - `@/lib/utils` virou `@/components/bklit/lib/utils`.
-- Datas e números em pt-BR (era en-US) em chart-formatters.ts, no heatmap e
-  em chart-stat-flow.ts (número do centro do anel).
+- Datas e números em pt-BR (era en-US) em chart-formatters.ts e em
+  chart-stat-flow.ts (número do centro do anel).
 - theme.css (nosso): os tokens `--chart-*` e `--legend*` apontam para os tokens
   da VYZ. Importado em src/app/globals.css.
 

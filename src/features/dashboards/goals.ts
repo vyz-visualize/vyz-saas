@@ -3,7 +3,7 @@
 // centavos para dinheiro, fração para taxa (0,015 = 1,5%), número puro para volume.
 // Funções puras, testadas. A meta de CPA antiga (goal_cents) segue à parte.
 
-import { formatValue, metric, type MetricId, type Profile } from "@/features/metrics/definitions";
+import { metric, type MetricId, type Profile } from "@/features/metrics/definitions";
 import { brl, decimal, int, pct } from "@/lib/format";
 
 export type GoalDirection = "max" | "min";
@@ -110,6 +110,3 @@ export function goalStatus(g: MetricGoal, current: number, profile: Profile = "e
   const progress = g.value <= 0 ? 1 : Math.min(1, Math.max(0, current / g.value));
   return { on, progress, text: on ? `No alvo · mín. ${target}` : `${Math.round(progress * 100)}% da meta de ${target}` };
 }
-
-/** Valor atual formatado (para a confirmação no editor). */
-export const currentText = (id: MetricId, v: number, profile: Profile) => formatValue(v, metric(id, profile).format);

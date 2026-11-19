@@ -21,6 +21,7 @@ import type { HomeConnection, HomeData } from "./dto";
 import { projectHref } from "./nav";
 import { homeCta, homeSteps, nextStep, planBadge } from "./home-steps";
 import { useWorkspaceSession } from "./WorkspaceProvider";
+import { plural } from "@/lib/format";
 
 function greeting(hydrated: boolean): string {
   if (!hydrated) return "Olá";
@@ -29,7 +30,6 @@ function greeting(hydrated: boolean): string {
 }
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? "";
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 const ring = "outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
 const cardLink = "text-[13.5px] font-semibold text-accent underline-offset-4 hover:underline";

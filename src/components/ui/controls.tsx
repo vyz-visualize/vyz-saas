@@ -5,7 +5,7 @@
 // destaque e bolinha clara (escura no modo escuro). Foco com 2 px.
 
 import { Check } from "lucide-react";
-import { Checkbox as C, RadioGroup as R, Switch as Sw } from "radix-ui";
+import { Checkbox as C, Switch as Sw } from "radix-ui";
 import { useId, type ReactNode } from "react";
 
 const focus = "outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg";
@@ -60,24 +60,5 @@ export function Switch({ label, checked, onChange, disabled, hint }: { label: Re
         {hint && <span className="block text-[12px] text-fg-2">{hint}</span>}
       </label>
     </div>
-  );
-}
-
-export const RadioGroup = ({ value, onChange, label, children, className = "" }: { value: string | undefined; onChange: (v: string) => void; label: string; children: ReactNode; className?: string }) => (
-  <R.Root value={value ?? ""} onValueChange={onChange} aria-label={label} className={className}>
-    {children}
-  </R.Root>
-);
-
-/** Opção de rádio em cartão (a área toda é clicável). */
-export function RadioCard({ value, checked, children }: { value: string; checked: boolean; children: ReactNode }) {
-  const id = useId();
-  return (
-    <label htmlFor={id} className={`flex cursor-pointer items-center gap-3 rounded-control border p-3 text-[14px] transition-colors duration-150 ${checked ? "border-accent bg-accent-soft/40" : "border-line hover:border-fg-2/60"}`}>
-      <R.Item id={id} value={value} className={`inline-flex size-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-fg-2/70 bg-field data-[state=checked]:border-accent ${focus}`}>
-        <R.Indicator className="block size-2.5 rounded-full bg-accent" />
-      </R.Item>
-      {children}
-    </label>
   );
 }

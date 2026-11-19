@@ -16,6 +16,9 @@ Marcações:
 
 ## 0. Onde estamos (16/11/2026)
 
+Medição de 16/11, antes da decisão de ligar a carga (seção 12). Para ver o estado atual da fila: `npm run mmm:backfill -- --status`.
+
+
 - **Schema `mmm` v1:** aplicado (migration `20261117090000_mmm_schema`) e **vazio** [M]: `raw_insights` 0 linhas, `media_daily` 0, `daily` 0.
 - **Fila `mmm.backfill_jobs`:** existe e está **desligada** [M].
   - `mmm.backfill_control.ativo = false`, atualizado pela última vez em 13/11.
@@ -278,9 +281,9 @@ Uma conta média dá ~160 MB por ano no Postgres. O bruto comprimido dá ~35 MB 
 
 | Opção | Como fica | 50 contas, 3 anos | 200 contas, 3 anos | Riscos |
 |---|---|---|---|---|
-| **A. Tudo no Postgres do Supabase** | O mesmo banco do app | Disco: (24−8) × 0,125 ≈ US$ 2/mês. Compute: deve pedir Small/Medium (US$ 15–60/mês). | Disco ≈ US$ 11/mês. Compute: Large (US$ 110/mês) ou mais. | As recargas regravam muito (índices inchados, como medido na v1), e o backup e o vacuum crescem. Uma consulta pesada do MMM disputa CPU com o painel. |
-| **B. Híbrido (recomendado)** | Postgres guarda as entidades, os fatos de conta e campanha completos, os 90 dias quentes de conjunto, anúncio e recorte, a camada `mmm` e o benchmark (~3–8 GB). O histórico de conjunto, anúncio e recortes e o bruto vão para Parquet no Supabase Storage (bucket privado). As consultas pesadas rodam com DuckDB num job. | Storage: ~7,5 GB × US$ 0,021 ≈ US$ 0,20/mês. Postgres: cabe no Pro. | Storage: ~31 GB ≈ US$ 0,70/mês. Postgres: Pro, talvez Small. | Duas formas de ler os dados. O DuckDB precisa rodar fora da função da Vercel se o volume crescer (GitHub Actions ou um worker). |
-| **C. BigQuery (região São Paulo)** | Os fatos e recortes vão para tabelas particionadas; o Postgres fica só com o quente e a camada `mmm`. | Armazenamento: ~US$ 0,02–0,03/GB·mês (os 10 GiB iniciais são grátis) → ~US$ 0. Consultas: o primeiro 1 TiB/mês é grátis, depois US$ 6,25/TiB (preço dos EUA; São Paulo é mais caro). | ~US$ 1–3/mês de armazenamento; as consultas tendem a caber no grátis. | Fornecedor e credencial novos, e o LGPD (região SP) a configurar. Faz sentido se a análise em SQL crescer muito. |
+| **A. Tudo no Postgres do Supabase** | O mesmo banco do app | Disco: (24−8) × 0,125 ≈ US$ 2/mês. Compute: deve pedir Small/Medium (US$ 15 a 60/mês). | Disco ≈ US$ 11/mês. Compute: Large (US$ 110/mês) ou mais. | As recargas regravam muito (índices inchados, como medido na v1), e o backup e o vacuum crescem. Uma consulta pesada do MMM disputa CPU com o painel. |
+| **B. Híbrido (recomendado)** | Postgres guarda as entidades, os fatos de conta e campanha completos, os 90 dias quentes de conjunto, anúncio e recorte, a camada `mmm` e o benchmark (~3 a 8 GB). O histórico de conjunto, anúncio e recortes e o bruto vão para Parquet no Supabase Storage (bucket privado). As consultas pesadas rodam com DuckDB num job. | Storage: ~7,5 GB × US$ 0,021 ≈ US$ 0,20/mês. Postgres: cabe no Pro. | Storage: ~31 GB ≈ US$ 0,70/mês. Postgres: Pro, talvez Small. | Duas formas de ler os dados. O DuckDB precisa rodar fora da função da Vercel se o volume crescer (GitHub Actions ou um worker). |
+| **C. BigQuery (região São Paulo)** | Os fatos e recortes vão para tabelas particionadas; o Postgres fica só com o quente e a camada `mmm`. | Armazenamento: ~US$ 0,02 a 0,03/GB·mês (os 10 GiB iniciais são grátis) → ~US$ 0. Consultas: o primeiro 1 TiB/mês é grátis, depois US$ 6,25/TiB (preço dos EUA; São Paulo é mais caro). | ~US$ 1 a 3/mês de armazenamento; as consultas tendem a caber no grátis. | Fornecedor e credencial novos, e o LGPD (região SP) a configurar. Faz sentido se a análise em SQL crescer muito. |
 
 Não pesquisei o preço do MotherDuck; fica como alternativa a avaliar para a opção B.
 
@@ -323,9 +326,9 @@ O que os termos das plataformas permitem (pesquisa; **precisa de revisão juríd
 
 Sugestão: criar a tabela e o cálculo, mas **não mostrar nada** a cliente nenhum até o parecer. Começar pelo Google, com consentimento no contrato, e pelos percentis oficiais do Google.
 
-## 10. Redis: Upstash, implementado na branch `feat/planos-site-onboarding`
+## 10. Redis: Upstash (já no código)
 
-**Decisão:** Upstash, pela integração da Vercel, lido com `Redis.fromEnv()` (`KV_REST_API_URL` e `KV_REST_API_TOKEN`).
+**Decisão:** Upstash, pela integração da Vercel, lido com `Redis.fromEnv()` (`KV_REST_API_URL` e `KV_REST_API_TOKEN`, ou `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`).
 - O código está em `src/server/cache/redis.ts`.
 - Sem as variáveis, ou com o Redis fora do ar ou lento (mais de 400 ms), tudo funciona sem ele.
 - A trava de sincronização continua no Postgres.
@@ -339,15 +342,10 @@ Papel proposto, sempre com TTL curto e sem histórico:
 | Uso | Chave | TTL | Observação |
 |---|---|---|---|
 | Limite de chamadas por plataforma | `rl:meta:{app}`, `rl:gads:ops:{dia}` | 1 h / 1 dia | Guarda o último `x-fb-ads-insights-throttle` e o contador de operações do Google, que hoje vai ao banco (`mmm_google_ops_today`). Evita uma consulta ao banco por chamada. |
-| Cache curto de respostas das APIs | `api:{plataforma}:{conta}:{hash da consulta}` | 5–15 min | Só respostas pequenas (listas de campanhas e contas), comprimidas. Com 30 MB, nada de relatório inteiro. |
+| Cache curto de respostas das APIs | `api:{plataforma}:{conta}:{hash da consulta}` | 5 a 15 min | Só respostas pequenas (listas de campanhas e contas), comprimidas. Com 30 MB, nada de relatório inteiro. |
 | Trava de sincronização | `lock:sync:{ad_account_id}` | 10 min | **Já existe no Postgres:** o índice único de `sync_runs` barra a segunda sincronização da mesma conta. Sugestão: não duplicar; usar o Redis só se a trava do banco virar gargalo. |
 
-**30 conexões aguentam?**
-- As funções Node da Vercel aceitam TCP e reaproveitam a conexão enquanto a instância vive. O limite é uma conexão aberta por instância ao mesmo tempo.
-- **Só sincronização** (crons com 3 contas em paralelo, mais a atualização ao abrir o dashboard): cabe com folga, desde que a conexão seja criada uma vez por instância, com timeout curto e sem segurar o painel quando o Redis cair (*fail-open*).
-- **Rotas do painel com tráfego** (picos de dezenas de instâncias): 30 conexões podem esgotar.
-- **Upstash** fala HTTP, então não tem limite de conexões, funciona até no edge e tem região em São Paulo. Para o uso desta proposta, é a escolha mais segura. Usa `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` em vez de `REDIS_URL`.
-- Recomendação: Upstash. Se a decisão for o Redis Cloud que já está sendo criado, restringir o uso aos caminhos de sincronização e manter o fail-open.
+O Upstash fala HTTP: não tem limite de conexões, funciona na Vercel e tem região em São Paulo. Por isso venceu o Redis Cloud (TCP, até 30 conexões).
 
 ## 11. O que fazer com a v1 do schema `mmm`
 

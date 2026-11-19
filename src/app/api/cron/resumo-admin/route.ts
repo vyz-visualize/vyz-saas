@@ -6,19 +6,16 @@ import { weeklyEmail } from "@/features/admin/email";
 import { REPORT_RECIPIENTS } from "@/server/admin/credentials";
 import { sendMail } from "@/server/admin/mail";
 import { loadAdminReport } from "@/server/admin/report";
-import { cronSecret, isAuthorizedCron } from "@/server/sync/cron";
+import { CRON_HEADERS, rejectCron } from "@/server/sync/cron";
 
 export const maxDuration = 120;
-const NO_STORE = { "Cache-Control": "no-store" };
-
 async function handle(request: Request) {
-  const secret = cronSecret();
-  if (!secret) return Response.json({ ok: false, error: "cron:not_configured" }, { status: 503, headers: NO_STORE });
-  if (!isAuthorizedCron(request.headers.get("authorization"), secret)) return Response.json({ ok: false, error: "unauthorized" }, { status: 401, headers: NO_STORE });
+  const denied = rejectCron(request);
+  if (denied) return denied;
   const report = await loadAdminReport({ fresh: true });
   const sent = await sendMail(REPORT_RECIPIENTS, weeklyEmail(report));
   if (!sent.ok) console.error("[vyz] resumo admin", sent.error);
-  return Response.json({ ok: sent.ok, error: sent.ok ? undefined : "mail:failed" }, { status: sent.ok ? 200 : 502, headers: NO_STORE });
+  return Response.json({ ok: sent.ok, error: sent.ok ? undefined : "mail:failed" }, { status: sent.ok ? 200 : 502, headers: CRON_HEADERS });
 }
 
 export const GET = handle;

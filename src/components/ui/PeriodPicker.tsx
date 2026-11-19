@@ -8,6 +8,7 @@ import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-rea
 import { Popover } from "radix-ui";
 import { useState } from "react";
 import { usePortalContainer } from "./portal";
+import { MONTH_NAMES } from "@/lib/format";
 
 export type Period = "7d" | "30d" | "mes" | "custom";
 export type Range = { from: Date; to: Date };
@@ -18,7 +19,6 @@ const SHORTCUTS: { value: Exclude<Period, "custom">; label: string }[] = [
   { value: "mes", label: "Este mês" },
 ];
 const WEEK = ["D", "S", "T", "Q", "Q", "S", "S"];
-const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
 const day0 = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const same = (a: Date, b: Date) => a.getTime() === b.getTime();
@@ -120,7 +120,7 @@ function Body({ period, range, maxDays, onPick }: { period: Period; range: Range
             <ChevronLeft size={16} aria-hidden />
           </button>
           <p className="text-[13.5px] font-semibold" aria-live="polite">
-            {MONTHS[month.getMonth()]} de {month.getFullYear()}
+            {MONTH_NAMES[month.getMonth()]} de {month.getFullYear()}
           </p>
           <button type="button" aria-label="Próximo mês" disabled={!canNext} onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} className="inline-flex size-8 items-center justify-center rounded-control text-fg-2 outline-none hover:bg-accent-soft hover:text-fg focus-visible:bg-accent-soft disabled:opacity-30">
             <ChevronRight size={16} aria-hidden />
@@ -145,7 +145,7 @@ function Body({ period, range, maxDays, onPick }: { period: Period; range: Range
                 key={d.getDate()}
                 type="button"
                 disabled={off}
-                aria-label={`${d.getDate()} de ${MONTHS[d.getMonth()]}`}
+                aria-label={`${d.getDate()} de ${MONTH_NAMES[d.getMonth()]}`}
                 aria-pressed={!!edge}
                 onClick={() => choose(d)}
                 onMouseEnter={() => setHover(d)}

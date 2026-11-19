@@ -13,19 +13,12 @@ import type { AdAccountDTO, AdAccountStatus, ConnectionDTO, ConnectionStatus, Co
 import { ENTITLEMENTS } from "@/features/pricing/entitlements";
 import { hasRole } from "@/features/workspace/session";
 import { listProjects } from "@/server/projects/queries";
-import { getWorkspaceSession } from "@/server/auth/workspace";
+import { currentWorkspaceSession } from "@/server/auth/workspace";
 import { isMockIntegrations } from "@/server/env";
 import { isProviderConfigured } from "./providers";
-import { appError, unwrap } from "@/server/supabase/errors";
+import { unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
-
-async function currentSession() {
-  const session = await getWorkspaceSession();
-  if (!session) throw appError("auth:required");
-  return session;
-}
-
-const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+import { isRecord } from "@/lib/guards";
 
 function stringFields(v: unknown): Record<string, string> {
   if (!isRecord(v)) return {};
@@ -39,7 +32,7 @@ const ACCOUNT_SELECT = `id, platform_id, connection_id, name, external_id, busin
   sources:dashboard_sources!dashboard_sources_workspace_id_ad_account_id_fkey(dashboard:dashboards!dashboard_sources_workspace_id_dashboard_id_fkey(id, name))`;
 
 const loadAdAccounts = cache(async (): Promise<AdAccountDTO[]> => {
-  const session = await currentSession();
+  const session = await currentWorkspaceSession();
   const supabase = await createServerSupabase();
   const rows = unwrap(
     await supabase
@@ -93,7 +86,7 @@ const loadAdAccounts = cache(async (): Promise<AdAccountDTO[]> => {
 });
 
 const loadConnections = cache(async (): Promise<ConnectionDTO[]> => {
-  const session = await currentSession();
+  const session = await currentWorkspaceSession();
   const supabase = await createServerSupabase();
   const [rows, accounts] = await Promise.all([
     supabase
@@ -126,11 +119,6 @@ const loadConnections = cache(async (): Promise<ConnectionDTO[]> => {
   }));
 });
 
-/** Conexões OAuth do workspace (Meta, Google). */
-export async function listConnections(): Promise<ConnectionDTO[]> {
-  return loadConnections();
-}
-
 /** Contas do workspace (conectadas e cadastradas pelo ID), com a última sincronização. */
 export async function listAdAccounts(filter: { platformId?: string; manual?: boolean; imported?: boolean } = {}): Promise<AdAccountDTO[]> {
   const all = await loadAdAccounts();
@@ -141,7 +129,7 @@ export async function listAdAccounts(filter: { platformId?: string; manual?: boo
 
 /** Estado da conexão por plataforma (Meta Ads, Google Ads) e o limite do plano. */
 export async function getConnectState(): Promise<ConnectState> {
-  const session = await currentSession();
+  const session = await currentWorkspaceSession();
   const [connections, accounts, projects] = await Promise.all([loadConnections(), loadAdAccounts(), listProjects()]);
   const ent = session.access.entitlements ?? ENTITLEMENTS[session.access.tier ?? "base"];
 

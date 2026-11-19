@@ -22,7 +22,6 @@ export const VisitPing = z.object({
     .nullish(),
   seconds: z.number().int().min(0).max(120),
 });
-export type VisitPingInput = z.infer<typeof VisitPing>;
 
 export type PingResult = "ok" | "ignored" | "invalid" | "rate_limited";
 

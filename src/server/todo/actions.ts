@@ -4,12 +4,12 @@
 // grupos e roteiros. Responsáveis, cronograma, grupos e roteiros são do plano
 // completo (Avançado e Personalizado).
 
-import { refresh } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { availableIn } from "@/features/pricing/entitlements";
 import { PLAYBOOKS, playbookTasks, todayIn } from "@/features/todo/logic";
 import type { TaskDTO } from "@/features/todo/types";
+import { runAndRefresh } from "@/server/actions/run";
 import { authorize } from "@/server/auth/workspace";
 import { appError, toActionError, unwrap, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
@@ -17,19 +17,8 @@ import { createTaskRow, updateTaskRow } from "./mutations";
 import { todoLevel } from "./queries";
 import { logActivity } from "@/server/history/log";
 
-async function run<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
-  try {
-    const data = await fn();
-    refresh();
-    return { ok: true, data };
-  } catch (err) {
-    unstable_rethrow(err);
-    return toActionError(err);
-  }
-}
-
 export async function createTask(input: unknown): Promise<ActionResult<TaskDTO>> {
-  return run(async () => {
+  return runAndRefresh(async () => {
     const session = await authorize("member");
     const task = await createTaskRow(await createServerSupabase(), session.workspace.id, session.user.id, input, todoLevel(session));
     await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "task.created", entityType: "task", entityId: task.id });
@@ -38,7 +27,7 @@ export async function createTask(input: unknown): Promise<ActionResult<TaskDTO>>
 }
 
 export async function updateTask(taskId: string, patch: unknown): Promise<ActionResult<TaskDTO>> {
-  return run(async () => {
+  return runAndRefresh(async () => {
     const session = await authorize("member");
     const task = await updateTaskRow(await createServerSupabase(), session.workspace.id, taskId, patch, todoLevel(session));
     const fields = patch && typeof patch === "object" ? Object.keys(patch).slice(0, 20) : [];
@@ -48,7 +37,7 @@ export async function updateTask(taskId: string, patch: unknown): Promise<Action
 }
 
 export async function deleteTask(taskId: string): Promise<ActionResult> {
-  return run(async () => {
+  return runAndRefresh(async () => {
     if (!z.uuid().safeParse(taskId).success) throw appError("task:not_found", "Tarefa não encontrada.");
     const session = await authorize("member");
     const db = await createServerSupabase();
@@ -78,7 +67,7 @@ export async function markTasksSeen(ids: string[]): Promise<ActionResult> {
 const GroupName = z.string().trim().min(1, "Dê um nome ao grupo.").max(80, "Até 80 caracteres.");
 
 export async function createTaskGroup(name: string): Promise<ActionResult<{ id: string; name: string }>> {
-  return run(async () => {
+  return runAndRefresh(async () => {
     const session = await authorize("member");
     if (todoLevel(session) !== "full") throw appError("forbidden", availableIn("avancado"));
     const r = GroupName.safeParse(name);
@@ -92,7 +81,7 @@ export async function createTaskGroup(name: string): Promise<ActionResult<{ id: 
 
 /** Aplica um roteiro pronto: cria um grupo com o nome dele e as tarefas com início e prazo. */
 export async function applyPlaybook(playbookId: string, input: { start?: string; projectId?: string | null }): Promise<ActionResult<{ created: number; groupId: string }>> {
-  return run(async () => {
+  return runAndRefresh(async () => {
     const session = await authorize("member");
     if (todoLevel(session) !== "full") throw appError("forbidden", availableIn("avancado"));
     const playbook = PLAYBOOKS.find((p) => p.id === playbookId);
