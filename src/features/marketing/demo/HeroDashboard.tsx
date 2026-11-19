@@ -5,7 +5,7 @@
 // gráfico ocupa a altura que sobra (o painel acompanha a altura do texto do hero).
 // Arrastar no gráfico filtra o painel inteiro, como no produto.
 
-import { BriefcaseBusiness, ChartColumn, Check, Infinity as InfinityIcon, Music2, Play, Search, type LucideIcon } from "lucide-react";
+import { Camera, ChartColumn, Check, Flag, Infinity as InfinityIcon, Search, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { FilterBar, FilterProvider } from "@/features/analytics/filter-context";
@@ -16,21 +16,20 @@ import { track } from "@/features/marketing/track";
 import { sampleData, sampleLabels, SAMPLE_CLIENTS } from "./engine";
 import { useLocalFilters } from "./local-filters";
 
-/** Contas do cliente de amostra. Ícones genéricos (não os logotipos das marcas). */
-export const HERO_ACCOUNTS: { name: string; icon: LucideIcon }[] = [
+/** Contas do cliente de amostra: só as plataformas que já funcionam (AVAILABLE_PLATFORMS). Ícones genéricos, não os logotipos. */
+const HERO_ACCOUNTS: { name: string; icon: LucideIcon }[] = [
   { name: "Meta Ads", icon: InfinityIcon },
+  { name: "Instagram", icon: Camera },
+  { name: "Facebook", icon: Flag },
   { name: "Google Ads", icon: Search },
   { name: "GA4", icon: ChartColumn },
-  { name: "TikTok Ads", icon: Music2 },
-  { name: "LinkedIn Ads", icon: BriefcaseBusiness },
-  { name: "YouTube", icon: Play },
 ];
 
 function ConnectedAccounts() {
   return (
     <div>
       <p className="label-caps text-[10.5px] text-fg-2">Contas conectadas</p>
-      <ul className="mt-1.5 grid grid-cols-3 gap-1 @[560px]:grid-cols-6">
+      <ul className="mt-1.5 grid grid-cols-3 gap-1 @[560px]:grid-cols-5">
         {HERO_ACCOUNTS.map(({ name, icon: Icon }) => (
           <li key={name} className="flex min-w-0 items-center gap-1.5 rounded-control border border-accent/40 bg-accent-soft/40 px-1.5 py-1.5">
             <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-[5px] bg-accent text-on-accent" aria-hidden>

@@ -33,9 +33,9 @@ export function Hero() {
 
           <Reveal trigger="intro" delay={520}>
             <p className="mt-7 max-w-[34rem] text-[17px] leading-relaxed text-fg-2">
-              O VYZ junta <strong className="font-semibold text-fg">Meta Ads</strong>, <strong className="font-semibold text-fg">Google Ads</strong>,{" "}
-              <strong className="font-semibold text-fg">GA4</strong>, <strong className="font-semibold text-fg">TikTok Ads</strong> e os seus{" "}
-              <strong className="font-semibold text-fg">CRMs</strong> num painel só e manda ao cliente um dashboard que ele entende.
+              O VYZ junta <strong className="font-semibold text-fg">Meta Ads</strong>, <strong className="font-semibold text-fg">Instagram</strong>,{" "}
+              <strong className="font-semibold text-fg">Google Ads</strong> e <strong className="font-semibold text-fg">GA4</strong> num painel só e manda ao
+              cliente um dashboard que ele entende.
             </p>
           </Reveal>
 

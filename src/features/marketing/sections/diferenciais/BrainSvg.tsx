@@ -6,7 +6,7 @@
 // Movimento só com SMIL (animateMotion e animate): sem JS por quadro, e o PlayWhenVisible pausa
 // fora da tela. Parado ("reduzir movimento" ou aparelho fraco): os pulsos ficam no meio do caminho.
 
-import { siGoogleads, siGoogleanalytics, siMeta } from "simple-icons";
+import { siGoogleads, siGoogleanalytics, siInstagram, siMeta } from "simple-icons";
 import { BRAIN, type Region } from "./brain-model";
 
 const REGIONS: Region[] = [0, 1, 2];
@@ -38,28 +38,21 @@ const SPARK_PATHS = BRAIN.paths.map((path, k) => {
 const TWINKLE = BRAIN.nodes.map((_, i) => i).filter((i) => i % 7 === 3);
 
 function Logo({ k, y }: { k: number; y: number }) {
-  const icon = [siMeta, siGoogleads, siGoogleanalytics][k];
+  // só as plataformas que já funcionam (AVAILABLE_PLATFORMS)
+  const icon = [siMeta, siGoogleads, siGoogleanalytics, siInstagram][k];
   return (
     <g>
       <circle cx={LOGO_X} cy={y} r={15} fill="#fff" />
-      {icon ? (
-        <svg x={LOGO_X - 9} y={y - 9} width={18} height={18} viewBox="0 0 24 24">
-          <path d={icon.path} fill={`#${icon.hex}`} />
-        </svg>
-      ) : (
-        // CRM (RD Station, HubSpot…): ícone neutro de contato, sem a marca de um só
-        <g fill="none" stroke="#4b5563" strokeWidth={1.8} strokeLinecap="round">
-          <circle cx={LOGO_X} cy={y - 3} r={3.6} />
-          <path d={`M${LOGO_X - 6.5},${y + 7} a6.5,5 0 0 1 13,0`} />
-        </g>
-      )}
+      <svg x={LOGO_X - 9} y={y - 9} width={18} height={18} viewBox="0 0 24 24">
+        <path d={icon.path} fill={`#${icon.hex}`} />
+      </svg>
     </g>
   );
 }
 
 export function BrainSvg({ animate = true }: { animate?: boolean }) {
   return (
-    <svg viewBox="0 0 610 330" className="h-auto w-full" role="img" aria-label="Um cérebro feito de pontos e conexões: os dados de Meta Ads, Google Ads, GA4 e CRM entram, passam pelo cérebro e saem num dashboard." data-brain="svg">
+    <svg viewBox="0 0 610 330" className="h-auto w-full" role="img" aria-label="Um cérebro feito de pontos e conexões: os dados de Meta Ads, Google Ads, GA4 e Instagram entram, passam pelo cérebro e saem num dashboard." data-brain="svg">
       {/* entradas: logo → nó de entrada */}
       <g>
         {BRAIN.entries.map((e, k) => (
