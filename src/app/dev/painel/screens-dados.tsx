@@ -150,10 +150,10 @@ const IMPORTED: AdAccountDTO[] = [
 
 const CENTER: ShareCenter = {
   links: [
-    { id: "l1", dashboardId: "d1", dashboardName: "Loja Aurora · Vendas", tokenHint: "x7Kq2a", hideSpend: false, expiresAt: day(-24), revokedAt: null, viewCount: 148, lastViewedAt: at(95), createdAt: day(6), canRevoke: true },
-    { id: "l2", dashboardId: "d2", dashboardName: "Clínica Sol · Leads", tokenHint: "9mTb41", hideSpend: true, expiresAt: null, revokedAt: null, viewCount: 37, lastViewedAt: day(2), createdAt: day(21), canRevoke: true },
-    { id: "l3", dashboardId: "d3", dashboardName: "Imobiliária Vista do Parque Empreendimentos · Captação de leads", tokenHint: "Qw88zL", hideSpend: false, expiresAt: day(3), revokedAt: null, viewCount: 12, lastViewedAt: day(9), createdAt: day(33), canRevoke: false },
-    { id: "l4", dashboardId: "d4", dashboardName: "Aurora · Black Friday", tokenHint: "pL0v3r", hideSpend: false, expiresAt: day(-60), revokedAt: day(1), viewCount: 0, lastViewedAt: null, createdAt: day(12), canRevoke: true },
+    { id: "l1", dashboardId: "d1", dashboardName: "Loja Aurora · Vendas", tokenHint: "x7Kq2a", recipientName: "Marina, diretora de marketing", hideSpend: false, expiresAt: day(-24), revokedAt: null, viewCount: 148, lastViewedAt: at(95), createdAt: day(6), canRevoke: true },
+    { id: "l2", dashboardId: "d2", dashboardName: "Clínica Sol · Leads", tokenHint: "9mTb41", recipientName: null, hideSpend: true, expiresAt: null, revokedAt: null, viewCount: 37, lastViewedAt: day(2), createdAt: day(21), canRevoke: true },
+    { id: "l3", dashboardId: "d3", dashboardName: "Imobiliária Vista do Parque Empreendimentos · Captação de leads", tokenHint: "Qw88zL", recipientName: "Paulo", hideSpend: false, expiresAt: day(3), revokedAt: null, viewCount: 12, lastViewedAt: day(9), createdAt: day(33), canRevoke: false },
+    { id: "l4", dashboardId: "d4", dashboardName: "Aurora · Black Friday", tokenHint: "pL0v3r", recipientName: null, hideSpend: false, expiresAt: day(-60), revokedAt: day(1), viewCount: 0, lastViewedAt: null, createdAt: day(12), canRevoke: true },
   ],
   reports: [
     { id: "r1", dashboardId: "d1", dashboardName: "Loja Aurora · Vendas", frequency: "weekly", weekday: 1, monthDay: null, sendHour: 8, timezone: TZ, format: "pdf", isActive: true, nextRunAt: day(-3), lastRunAt: day(4), recipients: ["ana@lojaaurora.com.br", "financeiro@lojaaurora.com.br"], createdAt: day(40) },

@@ -23,7 +23,7 @@ export const getShareCenter = cache(async (): Promise<ShareCenter> => {
   const [links, reports, exportsRows, deliveries] = await Promise.all([
     supabase
       .from("share_links")
-      .select("id, dashboard_id, token_hint, hide_spend, expires_at, revoked_at, view_count, last_viewed_at, created_by, created_at, dashboard:dashboards!share_links_workspace_id_dashboard_id_fkey(name)")
+      .select("id, dashboard_id, token_hint, recipient_name, hide_spend, expires_at, revoked_at, view_count, last_viewed_at, created_by, created_at, dashboard:dashboards!share_links_workspace_id_dashboard_id_fkey(name)")
       .eq("workspace_id", ws)
       .order("created_at", { ascending: false })
       .limit(LIMIT),
@@ -55,6 +55,7 @@ export const getShareCenter = cache(async (): Promise<ShareCenter> => {
       dashboardId: l.dashboard_id,
       dashboardName: l.dashboard?.name ?? "Dashboard",
       tokenHint: l.token_hint,
+      recipientName: l.recipient_name,
       hideSpend: l.hide_spend,
       expiresAt: l.expires_at,
       revokedAt: l.revoked_at,

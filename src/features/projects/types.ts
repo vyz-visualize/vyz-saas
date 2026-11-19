@@ -3,6 +3,7 @@
 
 import type { DashboardListItem, SourceOption } from "@/features/dashboards/model";
 import type { Tier } from "@/features/pricing/entitlements";
+import type { ProjectClientPulse } from "./client-activity";
 import type { Seats } from "./seats";
 import type { AdAccountDTO, ConnectionDTO } from "@/features/integrations/types";
 import type { ProviderId } from "@/features/integrations/providers";
@@ -18,10 +19,14 @@ export type ProjectDTO = {
   /** Contas ligadas no projeto. */
   enabledAccounts: number;
   dashboards: number;
+  /** Se o cliente está abrindo os links (aba Acessos). Só na lista de workspaces. */
+  client?: ProjectClientPulse | null;
 };
 
 export type ProjectsState = {
   projects: ProjectDTO[];
+  /** Horário da leitura (textos relativos iguais no servidor e no navegador). */
+  now: string;
   /** Projetos contratados no plano. */
   quantity: number;
   /** Contas da mesma plataforma em cada projeto. */

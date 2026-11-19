@@ -63,6 +63,7 @@ import { useDashboardCover, type CoverHost } from "./useDashboardCover";
 import { PageView } from "./widgets/PageView";
 import { makeContext } from "./widgets/Widgets";
 import type { MetricGoal } from "./goals";
+import { useWatchPage } from "@/features/share/page-watch";
 
 export type DashboardSpec = { templateId: string; name: string; client: string; pages: PageId[]; settings: DashboardSettings; brand?: Brand; metricPrefs?: MetricPrefs; layout?: DashboardLayout; metricGoals?: readonly MetricGoal[]; /** Capa salva (visuais com capa): imagem e endereço. */ cover?: unknown };
 
@@ -137,6 +138,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, syncStamp, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, askLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref, coverHost }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
+  useWatchPage(page);
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
   const [customDays, setCustomDays] = useState(spec.settings.customDays || 14);
   const [range, setRange] = useState<Range | null>(null);

@@ -2,7 +2,7 @@
 
 // Navegação do painel, centrada no workspace (o cliente ou a marca; na tabela, projeto):
 // - Início: a visão da organização inteira;
-// - o workspace aberto: Visão geral, Dashboards, Contas, Pessoas e Ajustes, todos desse cliente
+// - o workspace aberto: Visão geral, Dashboards, Contas, Pessoas, Acessos e Ajustes, todos desse cliente
 //   (no computador, o menu é a navegação do workspace; no celular, as abas do cabeçalho);
 // - Rotina: A Fazer e Compartilhar (de todos os workspaces).
 // A organização (todos os workspaces, Conexões, Plano e Configurações) fica no seletor do topo
@@ -10,7 +10,7 @@
 // O workspace aberto é o do endereço (/painel/workspaces/<id>/...) ou, fora dele, o último
 // aberto (cookie vyz-project). Fonte única do menu lateral, da barra do celular e da folha "Mais".
 
-import { BarChart3, FolderKanban, Gem, Home, Inbox, LayoutGrid, ListChecks, PanelsTopLeft, Plug, Settings, Settings2, Share2, ShieldCheck, Users, Workflow } from "lucide-react";
+import { Activity, BarChart3, FolderKanban, Gem, Home, Inbox, LayoutGrid, ListChecks, PanelsTopLeft, Plug, Settings, Settings2, Share2, ShieldCheck, Users, Workflow } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { createContext, use } from "react";
 import { ACTIVE_PROJECT_COOKIE } from "@/lib/supabase/cookies";
@@ -41,7 +41,7 @@ export function usePanelPath() {
 }
 
 /** Endereços de um workspace. */
-export const projectHref = (id: string, tab: "" | "dashboards" | "contas" | "pessoas" | "ajustes" = "") => `/painel/workspaces/${id}${tab ? `/${tab}` : ""}`;
+export const projectHref = (id: string, tab: "" | "dashboards" | "contas" | "pessoas" | "acessos" | "ajustes" = "") => `/painel/workspaces/${id}${tab ? `/${tab}` : ""}`;
 
 const PROJECT_PATH = /^\/painel\/workspaces\/([0-9a-f-]{36})(?:\/([a-z-]+))?/i;
 
@@ -103,6 +103,7 @@ function dashGroups(project: OpenProject | null): NavGroup[] {
               { href: projectHref(project.id, "dashboards"), label: "Dashboards", icon: BarChart3 },
               { href: projectHref(project.id, "contas"), label: "Contas", icon: Plug },
               { href: projectHref(project.id, "pessoas"), label: "Pessoas", icon: Users },
+              { href: projectHref(project.id, "acessos"), label: "Acessos", icon: Activity },
               { href: projectHref(project.id, "ajustes"), label: "Ajustes", icon: Settings2 },
             ],
           } satisfies NavGroup,
