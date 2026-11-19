@@ -12,8 +12,9 @@ describe("pedido", () => {
     expect(order.planId).toBe("pro");
     expect(order.interval).toBe("year");
     expect(order.accountsQuantity).toBe(5);
-    expect(order.items).toEqual([{ kind: "recurring", planPriceId: "pro_year", quantity: 5, amountCents: 12490, label: "Plano Padrão · até 5 workspaces" }]);
-    expect(order.recurringCents).toBe(149880);
+    // o item guarda o por mês (arredondado, igual ao catálogo do banco); a cobrança é o total exato do ano
+    expect(order.items).toEqual([{ kind: "recurring", planPriceId: "pro_year", quantity: 5, amountCents: 12499, label: "Plano Padrão · até 5 workspaces" }]);
+    expect(order.recurringCents).toBe(149990);
     expect(order.amountDueNowCents).toBe(order.recurringCents);
     expect(order.blocked).toBeUndefined();
   });
@@ -28,9 +29,9 @@ describe("pedido", () => {
   it("Avançado anual: só o plano, sem adicional", () => {
     const order = buildOrder(s({ plano: "avancado", periodo: "anual" }));
     expect(order.items).toHaveLength(1);
-    expect(order.items[0]).toMatchObject({ planPriceId: "avancado_year", quantity: 200, amountCents: 24990 });
+    expect(order.items[0]).toMatchObject({ planPriceId: "avancado_year", quantity: 200, amountCents: 24999 });
     expect(order.items[0].label).toBe("Plano Avançado · workspaces ilimitados");
-    expect(order.recurringCents).toBe(299880);
+    expect(order.recurringCents).toBe(299990);
   });
 
   it("o valor do plano fecha com a conta do banco (first + extra × (qtd − 1))", () => {
@@ -66,8 +67,12 @@ describe("pedido", () => {
     const once = sum(order.items.filter((i) => i.kind === "one_time").map((i) => i.amountCents));
     expect(monthly).toBe(order.quote.monthly);
     expect(once).toBe(order.quote.oneTime);
-    expect(order.recurringCents).toBe(monthly * 12);
-    expect(order.amountDueNowCents).toBe(monthly * 12 + once);
+    // no anual: o plano pelo total exato do ano + os extras mensais × 12; a diferença para
+    // "por mês × 12" é só o arredondamento do plano (o banco aceita menos de 12 centavos)
+    const extrasMonthly = monthly - order.items[0].amountCents;
+    expect(order.recurringCents).toBe(149990 + extrasMonthly * 12);
+    expect(Math.abs(order.recurringCents - monthly * 12)).toBeLessThan(12);
+    expect(order.amountDueNowCents).toBe(order.recurringCents + once);
 
     const mensal = buildOrder({ ...state, periodo: "mensal" });
     expect(mensal.recurringCents).toBe(mensal.quote.monthly);

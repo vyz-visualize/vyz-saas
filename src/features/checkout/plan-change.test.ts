@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planMonthly } from "@/features/pricing/pricing";
+import { annualTotal, planMonthly } from "@/features/pricing/pricing";
 import { addMonths, planChangeBlocker, planSelection, quotePlanChange, samePlan } from "./plan-change";
 
 const start = new Date("2026-10-01T00:00:00Z");
@@ -70,7 +70,9 @@ describe("troca de período", () => {
       extrasMonthlyCents: 0,
       now: half,
     });
-    const yearly = planMonthly("pro", "anual") * 12;
+    // o anual cobra o total exato do ano (R$ 1.499,90), não o por mês × 12
+    const yearly = annualTotal("pro");
+    expect(yearly).toBe(149990);
     expect(q.resetsPeriod).toBe(true);
     expect(q.recurringCents).toBe(yearly);
     expect(q.prorationCents).toBe(yearly - Math.round(planMonthly("pro", "mensal") / 2));
@@ -87,7 +89,7 @@ describe("troca de período", () => {
       now: start,
     });
     expect(q.prorationCents).toBe(0);
-    expect(q.creditCents).toBe(planMonthly("pro", "anual") * 12 - planMonthly("pro", "mensal"));
+    expect(q.creditCents).toBe(annualTotal("pro") - planMonthly("pro", "mensal"));
     expect(q.periodEnd).toEqual(monthEnd);
   });
 });

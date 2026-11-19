@@ -16,7 +16,7 @@ import { usePlan } from "@/features/marketing/state/PlanProvider";
 import { ENTITLEMENTS, membersLabel } from "@/features/pricing/entitlements";
 import {
   DEFAULT_STATE,
-  PLAN,
+  annualTotal,
   projectsLabel,
   maxAnnualSavingPct,
   LP_PLAN_PAGES,
@@ -62,7 +62,7 @@ function dashCard(tier: PlanId, period: Period): Card {
   const e = ENTITLEMENTS[tier];
   const base = {
     price: startingPrice(tier, period),
-    caption: `${period === "anual" ? `no anual · ${brl(PLAN[tier].anual * 12)} por ano` : "no mensal"} · ${projectsLabel(tier)}`,
+    caption: `${period === "anual" ? `no anual · ${brl(annualTotal(tier))} por ano` : "no mensal"} · ${projectsLabel(tier)}`,
     // o Avançado sem número exato: "+5"
     templates: tier === "avancado" ? "+5 visuais de dashboard" : `${e.dashboardTemplates} visuais de dashboard`,
   };

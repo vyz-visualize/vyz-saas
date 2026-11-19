@@ -58,7 +58,8 @@ O que hoje funciona só no navegador e depende de backend, de integração ou de
   - Dashboards: Básico 3, Padrão 10, Avançado 40, Personalizado 100. Dashboard adicional: R$ 99, pagamento único.
   - Usuários: Básico 1; Padrão, Avançado e Personalizado ilimitados (`UNLIMITED_MEMBERS` = 1000 no banco, nunca aparece na tela).
   - Landing pages publicadas: Básico 1, Padrão 3, Avançado 10, Personalizado 10.
-  - Preços: Básico R$ 49,90/mês (anual R$ 502,80, R$ 41,90/mês), Padrão R$ 149,90/mês (anual R$ 1.498,80, R$ 124,90/mês), Avançado R$ 299,90/mês (anual R$ 2.998,80, R$ 249,90/mês). O anual sai ~16–17% mais barato.
+  - Preços: Básico R$ 49,90/mês ou R$ 499,90/ano, Padrão R$ 149,90/mês ou R$ 1.499,90/ano, Avançado R$ 299,90/mês ou R$ 2.999,90/ano. O anual sai ~17% mais barato.
+  - O anual é o total do ano (`PLAN_YEAR`), escolhido entre os pontos de preço da Apple (que não tem R$ 502,80 nem os outros "por mês × 12"). Não divide por 12: o catálogo e os itens guardam o por mês arredondado (R$ 41,66) e a cobrança usa o total exato; o banco aceita só essa diferença (migração `20261122090000_annual_exact_total`).
 - **Subdomínio das LPs**: o painel mostra `slug.vyz.app` como exemplo; o domínio real ainda não existe.
 - **Número de WhatsApp**: provisório (`WHATSAPP_NUMBER` em `features/pricing/pricing.ts`).
 - **`robots: noindex`**: segue ligado em todas as áreas, com o `// TODO: remover no lançamento`.

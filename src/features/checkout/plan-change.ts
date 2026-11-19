@@ -7,7 +7,7 @@
 
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { ENTITLEMENTS, TIER_LABEL, canUse, membersLabel, unlimitedMembers, unlimitedProjects } from "@/features/pricing/entitlements";
-import { PLAN_PROJECTS, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
+import { PLAN_PROJECTS, periodCharge, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
 
 export type PlanSelection = { tier: PlanId; period: Period; accounts: number };
 
@@ -47,7 +47,8 @@ export function quotePlanChange(input: {
   now: Date;
 }): PlanChangeQuote {
   const { current, next, extrasMonthlyCents, now } = input;
-  const recurring = (s: PlanSelection) => (planMonthly(s.tier, s.period) + extrasMonthlyCents) * periodMonths(s.period);
+  // por período: o mês no mensal; no anual, o total exato do ano + os extras × 12
+  const recurring = (s: PlanSelection) => periodCharge(s.tier, s.period) + extrasMonthlyCents * periodMonths(s.period);
   const oldRecurring = recurring(current);
   const newRecurring = recurring(next);
 

@@ -12,7 +12,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import { planItemLabel } from "@/features/checkout/order";
 import { planChangeBlocker, quotePlanChange, samePlan, type PlanChangeQuote, type PlanSelection } from "@/features/checkout/plan-change";
 import { INTERVAL } from "@/features/pricing/catalog";
-import { PERIOD_LABEL, type PlanId } from "@/features/pricing/pricing";
+import { PERIOD_LABEL, periodCharge, type PlanId } from "@/features/pricing/pricing";
 import { appError, fromPostgrest, unwrap } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
 import { billingAdmin } from "./checkout";
@@ -130,7 +130,7 @@ export async function changeSubscriptionPlan(input: { workspaceId: string; actor
     next: {
       planId: input.next.tier,
       accounts: input.next.accounts,
-      amountCents: quote.planMonthlyCents * (input.next.period === "anual" ? 12 : 1),
+      amountCents: periodCharge(input.next.tier, input.next.period),
       interval: INTERVAL[input.next.period],
     },
   });

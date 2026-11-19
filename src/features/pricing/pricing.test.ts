@@ -6,22 +6,23 @@ import { buildPlanMessage } from "./messages";
 
 const s = (patch: Partial<PlanState>): PlanState => ({ ...DEFAULT_STATE, ...patch });
 describe("casos que precisam bater", () => {
-  it("Básico, até 3 workspaces: R$ 49,90 no mensal e R$ 502,80 por ano (R$ 41,90/mês)", () => {
+  it("Básico, até 3 workspaces: R$ 49,90 no mensal e R$ 499,90 por ano (≈ R$ 41,66/mês)", () => {
     expect(brl(quote(s({ plano: "base", periodo: "mensal" })).monthly)).toBe("R$ 49,90");
-    expect(brl(quote(s({ plano: "base", periodo: "anual" })).monthly)).toBe("R$ 41,90");
-    expect(brl(quote(s({ plano: "base", periodo: "anual" })).yearly)).toBe("R$ 502,80");
+    expect(brl(quote(s({ plano: "base", periodo: "anual" })).monthly)).toBe("R$ 41,66");
+    expect(brl(quote(s({ plano: "base", periodo: "anual" })).yearly)).toBe("R$ 499,90");
   });
 
-  it("Padrão, até 5 workspaces: R$ 149,90 no mensal e R$ 1.498,80 por ano (R$ 124,90/mês)", () => {
+  it("Padrão, até 5 workspaces: R$ 149,90 no mensal e R$ 1.499,90 por ano (≈ R$ 124,99/mês)", () => {
     expect(brl(quote(s({ plano: "pro", periodo: "mensal" })).monthly)).toBe("R$ 149,90");
-    expect(brl(quote(s({ plano: "pro", periodo: "anual" })).monthly)).toBe("R$ 124,90");
-    expect(brl(annualTotal("pro"))).toBe("R$ 1.498,80");
+    expect(brl(quote(s({ plano: "pro", periodo: "anual" })).monthly)).toBe("R$ 124,99");
+    expect(brl(annualTotal("pro"))).toBe("R$ 1.499,90");
+    expect(brl(quote(s({ plano: "pro", periodo: "anual" })).yearly)).toBe("R$ 1.499,90");
   });
 
-  it("Avançado, workspaces ilimitados: R$ 299,90 no mensal e R$ 2.998,80 por ano (R$ 249,90/mês)", () => {
+  it("Avançado, workspaces ilimitados: R$ 299,90 no mensal e R$ 2.999,90 por ano (≈ R$ 249,99/mês)", () => {
     expect(brl(quote(s({ plano: "avancado", periodo: "mensal" })).monthly)).toBe("R$ 299,90");
-    expect(brl(quote(s({ plano: "avancado", periodo: "anual" })).monthly)).toBe("R$ 249,90");
-    expect(brl(annualTotal("avancado"))).toBe("R$ 2.998,80");
+    expect(brl(quote(s({ plano: "avancado", periodo: "anual" })).monthly)).toBe("R$ 249,99");
+    expect(brl(annualTotal("avancado"))).toBe("R$ 2.999,90");
   });
 
   it("os workspaces são fixos por plano: 3, 5 e ilimitados (a assinatura grava 200)", () => {
@@ -51,26 +52,29 @@ describe("casos que precisam bater", () => {
     expect(q.monthly).toBe(19800);
   });
 
-  it("Padrão anual + 1 sob medida recorrente: R$ 323,90/mês + R$ 990", () => {
+  it("Padrão anual + 1 sob medida recorrente: ≈ R$ 323,99/mês, R$ 3.887,90 no ano + R$ 990", () => {
     const q = quote(s({ plano: "pro", periodo: "anual", sob: 1, sobm: "recorrente" }));
-    expect(brl(q.monthly)).toBe("R$ 323,90");
+    expect(brl(q.monthly)).toBe("R$ 323,99");
+    // o plano pelo total exato do ano, o extra mensal × 12
+    expect(q.yearly).toBe(149990 + 19900 * 12);
     expect(q.oneTime).toBe(99000);
   });
 
   it("extras mensais não têm desconto no anual", () => {
     const q = quote(s({ plano: "pro", lp: 1, lpcare: true }));
-    expect(q.monthlyMensal - q.monthlyAnual).toBe(14990 - 12490);
-    expect(q.twelveMonths).toBe((12490 + 9900) * 12 + 95000);
+    expect(q.monthlyMensal - q.monthlyAnual).toBe(14990 - 12499);
+    expect(q.twelveMonths).toBe(149990 + 9900 * 12 + 95000);
   });
 });
 
 describe("regras", () => {
   it("o estado inicial é Padrão, anual", () => {
-    expect(quote(DEFAULT_STATE).monthly).toBe(12490);
+    expect(quote(DEFAULT_STATE).monthly).toBe(12499);
+    expect(quote(DEFAULT_STATE).yearly).toBe(149990);
   });
 
-  it("o preço de entrada do Básico anual é R$ 41,90", () => {
-    expect(brl(startingPrice("base", "anual"))).toBe("R$ 41,90");
+  it("o preço de entrada do Básico anual é ≈ R$ 41,66 por mês", () => {
+    expect(brl(startingPrice("base", "anual"))).toBe("R$ 41,66");
   });
 
   it("o plano é uma linha só, sem projeto extra nem plataforma extra", () => {
@@ -79,17 +83,17 @@ describe("regras", () => {
     expect(q.lines[0].label).toBe("Plano Básico · até 3 workspaces");
   });
 
-  it("o desconto do anual vem dos preços: ~16–17% nos três", () => {
-    expect(annualSavingPct("base")).toBe(16);
+  it("o desconto do anual vem dos preços: ~17% nos três", () => {
+    expect(annualSavingPct("base")).toBe(17);
     expect(maxAnnualSavingPct()).toBe(17); // "até −17%" nos seletores de período
     expect(annualSavingPct("pro")).toBe(17);
     expect(annualSavingPct("avancado")).toBe(17);
   });
 
-  it("economia anual = (mensal − anual) × 12", () => {
+  it("economia anual = 12 meses no mensal − total do ano", () => {
     const q = quote(s({ plano: "pro" }));
-    expect(q.annualSaving).toBe((14990 - 12490) * 12);
-    expect(q.yearly).toBe(12490 * 12);
+    expect(q.annualSaving).toBe(14990 * 12 - 149990);
+    expect(q.yearly).toBe(149990);
   });
 
   it("em 12 meses = plano/mês × 12 + extras", () => {
@@ -116,13 +120,15 @@ describe("regras", () => {
     expect(buildPlanMessage(state, quote(state), "u")).toContain("2× Dashboard adicional (R$ 99 cada, pagamento único)");
   });
 
-  it("anual: preço por mês × 12 bate com o cobrado por ano nos três planos", () => {
-    expect([annualTotal("base"), annualTotal("pro"), annualTotal("avancado")]).toEqual([50280, 149880, 299880]);
+  it("anual: o total do ano é o mesmo do site e das lojas (pontos de preço da Apple, em ,90)", () => {
+    expect([annualTotal("base"), annualTotal("pro"), annualTotal("avancado")]).toEqual([49990, 149990, 299990]);
     expect(STORE_PLAN_PRICE).toEqual({
-      base: { mensal: 4990, anual: 50280 },
-      pro: { mensal: 14990, anual: 149880 },
-      avancado: { mensal: 29990, anual: 299880 },
+      base: { mensal: 4990, anual: 49990 },
+      pro: { mensal: 14990, anual: 149990 },
+      avancado: { mensal: 29990, anual: 299990 },
     });
+    // o por mês do anual é só para mostrar: total ÷ 12, arredondado
+    expect([startingPrice("base", "anual"), startingPrice("pro", "anual"), startingPrice("avancado", "anual")]).toEqual([4166, 12499, 24999]);
   });
 });
 
@@ -158,7 +164,7 @@ describe("mensagem do WhatsApp", () => {
         "• até 5 workspaces",
         "• Tipo de negócio: E-commerce",
         "• Extras: 1× Landing page feita pelo time",
-        "• Todo mês: R$ 124,90 (R$ 1.498,80 no ano)",
+        "• Todo mês: R$ 124,99 (R$ 1.499,90 no ano)",
         "• Uma vez: R$ 950,00",
         `Simulação: ${url}`,
         "Podemos seguir?",
