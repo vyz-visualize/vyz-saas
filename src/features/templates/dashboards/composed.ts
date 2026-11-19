@@ -137,8 +137,6 @@ export function composePages(platforms: readonly string[], features: readonly Fe
   return out;
 }
 
-export const isComposedTemplate = (t: Pick<DashboardTemplate, "composed">) => !!t.composed;
-
 // ---- métricas fortes nos modelos novos --------------------------------------------------
 // O topo da Visão geral e das páginas de cada plataforma traz sempre as métricas que o
 // mercado usa para ler mídia paga, na ordem de leitura: quanto foi investido, o que voltou,

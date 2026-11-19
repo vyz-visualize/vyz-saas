@@ -15,7 +15,6 @@ import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
 import { CreativeImage } from "./CreativeImage";
 import { platformColor, type WidgetContext } from "./Widgets";
 
-const HIDDEN = "•••";
 const sales = (p: Profile) => p === "ecommerce" || p === "infoproduto" || p === "marketplace" || p === "executivo";
 
 export function Empty({ children }: { children: ReactNode }) {
@@ -400,26 +399,4 @@ export function VideoWidget({ ctx, platform }: { ctx: WidgetContext; platform?: 
   );
 }
 
-/** Vídeo de um criativo: a curva da retenção em barras (detalhe do criativo). */
-export function RetentionBars({ video }: { video: NonNullable<Creative["video"]> }) {
-  const steps = [
-    ["Início", 1],
-    ["25%", video.p25 / video.views],
-    ["50%", video.p50 / video.views],
-    ["75%", video.p75 / video.views],
-    ["100%", video.p100 / video.views],
-  ] as const;
-  return (
-    <div className="flex h-32 items-end gap-2">
-      {steps.map(([l, v]) => (
-        <div key={l} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-          <span className="text-[11px] font-semibold tnum">{pct(v, 0)}</span>
-          <div className="w-full rounded-t-[6px] bg-accent" style={{ height: `${Math.max(3, v * 100)}%`, opacity: 0.35 + v * 0.65 }} />
-          <span className="text-[10.5px] text-fg-2">{l}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export { HIDDEN };
+;

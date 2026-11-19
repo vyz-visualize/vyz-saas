@@ -53,43 +53,6 @@ export function ErrorLine({ message }: { message: string | null }) {
   );
 }
 
-/** Cartão de escolha (segmento): a área toda é clicável. */
-export function ChoiceCard({
-  selected,
-  disabled,
-  onToggle,
-  children,
-  badge,
-  role = "checkbox",
-}: {
-  selected: boolean;
-  disabled?: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-  badge?: ReactNode;
-  role?: "checkbox" | "radio";
-}) {
-  return (
-    <button
-      type="button"
-      role={role}
-      aria-checked={selected}
-      aria-disabled={disabled || undefined}
-      onClick={() => !disabled && onToggle()}
-      className={`group relative flex h-full w-full flex-col items-start gap-3 rounded-card border p-4 text-left transition-[border-color,background-color,transform] duration-200 ease-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-        disabled
-          ? "cursor-not-allowed border-dashed border-line opacity-60"
-          : selected
-            ? "border-accent bg-accent-soft/40"
-            : "border-line bg-card hover:border-fg-2/60 active:scale-[0.99]"
-      }`}
-    >
-      {badge && <span className="absolute top-3 right-3">{badge}</span>}
-      {children}
-    </button>
-  );
-}
-
 type FlowFooterProps = {
   /** "Pular por agora": conclui o primeiro acesso sem criar nada. */
   onSkip: () => void;

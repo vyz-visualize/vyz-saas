@@ -1,56 +1,38 @@
-# Welcome to your Expo app 👋
+# VYZ · app (Expo)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App nativo do VYZ para iOS e Android: Expo SDK 58, Expo Router, React Native. Versão atual: 1.0.0, build 10 (`app.json`).
 
-## Get started
+Arquitetura, planos na loja e checklist de envio: [docs/MOBILE.md](../../docs/MOBILE.md). Publicação nas lojas: [store/LOJAS.md](store/LOJAS.md).
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Rodar
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env      # preencher
+npm run ios               # expo run:ios: gera a pasta nativa, compila e abre no simulador
+npm run android           # expo run:android
+npm start                 # só o servidor do Metro
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+`ios/` e `android/` não vão para o git: são gerados pelo `expo prebuild`. Mudança nativa vai no `app.json` ou no `app.config.js`.
 
-### Other setup steps
+## Conferir
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npm run lint              # expo lint
+npm run typecheck         # tsc --noEmit
+node scripts/audit-bundle.mjs ios   # termos proibidos no iOS, antes de cada envio
+```
 
-## Learn more
+Para instalar biblioteca, use `npx expo install <pacote>` (versão compatível com o SDK).
 
-To learn more about developing your project with Expo, look at the following resources:
+## Builds das lojas
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Locais, sem EAS, pelo `store/gerar/build.sh` (`android`, `ios` ou `ios-check`). A cada envio, suba `ios.buildNumber` e `android.versionCode` no `app.json`. As chaves de publicação ficam fora do git, em `~/Documents/VYZ/Publicar`.
 
-## Join the community
+## Pastas
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `src/app/`: telas (Expo Router): `entrar`, abas Início, Análises, VYZ e Conta, A Fazer e o dashboard.
+- `src/lib/`: sessão (Supabase, Keychain/Keystore), API do site, login, compras (RevenueCat) e push.
+- `src/ui/`: componentes.
+- `store/`: textos, imagens, produtos e scripts das lojas.

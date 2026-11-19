@@ -19,8 +19,3 @@ export const btn = {
   /** Só ícone (menu de mais ações, fechar). */
   icon: `${base} size-9 shrink-0 text-fg-2 hover:bg-surface-2 hover:text-fg`,
 };
-
-export const chip =
-  "inline-flex items-center gap-1.5 rounded-chip border border-line px-3 py-1 text-[13px] text-fg-2";
-
-export const card = "rounded-card border border-line bg-card";

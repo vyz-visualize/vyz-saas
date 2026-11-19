@@ -28,38 +28,69 @@ Regras: migration aplicada não se edita (corrige-se com outra); depois de toda 
 
 ## Domínios e tabelas
 
-| Migration | Tabelas | Para quê |
+Nomes: a tabela `workspaces` é a **organização** na interface (plano, cobrança, equipe) e `projects` é o **workspace** (o cliente ou a marca). Migrations em ordem (o nome do arquivo é `<timestamp>_<nome>.sql`):
+
+| Migration | Tabelas e colunas | Para quê |
 |---|---|---|
-| 01 fundação | — | schema `private`, privilégios negados por padrão, enums, `slugify` |
-| 02 catálogo | `plans`, `plan_entitlements`, `plan_prices`, `billing_items`, `platforms`, `business_types`, `dashboard_page_types`, `dashboard_templates` (+ `_platforms`, `_pages`, `_business_types`), `landing_templates` | cópia do catálogo do código, com FKs; leitura pública |
-| 03 identidade | `profiles`, `workspaces`, `workspace_members`, `workspace_invitations`, `workspace_platforms` | usuário, conta da agência/empresa, equipe com papel, convites (hash do token), plataformas do onboarding |
-| 04 cobrança | `billing_customers`, `checkout_sessions`, `checkout_items`, `subscriptions`, `subscription_items`, `invoices`, `payment_transactions`, `service_orders`, `billing_events`; view `workspace_access` | pedido → pagamento → assinatura; faturas, cada transação, serviços a entregar, eventos de webhook (idempotência) |
-| 05 integrações | `connections`, `connection_secrets`, `oauth_states`, `ad_accounts`, `sync_runs` | login OAuth no Meta/Google, tokens no Vault, contas de anúncio, cada sincronização |
-| 06 métricas | `ad_campaigns`, `ads`, `ad_products`, `insights_account_daily`, `insights_campaign_daily`, `insights_ad_daily`, `insights_breakdown_daily`, `insights_search_term_daily`, `insights_product_daily` | armazém de métricas diárias sincronizadas |
-| 07 dashboards | `dashboards`, `dashboard_pages`, `dashboard_sources`, `share_links`, `share_visits`, `scheduled_reports`, `scheduled_report_recipients`, `report_deliveries`, `dashboard_exports` | dashboards, links públicos (hash do token e para quem é), visitas aos links (aba Acessos), relatórios e envios, exportações |
-| 08 landing pages | `landing_pages`, `landing_page_versions`, `landing_page_submissions` | páginas, versões publicadas, leads dos formulários |
-| 09 limites | view `workspace_usage` | gatilhos que aplicam o plano no banco |
-| 10 histórico | `audit_events`, `subscription_changes`, `auth_events`, `activity_events`, `legal_acceptances` | histórico de tudo (ver abaixo) |
-| 11 manutenção | `rate_limits`; bucket `brand-assets` | limite de tentativas, limpeza diária (pg_cron), logos |
-| 12 endurecimento | — | correções da revisão adversarial (segurança, integridade, desempenho; ver abaixo) |
-| 13 cobrança: complementos | — | CNPJ alfanumérico, troca de plano atômica (`change_subscription`), renovação das assinaturas simuladas |
-| 17 lista de espera | `landing_waitlist`, `landing_waitlist_visits` | quem pediu acesso antecipado às LPs (um por usuário em cada workspace; o e-mail vem do banco) e visitas à página "em breve" (leitura só com a chave de serviço) |
-| 18 métricas do dashboard | `dashboards.metric_prefs` | o que difere do padrão do template, por plataforma (member+ edita) |
-| 19 métricas de criativos | colunas em `insights_ad_daily`, `ads.post_url` | leads, engajamento, vídeo 25 a 100%, segundos assistidos, visitas ao perfil e link do post |
-| 20 métricas do Personalizar | colunas em `insights_ad_daily` e `insights_campaign_daily` | cadastros por anúncio; todas as conversões, interações e topo por campanha. O rollup por conta não usa essas colunas |
-| identidade do workspace (`20261119090000`) | colunas `projects.color` e `projects.logo_path` | cor (`#rrggbb`) e logo de cada workspace (cliente), no painel e nos dashboards dele; a regra do banco só aceita a logo na pasta `<organização>/projects/<id>/` do bucket `brand-assets` |
+| `foundation` | (nenhuma) | schema `private`, privilégios negados por padrão, enums, `slugify` |
+| `catalog` | `plans`, `plan_entitlements`, `plan_prices`, `billing_items`, `platforms`, `business_types`, `dashboard_page_types`, `dashboard_templates` (+ `_platforms`, `_pages`, `_business_types`), `landing_templates` | cópia do catálogo do código, com FKs; leitura pública |
+| `identity` | `profiles`, `workspaces`, `workspace_members`, `workspace_invitations`, `workspace_platforms` | usuário, organização, equipe com papel, convites (hash do token), plataformas do onboarding |
+| `billing` | `billing_customers`, `checkout_sessions`, `checkout_items`, `subscriptions`, `subscription_items`, `invoices`, `payment_transactions`, `service_orders`, `billing_events`; view `workspace_access` | pedido, pagamento e assinatura; faturas, transações, serviços a entregar, eventos de webhook (idempotência) |
+| `integrations` | `connections`, `connection_secrets`, `oauth_states`, `ad_accounts`, `sync_runs` | logins OAuth, tokens no Vault, contas, cada sincronização |
+| `insights` | `ad_campaigns`, `ads`, `ad_products`, `insights_account_daily`, `insights_campaign_daily`, `insights_ad_daily`, `insights_breakdown_daily`, `insights_search_term_daily`, `insights_product_daily` | armazém de métricas diárias de anúncio |
+| `dashboards` | `dashboards`, `dashboard_pages`, `dashboard_sources`, `share_links`, `scheduled_reports`, `scheduled_report_recipients`, `report_deliveries`, `dashboard_exports` | dashboards, links públicos (hash do token), relatórios e envios, exportações |
+| `landing_pages` | `landing_pages`, `landing_page_versions`, `landing_page_submissions` | páginas, versões publicadas, leads dos formulários |
+| `entitlements` | view `workspace_usage` | gatilhos que aplicam o plano no banco |
+| `history` | `audit_events`, `subscription_changes`, `auth_events`, `activity_events`, `legal_acceptances` | histórico de tudo (ver abaixo) |
+| `housekeeping` | `rate_limits`; bucket `brand-assets` | limite de tentativas, limpeza diária (pg_cron), logos |
+| `hardening` | `private.retired_landing_slugs` | correções da revisão adversarial (segurança, integridade, desempenho; ver abaixo) |
+| `billing_followups` | (nenhuma) | CNPJ alfanumérico, troca de plano atômica (`change_subscription`), renovação das assinaturas simuladas |
+| `native_app` | `credit_ledger`, `store_events`, `push_tokens` | créditos e eventos das lojas (RevenueCat), push, `prepare_account_deletion` |
+| `public_link_exists` | (nenhuma) | o proxy pergunta se `/p` e `/r` existem, para responder 404 de verdade |
+| `store_plans_and_seats` | `store_customers`; `plan_entitlements.max_members` | planos vendidos nas lojas (`sync_store_subscription`) e usuários por plano |
+| `product_lines` | `product_events`; coluna `product` em `plans`, `checkout_sessions`, `subscriptions`, `workspaces`, `profiles` | os dois produtos (dash e lp) e o caminho do usuário |
+| `landing_waitlist` | `landing_waitlist`, `landing_waitlist_visits` | lista de espera das LPs (um por usuário em cada organização) e visitas à página "em breve" (leitura só com a chave de serviço) |
+| `dashboard_metric_prefs` | `dashboards.metric_prefs` | o que difere do padrão do modelo, por plataforma (member edita) |
+| `ad_creative_metrics` | colunas em `insights_ad_daily`, `ads.post_url` | leads, engajamento, vídeo de 25 a 100%, segundos assistidos, visitas ao perfil e link do post |
+| `personalizar_metricas` | colunas em `insights_ad_daily` e `insights_campaign_daily` | cadastros por anúncio; todas as conversões, interações e topo por campanha (o rollup por conta não usa essas colunas) |
+| `projects` | `projects`; `project_id` em `ad_accounts` e `dashboards`; `plan_entitlements.max_accounts_per_platform` | workspaces (clientes); `accounts_quantity` passa a contar workspaces |
+| `dashboard_layout` | `dashboards.layout` | disposição de cada aba (Editar disposição), grade de 12 colunas |
+| `whatsapp_reports` | `whatsapp_subscriptions`, `whatsapp_messages`, `whatsapp_verification_codes` | relatórios pelo WhatsApp (`docs/WHATSAPP.md`) |
+| `tasks` | `task_groups`, `tasks`, `task_automation_runs` | A Fazer |
+| `optimizations` | `optimization_runs`, `optimization_autopilot`; `tasks.action` | mudanças aplicadas pela API (com o "de → para" e o desfazer) e o automático |
+| `retention_five_years` | `private.retention_policy`, `private.retention_runs` | retenção de 5 anos, em simulação (`docs/PENDENCIAS.md`) |
+| `integration_providers` | (valores de enum) | logins de GA4, TikTok, LinkedIn, Mercado Livre e CRMs |
+| `audit_tasks_whatsapp_waitlist` | (gatilhos) | auditoria em tarefas, WhatsApp e lista de espera |
+| `import_accounts` | (regras em `ad_accounts`) | contas de planilha (`metadata.source = 'import'`), ativadas só pelo servidor |
+| `organic` | `organic_daily`, `organic_posts` | Instagram e Página do Facebook |
+| `analytics_daily` | `analytics_daily` | GA4 por propriedade, dia e canal |
+| `crm_daily` | `crm_daily` | CRMs por conta, dia e etapa do funil |
+| `dashboard_metric_goals` | `dashboards.metric_goals` | metas por métrica |
+| `user_guides` | `user_guides` | tours e lembretes do primeiro acesso, por pessoa |
+| `dashboard_template_change` | (permissão em `dashboards.template_id`) | trocar o modelo de um dashboard existente |
+| `mmm_schema` | schema `mmm` (`raw_insights`, `media_daily`, `outcomes_daily`, `calendario`, `eventos`, `daily`, `backfill_jobs`, `backfill_control`) | base do MMM (`docs/MMM.md`) |
+| `project_members` | `project_members` | equipe por workspace: editor e leitor só veem os seus |
+| `dashboard_cover_launch_sheet` | `dashboards.cover`, `dashboard_launch_sheets`; bucket `dashboard-covers` | capa e planilha do lançamento (visual Fachada) |
+| `project_identity` | `projects.color`, `projects.logo_path` | cor (`#rrggbb`) e logo de cada workspace; a logo só na pasta `<organização>/projects/<id>/` do bucket `brand-assets` |
+| `plan_projects` | `plan_entitlements.max_projects` | limite de workspaces por plano (Básico 3, Padrão 5, Avançado e Personalizado ilimitados) |
+| `share_visits` | `share_links.recipient_name`, `share_visits`; função `record_share_visit` | acessos do cliente: para quem é cada link e cada visita (aba Acessos) |
+| `annual_exact_total` | (função `fulfill_checkout`) | anual com o total exato do ano (ver "Preço anual" abaixo) |
 
 ### Fluxo de compra
 
-`/assinar` grava `checkout_sessions` (seleção da LP + orçamento calculado no servidor) e `checkout_items`. Com o pagamento confirmado (hoje simulado; depois o webhook da Stripe), o servidor chama `public.fulfill_checkout(...)`, que numa transação cria o workspace e o dono, o cliente, a assinatura com os itens, a fatura paga, a transação, os pedidos de serviço e as plataformas sugeridas. Chamar de novo com o mesmo checkout devolve o mesmo workspace (idempotente).
+`/assinar` grava `checkout_sessions` (o plano escolhido e o orçamento calculado no servidor) e `checkout_items`. Com o pagamento confirmado (volta do Checkout da Stripe ou webhook, `docs/LANCAMENTO.md`; simulado no desenvolvimento e para a equipe), o servidor chama `public.fulfill_checkout(...)`, que numa transação cria o workspace e o dono, o cliente, a assinatura com os itens, a fatura paga, a transação, os pedidos de serviço e as plataformas sugeridas. Chamar de novo com o mesmo checkout devolve o mesmo workspace (idempotente).
 
 ### Plano e limites
 
 `workspace_access` junta a assinatura viva (só uma por workspace, por índice parcial) com `plan_entitlements`. `has_access` vale para `active`, `trialing` e `past_due` (carência). Os gatilhos da migration 09 conferem, com um *advisory lock* por workspace (sem corrida entre duas abas):
 
 - assinatura ativa para criar dashboards, LPs, links, relatórios e exportações e para ativar contas;
-- quantidade: dashboards (`max_dashboards`: Básico 3, Padrão 10, Avançado 40, Personalizado 100), LPs publicadas (`max_landing_pages`), usuários (`max_members`, membros + convites pendentes: Básico 1; nos outros, 1000 = ilimitado), workspaces (`max_projects`, nulo = ilimitado) e contas ativas (`accounts_quantity`, com cada Business Manager do Meta contando uma vez). Os valores vêm do código pelo `npm run db:catalog`;
-- plano mínimo de template, página e plataforma, e marca própria só com `white_label`.
+- quantidade: dashboards (`max_dashboards`: Básico 3, Padrão 10, Avançado 40, Personalizado 100), LPs publicadas (`max_landing_pages`: 1, 3, 10 e 10), usuários (`max_members`, membros + convites pendentes: Básico 1; nos outros, 1000 = ilimitado), workspaces (`max_projects`: Básico 3, Padrão 5, nulo = ilimitado no Avançado e no Personalizado; com número, vale o menor entre ele e `subscriptions.accounts_quantity`) e contas da mesma plataforma em cada workspace (`max_accounts_per_platform`: 1, 3, 3 e 10). Os valores vêm do código (`src/features/pricing/entitlements.ts` e `pricing.ts`) pelo `npm run db:catalog`;
+- plano mínimo de template e de página, e marca própria (sem a marca VYZ) só com `white_label` (Personalizado). Plataformas não têm plano mínimo: todas são do Básico.
+
+### Preço anual
+
+O anual é o total exato do ano (`PLAN_YEAR` em `pricing.ts`: R$ 499,90, R$ 1.499,90 e R$ 2.999,90, os mesmos das lojas). O catálogo (`plan_prices`) e os itens do pedido guardam o valor por mês arredondado (R$ 41,66), e a cobrança usa o total. Por isso `fulfill_checkout` aceita no anual só a diferença desse arredondamento, menos de 12 centavos no ano; no mensal, o valor tem de fechar exato (migration `20261122090000_annual_exact_total.sql`).
 
 O app checa antes para mostrar a mensagem certa, mas quem garante é o banco: chamar a API direto com o próprio token não fura o plano.
 
@@ -69,7 +100,7 @@ O app checa antes para mostrar a mensagem certa, mas quem garante é o banco: ch
 - **Quem é de fora não descobre nada.** Os gatilhos de plano conferem a filiação antes de olhar plano e limites: um usuário de outro workspace recebe o mesmo erro do RLS, não "limite atingido".
 - **Revisado de forma adversarial.** Antes de entrar em uso, o banco passou por testes ao vivo de isolamento: 59 relações × 9 perfis na leitura e 2.416 tentativas de escrita e escalada de papel, sem nenhum vazamento entre clientes. Também passou por revisão estática, testes de integridade e análise de desempenho com volume. As correções estão na migration 12, e a matriz rodou de novo depois dela com o mesmo resultado.
 - **Escrita sensível só pelo servidor.** Cobrança, conexões, tokens, métricas e históricos não têm política de escrita para usuários: só a chave de serviço grava, e só depois da autorização em `src/server/auth`.
-- **Tokens no Vault.** Access e refresh tokens do Meta/Google ficam criptografados no Supabase Vault; `connection_secrets` guarda só os ids. Ler ou gravar passa por `connection_tokens_read/save`, restritas ao `service_role`. Apagar a conexão apaga os segredos.
+- **Tokens no Vault.** Access e refresh tokens das plataformas ficam criptografados no Supabase Vault; `connection_secrets` guarda só os ids. Ler ou gravar passa por `connection_tokens_read/save`, restritas ao `service_role`. Apagar a conexão apaga os segredos.
 - **Hash em vez de segredo.** Convites, links públicos e estados de OAuth guardam o sha256 do token. O link completo aparece uma vez, na criação.
 - **Funções.** Toda `security definer` tem `search_path = ''`. O padrão global tira o `execute` de `PUBLIC` de toda função nova; cada uma recebe `execute` só de quem precisa (as de serviço, só `service_role`). Atenção: vale também para funções de extensões instaladas depois; conceda `execute` quando a API precisar.
 - **Histórico imutável.** Nem a chave de serviço altera ou apaga histórico (`audit_events`, `subscription_changes`, `auth_events`, `activity_events`, `legal_acceptances`, `landing_page_versions`); só a retenção, por partição, o remove.
@@ -81,7 +112,7 @@ O app checa antes para mostrar a mensagem certa, mas quem garante é o banco: ch
 ## Desempenho
 
 - **Leituras pequenas.** Os dashboards leem `insights_account_daily` (um total por conta e dia, recalculado pelo banco ao fim de cada sincronização com `rollup_account_insights`): um período de 30 dias são ~30 linhas por conta. As outras tabelas de fatos são lidas filtradas por `(ad_account_id, date)`, sempre com índice.
-- **Nunca a API da plataforma na tela.** O dashboard lê o armazém; só a sincronização fala com Meta/Google, em lotes, uma por conta por vez (índice único parcial em `sync_runs`).
+- **Nunca a API da plataforma na tela.** O dashboard lê o armazém; só a sincronização fala com as plataformas, em lotes, uma por conta por vez (índice único parcial em `sync_runs`).
 - **Cache no app.** Dados de dashboard ficam em cache por dashboard e por conta (`cacheTag`), invalidados quando a sincronização termina.
 - **Índice em toda FK** e nas colunas das políticas.
 - **Históricos particionados por mês** (`audit_events`, `auth_events`, `activity_events`): sem FKs (inserção barata), BRIN em `created_at`, partições criadas com 3 meses de folga e apagadas inteiras ao vencer.

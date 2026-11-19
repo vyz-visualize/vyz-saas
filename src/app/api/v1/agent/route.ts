@@ -7,7 +7,7 @@ import { z } from "zod";
 import { createEngine, type AgentAnswer } from "@/features/agent/engine";
 import { SUGGESTIONS } from "@/features/agent/engine/local";
 import { loadAgentContext } from "@/server/agent/context";
-import { apiJson, bearerSession, unauthorized } from "@/server/auth/bearer";
+import { apiJson, bearerSession, unauthorized, apiError } from "@/server/auth/bearer";
 import { bearerWorkspace } from "@/server/auth/bearer-workspace";
 
 const Input = z.object({
@@ -43,17 +43,17 @@ export async function POST(request: Request) {
   const session = await bearerSession(request);
   if (!session) return unauthorized();
   const parsed = Input.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return apiJson({ error: { code: "validation", message: "Pergunta inválida." } }, 400);
+  if (!parsed.success) return apiError("validation", "Pergunta inválida.", 400);
   const { question, workspaceId, dashboardId, search } = parsed.data;
   try {
     const ws = await bearerWorkspace(session, workspaceId);
-    if (!ws) return apiJson({ error: { code: "workspace:not_found", message: "Organização não encontrada." } }, 404);
+    if (!ws) return apiError("workspace:not_found", "Organização não encontrada.", 404);
     const focus = dashboardId ? { dashboardId, search: search ?? "" } : undefined;
     const ctx = await loadAgentContext(new Date(), focus, { session: ws, db: session.db });
     const answer = await createEngine().ask(question, ctx);
     return apiJson({ answer: forApp(answer) });
   } catch (err) {
     console.error("[vyz] api v1 agent", err);
-    return apiJson({ error: { code: "unknown", message: "O VYZ não conseguiu responder agora. Tente de novo." } }, 500);
+    return apiError("unknown", "O VYZ não conseguiu responder agora. Tente de novo.", 500);
   }
 }

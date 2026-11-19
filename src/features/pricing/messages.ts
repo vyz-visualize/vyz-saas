@@ -52,21 +52,3 @@ export function buildPlanMessage(s: PlanState, q: Quote, url: string): string {
   lines.push(`Simulação: ${url}`, "Podemos seguir?");
   return lines.join("\n");
 }
-
-/** Resumo em texto puro para o botão "Copiar resumo". */
-export function buildSummary(s: PlanState, q: Quote, url: string, date: string): string {
-  const head =
-    s.plano === "sem"
-      ? "VYZ · Sem plano (só extras)"
-      : `VYZ · Plano ${PLAN_LABEL[s.plano]}, ${PERIOD_LABEL[s.periodo]}`;
-  const lines = [head];
-  for (const l of q.lines) {
-    const value = l.kind === "included" ? "R$ 0,00 (incluso)" : brl(l.amount);
-    lines.push(`${l.label}${l.detail && l.kind !== "included" ? ` (${l.detail})` : ""}: ${value}`);
-  }
-  if (q.monthly > 0) lines.push(`Todo mês: ${brl(q.monthly)}`);
-  if (q.oneTime > 0) lines.push(`Uma vez: ${brl(q.oneTime)}`);
-  lines.push(`Em 12 meses: ${brl(q.twelveMonths)}`);
-  lines.push(`Simulação · não é cobrança · ${date}`, url);
-  return lines.join("\n");
-}

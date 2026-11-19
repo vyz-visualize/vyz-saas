@@ -17,6 +17,8 @@ import {
   type TaskStage,
   type TaskStatus,
 } from "./types";
+import { fold } from "@/lib/text";
+import { MONTH_NAMES } from "@/lib/format";
 
 /** Data de hoje (YYYY-MM-DD) no fuso do workspace. */
 export function todayIn(timeZone: string, now = new Date()): string {
@@ -47,8 +49,6 @@ export type TaskFilters = {
 
 export const EMPTY_FILTERS: TaskFilters = { q: "", assignee: "all", status: "all", stage: "all", situation: "all", priority: "all", group: "all", focus: false };
 
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-
 export function filterTasks(tasks: TaskDTO[], f: TaskFilters, today: string): TaskDTO[] {
   const q = fold(f.q.trim());
   return tasks.filter((t) => {
@@ -76,12 +76,10 @@ export function sortTasks(tasks: TaskDTO[]): TaskDTO[] {
   );
 }
 
-const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-
 /** "2026-11" vira "Novembro de 2026". */
 export function monthLabel(key: string): string {
   const [y, m] = key.split("-").map(Number);
-  const name = MONTHS[(m || 1) - 1];
+  const name = MONTH_NAMES[(m || 1) - 1];
   return `${name.charAt(0).toUpperCase()}${name.slice(1)} de ${y}`;
 }
 

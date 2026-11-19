@@ -1,24 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VYZ (Vyzualize)
 
-## Getting Started
+Painel de mídia paga para gestores de tráfego, agências e freelas de BI: conecta Meta Ads, Instagram, Facebook, Google Ads e GA4, monta o dashboard do cliente e manda por link, PDF ou WhatsApp. Também tem o app para iPhone e Android.
 
-First, run the development server:
+- Site e painel: https://www.vyzualize.com.br (Next.js na Vercel, banco no Supabase)
+- App: `apps/mobile` (Expo), nas lojas como "Vyzualize"
+- Documentação: [docs/README.md](docs/README.md). Comece pela [ARQUITETURA](docs/ARQUITETURA.md).
+
+## O que tem em cada pasta
+
+| Pasta | O quê |
+|---|---|
+| `src/app` | rotas: site `(marketing)`, painel `(painel)`, login `(auth)`, assinatura `(checkout)`, primeiro acesso `(onboarding)`, link do cliente `(publico)`, termos `(legal)`, APIs (`api/`) |
+| `src/features` | domínio e interface, sem acesso ao banco (preços, limites, templates, métricas, telas) |
+| `src/server` | só servidor: Server Actions, consultas, integrações, cobrança, sincronização |
+| `src/components` | peças de interface (`ui/`), gráficos (`charts/` e a biblioteca `bklit/`), marca e animações |
+| `src/lib` | utilitários sem domínio (formatação, texto, flags, links) |
+| `packages/shared` | tipos e regras usados pelo site e pelo app (API, créditos, planos da loja) |
+| `apps/mobile` | app Expo ([MOBILE](docs/MOBILE.md), [guia das lojas](apps/mobile/store/LOJAS.md)) |
+| `supabase/migrations` | o banco, em ordem ([BANCO](docs/BANCO.md)) |
+| `scripts` | tarefas de linha de comando: banco, conta de teste, exclusão de dados, MMM, lojas |
+| `docs` | documentação |
+
+Regra de ouro: cada assunto tem uma fonte só no código (preço e limite em `src/features/pricing`, templates em `src/features/templates`, plataformas em `src/features/accounts/platforms.ts`). O banco recebe uma cópia pelo `npm run db:catalog`.
+
+## Rodar local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # preencha os valores (lista comentada no arquivo)
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sem as chaves das plataformas e da Stripe, o painel funciona no modo simulado (`INTEGRATIONS_MODE=mock`, `BILLING_PROVIDER=mock`). Telas de desenvolvimento ficam em `/dev/*` (só no `next dev`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Comandos
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Comando | Para quê |
+|---|---|
+| `npm run dev` | site e painel local |
+| `npm test` | testes (vitest; os `*.db.test.ts` sobem um Postgres em memória com as migrations) |
+| `npm run typecheck` / `npm run lint` | tipos e lint |
+| `npm run check:unused` | arquivos, exportações e dependências sem uso (knip) |
+| `npm run build` | build de produção |
+| `npm run db:new -- nome` | cria uma migration |
+| `npm run db:push` | aplica as migrations no Supabase de produção |
+| `npm run db:types` | regenera os tipos do banco |
+| `npm run db:catalog` | copia planos, preços, plataformas e templates do código para o banco |
+
+Os outros comandos estão na [ARQUITETURA, seção Comandos](docs/ARQUITETURA.md#10-comandos).
+
+## Publicar
+
+1. **Código:** branch nova, PR para `main`, merge. A Vercel publica a `main` sozinha. Commits e push sempre pela conta GitHub Vyzualize.
+2. **Banco:** migration nova vai antes do merge que depende dela (`npm run db:push`, rodado na pasta que tem a migration).
+3. **Catálogo:** mudou preço, limite, plataforma ou template? Depois do deploy, `npm run db:catalog`.
+4. **App:** builds locais com `apps/mobile/store/gerar/build.sh`; envio às lojas pelas APIs, com as chaves fora do git (`~/Documents/VYZ/Publicar`). Revisão da Apple e produção do Play só com o ok do Gustavo.
+
+Antes de abrir o PR: `npm test`, `npm run typecheck`, `npm run lint` e `npm run check:unused`.
 
 ## Vídeo "Veja por dentro" do site
 
@@ -31,23 +69,10 @@ Os arquivos finais vêm prontos do projeto do vídeo (`vyz-video`, pasta `render
 | `vyz-por-dentro.webp` e `.jpg` | `renders/final/` | capa da 16:9 |
 | `vyz-por-dentro-celular.webp` e `.jpg` | `renders/final/` | capa da 4:5 |
 
-O build confere quais desses arquivos existem (`next.config.ts`) e não depende de variável de ambiente. Com o MP4 e a capa JPG da 16:9, aparecem a dobra, o link "Ver por dentro" do hero e o item do menu. A 4:5 é opcional: sem ela, o celular usa a 16:9. O WebM entra antes do MP4, e a capa WebP antes da JPG, quando existem. As duas versões são alternadas por CSS, e só a visível carrega.
+O build confere quais desses arquivos existem (`next.config.ts`). Com o MP4 e a capa JPG da 16:9, aparecem a dobra, o link "Ver por dentro" do hero e o item do menu. A 4:5 é opcional: sem ela, o celular usa a 16:9. Para trocar o vídeo, copie os novos arquivos por cima, com os mesmos nomes, e faça um novo build. Os eventos no `dataLayer` são `video_inicio`, `video_som` e `video_fim`.
 
-Para trocar o vídeo, copie os novos arquivos por cima, com os mesmos nomes, e faça um novo build.
+## Regras
 
-Os eventos no `dataLayer` são `video_inicio`, `video_som` e `video_fim`.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Nada de segredo no git: `.env.example` leva só os nomes.
+- Não mudar IDs fixos (produtos das lojas, bundle e package do app, IDs de plataformas).
+- Textos em português do Brasil.

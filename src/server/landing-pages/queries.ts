@@ -12,9 +12,9 @@ import type { Tracking } from "@/features/workspace/types";
 import { columnsToTracking, readStoredContent, type LandingPageDTO, type LandingStatus, type LandingVersionDTO, type StoredContent } from "@/features/landing-pages/model";
 import type { Tables } from "@/lib/supabase/database.types";
 import { publicAssetUrl } from "@/lib/supabase/storage";
-import { getWorkspaceSession } from "@/server/auth/workspace";
+import { getWorkspaceSession, currentWorkspaceSession } from "@/server/auth/workspace";
 import { createAdminSupabase } from "@/server/supabase/admin";
-import { appError, fromPostgrest, unwrap } from "@/server/supabase/errors";
+import { fromPostgrest, unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 
 export const LANDING_SELECT =
@@ -69,15 +69,9 @@ export function toLandingDTO(r: LandingRow): LandingPageDTO {
   };
 }
 
-async function currentSession() {
-  const session = await getWorkspaceSession();
-  if (!session) throw appError("auth:required");
-  return session;
-}
-
 /** LPs do workspace aberto, as mais recentes primeiro. */
 export const listLandingPages = cache(async (): Promise<LandingPageDTO[]> => {
-  const session = await currentSession();
+  const session = await currentWorkspaceSession();
   const supabase = await createServerSupabase();
   const rows =
     unwrap(await supabase.from("landing_pages").select(LANDING_SELECT).eq("workspace_id", session.workspace.id).neq("status", "archived").order("updated_at", { ascending: false })) ?? [];
@@ -86,7 +80,7 @@ export const listLandingPages = cache(async (): Promise<LandingPageDTO[]> => {
 
 /** Uma LP do workspace aberto (null se não existe ou é de outro workspace). */
 export const getLandingPage = cache(async (id: string): Promise<LandingPageDTO | null> => {
-  const session = await currentSession();
+  const session = await currentWorkspaceSession();
   const supabase = await createServerSupabase();
   const row = unwrap(await supabase.from("landing_pages").select(LANDING_SELECT).eq("workspace_id", session.workspace.id).eq("id", id).maybeSingle());
   return row ? toLandingDTO(row) : null;
@@ -94,7 +88,7 @@ export const getLandingPage = cache(async (id: string): Promise<LandingPageDTO |
 
 /** Versões publicadas (a mais nova primeiro) com o nome de quem publicou, quando visível. */
 export async function listLandingVersions(id: string, limit = 20): Promise<LandingVersionDTO[]> {
-  const session = await currentSession();
+  const session = await currentWorkspaceSession();
   const supabase = await createServerSupabase();
   const rows =
     unwrap(

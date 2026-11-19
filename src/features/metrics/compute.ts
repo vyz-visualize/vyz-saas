@@ -114,14 +114,6 @@ export function series(rows: DayRow[], id: MetricId): number[] {
   return rows.map((d) => totals([d])[id]);
 }
 
-export function movingAverage(values: number[], window = 7): number[] {
-  return values.map((_, i) => {
-    const from = Math.max(0, i - window + 1);
-    const slice = values.slice(from, i + 1);
-    return slice.reduce((a, b) => a + b, 0) / slice.length;
-  });
-}
-
 /** Média móvel que ignora os dias em maturação (não puxa a tendência para baixo). */
 export function maturedAverage(rows: DayRow[], id: MetricId, window = 7): number[] {
   const out: number[] = [];

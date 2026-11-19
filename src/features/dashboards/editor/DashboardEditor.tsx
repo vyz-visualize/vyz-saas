@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState, useTransition, type ReactNode } from "rea
 import { PlatformIcon } from "@/components/brand/PlatformIcon";
 import { ColorField } from "@/components/ui/ColorField";
 import { FileInput } from "@/components/ui/FileInput";
-import { Checkbox, LockBadge, SelectField, TextField } from "@/components/ui/kit";
+import { Checkbox, LockBadge } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { isGenericAdPlatform } from "@/features/accounts/connection-modes";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
@@ -22,17 +22,17 @@ import { availableIn, canUse, TIER_LABEL, type Tier } from "@/features/pricing/e
 import { composePages, FEATURES, featureFits, type FeatureId } from "@/features/templates/dashboards/composed";
 import { anyDashboardTemplate, REAL_DATA_PLATFORMS, usesAccounts } from "@/features/templates/live";
 import { PAGES } from "@/features/templates/pages";
-import type { PageId } from "@/features/templates/types";
-import { ATTRIBUTIONS, PERIODS, type PeriodId } from "@/features/workspace/types";
 import { saveDashboardLayout, saveDashboardMetricPrefs, updateDashboard } from "@/server/dashboards/actions";
 import { askLayout } from "@/server/dashboards/ask";
 import { removeBrandLogo, updateWorkspace, uploadBrandLogo } from "@/server/workspace/actions";
 import { DashboardBody } from "../DashboardBody";
 import { pageLayout } from "../data";
 import type { MetricGoal } from "../goals";
+import { draftBaseFrom, fieldsFromDraft, type DraftBase } from "../draft-fields";
 import { pageOptions, type DashboardDetail, type SourceOption } from "../model";
 import type { DashboardFields } from "../schema";
 import type { SourceExtras } from "../SourcePages";
+import { SettingsFields } from "../SettingsFields";
 import { featuresOf, recompose } from "./draft";
 import { GoalsPanel } from "./GoalsPanel";
 
@@ -45,33 +45,14 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "marca", label: "Marca e ajustes" },
 ];
 
-type Draft = Omit<DashboardFields, "pages" | "metricGoals"> & { pages: PageId[]; metricGoals: MetricGoal[] };
+type Draft = DraftBase & { metricGoals: MetricGoal[] };
 
-export function draftFrom(d: DashboardDetail): Draft {
-  return {
-    name: d.name,
-    client: d.client,
-    goal: d.settings.goal,
-    budget: d.settings.budget,
-    margin: d.margin,
-    period: d.settings.period,
-    customDays: d.settings.customDays,
-    attribution: d.settings.attribution,
-    pages: d.pages,
-    accountIds: d.sources.map((s) => s.id),
-    brandColor: d.brand?.color || null,
-    hideVyz: !!d.brand?.hideVyz,
-    metricGoals: d.metricGoals,
-  };
-}
+const draftFrom = (d: DashboardDetail): Draft => ({ ...draftBaseFrom(d), metricGoals: d.metricGoals });
 
 /** Plataformas das contas marcadas. */
 const platformsOf = (ids: readonly string[], sources: readonly SourceOption[]) => [...new Set(sources.filter((s) => ids.includes(s.id)).map((s) => s.platformId))];
 
 const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && [...a].sort().join() === [...b].sort().join();
-const reais = (cents: number) => (cents ? String(Math.round(cents / 100)) : "");
-const cents = (v: string) => Math.round((Number(v.replace(/\./g, "").replace(",", ".")) || 0) * 100);
-const roas = (margin: number) => (1 / margin).toFixed(1).replace(".", ",");
 
 type Props = {
   dashboard: DashboardDetail;
@@ -147,18 +128,7 @@ export function DashboardEditor({ dashboard, sources, tier, pagesTier, whiteLabe
   function submit() {
     setError(null);
     const fields: DashboardFields = {
-      name: draft.name.trim() || t!.name,
-      client: draft.client.trim(),
-      goal: draft.goal,
-      budget: draft.budget,
-      margin: draft.margin,
-      period: draft.period,
-      customDays: draft.customDays,
-      attribution: draft.attribution,
-      pages: draft.pages,
-      accountIds: pickAccounts ? draft.accountIds : [],
-      brandColor: whiteLabel ? draft.brandColor : null,
-      hideVyz: whiteLabel ? draft.hideVyz : false,
+      ...fieldsFromDraft(draft, { fallbackName: t!.name, pickAccounts, whiteLabel }),
       metricGoals: draft.metricGoals.filter((g) => g.value > 0),
     };
     start(async () => {
@@ -414,32 +384,7 @@ export function DashboardEditor({ dashboard, sources, tier, pagesTier, whiteLabe
               <div className="space-y-6">
                 <Panel title="Ajustes">
                   <div className="space-y-3">
-                    <TextField label="Nome do dashboard" value={draft.name} placeholder={t.name} error={error?.fields?.name} onChange={(name) => save({ name })} />
-                    <TextField label="Cliente" value={draft.client} placeholder="Ex.: Loja Verde" error={error?.fields?.client} onChange={(client) => save({ client })} />
-                    <TextField
-                      label="Margem"
-                      suffix="%"
-                      inputMode="numeric"
-                      value={draft.margin ? String(Math.round(draft.margin * 100)) : ""}
-                      placeholder="sem margem"
-                      hint={draft.margin ? `ROAS de equilíbrio = 1 ÷ margem = ${roas(draft.margin)}` : "Sem margem, o equilíbrio é ROAS 1."}
-                      onChange={(v) => {
-                        const n = Number(v.replace(/\D/g, ""));
-                        save({ margin: n > 0 ? Math.min(100, n) / 100 : null });
-                      }}
-                    />
-                    <TextField label="Verba mensal" prefix="R$" inputMode="numeric" value={reais(draft.budget)} placeholder="50000" hint="Usada no pacing e na projeção do mês." onChange={(v) => save({ budget: cents(v) })} />
-                    <SelectField label="Período padrão" value={draft.period} onChange={(v) => save({ period: v as PeriodId })} options={PERIODS} />
-                    {draft.period === "custom" && (
-                      <TextField
-                        label="Dias do período personalizado"
-                        inputMode="numeric"
-                        value={String(draft.customDays)}
-                        hint="De 3 a 60 dias, terminando ontem."
-                        onChange={(v) => save({ customDays: Math.min(60, Math.max(3, Number(v.replace(/\D/g, "")) || 3)) })}
-                      />
-                    )}
-                    <SelectField label="Janela de atribuição exibida" value={draft.attribution} onChange={(v) => save({ attribution: v })} options={ATTRIBUTIONS} />
+                    <SettingsFields draft={draft} save={save} placeholderName={t.name} errors={error?.fields} />
                   </div>
                 </Panel>
 

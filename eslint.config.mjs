@@ -40,6 +40,12 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // "_" na frente marca o que fica sem uso de propósito (ex.: tirar um campo com { campo: _x, ...resto }).
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_", ignoreRestSiblings: true }],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

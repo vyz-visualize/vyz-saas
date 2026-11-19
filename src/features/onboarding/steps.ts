@@ -123,17 +123,10 @@ export function cleanReturnUrl(href: string): string {
 
 /** Plataformas que conectam por login agora (as outras aparecem como "em breve"). */
 export const CONNECTABLE: readonly ProviderId[] = CORE_PROVIDER_IDS;
-export const isConnectable = (id: string): id is ProviderId => (CONNECTABLE as readonly string[]).includes(id);
 
 /** Plataformas que o layout usa e que conectam por login agora (Meta, Google). */
 export function layoutProviders(t: DashboardTemplate): ProviderId[] {
   return CONNECTABLE.filter((p) => (t.sources as readonly string[]).includes(p));
-}
-
-/** Plataforma do template live (Meta Ads · E-commerce → meta). */
-export function templateProvider(t: DashboardTemplate): ProviderId | null {
-  const source = t.sources[0];
-  return source && isConnectable(source) ? source : null;
 }
 
 export type LayoutOption = {

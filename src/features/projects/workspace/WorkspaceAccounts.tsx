@@ -25,8 +25,8 @@ import { removeAdAccount, resyncAccount } from "@/server/integrations/actions";
 import { addAccountsToProject, setAccountActive } from "@/server/projects/accounts";
 import { moveAccountToProject } from "@/server/projects/actions";
 import type { ProjectAccountsData } from "../types";
+import { plural } from "@/lib/format";
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const platformName = (id: string) => PLATFORMS[id as PlatformId]?.name ?? id;
 const PLATFORM_ORDER = Object.keys(PLATFORMS);
 const ring = "outline-none focus-visible:ring-2 focus-visible:ring-accent";

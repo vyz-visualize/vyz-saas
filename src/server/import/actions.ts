@@ -20,6 +20,7 @@ import { createAdminSupabase } from "@/server/supabase/admin";
 import { appError, fromPostgrest, toActionError, type ActionResult } from "@/server/supabase/errors";
 import { writeImport, type ImportAccount } from "./run";
 import { fetchSheetCsv } from "./sheets";
+import { isRecord } from "@/lib/guards";
 
 const Input = z.object({
   platformId: z.string().max(40),
@@ -37,7 +38,6 @@ export type ImportSpreadsheetInput = z.input<typeof Input>;
 export type ImportSpreadsheetResult = { accountId: string; name: string; platformId: PlatformId; summary: ImportSummary; rowsWritten: number; source: "csv" | "sheet" };
 
 type Sheet = { spreadsheetId: string; gid: string; link: string };
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const sheetOf = (metadata: unknown): Sheet | null => {
   const s = isRecord(metadata) && isRecord(metadata.sheet) ? metadata.sheet : null;
   return s && typeof s.spreadsheetId === "string" && typeof s.gid === "string" && typeof s.link === "string" ? { spreadsheetId: s.spreadsheetId, gid: s.gid, link: s.link } : null;

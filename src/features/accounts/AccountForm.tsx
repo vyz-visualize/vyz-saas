@@ -12,7 +12,6 @@ import { ConnectButton } from "@/features/integrations/ConnectButton";
 import { btnSmallGhost, errorBox, modalFooter } from "@/features/integrations/ui";
 import { CORE_PROVIDER_IDS, isProviderId, loginVia, PROVIDERS } from "@/features/integrations/providers";
 import { availableIn, canUse, TIER_LABEL } from "@/features/pricing/entitlements";
-import type { Account } from "@/features/workspace/types";
 import { useWorkspace } from "@/features/workspace/workspace";
 import { hasRole } from "@/features/workspace/session";
 import { addManualAccount } from "@/server/integrations/actions";
@@ -154,9 +153,4 @@ export function AccountForm({ platform: fixed, onSaved, onCancel, next }: Accoun
       )}
     </div>
   );
-}
-
-/** Texto curto do ID principal (para listas do fluxo antigo de dashboard). */
-export function accountIdLabel(a: Pick<Account, "values">): string {
-  return a.values.account ?? Object.values(a.values)[0] ?? "—";
 }

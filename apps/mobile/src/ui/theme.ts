@@ -106,9 +106,6 @@ export const type = {
   stat: { fontSize: 22, lineHeight: 27, fontWeight: "800", letterSpacing: -0.5, fontVariant: ["tabular-nums"] },
 } as const satisfies Record<string, TextStyle>;
 
-/** Algarismos de largura fixa (colunas de número não dançam). */
-export const tnum: TextStyle = { fontVariant: ["tabular-nums"] };
-
 /**
  * Elevação por tema. No claro, sombra suave; no escuro a borda já separa os
  * planos, então só o nível mais alto (folhas, barra de abas) ganha sombra.

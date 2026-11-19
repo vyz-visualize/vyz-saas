@@ -13,6 +13,7 @@ const update = vi.fn();
 vi.mock("@/server/auth/bearer", () => ({
   bearerSession: async () => session,
   apiJson: (body: unknown, status = 200) => Response.json(body, { status }),
+  apiError: (code: string, message: string, status: number) => Response.json({ error: { code, message } }, { status }),
   unauthorized: () => Response.json({ error: { code: "auth:required" } }, { status: 401 }),
 }));
 vi.mock("@/server/auth/bearer-workspace", () => ({ bearerWorkspace: async () => workspace }));

@@ -8,6 +8,7 @@
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { ENTITLEMENTS, TIER_LABEL, canUse, membersLabel, unlimitedMembers, unlimitedProjects } from "@/features/pricing/entitlements";
 import { PLAN_PROJECTS, periodCharge, planMonthly, type Period, type PlanId } from "@/features/pricing/pricing";
+import { plural } from "@/lib/format";
 
 export type PlanSelection = { tier: PlanId; period: Period; accounts: number };
 
@@ -79,8 +80,6 @@ export const samePlan = (a: PlanSelection, b: PlanSelection) => a.tier === b.tie
 
 /** O que o workspace usa hoje (workspace_usage + plataformas das contas ativas). */
 export type PlanUsage = { projects: number; dashboards: number; publishedLandingPages: number; enabledPlatforms: string[]; /** membros + convites pendentes */ members?: number };
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** O uso atual cabe no plano novo? null = cabe; senão, o motivo (código e texto para a tela). */
 export function planChangeBlocker(next: PlanSelection, usage: PlanUsage): { code: string; message: string } | null {

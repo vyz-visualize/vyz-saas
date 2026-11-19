@@ -9,6 +9,7 @@ import { NO_COVER, parseCover, type DashboardCover } from "@/features/dashboards
 import { COVER_BUCKET, publicAssetUrl } from "@/lib/supabase/storage";
 import { sheetsServiceEmail } from "@/server/import/sheets-service";
 import type { DB } from "@/server/supabase/server";
+import { isRecord } from "@/lib/guards";
 
 /** O que a página entrega ao dashboard (tudo serializável). */
 export type CoverData = {
@@ -17,8 +18,6 @@ export type CoverData = {
   code: string;
   serviceEmail: string | null;
 };
-
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Caminho do arquivo da capa, só se estiver na pasta do workspace. */
 export function coverPath(workspaceId: string, raw: unknown): string | null {

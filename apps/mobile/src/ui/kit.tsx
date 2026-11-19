@@ -347,16 +347,6 @@ export function PillButton({ label, onPress, selected }: { label: string; onPres
   );
 }
 
-export function ProgressBar({ value, tone = "accent", height = 6 }: { value: number; tone?: "accent" | "good" | "bad" | "warn"; height?: number }) {
-  const t = useTheme();
-  const color = tone === "good" ? t.good : tone === "bad" ? t.danger : tone === "warn" ? t.warn : t.accent;
-  return (
-    <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: Math.round(Math.max(0, Math.min(1, value)) * 100) }} style={{ height, borderRadius: height / 2, backgroundColor: t.surface2, overflow: "hidden" }}>
-      <View style={{ width: `${Math.max(2, Math.min(100, value * 100))}%`, height: "100%", borderRadius: height / 2, backgroundColor: color }} />
-    </View>
-  );
-}
-
 const initialsOf = (name: string) =>
   name
     .trim()

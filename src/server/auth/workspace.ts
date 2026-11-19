@@ -185,6 +185,13 @@ export async function requireWorkspace(req: WorkspaceRequirement = {}): Promise<
   return session;
 }
 
+/** Para consultas de leitura: a sessão do workspace, sem conferir papel nem plano. Lança "auth:required". */
+export async function currentWorkspaceSession(): Promise<WorkspaceSession> {
+  const session = await getWorkspaceSession();
+  if (!session) throw appError("auth:required");
+  return session;
+}
+
 /** Para Server Actions e Route Handlers. Lança AppError em vez de redirecionar. */
 export async function authorize(minRole: MemberRole = "member", opts: { access?: boolean } = {}): Promise<WorkspaceSession> {
   const session = await getWorkspaceSession();

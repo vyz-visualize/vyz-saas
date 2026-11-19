@@ -4,7 +4,7 @@
 // para cada usuário com o app instalado, a análise mais importante do
 // workspace padrão dele. Só com "Authorization: Bearer <CRON_SECRET>".
 
-import { cronSecret, isAuthorizedCron } from "@/server/sync/cron";
+import { CRON_HEADERS, rejectCron } from "@/server/sync/cron";
 import { loadWorkspaceInsights, userProjectIds } from "@/server/insights/load";
 import { pushConfigured, sendPush, type PushTarget } from "@/server/push/send";
 import { createAdminSupabase } from "@/server/supabase/admin";
@@ -12,15 +12,11 @@ import { generateAutoTasks } from "@/server/todo/automation";
 
 export const maxDuration = 300;
 
-const NO_STORE = { "Cache-Control": "no-store" };
-
 const money = (v: number | null, currency: string) => (v === null ? null : new Intl.NumberFormat("pt-BR", { style: "currency", currency, maximumFractionDigits: 0 }).format(v));
 
 async function handle(request: Request) {
-  const authorization = request.headers.get("authorization");
-  const secret = cronSecret();
-  if (!secret) return Response.json({ ok: false, error: "cron:not_configured" }, { status: 503, headers: NO_STORE });
-  if (!isAuthorizedCron(authorization, secret)) return Response.json({ ok: false, error: "unauthorized" }, { status: 401, headers: NO_STORE });
+  const denied = rejectCron(request);
+  if (denied) return denied;
   const started = Date.now();
   const db = createAdminSupabase();
   // o mesmo workspace serve vários usuários: calcula uma vez
@@ -50,9 +46,9 @@ async function handle(request: Request) {
 
   // 2. resumo por push
   const cfg = pushConfigured();
-  if (!cfg.ios && !cfg.android) return Response.json({ ok: true, tasks, error: "push:not_configured" }, { headers: NO_STORE });
+  if (!cfg.ios && !cfg.android) return Response.json({ ok: true, tasks, error: "push:not_configured" }, { headers: CRON_HEADERS });
   const { data: tokens, error } = await db.from("push_tokens").select("user_id, token, platform");
-  if (error) return Response.json({ ok: false, tasks, error: "unknown" }, { status: 500, headers: NO_STORE });
+  if (error) return Response.json({ ok: false, tasks, error: "unknown" }, { status: 500, headers: CRON_HEADERS });
 
   const byUser = new Map<string, PushTarget[]>();
   for (const t of tokens ?? []) byUser.set(t.user_id, [...(byUser.get(t.user_id) ?? []), { token: t.token, platform: t.platform as PushTarget["platform"] }]);
@@ -87,7 +83,7 @@ async function handle(request: Request) {
     sent += r.sent;
     users++;
   }
-  return Response.json({ ok: true, tasks, users, sent }, { headers: NO_STORE });
+  return Response.json({ ok: true, tasks, users, sent }, { headers: CRON_HEADERS });
 }
 
 export async function GET(request: Request) {

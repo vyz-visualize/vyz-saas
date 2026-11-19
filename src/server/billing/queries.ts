@@ -31,7 +31,6 @@ import { serverEnv } from "@/server/env";
 import { isSimulatedCheckoutUser, testWorkspaceIds } from "@/server/billing/simulated";
 import { createServerSupabase } from "@/server/supabase/server";
 
-const isPlanId = (v: string | null): v is PlanId => v === "base" || v === "pro" || v === "avancado";
 const billingItem = (id: string | null) => (id && id in BILLING_ITEMS ? BILLING_ITEMS[id as BillingItemId] : null);
 
 // ---- quem está assinando ----------------------------------------------------------

@@ -14,26 +14,28 @@ Em todas as plataformas, use:
 
 ## Resumo
 
-| Plataforma | Como entra | Otimiza pela API | Situação no VYZ |
-|---|---|---|---|
-| Meta Ads | Login (OAuth) | Sim: pausar e orçamento | App "Vyzualize" (portfólio Vyzualize) criado em 10/11/2026, em modo desenvolvimento; falta a Análise do App (Acesso Avançado) |
-| Google Ads | Login (OAuth) | Sim: pausar e orçamento | No ar desde 10/11/2026 (nível Exploração da API); falta a verificação do app no Google |
-| YouTube | Pelo login do Google Ads | Sim (é Google Ads) | Igual ao Google Ads |
-| GA4 | Login do Google, só leitura | Não | Login pronto no código, mesmo cliente do Google; Admin API e Data API ativadas |
-| TikTok Ads | Login (OAuth) | Sim: pausar e orçamento | Login pronto no código; falta o app aprovado e as credenciais |
-| LinkedIn Ads | Login (OAuth) | Leitura primeiro | Login pronto no código; falta o app aprovado e as credenciais |
-| RD Station CRM | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
-| HubSpot | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
-| Pipedrive | Login (OAuth) | Não | Login pronto no código; falta o app e as credenciais |
-| Kommo | Login (OAuth) | Não | Login pronto no código; falta a integração e as credenciais |
-| Mercado Ads | Login (OAuth) | Não | Em breve (decisão de 10/11/2026): login pronto no código, app ainda não criado |
-| X Ads | Login (OAuth 1.0a) | Não | Depende de o X liberar a Ads API |
-| Shopee Ads | Planilha | Não | API só para parceiros aprovados |
-| Spotify Ads | Planilha | Não | Sem API aberta |
-| Globo Ads | Planilha ou relatório | Não | Sem API pública |
-| ChatGPT Ads | Planilha | Não | Sem API para anunciantes |
+**Plano:** todas as plataformas valem em todos os planos, sem restrição (`tier: "base"` em todas, em `src/features/accounts/platforms.ts`). As que ainda não funcionam entram em todos os planos quando ficarem prontas.
 
-Com `INTEGRATIONS_MODE=live`, cada login só aparece na tela de Contas quando o par de credenciais dele está na Vercel. Enquanto isso, o cliente cadastra a conta pelo ID na tela Contas e o VYZ mostra como ela vai conectar.
+**Funcionam de ponta a ponta hoje** (login, sincronização e dashboards): Meta Ads, Instagram, Facebook, Google Ads e GA4. É a lista `AVAILABLE_PLATFORMS` (`src/features/accounts/platforms.ts`), a mesma que o site e o app citam. As outras estão **em desenvolvimento**: algumas têm o login pronto no código, mas falta a aprovação da plataforma ou a credencial.
+
+| Plataforma | Como entra | Otimiza pela API | No VYZ hoje | Na plataforma |
+|---|---|---|---|---|
+| Meta Ads | Login (OAuth) | Sim: pausar e orçamento | Funciona | App "Vyzualize" (portfólio Vyzualize) criado em 10/11/2026, em modo desenvolvimento; falta a Análise do App (Acesso Avançado) |
+| Instagram e Página do Facebook | Pelo login do Meta, só leitura | Não | Funciona | Igual ao Meta Ads |
+| Google Ads | Login (OAuth) | Sim: pausar e orçamento | Funciona | Em produção desde 10/11/2026 (nível Exploração da API); falta a verificação do app no Google |
+| YouTube | Pelo login do Google Ads | Sim (é Google Ads) | As campanhas de vídeo vêm no Google Ads | Igual ao Google Ads |
+| GA4 | Login do Google, só leitura | Não | Funciona | Mesmo cliente OAuth do Google; Admin API e Data API ativadas |
+| TikTok Ads | Login (OAuth) | Sim: pausar e orçamento | Em desenvolvimento: login e sincronização no código | Falta o app aprovado e as credenciais |
+| LinkedIn Ads | Login (OAuth) | Não (só leitura) | Em desenvolvimento: login e sincronização no código | Falta o app aprovado e as credenciais |
+| RD Station CRM, HubSpot, Pipedrive, Kommo | Login (OAuth) | Não | Em desenvolvimento: login e leitura do CRM no código | Falta o app e as credenciais |
+| Mercado Ads | Login (OAuth) | Não | Em desenvolvimento: login no código, sem sincronização | App ainda não criado (decisão de 10/11/2026) |
+| X Ads | Login (OAuth 1.0a), quando liberado | Não | Não conecta ainda (sem login no código e fora de `IMPORT_PLATFORMS`) | Depende de o X liberar a Ads API |
+| Shopee Ads | Planilha | Não | Importação por planilha | API só para parceiros aprovados |
+| Spotify Ads | Planilha | Não | Importação por planilha | Sem API aberta |
+| Globo Ads | Planilha ou relatório | Não | Importação por planilha | Sem API pública |
+| ChatGPT Ads | Planilha | Não | Importação por planilha | Sem API para anunciantes |
+
+Os logins ficam em `src/server/integrations/providers/<plataforma>.ts` e a sincronização em `src/server/sync/live/`. Com `INTEGRATIONS_MODE=live`, cada login só aparece na tela de Contas quando o par de credenciais dele está na Vercel (`isProviderConfigured` em `src/server/integrations/providers/index.ts`).
 
 ## Meta Ads (inclui Instagram)
 
@@ -74,7 +76,7 @@ Com `INTEGRATIONS_MODE=live`, cada login só aparece na tela de Contas quando o 
    - peça o **Acesso Básico** (o de teste só enxerga contas de teste);
    - o valor vai em `GOOGLE_ADS_DEVELOPER_TOKEN`.
 5. O YouTube não tem login próprio. As campanhas de vídeo vêm pelo Google Ads.
-6. Para o GA4, use o mesmo cliente com o escopo `https://www.googleapis.com/auth/analytics.readonly`, que é sensível e também passa pela verificação, e ative a **Google Analytics Data API** e a **Admin API**. O login do GA4 ainda vai ser construído.
+6. Para o GA4, use o mesmo cliente com o escopo `https://www.googleapis.com/auth/analytics.readonly`, que é sensível e também passa pela verificação, e ative a **Google Analytics Data API** e a **Admin API**. O login do GA4 (`providers/ga4.ts`) e a leitura dos números (`analytics_daily`, migração `20261113090000_analytics_daily.sql`) já estão no código.
 
 ## TikTok Ads
 
@@ -84,7 +86,7 @@ Com `INTEGRATIONS_MODE=live`, cada login só aparece na tela de Contas quando o 
    - Campaign/Ad Group/Ad Management, para pausar e mudar o orçamento;
    - Reporting.
 3. Redirecionamento: `https://vyzualize.com.br/api/integrations/tiktok/callback`.
-4. A aprovação sai em alguns dias. Depois disso, os valores do app vão nas variáveis `TIKTOK_APP_ID` e `TIKTOK_APP_SECRET`, e o login do TikTok é construído no VYZ. A aplicação das mudanças já está pronta em `src/server/optimize/executors.ts`.
+4. A aprovação sai em alguns dias. Depois disso, os valores do app vão nas variáveis `TIKTOK_APP_ID` e `TIKTOK_APP_SECRET`. O login (`providers/tiktok.ts`), a sincronização (`sync/live/tiktok.ts`) e a aplicação das mudanças (`src/server/optimize/executors.ts`) já estão no código.
 
 ## LinkedIn Ads
 
@@ -98,12 +100,13 @@ Com `INTEGRATIONS_MODE=live`, cada login só aparece na tela de Contas quando o 
 **RD Station:**
 1. Crie o app na RD Station App Store para receber o client id e o secret.
 2. Redirecionamento: `.../api/integrations/rdstation/callback`.
-3. Até o login ficar pronto, o cliente usa o token da instância.
 
 **HubSpot:**
 1. No portal de desenvolvedor, crie um **app público**.
-2. Escopos: `crm.objects.deals.read`, `crm.objects.contacts.read` e `crm.schemas.deals.read`.
+2. Escopos: `oauth`, `crm.objects.deals.read`, `crm.objects.contacts.read` e `crm.schemas.deals.read`.
 3. Redirecionamento: `.../api/integrations/hubspot/callback`.
+
+**Pipedrive e Kommo:** mesmo caminho (app na plataforma, redirecionamento `.../api/integrations/<pipedrive|kommo>/callback`, variáveis `<PLATAFORMA>_CLIENT_ID` e `<PLATAFORMA>_CLIENT_SECRET`). Os números dos CRMs vão para `crm_daily` (`src/server/sync/live/crm.ts`).
 
 ## Mercado Ads (Mercado Livre)
 
@@ -111,11 +114,11 @@ Com `INTEGRATIONS_MODE=live`, cada login só aparece na tela de Contas quando o 
 2. Redirecionamento: `.../api/integrations/mercado/callback`.
 3. Escopos de leitura e acesso offline.
 
-Os relatórios do Product Ads saem por esse login. A API não oferece escrita confiável de orçamento, então o VYZ não aplica mudanças no Mercado Ads.
+Os relatórios do Product Ads vão sair por esse login; a sincronização ainda não existe. A API não oferece escrita confiável de orçamento, então o VYZ não aplica mudanças no Mercado Ads.
 
 ## X Ads
 
-Peça acesso em developer.x.com > **Ads API**. O X aprova poucos pedidos e exige uma conta de anúncios ativa com histórico. O login usa OAuth 1.0a. Até a aprovação, os dados do X entram por planilha.
+Peça acesso em developer.x.com > **Ads API**. O X aprova poucos pedidos e exige uma conta de anúncios ativa com histórico. O login usa OAuth 1.0a e ainda não existe no código. A tela de Contas diz que, até lá, os dados do X entram por planilha, mas o X não está na lista da importação (`IMPORT_PLATFORMS`).
 
 ## Shopee, Spotify, Globo e ChatGPT Ads
 
@@ -144,18 +147,18 @@ Por isso, no VYZ elas são da modalidade **importação por planilha**: o client
 
 1. **Tela.** Em Contas, a seção "Importação por planilha" (`src/features/accounts/ImportSection.tsx`): escolhe a plataforma, dá um nome para a conta e sobe um CSV ou cola o link do Google Sheets. O arquivo é conferido no navegador (resumo ou linhas com erro) antes de enviar.
 2. **Servidor.** `importSpreadsheet` (`src/server/import/actions.ts`, só admin): confere o plano, lê e valida de novo, cria a conta já ativa (ou usa a que existe) e grava pelo mesmo caminho da sincronização (`writeDataset` + `rollupAccount`). Cada importação é uma linha em `sync_runs` e um evento em `activity_events`. No período da planilha, a conta fica igual ao arquivo; dias fora dele não mudam.
-3. **Google Sheets.** A planilha precisa estar compartilhada como "Qualquer pessoa com o link". O servidor só busca `https://docs.google.com/spreadsheets/d/<id>/export?format=csv&gid=<aba>` e só segue redirecionamento para o próprio Google (`src/server/import/sheets.ts`); tempo máximo de 15 s e 2 MB. O link fica salvo na conta (`metadata.sheet`) e é relido todo dia pela rota do agendador (`/api/cron/sync`, `src/server/import/scheduled.ts`), que o `vercel.json` chama às 9h UTC (6h em Brasília), duas horas antes dos resumos por push e WhatsApp. A mesma rota traz os últimos 7 dias das contas do Meta e do Google. Falha (link fechado, linha inválida) aparece na conta.
+3. **Google Sheets.** A planilha precisa estar compartilhada como "Qualquer pessoa com o link". O servidor só busca `https://docs.google.com/spreadsheets/d/<id>/export?format=csv&gid=<aba>` e só segue redirecionamento para o próprio Google (`src/server/import/sheets.ts`); tempo máximo de 15 s e 2 MB. O link fica salvo na conta (`metadata.sheet`) e é relido uma vez por dia (quem foi lido há menos de 20 h espera) pela rota do agendador (`/api/cron/sync`, `src/server/import/scheduled.ts`). O `vercel.json` chama essa rota às 9h, 15h e 21h UTC (6h, 12h e 18h em Brasília); a primeira fica duas horas antes dos resumos por push e WhatsApp (11h UTC). A mesma rota traz os últimos 7 dias das contas com login, relê as planilhas do lançamento (Fachada) e anda com a carga do histórico do MMM, se ligada. Falha (link fechado, linha inválida) aparece na conta.
 4. **Banco.** Migração `20261111130000_import_accounts.sql`: conta ativa precisa de conexão ou de `metadata.source = 'import'`. Quem está logado não consegue ativar conta sem conexão por conta própria (não muda o `status`); só o servidor cria a conta de planilha ativa. Ela conta no limite do plano como qualquer outra (mesmo gatilho). Testes em `src/server/import/import-accounts.db.test.ts`.
-5. **Dashboard.** Modelo com dados reais "Planilha · Mídia paga" (`planilha-midia`, Avançado), com Visão geral e Campanhas. Lê as contas de qualquer plataforma de planilha ligadas ao dashboard (`LivePlatform = "import"`, páginas em `src/features/analytics/import/ImportPages.tsx`).
+5. **Dashboard.** Qualquer modelo (visual × objetivo) lê as contas de planilha ligadas ao dashboard (`REAL_DATA_PLATFORMS` em `src/features/templates/live.ts`): elas entram na Visão geral, em Campanhas e no Funil (`composePages`), com as páginas em `src/features/analytics/import/ImportPages.tsx`. TikTok e LinkedIn usam o mesmo caminho, com dados da API.
 
 O que ainda não tem: login do Google para planilha fechada (hoje é só por link compartilhado) e planilha com colunas além das do modelo.
 
 ## Otimizações (botão Aplicar e automático)
 
-- Só aparecem em tarefas de campanhas do Meta, do Google ou do TikTok com conexão ativa.
+- Só aparecem em tarefas de campanhas do Meta, do Google ou do TikTok com conexão ativa (`WRITE_PLATFORMS` em `src/features/optimize/actions.ts`).
 - O VYZ confere na plataforma se o valor ainda é o "de" antes de mudar; se alguém mexeu, não altera nada.
-- Tudo fica em `optimization_runs`, e dá para desfazer em até 30 dias.
-- O automático é só do Avançado e é configurado por projeto no A Fazer:
+- Tudo fica em `optimization_runs`, e dá para desfazer em até 30 dias (`UNDO_DAYS` em `src/server/optimize/service.ts`).
+- O automático é do Avançado e do Personalizado (`autoOptimize`) e é configurado por workspace no A Fazer:
   - variação máxima do orçamento por dia;
   - idade mínima da campanha;
   - se pode pausar e se pode aumentar o orçamento (desligado por padrão).

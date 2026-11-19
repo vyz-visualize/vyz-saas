@@ -1,48 +1,72 @@
 # VYZ · App nativo (iOS e Android)
 
+Versão atual: **1.0.0, build 10** (`apps/mobile/app.json`: `version`, `ios.buildNumber`, `android.versionCode`).
+
 ## Arquitetura
 
 ```
-/                       site + LP + painel (Next.js) — inclui a API do app
-  src/app/api/v1/       API do app: me, workspaces/:id/dashboards, dashboards/:id, account (DELETE), push-tokens
-  src/app/api/webhooks/revenuecat/   compras da loja → créditos e assinatura do plano
-  src/server/auth/bearer.ts          autenticação "Authorization: Bearer <jwt do Supabase>" (mesmo RLS do site)
-packages/shared/        tipos da API, produtos de crédito, termos proibidos no iOS (usado pelos dois)
-apps/mobile/            app Expo (React Native) com ios/ e android/ no repositório (prebuild)
+/                       site, painel e a API do app (Next.js)
+  src/app/api/v1/       API do app: me, workspaces/:id (dashboards, insights, tarefas, otimizações,
+                        store-plan), dashboards/:id, agent, account (DELETE), push-tokens, store/sync
+  src/app/api/webhooks/revenuecat/   compras da loja: créditos e assinatura do plano
+  src/server/auth/bearer.ts          "Authorization: Bearer <jwt do Supabase>" (mesmo RLS do site)
+packages/shared/        tipos da API, créditos, planos da loja, termos proibidos no iOS (site e app)
+apps/mobile/            app Expo SDK 58 (React Native, Expo Router)
+  src/app/              telas: entrar; abas Início, Análises, VYZ e Conta; A Fazer; dashboard
   src/lib/              supabase (sessão no Keychain/Keystore), api, auth, purchases (RevenueCat), push
-  src/app/              telas (Expo Router): entrar, dashboards, dashboard, conta
-  scripts/audit-bundle.mjs           auditoria de termos antes de cada upload
+  scripts/audit-bundle.mjs           auditoria de termos antes de cada envio
+  store/                LOJAS.md, textos, imagens, pacotes-lojas.csv e gerar/build.sh
 ```
 
+- **Sem `ios/` e `android/` no git:** as pastas nativas são geradas pelo `expo prebuild` (ignoradas em `apps/mobile/.gitignore`). Configuração nativa vai no `app.json` e no `app.config.js`, nunca à mão.
 - **Mesmo backend:** o app fala com o mesmo Supabase (login) e com a API do site (dados já calculados no servidor). Nenhuma regra de negócio no app.
-- **Login:** e-mail/senha; Google nativo (idToken); Apple nativo no iOS (nonce SHA-256). Os tokens viram sessão via `signInWithIdToken`. Sem modo convidado.
-- **Exclusão de conta:** Conta → Excluir conta → `DELETE /api/v1/account`. A propriedade dos workspaces passa a outro membro; sem equipe, a assinatura é encerrada. Faturas ficam (fiscal), sem vínculo pessoal.
-- **Compras:** créditos só pela loja (RevenueCat). O webhook credita em `credit_ledger` (só cresce); o saldo (`credit_balances`) vale no app e no site. Produtos em `packages/shared/src/credits.ts`.
-- **Assinatura do plano:** vendida também no app, pela loja (RevenueCat), com a MESMA regra do site: 3 planos fixos × mensal/anual, mesmo preço (Básico R$ 49,90/mês ou R$ 499,90/ano; Padrão R$ 149,90 ou R$ 1.499,90; Avançado R$ 299,90 ou R$ 2.999,90). São 6 produtos `vyz_<plano>_<mensal|anual>_ate<n>` (o número do id é o antigo e não muda), num único grupo de assinaturas; a lista com preços sai de `npx tsx scripts/store/plan-products.ts` (`apps/mobile/store/pacotes-lojas.csv`). Mudou o preço em `STORE_PLAN_PRICE`? Atualize também no App Store Connect e no Google Play Console (só valem os pontos de preço da Apple; o anual do site acompanha). Antes da compra o app chama `POST /api/v1/workspaces/:id/store-plan` (só o dono; workspace sem plano do site); o webhook relê o estado em `GET /v1/subscribers/:id` (precisa de `REVENUECAT_SECRET_API_KEY`) e grava em `subscriptions` (`sync_store_subscription`). Plano contratado no site muda só no site (o app avisa, sem link).
-- **Usuários por plano:** Básico 1; Padrão e Avançado ilimitados (`maxMembers` em entitlements.ts; o ilimitado é `UNLIMITED_MEMBERS` = 1000 no banco e nunca aparece na tela). O banco recusa convite ou membro acima do limite (convites pendentes contam). `GET /api/v1/me` traz `unlimitedMembers` por workspace: com ele, o app mostra só o uso, sem total.
-- **Push:** token nativo (APNs/FCM) salvo em `push_tokens`; o envio sai do nosso backend.
+- **Login:** e-mail e senha; Google nativo (idToken); Apple nativo no iOS (nonce SHA-256). Os tokens viram sessão via `signInWithIdToken`. Sem modo convidado.
+- **Exclusão de conta:** Conta > Excluir conta > `DELETE /api/v1/account`. A propriedade dos workspaces passa a outro membro; sem equipe, a assinatura é encerrada. Faturas ficam (fiscal), sem vínculo pessoal. O que ainda falta nesse caminho está em `docs/PENDENCIAS.md`.
+- **Créditos:** só pela loja (RevenueCat). O webhook credita em `credit_ledger` (só cresce); o saldo (`credit_balances`) vale no app e no site. Produtos em `packages/shared/src/credits.ts`.
+- **Push:** token nativo (APNs/FCM) em `push_tokens`; o envio sai do nosso backend.
+
+## Planos no app
+
+Mesma regra do site (`src/features/pricing/pricing.ts` e `entitlements.ts`):
+
+| Plano | Mensal | Anual | Workspaces | Dashboards | Usuários |
+|---|---|---|---|---|---|
+| Básico | R$ 49,90 | R$ 499,90 | até 3 | 3 | 1 |
+| Padrão | R$ 149,90 | R$ 1.499,90 | até 5 | 10 | ilimitados |
+| Avançado | R$ 299,90 | R$ 2.999,90 | ilimitados | 40 | ilimitados |
+
+- O Personalizado (100 dashboards) é sob consulta e não é vendido na loja.
+- Todas as plataformas em todos os planos. O paywall (`packages/shared/src/store-plans.ts`) cita as que funcionam hoje: Meta Ads, Instagram, Facebook, Google Ads e GA4. Mudou `AVAILABLE_PLATFORMS` no site? Mude o texto lá também.
+- **Produtos:** 6, `vyz_<plano>_<mensal|anual>_ate<n>`, num único grupo de assinaturas. O número do id é o antigo e não muda. A lista com preços sai de `npx tsx scripts/store/plan-products.ts` (`apps/mobile/store/pacotes-lojas.csv`).
+- **Preço:** `STORE_PLAN_PRICE` (`packages/shared/src/store-plans.ts`). Só valem os pontos de preço da Apple; o anual do site é o mesmo total (`PLAN_YEAR`). Mudou o preço? Atualize também no App Store Connect e no Google Play Console.
+- **Compra:** antes, o app chama `POST /api/v1/workspaces/:id/store-plan` (só o dono; workspace sem plano do site). O webhook relê o estado em `GET /v1/subscribers/:id` (precisa de `REVENUECAT_SECRET_API_KEY`) e grava em `subscriptions` (`sync_store_subscription`). Plano contratado no site muda só no site (o app avisa, sem link).
+- **Usuários:** o ilimitado é `UNLIMITED_MEMBERS` = 1000 no banco e nunca aparece na tela. O banco recusa convite ou membro acima do limite (convites pendentes contam). `GET /api/v1/me` traz `unlimitedMembers` por workspace.
 
 ## Rodar no simulador
 
 ```
 cd apps/mobile && cp .env.example .env   # preencher
-npx expo run:ios                          # compila pelo Xcode e abre no simulador
+npx expo run:ios                          # gera a pasta nativa, compila e abre no simulador
 ```
 
-## Build e envio iOS (sem EAS)
+## Builds das lojas (local, sem EAS)
 
-1. `cd apps/mobile/ios && pod install`, abrir `VYZ.xcworkspace` no Xcode.
-2. Signing & Capabilities: seu Team; confira **Sign in with Apple** e **Push Notifications**.
-3. Antes de cada envio: `node scripts/audit-bundle.mjs ios` e conferir o resultado (os "Android" restantes são mensagens internas do React Native, fora da tela).
-4. General → Build: incrementar. Product → Archive → Distribute App → App Store Connect → Upload.
+Pelo script `apps/mobile/store/gerar/build.sh` (detalhes em `apps/mobile/store/LOJAS.md`, seção 8):
 
-## Lojas
+```
+cd apps/mobile
+store/gerar/build.sh android                       # .aab assinado em store/build/
+TEAM_ID=<time da Apple> store/gerar/build.sh ios   # archive e .ipa (DESTINATION=upload envia direto)
+store/gerar/build.sh ios-check                     # só confere que o iOS compila em Release
+```
 
-Tudo para publicar (textos, prints, privacidade, produtos, credenciais e builds): [apps/mobile/store/LOJAS.md](../apps/mobile/store/LOJAS.md).
+- Antes: `.env.production.local` preenchido (inclusive `EXPO_PUBLIC_REVENUECAT_*`) e `google-services.json` na pasta do app (push no Android).
+- O `build.sh ios` roda a auditoria do bundle (`node scripts/audit-bundle.mjs ios`). Os "Android" que sobram são mensagens internas de bibliotecas, fora da tela.
+- **Chaves de publicação** (Apple, Play, chave de envio do Android) ficam fora do git, em `~/Documents/VYZ/Publicar`. Envio para revisão e produção só com o ok do Gustavo.
 
 ## Checklist antes de cada envio
 
-- [ ] Número do build incrementado
+- [ ] `ios.buildNumber` e `android.versionCode` incrementados no `app.json`
 - [ ] Auditoria do bundle rodada e revisada
 - [ ] Compras dentro do app anexadas à versão no mesmo envio
 - [ ] Excluir conta testado de ponta a ponta

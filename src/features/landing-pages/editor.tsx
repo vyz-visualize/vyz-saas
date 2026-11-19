@@ -7,7 +7,7 @@ import { Monitor, Plus, Smartphone, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ColorField } from "@/components/ui/ColorField";
 import { FileInput, readImage } from "@/components/ui/FileInput";
-import { Checkbox, LockBadge, PendingChip, TextField } from "@/components/ui/kit";
+import { Checkbox, PendingChip, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { LANDING_SECTIONS, SECTION_LABEL, type LandingContent, type LandingSection, type LandingTemplate } from "@/features/templates/landing-pages";
 import type { Tracking } from "@/features/workspace/types";
@@ -226,10 +226,6 @@ export function LandingPreview({ t, content, hideBadge }: { t: LandingTemplate; 
       </div>
     </div>
   );
-}
-
-export function LockedTemplateNote({ label }: { label: string }) {
-  return <LockBadge label={label} />;
 }
 
 export function useHideBadge() {

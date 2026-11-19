@@ -111,6 +111,6 @@ Cada passo que altera dados é uma migration ou um script revisado antes, nunca 
 
 ## 7. Junto do lançamento (fora da Stripe)
 
-- Trocar o marcador `[ANOS]` da dobra Diferenciais pelo texto final. O deploy de produção falha enquanto ele existir (`scripts/build/check-placeholders.ts`).
-- Aplicar a migration `20261120090000_plan_projects` (limites de workspaces) e rodar `npm run db:catalog` e `npm run db:types`.
-- `SITE_INDEXABLE` e os textos legais (termos e privacidade) revisados para a cobrança real.
+- Em `src/lib/flags.ts`: `BILLING_LIVE = true` (tira o aviso "Simulação · não é cobrança") e `SITE_INDEXABLE = true` (a home deixa de ter `noindex`).
+- Textos legais (termos e privacidade) revisados para a cobrança real.
+- O marcador `[ANOS]` da dobra Diferenciais já foi trocado. A checagem continua no `postbuild` (`scripts/build/check-placeholders.ts`): um marcador novo na lista faz o deploy de produção falhar.

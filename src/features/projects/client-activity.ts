@@ -22,9 +22,6 @@ export const CLIENT_STATUS: Record<ClientStatus, { label: string; tone: BadgeTon
   sem_link: { label: "Sem link", tone: "neutral", text: "Nenhum link foi mandado para este cliente." },
 };
 
-/** Ordem para a lista de clientes: quem precisa de atenção primeiro. */
-export const STATUS_ORDER: ClientStatus[] = ["parado", "nunca_abriu", "esfriando", "usando", "sem_link"];
-
 export function clientStatus(lastVisitAt: string | null, hasLinks: boolean, now: Date): ClientStatus {
   if (!lastVisitAt) return hasLinks ? "nunca_abriu" : "sem_link";
   const days = (now.getTime() - new Date(lastVisitAt).getTime()) / DAY;

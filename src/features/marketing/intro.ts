@@ -38,7 +38,7 @@ export function subscribeIntro(listener: () => void) {
 }
 
 // a regra mora em lib: o layout raiz também a usa, e ele não pode importar do site
-export { INTRO_KEY, shouldPlayIntro, type IntroVisit } from "@/lib/intro-rule";
+export { INTRO_KEY,   } from "@/lib/intro-rule";
 
 export function useIntro() {
   return useSyncExternalStore(subscribeIntro, getIntro, () => SERVER_INTRO);

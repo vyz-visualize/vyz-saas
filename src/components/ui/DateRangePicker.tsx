@@ -11,8 +11,8 @@ import { Popover } from "radix-ui";
 import { useState } from "react";
 import { usePortalContainer } from "./portal";
 import type { Period, Range } from "./PeriodPicker";
+import { MONTH_NAMES } from "@/lib/format";
 
-const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const MON = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const WEEK = ["D", "S", "T", "Q", "Q", "S", "S"];
 const DAY = 86_400_000;
@@ -237,7 +237,7 @@ function Month({ month, lo, hi, prev, last, off, onPick, onHover, className = ""
   return (
     <div className={className}>
       <p className="mb-1 text-center text-[13px] font-semibold">
-        {MONTHS[month.getMonth()]} {month.getFullYear()}
+        {MONTH_NAMES[month.getMonth()]} {month.getFullYear()}
       </p>
       <div className="grid grid-cols-7 text-center text-[11px] text-fg-2" aria-hidden>
         {WEEK.map((w, i) => (
@@ -246,7 +246,7 @@ function Month({ month, lo, hi, prev, last, off, onPick, onHover, className = ""
           </span>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-y-0.5" role="grid" aria-label={`${MONTHS[month.getMonth()]} de ${month.getFullYear()}`}>
+      <div className="grid grid-cols-7 gap-y-0.5" role="grid" aria-label={`${MONTH_NAMES[month.getMonth()]} de ${month.getFullYear()}`}>
         {cells.map((d, i) => {
           if (!d) return <span key={`e${i}`} />;
           const inRange = d >= lo && d <= hi;
@@ -259,7 +259,7 @@ function Month({ month, lo, hi, prev, last, off, onPick, onHover, className = ""
               <button
                 type="button"
                 disabled={disabled}
-                aria-label={`${d.getDate()} de ${MONTHS[d.getMonth()]}`}
+                aria-label={`${d.getDate()} de ${MONTH_NAMES[d.getMonth()]}`}
                 aria-pressed={isLo || isHi}
                 onClick={() => onPick(d)}
                 onMouseEnter={() => onHover(d)}

@@ -14,6 +14,3 @@ const BY_PLATFORM: Record<LivePlatform, Partial<Record<string, MetricId>>> = {
 
 /** Métrica do assistente que corresponde a um KPI live (undefined = sem par). */
 export const kpiMetric = (platform: LivePlatform, kpiId: string): MetricId | undefined => BY_PLATFORM[platform][kpiId];
-
-/** Métricas que os cards de KPI live de uma plataforma marcam. */
-export const liveKpiMetrics = (platform: LivePlatform): MetricId[] => Object.values(BY_PLATFORM[platform]).filter((m): m is MetricId => !!m);

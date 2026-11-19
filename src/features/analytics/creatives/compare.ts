@@ -214,8 +214,6 @@ export type Evolution = {
   series: (number | null)[][];
 };
 
-export const usesBlocks = (ads: readonly Pick<CompareAd, "days">[]) => ads.some((a) => deliveryDays(a).length > BLOCK_AFTER_DAYS);
-
 export function evolution(ads: readonly Pick<CompareAd, "days">[], metric: CompareMetric): Evolution {
   const perAd = ads.map(deliveryDays);
   const longest = Math.max(0, ...perAd.map((d) => d.length));

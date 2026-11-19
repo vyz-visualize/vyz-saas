@@ -65,4 +65,4 @@ export function providerForConnection(conn: { provider: ProviderId; is_mock: boo
 }
 
 export { ProviderError } from "./types";
-export type { DiscoveredAccount, OAuthProvider, OAuthTokens, ProviderProfile } from "./types";
+export type {  OAuthProvider,   } from "./types";

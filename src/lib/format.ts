@@ -57,3 +57,9 @@ export function ddmmyyyy(d: Date): string {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
+
+/** "1 conta", "0 contas", "3 contas". */
+export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** Nomes dos meses, de janeiro (índice 0) a dezembro. */
+export const MONTH_NAMES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"] as const;

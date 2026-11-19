@@ -86,7 +86,7 @@ export function ImportSection({ accounts, canManage, now, timeZone, onRemove }: 
       )}
 
       {accounts.length === 0 ? (
-        <EmptyState title="Nenhuma planilha importada" text="Importe os dados de uma plataforma sem conexão direta e use no modelo Planilha · Mídia paga." action={add} />
+        <EmptyState title="Nenhuma planilha importada" text="Importe os dados de uma plataforma sem conexão direta (Shopee, Spotify, Globo ou ChatGPT Ads). A planilha vira uma conta que você escolhe no dashboard." action={add} />
       ) : (
         <div className="space-y-5">
           {byPlatform.map((p) => (

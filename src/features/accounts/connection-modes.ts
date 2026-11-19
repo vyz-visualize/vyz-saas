@@ -116,7 +116,7 @@ export const CONNECTIONS: Record<PlatformId, PlatformConnection> = {
     mode: "oauth_read",
     status: "restricted",
     writes: [],
-    note: "A API de anúncios do X depende de aprovação do X. Até lá, os dados entram por planilha.",
+    note: "A API de anúncios do X depende de aprovação do X. Em desenvolvimento.",
   },
   shopee: {
     mode: "import",
@@ -149,9 +149,6 @@ export const MODE_LABEL: Record<ConnectMode, string> = {
   oauth_read: "Login, só leitura",
   import: "Importação por planilha",
 };
-
-/** O VYZ aplica mudanças nesta plataforma pela API. */
-export const canWrite = (id: PlatformId) => CONNECTIONS[id].mode === "oauth_write" && CONNECTIONS[id].status === "live";
 
 /** Plataformas de mídia que entram por planilha (CSV ou Google Sheets). O CRM genérico não entra: não é mídia. */
 export const IMPORT_PLATFORMS: PlatformId[] = PLATFORM_ORDER.filter((p) => CONNECTIONS[p].mode === "import" && PLATFORMS[p].kind === "ads");

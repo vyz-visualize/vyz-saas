@@ -2,7 +2,7 @@
 // FCM no Android). DELETE: remove (ao sair). O envio é feito pelo nosso backend.
 
 import { z } from "zod";
-import { apiJson, bearerSession, unauthorized } from "@/server/auth/bearer";
+import { apiJson, bearerSession, unauthorized, apiError } from "@/server/auth/bearer";
 import { createAdminSupabase } from "@/server/supabase/admin";
 
 const Input = z.object({
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const session = await bearerSession(request);
   if (!session) return unauthorized();
   const parsed = Input.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return apiJson({ error: { code: "validation", message: "Token inválido." } }, 400);
+  if (!parsed.success) return apiError("validation", "Token inválido.", 400);
   // o mesmo aparelho pode trocar de conta: o token passa para quem está logado
   const { error } = await createAdminSupabase({ actorId: session.userId })
     .from("push_tokens")
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       { user_id: session.userId, platform: parsed.data.platform, token: parsed.data.token, app_version: parsed.data.appVersion ?? null, last_seen_at: new Date().toISOString() },
       { onConflict: "token" },
     );
-  if (error) return apiJson({ error: { code: "unknown", message: "Não foi possível registrar as notificações." } }, 500);
+  if (error) return apiError("unknown", "Não foi possível registrar as notificações.", 500);
   return apiJson({ ok: true });
 }
 

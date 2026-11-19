@@ -3,7 +3,7 @@
 // o Dataset trabalha em centavos.
 
 import { CRM_TOTAL, type CrmDay } from "@/features/sync/crm";
-import { addDays, diffDays } from "@/features/sync/dates";
+import { diffDays } from "@/features/sync/dates";
 import type { CrmStage } from "./source";
 
 /** Linha do CRM como o dashboard lê (a mesma da sincronização). */
@@ -55,9 +55,6 @@ export function crmTotals(rows: readonly CrmRow[], range: { from: string; to: st
   out.stages = [...stages.values()].sort((a, b) => a.order - b.order || a.stage.localeCompare(b.stage));
   return out;
 }
-
-/** Datas do período (para os gráficos diários). */
-export const crmDates = (range: { from: string; to: string }) => Array.from({ length: Math.max(0, diffDays(range.from, range.to) + 1) }, (_, i) => addDays(range.from, i));
 
 /**
  * Etapas para o widget "crm" (funil do lead à venda): Leads, as etapas abertas na

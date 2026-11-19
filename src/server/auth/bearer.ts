@@ -32,4 +32,7 @@ export function apiJson(body: unknown, status = 200) {
   return Response.json(body, { status, headers: { "cache-control": "no-store" } });
 }
 
-export const unauthorized = () => apiJson({ error: { code: "auth:required", message: "Entre na sua conta para continuar." } }, 401);
+/** Erro no formato da API v1: { error: { code, message } }. */
+export const apiError = (code: string, message: string, status: number) => apiJson({ error: { code, message } }, status);
+
+export const unauthorized = () => apiError("auth:required", "Entre na sua conta para continuar.", 401);

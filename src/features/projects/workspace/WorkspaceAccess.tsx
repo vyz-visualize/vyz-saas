@@ -14,8 +14,8 @@ import { LINK_STATUS_LABEL } from "@/features/share/links";
 import { projectHref } from "@/features/workspace/nav";
 import { CLIENT_STATUS, DEVICE_LABEL, formatDuration, type ClientStatus, type ProjectClientActivity, type VisitDevice } from "../client-activity";
 import { initials } from "../identity";
+import { plural } from "@/lib/format";
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const cardLink = "text-[13.5px] font-semibold text-accent underline-offset-4 hover:underline";
 const DEVICE_ICON: Record<VisitDevice, typeof Monitor> = { desktop: Monitor, mobile: Smartphone, tablet: Tablet };
 

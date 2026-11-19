@@ -30,7 +30,7 @@ DELETE_ACCOUNT_DB_URL='postgres://...' \
   npm run admin:delete-account -- --email pessoa@exemplo.com
 ```
 
-A transação é aberta como `read only`: nada é gravado. O relatório tem cinco partes:
+A transação é aberta como `read only`: nada é gravado. O relatório tem seis partes:
 
 - **O QUE SERÁ APAGADO**: perfil e login, tokens de push, WhatsApp, créditos, convites para o
   e-mail, compras não concluídas e o e-mail/telefone da pessoa como destinatário de relatórios

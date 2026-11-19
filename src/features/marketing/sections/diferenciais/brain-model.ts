@@ -5,6 +5,8 @@
 // Três regiões, da esquerda para a direita, com os rótulos do desenho:
 // 0 = entrada, 1 = núcleo, 2 = saída.
 
+import { rng } from "@/lib/random";
+
 export type Region = 0 | 1 | 2;
 export type BrainNode = { x: number; y: number; z: number; region: Region; r: number };
 export type Brain = {
@@ -20,18 +22,6 @@ export type Brain = {
   /** Sulcos (giros) para recortar dentro do contorno: dá a leitura de "cérebro". */
   gyri: string[];
 };
-
-/** PRNG pequeno e determinístico (mulberry32). */
-function rng(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
 
@@ -57,7 +47,7 @@ function depthFor(x: number, y: number, rand: () => number): number {
 }
 
 export function buildBrain({ seed = 7, count = 170, minDist = 17, neighbors = 3, maxEdge = 46 } = {}): Brain {
-  const rand = rng(seed);
+  const rand = rng(seed).next; // determinístico: o mesmo cérebro no servidor e no navegador
   const nodes: BrainNode[] = [];
   let tries = 0;
   while (nodes.length < count && tries < 20_000) {

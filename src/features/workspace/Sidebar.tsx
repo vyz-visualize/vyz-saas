@@ -32,6 +32,7 @@ import { planBadge } from "./home-steps";
 import { activeHref, isOrgPage, projectFromPath, projectHref, rememberProject, useNavGroups, useOpenProject, usePanelPath, type NavGroup } from "./nav";
 import { hasRole, ROLE_LABEL } from "./session";
 import { useWorkspaceSession } from "./WorkspaceProvider";
+import { fold } from "@/lib/text";
 
 const noop = () => () => {};
 const TAB_SPRING = { type: "spring", stiffness: 420, damping: 36, mass: 0.85 } as const;
@@ -92,7 +93,6 @@ function WorkspaceSwitcher({ collapsed }: { collapsed: boolean }) {
   const [q, setQ] = useState("");
   const [switching, startSwitch] = useTransition();
   const lp = org.product === "lp";
-  const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
   const list = projects.filter((p) => !q.trim() || fold(p.name).includes(fold(q.trim())));
   const title = lp || !open ? org.name : open.name;
   // nas páginas da organização (todos os workspaces, Conexões, Plano, Configurações), o seletor fica aceso

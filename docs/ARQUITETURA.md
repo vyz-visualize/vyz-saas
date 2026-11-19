@@ -1,13 +1,6 @@
 # VYZ · Arquitetura
 
-Como o projeto está organizado: produtos, rotas, pastas, banco, segurança e os caminhos do usuário. Documentos irmãos:
-
-| Documento | Assunto |
-|---|---|
-| `docs/BANCO.md` | tabelas, RLS, histórico, jobs e como mexer no banco |
-| `docs/TEMPLATES.md` | como criar templates de dashboard e de landing page |
-| `docs/MOBILE.md` | app nativo (iOS e Android), compras na loja e envio |
-| `docs/PENDENCIAS.md` | o que ainda depende de credencial ou decisão |
+Como o projeto está organizado: produtos, rotas, pastas, banco, segurança e os caminhos do usuário. Os outros documentos estão listados em `docs/README.md`.
 
 ## 1. Visão geral
 
@@ -20,32 +13,46 @@ Como o projeto está organizado: produtos, rotas, pastas, banco, segurança e os
           │               │              │               │              │
           └───────────────┴──── Supabase (Postgres + Auth + Storage + Vault) ┘
                                          │
-              cobrança (mock → Stripe) · OAuth Meta/Google · RevenueCat (lojas)
+        cobrança (Stripe) · OAuth das plataformas · RevenueCat (lojas) · Claude
                                          │
                         apps/mobile (Expo, iOS e Android) usa a mesma API
 ```
 
-- **Stack:** Next.js 16 (App Router, Cache Components, `proxy.ts`), React 19, Tailwind v4, Supabase (Postgres, Auth, Storage, Vault, pg_cron), zod 4, vitest. App: Expo SDK 58 com `ios/` e `android/` (sem EAS).
+- **Stack:** Next.js 16 (App Router, Cache Components, `proxy.ts`), React 19, Tailwind v4, Supabase (Postgres, Auth, Storage, Vault, pg_cron), zod 4, vitest (com PGlite nos testes do banco), Stripe, Redis da Upstash (opcional, cache curto) e a API do Claude ("Pedir ao Vyz"). App: Expo SDK 58, pastas nativas geradas pelo `expo prebuild` e builds locais (sem EAS).
 - **Um repositório:** site, painel, API, banco (`supabase/migrations`), app (`apps/mobile`) e tipos compartilhados (`packages/shared`).
 
 ## 2. Dois produtos
 
-O VYZ vende dois produtos separados, cada um com 3 planos (Básico, Padrão, Avançado):
+O VYZ tem dois produtos separados, cada um com 3 planos (Básico, Padrão, Avançado). Hoje o site vende só dashboards: as landing pages estão desligadas (`SHOW_LANDING_PAGES = false` em `lib/flags.ts`).
 
 | | Dashboards | Landing pages |
 |---|---|---|
 | Plano no banco | `base`, `pro`, `avancado` (+ `personalizado`) | `lp_base`, `lp_pro`, `lp_avancado` |
-| Preço | 3 planos fixos, mensal ou anual (~17% a menos): Básico R$ 49,90/mês ou R$ 499,90/ano, Padrão R$ 149,90 ou R$ 1.499,90, Avançado R$ 299,90 ou R$ 2.999,90; limites de workspaces, dashboards e usuários em `entitlements.ts` | por página: R$ 950 de criação + R$ 99/mês de hospedagem cada (1, 3 ou 5 páginas) |
+| Preço | mensal ou anual (o anual é o total exato do ano, `PLAN_YEAR`, ~17% a menos); ver a tabela abaixo. Personalizado: sob consulta | por página: R$ 950 de criação + R$ 99/mês de hospedagem cada (1, 3 ou 5 páginas) |
 | Depois do pagamento | onboarding (`/comecar`) e o primeiro dashboard | popup de boas-vindas com a galeria de templates |
 | Endereço | `dash.vyzualize.com.br/<cliente>` | `lps.vyzualize.com.br/<cliente>` |
-| Menu do painel | Início, Dashboards, Contas, Compartilhar, Plano, Configurações | Landing pages, Leads, Plano, Configurações |
+| Menu do painel | Início, o workspace aberto (Visão geral, Dashboards, Contas, Pessoas, Acessos, Ajustes) e Rotina (A Fazer, Compartilhar) | Landing pages, Leads, Plano, Configurações |
+
+**Planos de dashboards** (fonte: `features/pricing/pricing.ts` e `entitlements.ts`; o banco recebe pelo `npm run db:catalog`):
+
+| Plano | Mensal | Anual | Workspaces | Dashboards | Usuários |
+|---|---|---|---|---|---|
+| Básico | R$ 49,90 | R$ 499,90 | até 3 | 3 | 1 |
+| Padrão | R$ 149,90 | R$ 1.499,90 | até 5 | 10 | ilimitados |
+| Avançado | R$ 299,90 | R$ 2.999,90 | ilimitados | 40 | ilimitados |
+| Personalizado | sob consulta | sob consulta | ilimitados | 100 | ilimitados |
+
+- Todas as plataformas em todos os planos (sem restrição); as que funcionam hoje estão em `AVAILABLE_PLATFORMS` (`docs/PLATAFORMAS.md`).
+- Logo e cor do workspace em todos os planos; sem a marca VYZ (`whiteLabel`) só no Personalizado.
+- O anual é o total do ano (`PLAN_YEAR`); o banco guarda o por mês arredondado e aceita a diferença (`docs/BANCO.md`, "Preço anual").
+- Os planos são os mesmos no app, vendidos pela loja (`docs/MOBILE.md`).
 
 **O caminho do usuário fica salvo no banco** (`product_line`: `dash` | `lp`):
 
 - `plans.product` é a fonte.
 - `checkout_sessions.product` guarda o que a pessoa escolheu na página de preços. Uma trigger confere com o plano.
 - `subscriptions.product` é copiado do plano. A troca de plano só acontece dentro do mesmo produto (`plan:product_mismatch`).
-- `workspaces.product` diz o lado da plataforma. Cada produto tem o seu workspace: comprar LP não mexe no workspace de dashboards.
+- `workspaces.product` diz o lado da plataforma. Cada produto tem a sua organização (tabela `workspaces`): comprar LP não mexe na de dashboards.
 - `profiles.product` é o último produto em que o usuário entrou.
 - `product_events` é o histórico (só cresce) de quem entrou em qual produto, por checkout, loja ou troca.
 
@@ -63,21 +70,31 @@ Grupos de rota isolados: cada um tem o próprio layout, e nenhum importa o motio
 (onboarding)/comecar                    negócio → plataformas → conectar contas → primeiro dashboard (só dashboards)
 (painel)/painel/...                     o SaaS (menu por produto)
   page.tsx                              Início (dashboards) · LP vai para /painel/landing-pages
+  workspaces, workspaces/[id]           lista de workspaces e cada um: Visão geral e as abas dashboards,
+                                        contas, pessoas, acessos, ajustes
   dashboards, dashboards/novo, [id], [id]/editar
-  landing-pages, novo, [id] (editor), leads   com SHOW_LANDING_PAGES desligada: "em breve" + lista de espera (workspaces de dashboards)
-  contas, compartilhar, plano, configuracoes
+  a-fazer, compartilhar                 Rotina
+  contas                                Conexões (logins da organização e todas as contas)
+  plano, configuracoes, whatsapp        organização, cobrança e relatórios pelo WhatsApp
+  landing-pages, novo, [id] (editor), leads   com SHOW_LANDING_PAGES desligada: "em breve" + lista de espera
+  interno                               painel interno, só para os admins da Vyzualize
+  projetos                              endereço antigo, redireciona para workspaces
   w/[slug]/route.ts                     entrada do cliente: abre o workspace e leva ao produto dele
 (publico)/p/[slug]                      landing page publicada
 (publico)/r/[token]                     dashboard compartilhado (só leitura; conta a visita para a aba Acessos)
-(legal)/termos, privacidade
-(mock)/integracoes/simulacao/[provider] consentimento simulado de Meta/Google (sem credenciais reais)
+(legal)/termos, privacidade, exclusao-de-dados
+(mock)/integracoes/simulacao/[provider] consentimento simulado das plataformas (sem credenciais reais)
+dev/...                                 bancadas, só no next dev (painel, templates, dados, primeiro-acesso, configuracoes)
 auth/callback, auth/confirm             volta do OAuth e dos links de e-mail (Supabase, PKCE)
 api/v1/...                              API do app nativo (Bearer do Supabase, mesmo RLS)
-api/billing/webhook                     cobrança (Stripe, quando ligar)
-api/webhooks/revenuecat                 compras nas lojas (créditos e planos)
-api/integrations/[provider]/start|callback   OAuth das plataformas de anúncio
+api/billing/webhook, stripe/retorno     cobrança pela Stripe (webhook e volta do Checkout)
+api/webhooks/revenuecat, whatsapp       compras nas lojas; status e respostas do WhatsApp
+api/integrations/[provider]/start|callback   OAuth das plataformas
+api/links/visita                        sinais de visita do link compartilhado (aba Acessos)
+api/dashboards/[id]/atualizar           atualiza as contas atrasadas ao abrir um dashboard
 api/landing-pages/leads                 formulário das LPs publicadas
-api/cron/sync                           sincronização agendada das contas
+api/sessao                              nome de quem está logado, para o site estático
+api/cron/sync, digest, whatsapp, resumo-admin   agendamentos (vercel.json; rejectCron em server/sync/cron.ts exige o Bearer CRON_SECRET)
 ```
 
 `src/proxy.ts` (o antigo middleware): renova a sessão, manda quem não está logado para `/entrar`, devolve 404 de verdade para `/p` e `/r` inexistentes e, nos subdomínios `dash.`/`lps.`, reescreve `/<cliente>` para `/painel/w/<cliente>`.
@@ -91,13 +108,13 @@ O painel (área logada) tem tokens próprios, a mesma paleta do app nativo. O si
 - **Moldura** (`features/workspace/AppShell.tsx`) e **menu integrado** (`Sidebar.tsx`): a moldura tem o oliva da marca (`--frame*`) e o conteúdo fica num painel arredondado encaixado nela, sem barra no topo e com largura fluida (sem coluna máxima). O item ativo é uma aba na cor do painel que se funde nele pelos cantos côncavos (`.side-tab`). O menu tem só o dia a dia: Início, o workspace aberto e a Rotina (A Fazer, Compartilhar). No topo dele, o seletor de workspaces (lista com busca a partir de 7, "Todos os workspaces", "Novo workspace" e a organização: plano, Conexões, configurações e troca de organização; nessas páginas ele fica aceso); na troca, a pessoa continua na mesma aba. No rodapé, o uso do plano e o menu da pessoa (Minha conta, Plano e cobrança, Sair). Recolhe para um trilho de 76 px pelo botão do rodapé ou com `[` (`vyz:sidebar`, em `<html data-sidebar>`, aplicado antes da primeira pintura). A navegação mora em `nav.ts` (fonte única do menu, da barra do celular e da folha "Mais"). No celular: topo com o workspace aberto, barra flutuante embaixo e a folha "Mais" (workspaces, o resto do menu nos mesmos grupos e as páginas da organização).
 - **Identidade do workspace** (`features/projects/identity.ts`, `WorkspaceAvatar.tsx`, ações em `server/projects/identity.ts`): cada workspace pode ter cor e logo (aba Ajustes; member com acesso a ele). O avatar mostra a logo ou as iniciais na cor, no seletor do menu, nas listas, no cabeçalho, no topo do celular e na folha "Mais". Nos dashboards do workspace, a logo dele entra no lugar da logo da organização: na tela do painel e no editor (prévia) sempre; no link do cliente (e no PDF), com a mesma regra da marca própria do plano.
 - **Tour do painel** (`PanelTour` em `features/onboarding/DashboardTour.tsx`, passos em `PANEL_TOUR_STEPS`): no primeiro acesso, onde fica cada coisa (workspaces, o workspace aberto, a Rotina, plano e conta, Pergunte ao VYZ; no celular, o topo, a barra e o "Mais"). Os alvos são `data-tour="..."`; o que não está na tela fica de fora. Uma vez por pessoa (`user_guides`, guia `panel_tour`), só no Dash e com plano ativo; o tour do primeiro dashboard é outro guia (`dashboard_tour`). Na bancada, `?tour=1`.
-- **Workspace aberto**: o do endereço (`/painel/workspaces/<id>/...`) ou, fora dele, o último aberto (cookie `vyz-project`, gravado no navegador por `rememberProject`). O menu mostra o grupo dele (Visão geral, Dashboards, Contas, Pessoas, Ajustes); `/painel/dashboards` redireciona para os dashboards dele; o dashboard novo sem conta nasce nele.
-- **Área do workspace** (`/painel/workspaces/[id]` e as abas `dashboards`, `contas`, `pessoas`, `ajustes`; `features/projects/workspace/`, dados em `server/projects/detail.ts`): Visão geral (primeiros passos, números, destaques da semana, contas por plataforma, equipe), Dashboards (CRUD), Contas (ligar, desligar, sincronizar, mover, remover e trazer contas dos logins; `server/projects/accounts.ts`), Pessoas (quem acessa, quem está fora, convites e vagas) e Ajustes (nome e arquivar). No computador, o menu lateral é a navegação do workspace e a aba tem o próprio título (`PageHeader`); no celular, abas logo abaixo do caminho. `/painel/contas` é **Conexões**: os logins da organização e todas as contas.
+- **Workspace aberto**: o do endereço (`/painel/workspaces/<id>/...`) ou, fora dele, o último aberto (cookie `vyz-project`, gravado no navegador por `rememberProject`). O menu mostra o grupo dele (Visão geral, Dashboards, Contas, Pessoas, Acessos, Ajustes); `/painel/dashboards` redireciona para os dashboards dele; o dashboard novo sem conta nasce nele.
+- **Área do workspace** (`/painel/workspaces/[id]` e as abas `dashboards`, `contas`, `pessoas`, `acessos`, `ajustes`; `features/projects/workspace/`, dados em `server/projects/detail.ts`): Visão geral (primeiros passos, números, destaques da semana, contas por plataforma, equipe), Dashboards (CRUD), Contas (ligar, desligar, sincronizar, mover, remover e trazer contas dos logins; `server/projects/accounts.ts`), Pessoas (quem acessa, quem está fora, convites e vagas), Acessos (seção "Acessos do cliente", abaixo) e Ajustes (nome, cor, logo e arquivar). No computador, o menu lateral é a navegação do workspace e a aba tem o próprio título (`PageHeader`); no celular, abas logo abaixo do caminho. `/painel/contas` é **Conexões**: os logins da organização e todas as contas.
 - **Kit** (`components/ui/kit.tsx`, `styles.ts`): `PageHeader`, `SectionHeader`, `Tabs` (trilho), `Badge`, `StatTile`, `EmptyState`, `Modal` (vira folha que sobe no celular) e `ModalActions`; botões `btn.small` (principal), `btn.subtle`, `btn.quiet`, `btn.danger` e `btn.icon`. Cartão: `rounded-card border border-line bg-card` (a elevação entra sozinha no painel) ou o utilitário `surface`.
 - **Padrões de tela**: uma ação principal por tela; ações secundárias no menu de três pontos; listas longas viram cartões abaixo de `lg` (nada rola de lado no celular); páginas longas em abas (Plano, Configurações).
 - **Nomes**: na interface, o cliente ou marca (tabela `projects`) se chama **workspace** e a conta de cima (tabela `workspaces`: plano, cobrança, equipe) se chama **organização**. Tabelas, colunas e rotas de API continuam com os nomes antigos.
 - **Equipe por workspace** (`project_members`, migration `20261118090000`): dono e admin da organização veem todos os workspaces; editor e leitor só os seus (regras restritivas no banco em contas, dashboards e filhas, tarefas, otimizações e métricas). Quem lê com a chave de serviço para mandar algo a uma pessoa (WhatsApp, push, Desfazer) filtra com `userProjectIds`.
-- **Bancada** (`/dev/painel?tela=inicio`, só no `next dev`): a moldura com cada tela e dados de exemplo, sem banco nem conta de teste. Telas em `src/app/dev/painel/` (`harness.tsx`, `screens-*.tsx`; as do workspace em `screens-workspace.tsx`: `workspace`, `workspace-novo`, `workspace-dashboards`, `workspace-contas`, `workspace-contas-vazio`, `workspace-pessoas`, `workspace-ajustes`); `?plano=base|pro|avancado` e `?papel=viewer|member|admin` trocam o plano e o papel; `?tour=1` mostra o tour do painel (sem gravar).
+- **Bancada** (`/dev/painel?tela=inicio`, só no `next dev`): a moldura com cada tela e dados de exemplo, sem banco nem conta de teste. Telas em `src/app/dev/painel/` (`harness.tsx`, `screens-*.tsx`; as do workspace em `screens-workspace.tsx`: `workspace`, `workspace-novo`, `workspace-dashboards`, `workspace-contas`, `workspace-contas-vazio`, `workspace-pessoas`, `workspace-acessos` (e `-parado`, `-nunca`, `-vazio`), `workspace-ajustes`); `?plano=base|pro|avancado` e `?papel=viewer|member|admin` trocam o plano e o papel; `?tour=1` mostra o tour do painel (sem gravar).
 
 ## 4. Pastas
 
@@ -107,43 +124,58 @@ src/
   proxy.ts
   components/
     brand/            Wordmark, geometria do logo
-    ui/               botões, Modal, campos, abas, selos, Segmented, Toast, Paywall (recurso borrado + "Liberar no …")
-    charts/           gráficos em SVG feitos à mão
+    ui/               botões, Modal, campos, abas, selos, Segmented, Toast, Paywall (recurso borrado + "Liberar no …"), kit
+    charts/, bklit/   gráficos em SVG feitos à mão e a biblioteca de gráficos importada
     motion/           só para o site (Lenis, reveals, intro)
   features/           domínio + UI, código que roda no navegador ou é puro
     pricing/          preços (pricing.ts), itens de cobrança (catalog.ts), limites por plano (entitlements.ts)
-    templates/        catálogos de dashboard e de LP, um arquivo por template (docs/TEMPLATES.md)
+    templates/        catálogos de dashboard e de LP, um arquivo por visual ou template (docs/TEMPLATES.md)
     metrics/          definições de métrica e regras de cálculo
-    analytics/        dashboards com dados reais (Meta e Google), agregação e formatos
-    dashboards/       widgets, galeria, fluxo de novo dashboard, visualização
-    landing-pages/    galeria, editor, renderizador, leads
-    checkout/         pedido (order.ts), formulário, pagamento, troca de plano, rótulos
-    onboarding/       passos do /comecar
-    workspace/        moldura do painel (AppShell), Início, Plano, Configurações, vitrine (Upsell), boas-vindas
-    accounts/         plataformas e contas de anúncio
+    analytics/        dashboards com dados reais, agregação, filtros, criativos e formatos
+    dashboards/       widgets, galeria, editor, Pedir ao Vyz (ask/), personalizar métricas
+    accounts/         plataformas, modos de conexão e contas
+    projects/         workspaces (clientes): identidade, equipe, acessos do cliente
+    workspace/        moldura do painel (AppShell, Sidebar, nav.ts), Início, Plano, Configurações, Upsell
+    todo/, insights/, optimize/   A Fazer, análises automáticas e otimizações aplicadas
+    import/           leitura de planilhas (mídia e lançamento)
+    whatsapp/         relatórios pelo WhatsApp (docs/WHATSAPP.md)
     agent/            assistente VYZ (só no painel): motor, drawer, mascote, voz
+    landing-pages/    galeria, editor, renderizador, leads
+    checkout/         pedido (order.ts), formulário, pagamento, troca de plano, linhas da Stripe
+    onboarding/       passos do /comecar e tours
     marketing/        seções do site, estado do plano escolhido
+    admin/            painel interno da Vyzualize
     auth/, share/, integrations/, sync/, catalog/, legal/
   server/             só servidor ("server-only"): ações, consultas, integrações
-    auth/             sessão, workspace atual (requireWorkspace/authorize), Google, Bearer do app
+    actions/          runAndRefresh: o miolo comum das Server Actions que mudam dados
+    auth/             sessão, workspace atual (requireWorkspace para páginas, authorize para ações, currentWorkspaceSession para leituras), Google, Bearer do app (apiJson, apiError)
     billing/          checkout, provedor (mock/Stripe), assinatura, loja (RevenueCat)
-    dashboards/, landing-pages/, onboarding/, workspace/, share/
-    integrations/     OAuth Meta/Google, tokens no Vault
-    sync/, analytics/ sincronização das contas e leitura do armazém de métricas
-    agent/            contexto e ações do assistente
+    integrations/     OAuth das plataformas (providers/), tokens no Vault
+    sync/, analytics/ sincronização das contas (sync/live/) e leitura do armazém de métricas
+    import/           planilhas: importação, Google Sheets e releitura agendada
+    projects/         workspaces: detalhe, contas, identidade, acessos do cliente
+    dashboards/, landing-pages/, onboarding/, workspace/, share/, guides/
+    todo/, insights/, optimize/, whatsapp/, push/
+    agent/, ai/       contexto do assistente e cliente do Claude
+    admin/            exclusão de conta (script interno) e painel interno
+    mmm/, cache/      carga do histórico do MMM e Redis (docs/MMM.md)
     history/          logs de auditoria e atividade
-    security/         rate limit
+    security/, http/  rate limit e dados da requisição
     supabase/         clientes (usuário e admin) e tradução de erros do banco
     env.ts            variáveis validadas (zod)
-  lib/                utilitários sem domínio: flags, format, whatsapp, ids, hooks, product-hosts, supabase/cookies
-packages/shared/      tipos e regras usados pelo site e pelo app (API, créditos, planos da loja, termos proibidos no iOS)
+  lib/                utilitários sem domínio: flags, format (moeda, plural, meses), text (fold), guards (isRecord), random, whatsapp, ids, hooks, navigation, product-hosts, site, store (localStorage), supabase/cookies
+packages/shared/      tipos e regras usados pelo site e pelo app (API, créditos, planos da loja)
 apps/mobile/          app Expo (docs/MOBILE.md)
 supabase/migrations/  o banco, em ordem (docs/BANCO.md)
 scripts/
   db/                 gen-types (tipos do banco), sync-catalog (planos, preços, templates)
-  dev/                conta de teste (--product dash|lp), cookie de sessão
+  dev/                conta de teste (--product dash|lp), cookie de sessão, sincronizar uma conta
+  admin/              exclusão de dados de uma conta (docs/EXCLUSAO-DE-DADOS.md)
+  mmm/                fila da carga do histórico do MMM
+  build/              checagem de marcadores pendentes (postbuild)
+  check/              consultas da Google Ads API
   store/              lista dos produtos das lojas
-docs/                 esta pasta
+docs/                 esta pasta (índice em docs/README.md)
 ```
 
 **Regras de organização**
@@ -165,7 +197,7 @@ Checkout
   com conta: só empresa e aceite
   → checkout_sessions + checkout_items (o servidor recalcula o preço; o navegador nunca manda valor)
         ▼
-Pagamento (mock hoje: só os e-mails de BILLING_FREE_EMAILS em produção)
+Pagamento (Checkout hospedado da Stripe; simulado no dev e para CHECKOUT_SIMULATED_EMAILS)
   → fulfill_checkout (banco, numa transação): workspace, assinatura, itens, fatura, transação
   → triggers: produto no workspace e no perfil, product_events, onboarding pulado em LP
         ▼
@@ -178,22 +210,7 @@ Dentro do painel, os recursos de planos acima aparecem borrados com "Liberar no 
 
 ## 6. Banco (resumo)
 
-Detalhes em `docs/BANCO.md`. Migrations em ordem:
-
-| Migration | O quê |
-|---|---|
-| foundation, catalog, identity | extensões, catálogo (planos, preços, plataformas, templates), perfis, workspaces, membros, convites |
-| billing | checkout, assinaturas, itens, faturas, transações, pedidos de serviço, `fulfill_checkout` |
-| integrations, insights | conexões OAuth (tokens no Vault), contas de anúncio, armazém de métricas diárias |
-| dashboards, landing_pages | dashboards e páginas, LPs, versões, leads, links compartilhados |
-| entitlements | limites por plano aplicados por trigger (com lock) |
-| history, housekeeping | logs particionados por mês (auditoria, login, atividade), limpeza e jobs (pg_cron) |
-| hardening, billing_followups | revisão de segurança, troca de plano atômica, renovação simulada |
-| native_app, public_link_exists | créditos e eventos das lojas, push, exclusão de conta; checagem de links públicos |
-| store_plans_and_seats | planos vendidos nas lojas, usuários por plano |
-| product_lines | os dois produtos e o caminho do usuário |
-| landing_waitlist | lista de espera das LPs e visitas à página "em breve" |
-| dashboard_metric_prefs | métricas escolhidas em cada dashboard, por plataforma |
+Detalhes em `docs/BANCO.md`, com a lista de todas as migrations (`supabase/migrations/`). Em resumo: catálogo e identidade, cobrança, integrações e armazém de métricas (anúncio, orgânico, GA4 e CRM), dashboards e links, LPs, limites do plano por gatilho, histórico particionado, app nativo, workspaces com equipe própria, A Fazer, otimizações, WhatsApp, MMM e acessos do cliente.
 
 Segurança: RLS em todas as tabelas (negado por padrão), funções `security definer` com `search_path` vazio no schema `private`, erros no formato `grupo:motivo` traduzidos em `server/supabase/errors.ts`.
 
@@ -233,8 +250,10 @@ Link com investimento oculto: `redactSpend` (`features/analytics/aggregate.ts`) 
 
 ## 8. Cobrança
 
-- `BILLING_PROVIDER=mock` hoje (sem Stripe). Em produção, o mock só aceita os e-mails de `BILLING_FREE_EMAILS`; o resto vê "pagamento em breve" (`server/env.ts`, `canCheckout`).
-- Itens: plano (por contas, dashboards) ou plano de LP (hospedagem) + itens únicos (criação de LP, dashboard sob medida). Tudo recalculado no servidor (`features/checkout/order.ts`) e conferido de novo no banco.
+- Stripe, pelo Checkout hospedado (`server/billing/stripe.ts`): o cartão nunca passa pelo VYZ e não há produtos cadastrados na Stripe (as linhas saem de `features/checkout/stripe-lines.ts`). A produção está em **modo de teste** até o lançamento; o checklist do modo live está em `docs/LANCAMENTO.md`.
+- `BILLING_PROVIDER=mock` no desenvolvimento. Com o mock em produção, só os e-mails de `BILLING_FREE_EMAILS` assinam (`canCheckout` em `server/env.ts`). Com a Stripe ligada, a equipe usa `CHECKOUT_SIMULATED_EMAILS` (organização de teste que nunca chama a Stripe).
+- Itens: plano (anual pelo total exato, `PLAN_YEAR`) ou plano de LP (hospedagem) + itens únicos (criação de LP, dashboard sob medida, dashboard adicional). Tudo recalculado no servidor (`features/checkout/order.ts`) e conferido de novo no banco (`fulfill_checkout`).
+- Enquanto `BILLING_LIVE = false` (`lib/flags.ts`), o site avisa "Simulação · não é cobrança".
 - App: assinaturas e créditos pela loja (RevenueCat), mesma regra de plano do site (docs/MOBILE.md).
 
 ## 9. Variáveis de ambiente
@@ -243,27 +262,42 @@ Lista completa e comentada em `.env.example`. As que mudam o comportamento:
 
 | Variável | Efeito |
 |---|---|
-| `BILLING_PROVIDER`, `INTEGRATIONS_MODE` | `mock` ou real |
-| `ALLOW_MOCKS_IN_PRODUCTION` | permite o mock em produção (sem ela, o build recusa) |
-| `BILLING_FREE_EMAILS` | quem assina sem pagar enquanto o mock estiver em produção |
+| `BILLING_PROVIDER` (`mock` ou `stripe`), `INTEGRATIONS_MODE` (`mock` ou `live`) | simulado ou real |
+| `ALLOW_MOCKS_IN_PRODUCTION` | permite o simulado em produção (sem ela, o build recusa) |
+| `BILLING_FREE_EMAILS` | quem assina sem pagar com o mock em produção |
+| `CHECKOUT_SIMULATED_EMAILS` | equipe que testa o checkout sem chamar a Stripe |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | cobrança (`docs/LANCAMENTO.md`) |
+| `<PLATAFORMA>_CLIENT_ID`/`_SECRET`, `META_*`, `GOOGLE_*` | logins das plataformas; sem o par, o login some da tela (`docs/PLATAFORMAS.md`) |
+| `CRON_SECRET` | protege as rotas `api/cron/*` |
+| `WHATSAPP_*` | relatórios pelo WhatsApp; sem eles, modo simulado (`docs/WHATSAPP.md`) |
+| `CLAUDE_API_KEY` | "Pedir ao Vyz" com o Claude; sem ela, vale a leitura local |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | Redis da Upstash; sem eles, tudo funciona sem cache |
+| `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON` | planilhas fechadas do lançamento (Fachada) |
 | `NEXT_PUBLIC_DASH_HOST`, `NEXT_PUBLIC_LPS_HOST` | ligam os subdomínios (só depois do DNS) |
 | `NEXT_PUBLIC_COOKIE_DOMAIN` | sessão compartilhada entre subdomínios |
-| `REVENUECAT_*` | compras nas lojas |
+| `REVENUECAT_*`, `APNS_*`, `FCM_SERVICE_ACCOUNT_JSON` | compras nas lojas e push do app |
+
+Interruptores do produto ficam no código, em `src/lib/flags.ts`: `SHOW_LANDING_PAGES`, `BILLING_LIVE` e `SITE_INDEXABLE`.
 
 ## 10. Comandos
 
 | Comando | Para quê |
 |---|---|
-| `npm run dev` | site e painel local |
-| `npm test` / `npx tsc --noEmit` / `npx eslint .` | testes, tipos e lint |
-| `npm run db:push` | aplica as migrations no Supabase |
+| `npm run dev` | site e painel local (um `next dev` por pasta) |
+| `npm test` / `npm run typecheck` / `npm run lint` | testes (vitest), tipos e lint |
+| `npm run build` | build de produção; o `postbuild` procura marcadores pendentes |
+| `npm run db:new -- nome` / `npm run db:push` | cria uma migration / aplica as migrations no Supabase |
 | `npm run db:types` | regenera `src/lib/supabase/database.types.ts` |
-| `npm run db:catalog` | copia planos, preços e templates do código para o banco |
+| `npm run db:catalog` | copia planos, preços, plataformas e templates do código para o banco |
+| `npm run check:google-ads` | confere as consultas da Google Ads API |
+| `npm run check:unused` | arquivos, exportações e dependências sem uso (knip, `knip.json`) |
+| `npm run admin:delete-account` | exclusão de dados de uma conta (`docs/EXCLUSAO-DE-DADOS.md`) |
+| `npm run mmm:backfill -- --status` | fila da carga do histórico do MMM (`docs/MMM.md`) |
 | `npx tsx scripts/dev/create-test-account.ts --email … [--product lp]` | conta de teste paga (simulada) |
 
 Commits e push sempre pela conta GitHub Vyzualize.
 
-## Acessos do cliente
+## 11. Acessos do cliente
 
 Para quem vende dashboard para cliente (freelancers de BI, agências): a aba **Acessos** de cada workspace (`/painel/workspaces/<id>/acessos`) mostra se o cliente está usando o dash. Vale em todos os planos.
 

@@ -215,11 +215,6 @@ export const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** Escopos pedidos ao provedor (separados, como o provedor devolve). */
 export const providerScopes = (id: ProviderId): string[] => PROVIDERS[id].permissions.flatMap((p) => p.scope.split(" "));
 
-/** Provedor de login de uma plataforma conectável (Meta Ads → meta, Google Ads → google). */
-export function providerForPlatform(platformId: string): ProviderId | null {
-  return isProviderId(platformId) ? platformId : null;
-}
-
 /** Caminho que começa a conexão (rota GET; o servidor confere papel e plano). */
 export function connectHref(provider: ProviderId, next = "/painel/contas"): string {
   return `/api/integrations/${provider}/start?next=${encodeURIComponent(next)}`;

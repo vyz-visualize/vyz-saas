@@ -26,7 +26,7 @@ Um dashboard é **visual × objetivo**, e as **páginas saem das contas** ligada
 - **Visual** (`visuais/<id>.ts`): só a aparência. Básico: VYZ e Lavanda; Padrão: + Pulso; Avançado: todos.
 - **Objetivo** (`OBJECTIVES` em `composed.ts`): decide os números do topo e o funil (compra, lead, contato...).
 - **Modelo** = `${visual}-${objetivo}` (ex.: `noturno-ecommerce`). É o id gravado no banco e **não muda depois de publicado**.
-- **Páginas** (`composePages`): Visão geral quando há anúncio; uma página por plataforma (Meta Ads, Google Ads, Site GA4, Instagram, Página do Facebook), Força dos canais (GA4 com anúncios), Conteúdo (orgânico), os recursos escolhidos e o Funil.
+- **Páginas** (`composePages`): Visão geral quando há anúncio (Meta, Google, planilha, TikTok ou LinkedIn); páginas por plataforma (Meta Ads e Criativos, Google Ads e Termos, Site GA4, CRM, Instagram, Página do Facebook), Força dos canais (GA4 com anúncios), Conteúdo (orgânico), os recursos escolhidos, Campanhas (planilha, TikTok e LinkedIn) e o Funil.
 - **Recursos** (`FEATURES`): Metas e pacing, Comparativo de períodos (Padrão); Comparativo de criativos, Análise preditiva e MMM (Avançado).
 - **Métricas de mercado** (`composedLayout`): a Visão geral e as páginas da Meta e do Google trazem 8 números fixos por objetivo.
 
