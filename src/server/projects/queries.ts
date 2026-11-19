@@ -8,6 +8,7 @@ import type { ProjectDTO, ProjectsState } from "@/features/projects/types";
 import { hasRole } from "@/features/workspace/session";
 import { publicAssetUrl } from "@/lib/supabase/storage";
 import { getWorkspaceSession } from "@/server/auth/workspace";
+import { getProjectPulses } from "@/server/projects/client-activity";
 import { appError, unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
 
@@ -30,8 +31,10 @@ export async function getProjectsState(): Promise<ProjectsState> {
   const session = await getWorkspaceSession();
   if (!session) throw appError("auth:required");
   const ent = session.access.entitlements ?? ENTITLEMENTS[session.access.tier ?? "base"];
+  const [projects, pulses] = await Promise.all([listProjects(), getProjectPulses()]);
   return {
-    projects: await listProjects(),
+    projects: projects.map((p) => ({ ...p, client: pulses[p.id] ?? null })),
+    now: new Date().toISOString(),
     quantity: session.access.accountsQuantity,
     maxAccountsPerPlatform: ent.maxAccountsPerPlatform,
     canEdit: hasRole(session.role, "member"),

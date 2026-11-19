@@ -47,13 +47,12 @@ export function parseStorePlan(productId: string | null | undefined): StorePlan 
 
 /** O que cada plano traz (paywall do app). Mesma regra do site; cada plano inclui o de baixo. */
 export const STORE_PLAN_HIGHLIGHTS: Record<StorePlanTier, string[]> = {
-  base: ["Até 3 workspaces (clientes)", "Meta Ads, Google Ads e GA4", "Visão geral com tudo junto", "Assistente VYZ por chat", "1 usuário"],
-  pro: ["Até 5 workspaces (clientes), compartilhados entre os usuários", "Tudo do Básico", "TikTok Ads e LinkedIn Ads", "CRMs: RD Station e HubSpot", "Galeria de criativos", "Usuários ilimitados"],
+  base: ["Até 3 workspaces (clientes)", "Todas as plataformas: Meta Ads, Instagram, Facebook, Google Ads e GA4", "Visão geral com tudo junto", "Assistente VYZ por chat", "1 usuário"],
+  pro: ["Até 5 workspaces (clientes), compartilhados entre os usuários", "Tudo do Básico", "Até 3 contas por plataforma em cada workspace", "Galeria de criativos", "Usuários ilimitados"],
   avancado: [
     "Workspaces ilimitados (clientes)",
     "Tudo do Padrão",
     "+5 visuais de dashboard",
-    "X Ads, Spotify Ads, Globo Ads, ChatGPT Ads e mais",
     "Comparativo de criativos",
     "Análise preditiva e MMM",
     "Assistente VYZ por voz",

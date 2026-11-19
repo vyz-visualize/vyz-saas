@@ -7,6 +7,8 @@ export type ShareLinkItem = {
   dashboardId: string;
   dashboardName: string;
   tokenHint: string;
+  /** Para quem é o link (nulo = sem nome). */
+  recipientName: string | null;
   hideSpend: boolean;
   expiresAt: string | null;
   revokedAt: string | null;

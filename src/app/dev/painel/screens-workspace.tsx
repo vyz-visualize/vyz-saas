@@ -1,16 +1,18 @@
 "use client";
 
 // Telas de um workspace na bancada (/dev/painel?tela=workspace, workspace-dashboards,
-// workspace-contas, workspace-pessoas, workspace-ajustes), com dados de exemplo.
+// workspace-contas, workspace-pessoas, workspace-acessos, workspace-ajustes), com dados de exemplo.
 
 import { DEFAULT_SETTINGS } from "@/features/dashboards/data";
 import { DashboardsList } from "@/features/dashboards/DashboardsList";
 import type { DashboardListItem } from "@/features/dashboards/model";
 import type { AdAccountDTO, ConnectionDTO } from "@/features/integrations/types";
 import { ENTITLEMENTS, TIER_LABEL } from "@/features/pricing/entitlements";
+import { summarizeClientActivity, type ClientLink, type ClientVisit, type ProjectClientActivity } from "@/features/projects/client-activity";
 import { seatsLimit } from "@/features/projects/seats";
 import type { ProjectAccountsData, ProjectHighlights, ProjectOverviewData, ProjectPeopleData, ProjectSummary } from "@/features/projects/types";
 import { Highlights, Overview } from "@/features/projects/workspace/Overview";
+import { WorkspaceAccess } from "@/features/projects/workspace/WorkspaceAccess";
 import { WorkspaceAccounts } from "@/features/projects/workspace/WorkspaceAccounts";
 import { WorkspaceHeader } from "@/features/projects/workspace/WorkspaceHeader";
 import { WorkspacePeople } from "@/features/projects/workspace/WorkspacePeople";
@@ -165,6 +167,23 @@ const dash = (id: string, templateId: string, name: string, real: boolean): Dash
   updatedAt: day(1),
 });
 
+// Acessos: três pessoas com link (uma sem nome), dois dashboards, visitas nos últimos 40 dias
+const LINKS: ClientLink[] = [
+  { id: "l1", dashboardId: "d1", dashboardName: "Loja Aurora · Vendas", recipientName: "Marina, diretora de marketing", tokenHint: "x7Kq2a", createdAt: day(45), expiresAt: null, revokedAt: null },
+  { id: "l2", dashboardId: "d1", dashboardName: "Loja Aurora · Vendas", recipientName: "Paulo, financeiro", tokenHint: "9mTb41", createdAt: day(30), expiresAt: null, revokedAt: null },
+  { id: "l3", dashboardId: "d4", dashboardName: "Aurora · Black Friday", recipientName: null, tokenHint: "Qw88zL", createdAt: day(3), expiresAt: day(-27), revokedAt: null },
+];
+const visit = (id: string, linkId: string, dashboardId: string, minutesAgo: number, seconds: number, pages: string[], device: ClientVisit["device"]): ClientVisit => ({ id, linkId, dashboardId, startedAt: at(minutesAgo), lastSeenAt: at(minutesAgo - seconds / 60), seconds, pages, device });
+const VISITS: ClientVisit[] = [
+  visit("v1", "l1", "d1", 60 * 26, 412, ["Visão geral", "Campanhas", "Funil"], "desktop"),
+  visit("v2", "l2", "d1", 60 * 50, 95, ["Visão geral"], "mobile"),
+  visit("v3", "l1", "d1", 60 * 24 * 4, 260, ["Visão geral", "Campanhas"], "mobile"),
+  visit("v4", "l1", "d1", 60 * 24 * 9, 530, ["Visão geral", "Criativos", "Campanhas"], "desktop"),
+  visit("v5", "l2", "d1", 60 * 24 * 16, 40, ["Visão geral"], "mobile"),
+  visit("v6", "l1", "d1", 60 * 24 * 38, 300, ["Visão geral"], "desktop"),
+];
+const ACCESS = (links: ClientLink[], visits: ClientVisit[]): ProjectClientActivity => ({ ...summarizeClientActivity(links, visits, new Date(NOW)), now: NOW, timeZone: "America/Sao_Paulo", canShare: true });
+
 const withHeader = (node: React.ReactNode) => (
   <>
     <WorkspaceHeader summary={SUMMARY} orgName="Agência Exemplo" />
@@ -205,5 +224,9 @@ export const SCREENS_WORKSPACE: Record<string, Screen> = {
     path: `/painel/workspaces/${P1}/pessoas`,
     node: (tier) => withHeader(<WorkspacePeople data={{ ...PEOPLE, seats: { used: tier === "base" ? 1 : 5, limit: seatsLimit(ENTITLEMENTS[tier].maxMembers) } }} projectId={P1} projectName="Loja Aurora" />),
   },
+  "workspace-acessos": { path: `/painel/workspaces/${P1}/acessos`, node: () => withHeader(<WorkspaceAccess data={ACCESS(LINKS, VISITS)} projectId={P1} projectName="Loja Aurora" />) },
+  "workspace-acessos-parado": { path: `/painel/workspaces/${P1}/acessos`, node: () => withHeader(<WorkspaceAccess data={ACCESS(LINKS, VISITS.slice(4))} projectId={P1} projectName="Loja Aurora" />) },
+  "workspace-acessos-nunca": { path: `/painel/workspaces/${P1}/acessos`, node: () => withHeader(<WorkspaceAccess data={ACCESS(LINKS, [])} projectId={P1} projectName="Loja Aurora" />) },
+  "workspace-acessos-vazio": { path: `/painel/workspaces/${P1}/acessos`, node: () => withHeader(<WorkspaceAccess data={ACCESS([], [])} projectId={P1} projectName="Loja Aurora" />) },
   "workspace-ajustes": { path: `/painel/workspaces/${P1}/ajustes`, node: () => withHeader(<WorkspaceSettings summary={SUMMARY} timeZone="America/Sao_Paulo" />) },
 };

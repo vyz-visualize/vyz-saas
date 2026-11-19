@@ -150,11 +150,9 @@ describe("uso atual no plano novo", () => {
     }
   });
 
-  it("plataforma que o plano novo não tem", () => {
-    const tiktok = { ...usage, enabledPlatforms: ["meta", "tiktok"] };
-    expect(planChangeBlocker({ tier: "base", period: "anual", accounts: 2 }, tiktok)?.message).toBe(
-      "TikTok Ads é do plano Padrão. Desative essas contas antes de trocar para o Básico.",
-    );
+  it("plataforma nunca bloqueia a troca: todas valem em todos os planos", () => {
+    const tiktok = { ...usage, enabledPlatforms: ["meta", "tiktok", "linkedin", "hubspot", "x"] };
+    expect(planChangeBlocker({ tier: "base", period: "anual", accounts: 2 }, tiktok)).toBeNull();
     expect(planChangeBlocker({ tier: "pro", period: "anual", accounts: 2 }, tiktok)).toBeNull();
   });
 });

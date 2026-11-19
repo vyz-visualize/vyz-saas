@@ -48,7 +48,7 @@ export type Platform = {
   short: string;
   /** social = orgânico (Instagram, Página do Facebook): vem pelo login do Meta. */
   kind: "ads" | "analytics" | "crm" | "social";
-  /** Plano mínimo. Básico: Meta, Google Ads e GA4. Padrão: + TikTok, LinkedIn e CRMs. Avançado: todas. */
+  /** Plano mínimo. Hoje todas as plataformas valem em todos os planos (Básico); o banco recebe o mesmo pelo db:catalog. */
   tier: Tier;
   /** Campo principal (o ID que identifica a conta). */
   fields: AccountField[];
@@ -109,7 +109,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "TikTok Ads",
     short: "TikTok",
     kind: "ads",
-    tier: "pro",
+    tier: "base",
     fields: [{ key: "account", label: "Advertiser ID", kind: "digits", placeholder: "7012345678901234567" }],
   },
   linkedin: {
@@ -117,7 +117,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "LinkedIn Ads",
     short: "LinkedIn",
     kind: "ads",
-    tier: "pro",
+    tier: "base",
     fields: [{ key: "account", label: "ID da conta de anúncios", kind: "digits", placeholder: "512345678" }],
   },
   youtube: {
@@ -125,7 +125,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "YouTube (Google Ads)",
     short: "YouTube",
     kind: "ads",
-    tier: "avancado",
+    tier: "base",
     fields: [{ key: "account", label: "Customer ID do Google Ads", kind: "googleCustomer", placeholder: "123-456-7890" }],
   },
   mercado: {
@@ -133,7 +133,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "Mercado Ads",
     short: "Mercado",
     kind: "ads",
-    tier: "avancado",
+    tier: "base",
     fields: [{ key: "account", label: "ID do vendedor", kind: "digits", placeholder: "123456789" }],
   },
   shopee: {
@@ -141,7 +141,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "Shopee Ads",
     short: "Shopee",
     kind: "ads",
-    tier: "avancado",
+    tier: "base",
     fields: [{ key: "account", label: "ID da loja", kind: "digits", placeholder: "123456789" }],
   },
   crm: {
@@ -149,7 +149,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "CRM",
     short: "CRM",
     kind: "crm",
-    tier: "pro",
+    tier: "base",
     fields: [
       { key: "provider", label: "Qual CRM", kind: "text", placeholder: "RD Station, HubSpot, Pipedrive…" },
       { key: "account", label: "ID da conta ou do portal", kind: "text", placeholder: "Ex.: 4512345" },
@@ -160,7 +160,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "RD Station CRM",
     short: "RD",
     kind: "crm",
-    tier: "pro",
+    tier: "base",
     fields: [{ key: "account", label: "ID da conta", kind: "text", placeholder: "Ex.: 5f1a2b3c4d", hint: "Melhor conectar pelo login do RD Station. Nunca cole o token aqui." }],
   },
   hubspot: {
@@ -168,7 +168,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "HubSpot",
     short: "HubSpot",
     kind: "crm",
-    tier: "pro",
+    tier: "base",
     fields: [{ key: "account", label: "ID do portal (Hub ID)", kind: "digits", placeholder: "4512345" }],
   },
   pipedrive: {
@@ -176,7 +176,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "Pipedrive",
     short: "Pipedrive",
     kind: "crm",
-    tier: "pro",
+    tier: "base",
     fields: [{ key: "account", label: "ID da empresa no Pipedrive", kind: "digits", placeholder: "1234567" }],
   },
   kommo: {
@@ -184,7 +184,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "Kommo",
     short: "Kommo",
     kind: "crm",
-    tier: "pro",
+    tier: "base",
     fields: [{ key: "account", label: "Subdomínio da conta", kind: "text", placeholder: "minhaempresa (de minhaempresa.kommo.com)" }],
   },
   x: {
@@ -192,7 +192,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "X Ads",
     short: "X",
     kind: "ads",
-    tier: "avancado",
+    tier: "base",
     fields: [{ key: "account", label: "ID da conta de anúncios", kind: "text", placeholder: "18ce54d4x5t" }],
   },
   spotify: {
@@ -200,7 +200,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "Spotify Ads",
     short: "Spotify",
     kind: "ads",
-    tier: "avancado",
+    tier: "base",
     fields: [{ key: "account", label: "ID da conta de anúncios", kind: "text", placeholder: "Ex.: a1b2c3d4" }],
   },
   globo: {
@@ -208,7 +208,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "Globo Ads",
     short: "Globo",
     kind: "ads",
-    tier: "avancado",
+    tier: "base",
     fields: [{ key: "account", label: "ID do anunciante", kind: "text", placeholder: "Ex.: 123456" }],
   },
   chatgpt: {
@@ -216,7 +216,7 @@ export const PLATFORMS: Record<PlatformId, Platform> = {
     name: "ChatGPT Ads",
     short: "ChatGPT",
     kind: "ads",
-    tier: "avancado",
+    tier: "base",
     fields: [{ key: "account", label: "ID da conta de anúncios", kind: "text", placeholder: "Ex.: acct_123456" }],
   },
 };
@@ -243,10 +243,27 @@ export const PLATFORM_ORDER: PlatformId[] = [
   "chatgpt",
 ];
 
-const TIER_RANK: Record<Tier, number> = { base: 0, pro: 1, avancado: 2, personalizado: 3 };
+/**
+ * As que funcionam de ponta a ponta hoje (login, sincronização e dashboards), na ordem do site.
+ * As outras estão em desenvolvimento e entram em todos os planos quando ficarem prontas.
+ */
+export const AVAILABLE_PLATFORMS = ["meta", "instagram", "facebook", "google", "ga4"] as const satisfies readonly PlatformId[];
 
-/** Plataformas que o plano libera, na ordem de exibição. */
-export const platformsForTier = (tier: Tier) => PLATFORM_ORDER.map((id) => PLATFORMS[id]).filter((p) => TIER_RANK[p.tier] <= TIER_RANK[tier]);
+/** Nome curto para listas e selos ("Facebook" em vez de "Página do Facebook"). */
+export const AVAILABLE_PLATFORM_LABEL: Record<(typeof AVAILABLE_PLATFORMS)[number], string> = {
+  meta: "Meta Ads",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  google: "Google Ads",
+  ga4: "GA4",
+};
+
+/** "Meta Ads, Instagram, Facebook, Google Ads e GA4". */
+export const availablePlatformsText = () => {
+  const names = AVAILABLE_PLATFORMS.map((id) => AVAILABLE_PLATFORM_LABEL[id]);
+  return `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+};
+
 
 export const isAdPlatform = (id: PlatformId) => PLATFORMS[id].kind === "ads";
 /** Orgânico (Instagram, Página): sem investimento; números próprios em organic_daily e organic_posts. */

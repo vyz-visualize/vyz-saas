@@ -40,7 +40,7 @@ const GROUPS: { title: string; items: Faq[] }[] = [
     items: [
       {
         q: "O que é um workspace?",
-        a: "É o cliente, a empresa ou a marca para quem você gera os dashboards. Dentro dele você conecta as contas (Meta Ads, Google Ads e as outras plataformas do plano) e cria os dashboards daquele cliente.",
+        a: "É o cliente, a empresa ou a marca para quem você gera os dashboards. Dentro dele você conecta as contas (Meta Ads, Google Ads, GA4 e as outras plataformas; todas valem em qualquer plano) e cria os dashboards daquele cliente.",
       },
       {
         q: "Quantos workspaces cabem em cada plano?",

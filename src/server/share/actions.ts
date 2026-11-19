@@ -21,12 +21,18 @@ import { newShareToken } from "./token";
 
 const Id = z.uuid();
 
-export type CreatedShareLink = { id: string; url: string; expiresAt: string | null; hideSpend: boolean };
+export type CreatedShareLink = { id: string; url: string; expiresAt: string | null; hideSpend: boolean; recipientName: string | null };
 
-const ShareInput = z.object({ dashboardId: Id, expires: z.enum(EXPIRY_VALUES), hideSpend: z.boolean() });
+/** Para quem é o link: um link por pessoa diz, na aba Acessos, quem abriu. Vazio = sem nome. */
+const RecipientName = z
+  .string()
+  .max(200)
+  .transform((v) => v.replace(/\s+/g, " ").trim().slice(0, 80) || null);
+
+const ShareInput = z.object({ dashboardId: Id, expires: z.enum(EXPIRY_VALUES), hideSpend: z.boolean(), recipientName: RecipientName.optional() });
 
 /** Gera um link só de leitura (member). O link completo só aparece nesta resposta. */
-export async function createShareLink(input: { dashboardId: string; expires: ExpiryOption; hideSpend: boolean }): Promise<ActionResult<CreatedShareLink>> {
+export async function createShareLink(input: { dashboardId: string; expires: ExpiryOption; hideSpend: boolean; recipientName?: string }): Promise<ActionResult<CreatedShareLink>> {
   try {
     const parsed = ShareInput.safeParse(input);
     if (!parsed.success) throw appError("validation");
@@ -38,17 +44,18 @@ export async function createShareLink(input: { dashboardId: string; expires: Exp
 
     const { token, hash, hint } = newShareToken();
     const expiresAt = expiresAtFrom(parsed.data.expires, new Date());
+    const recipientName = parsed.data.recipientName ?? null;
     const supabase = await createServerSupabase();
     const row = unwrap(
       await supabase
         .from("share_links")
-        .insert({ workspace_id: session.workspace.id, dashboard_id: d.id, token_hash: hash, token_hint: hint, hide_spend: parsed.data.hideSpend, expires_at: expiresAt, created_by: session.user.id })
+        .insert({ workspace_id: session.workspace.id, dashboard_id: d.id, token_hash: hash, token_hint: hint, hide_spend: parsed.data.hideSpend, expires_at: expiresAt, created_by: session.user.id, recipient_name: recipientName })
         .select("id")
         .single(),
     );
     if (!row) throw appError("unknown");
-    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "share_link.created", entityType: "share_link", entityId: row.id, metadata: { dashboard_id: d.id, hide_spend: parsed.data.hideSpend, expires: parsed.data.expires } });
-    return { ok: true, data: { id: row.id, url: `${await appOrigin()}/r/${token}`, expiresAt, hideSpend: parsed.data.hideSpend } };
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "share_link.created", entityType: "share_link", entityId: row.id, metadata: { dashboard_id: d.id, hide_spend: parsed.data.hideSpend, expires: parsed.data.expires, named: !!recipientName } });
+    return { ok: true, data: { id: row.id, url: `${await appOrigin()}/r/${token}`, expiresAt, hideSpend: parsed.data.hideSpend, recipientName } };
   } catch (err) {
     unstable_rethrow(err);
     return toActionError(err);

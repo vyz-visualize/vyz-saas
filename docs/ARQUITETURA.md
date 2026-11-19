@@ -68,7 +68,7 @@ Grupos de rota isolados: cada um tem o próprio layout, e nenhum importa o motio
   contas, compartilhar, plano, configuracoes
   w/[slug]/route.ts                     entrada do cliente: abre o workspace e leva ao produto dele
 (publico)/p/[slug]                      landing page publicada
-(publico)/r/[token]                     dashboard compartilhado (só leitura)
+(publico)/r/[token]                     dashboard compartilhado (só leitura; conta a visita para a aba Acessos)
 (legal)/termos, privacidade
 (mock)/integracoes/simulacao/[provider] consentimento simulado de Meta/Google (sem credenciais reais)
 auth/callback, auth/confirm             volta do OAuth e dos links de e-mail (Supabase, PKCE)
@@ -262,3 +262,14 @@ Lista completa e comentada em `.env.example`. As que mudam o comportamento:
 | `npx tsx scripts/dev/create-test-account.ts --email … [--product lp]` | conta de teste paga (simulada) |
 
 Commits e push sempre pela conta GitHub Vyzualize.
+
+## Acessos do cliente
+
+Para quem vende dashboard para cliente (freelancers de BI, agências): a aba **Acessos** de cada workspace (`/painel/workspaces/<id>/acessos`) mostra se o cliente está usando o dash. Vale em todos os planos.
+
+- **Quem é quem:** um link por pessoa. Ao compartilhar, o campo "Para quem é este link?" grava `share_links.recipient_name`; sem nome, o link aparece como "Link …abc123".
+- **Visita:** a página do link (`/r/<token>`) monta `VisitTracker` (`features/share/VisitTracker.tsx`), que manda um sinal para `POST /api/links/visita` ao abrir, ao trocar de tela, a cada 30 s com a aba visível e ao sair (`sendBeacon`). O dashboard avisa a tela aberta por `useWatchPage` (`features/share/page-watch.ts`). O servidor (`server/share/visits.ts`) ignora robôs e prévias de link (WhatsApp, Slack...), limita por IP (`share_ping_ip`) e grava por `record_share_visit`, que confere se o link vale. Uma visita por aba; volta a valer depois de 30 min parada.
+- **Situação:** pela última visita: até 7 dias, usando; até 21, esfriando; depois, parado. Com link e sem visita, nunca abriu. Regras puras em `features/projects/client-activity.ts`; leitura em `server/projects/client-activity.ts` (RLS: cada membro só vê os dashboards que acessa).
+- **Onde aparece:** a aba Acessos (situação, visitas em 7 e 30 dias, tempo, pessoas, linha do tempo com as telas vistas, dashboards mais vistos) e uma linha em cada cartão da lista de workspaces.
+- **LGPD:** o rodapé do link avisa que as visitas ficam registradas. Da visita só fica o tipo de aparelho (computador, celular, tablet); nada de IP nem navegador.
+

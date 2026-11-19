@@ -3,7 +3,7 @@
 import { Check, Copy, ExternalLink, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { Checkbox, Modal, SelectField } from "@/components/ui/kit";
+import { Checkbox, Modal, SelectField, TextField } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
 import { ddmmyyyy } from "@/lib/format";
 import { createShareLink, type CreatedShareLink } from "@/server/share/actions";
@@ -31,10 +31,12 @@ export async function copyText(text: string) {
 /**
  * Gera um link só de leitura no servidor. O link completo aparece só aqui, uma
  * vez: o VYZ guarda apenas uma impressão dele (para revogar e contar visitas).
+ * Um link por pessoa (com o nome dela) diz, na aba Acessos do workspace, quem abriu.
  */
 export function ShareModal({ open, onClose, dashboard }: { open: boolean; onClose: () => void; dashboard: { id: string; name: string; live: boolean } }) {
   const [expires, setExpires] = useState<ExpiryOption>("30");
   const [hideSpend, setHideSpend] = useState(false);
+  const [recipient, setRecipient] = useState("");
   const [link, setLink] = useState<CreatedShareLink | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -43,7 +45,7 @@ export function ShareModal({ open, onClose, dashboard }: { open: boolean; onClos
   function create() {
     setError(null);
     start(async () => {
-      const r = await createShareLink({ dashboardId: dashboard.id, expires, hideSpend });
+      const r = await createShareLink({ dashboardId: dashboard.id, expires, hideSpend, recipientName: recipient });
       if (!r.ok) return setError(r.error.message);
       setLink(r.data);
       setCopied(false);
@@ -54,6 +56,7 @@ export function ShareModal({ open, onClose, dashboard }: { open: boolean; onClos
     onClose();
     setLink(null);
     setError(null);
+    setRecipient("");
   }
 
   return (
@@ -64,6 +67,13 @@ export function ShareModal({ open, onClose, dashboard }: { open: boolean; onClos
         </p>
         {!link ? (
           <>
+            <TextField
+              label="Para quem é este link?"
+              value={recipient}
+              onChange={setRecipient}
+              placeholder="Ex.: Maria, diretora de marketing"
+              hint="Um link por pessoa: em Acessos você vê quem abriu, quando e por quanto tempo."
+            />
             <SelectField label="Expira em" value={expires} onChange={(v) => setExpires(v as ExpiryOption)} options={EXPIRY_OPTIONS.map((o) => ({ value: o.value, label: o.label }))} />
             <div className="rounded-control bg-surface-2 px-3.5 py-3">
               <Checkbox label="Esconder os valores de investimento" hint={hideSpend ? "Métricas de custo e ROAS também ficam ocultas, para o valor investido não poder ser recalculado." : undefined} checked={hideSpend} onChange={setHideSpend} />
@@ -90,11 +100,19 @@ export function ShareModal({ open, onClose, dashboard }: { open: boolean; onClos
             </p>
             <p className="break-all rounded-control bg-surface-2 px-3 py-2.5 text-[12.5px] leading-relaxed text-fg tnum select-all">{link.url}</p>
             <p className="text-[12.5px] text-fg-2">
+              {link.recipientName ? `Para ${link.recipientName} · ` : ""}
               {link.expiresAt ? `Vale até ${ddmmyyyy(new Date(link.expiresAt))}` : "Não expira"}
               {link.hideSpend ? " · investimento oculto" : ""}
             </p>
             <div className={footer}>
-              <button type="button" className={ghost} onClick={() => setLink(null)}>
+              <button
+                type="button"
+                className={ghost}
+                onClick={() => {
+                  setLink(null);
+                  setRecipient("");
+                }}
+              >
                 Gerar outro
               </button>
               <a href={link.url} target="_blank" rel="noopener noreferrer" className={ghost}>

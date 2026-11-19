@@ -85,10 +85,11 @@ const HOME_NEW: HomeData = {
 
 const PROJECTS: ProjectsState = {
   projects: [
-    { id: P1, name: "Loja Aurora", createdAt: day(90), logoUrl: AURORA_LOGO, enabledAccounts: 5, dashboards: 2 },
-    { id: P2, name: "Clínica Sol", createdAt: day(40), color: "#2563eb", enabledAccounts: 1, dashboards: 1 },
-    { id: P3, name: "Imobiliária Vista do Parque Empreendimentos", createdAt: day(8), enabledAccounts: 1, dashboards: 1 },
+    { id: P1, name: "Loja Aurora", createdAt: day(90), logoUrl: AURORA_LOGO, enabledAccounts: 5, dashboards: 2, client: { status: "usando", lastVisitAt: at(60 * 26), visits30: 14 } },
+    { id: P2, name: "Clínica Sol", createdAt: day(40), color: "#2563eb", enabledAccounts: 1, dashboards: 1, client: { status: "parado", lastVisitAt: day(26), visits30: 1 } },
+    { id: P3, name: "Imobiliária Vista do Parque Empreendimentos", createdAt: day(8), enabledAccounts: 1, dashboards: 1, client: null },
   ],
+  now: NOW,
   quantity: PLAN_PROJECTS.pro,
   maxAccountsPerPlatform: 3,
   canEdit: true,

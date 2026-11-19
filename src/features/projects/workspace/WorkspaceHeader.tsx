@@ -6,7 +6,7 @@
 // celular, as abas logo abaixo. Ao abrir, o workspace vira o "aberto" (cookie): o painel volta
 // nele e o dashboard novo sem conta nasce nele.
 
-import { BarChart3, ChevronRight, LayoutGrid, Plug, Plus, Settings2, Users } from "lucide-react";
+import { Activity, BarChart3, ChevronRight, LayoutGrid, Plug, Plus, Settings2, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { btn } from "@/components/ui/styles";
@@ -19,6 +19,7 @@ const TABS = [
   { tab: "dashboards", label: "Dashboards", icon: BarChart3 },
   { tab: "contas", label: "Contas", icon: Plug },
   { tab: "pessoas", label: "Pessoas", icon: Users },
+  { tab: "acessos", label: "Acessos", icon: Activity },
   { tab: "ajustes", label: "Ajustes", icon: Settings2 },
 ] as const;
 

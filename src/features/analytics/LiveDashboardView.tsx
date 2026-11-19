@@ -17,6 +17,7 @@ import { MetricEditProvider } from "@/features/dashboards/metric-edit-context";
 import { MetricNoticeBar } from "@/features/dashboards/MetricActions";
 import { CustomizeButton, MetricTray, useMetricEditorState } from "@/features/dashboards/MetricEditor";
 import { PresenterBar, presentingClass, usePresentation } from "@/features/dashboards/present";
+import { useWatchPage } from "@/features/share/page-watch";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
 import { GoogleCampaigns, GoogleOverview, GoogleProducts, GoogleTerms } from "./google/GooglePages";
@@ -100,6 +101,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
   const pages = data.organic || !paidPages.length ? allPages : paidPages;
   const [page, setPage] = useState<PageId>(initialPage && pages.includes(initialPage) ? initialPage : pages[0]);
   const active = pages.includes(page) ? page : pages[0];
+  useWatchPage(active);
   const Page = LIVE_PAGES[data.platform][active]!;
   const last = data.accounts
     .map((a) => a.lastSyncedAt)

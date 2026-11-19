@@ -3300,6 +3300,7 @@ export type Database = {
           created_by: string | null
           created_at: string
           updated_at: string
+          recipient_name: string | null
         }
         Insert: {
           id?: string
@@ -3315,6 +3316,7 @@ export type Database = {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          recipient_name?: string | null
         }
         Update: {
           id?: string
@@ -3330,10 +3332,65 @@ export type Database = {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          recipient_name?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "share_links_workspace_id_dashboard_id_fkey"
+            columns: ["workspace_id","dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["workspace_id","id"]
+          },
+        ]
+      }
+      share_visits: {
+        Row: {
+          id: string
+          workspace_id: string
+          share_link_id: string
+          dashboard_id: string
+          project_id: string | null
+          started_at: string
+          last_seen_at: string
+          seconds: number
+          pages: string[]
+          device: string | null
+        }
+        Insert: {
+          id: string
+          workspace_id: string
+          share_link_id: string
+          dashboard_id: string
+          project_id?: string | null
+          started_at?: string
+          last_seen_at?: string
+          seconds?: number
+          pages?: string[]
+          device?: string | null
+        }
+        Update: {
+          id?: string
+          workspace_id?: string
+          share_link_id?: string
+          dashboard_id?: string
+          project_id?: string | null
+          started_at?: string
+          last_seen_at?: string
+          seconds?: number
+          pages?: string[]
+          device?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_visits_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: false
+            referencedRelation: "share_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_visits_workspace_id_dashboard_id_fkey"
             columns: ["workspace_id","dashboard_id"]
             isOneToOne: false
             referencedRelation: "dashboards"
@@ -4406,6 +4463,16 @@ export type Database = {
           p_bucket: string
           p_window_seconds: number
           p_max: number
+        }
+        Returns: boolean
+      }
+      record_share_visit: {
+        Args: {
+          p_link_id: string
+          p_visit_id: string
+          p_page: string
+          p_seconds: number
+          p_device: string
         }
         Returns: boolean
       }
