@@ -1,6 +1,7 @@
 import { VISUALS } from "@/features/templates/dashboards/composed";
 import { describe, expect, it } from "vitest";
-import { PLATFORMS } from "@/features/accounts/platforms";
+import { AVAILABLE_PLATFORMS, availablePlatformsText, PLATFORMS } from "@/features/accounts/platforms";
+import { CONNECTIONS } from "@/features/accounts/connection-modes";
 import { ALL_DASHBOARD_TEMPLATES } from "@/features/templates/live";
 import { LANDING_TEMPLATES } from "@/features/templates/landing-pages";
 import { PAGES } from "@/features/templates/pages";
@@ -22,10 +23,15 @@ describe("limites por plano", () => {
     expect(templateCountsLabel("avancado")).toBe("6 visuais de dashboard · 13 de landing page");
   });
 
-  it("Base só usa Meta (com Instagram e Página, que vêm pelo mesmo login), Google Ads e GA4", () => {
-    const base = Object.values(PLATFORMS).filter((p) => canUse("base", p.tier)).map((p) => p.id);
-    expect(base.sort()).toEqual(["facebook", "ga4", "google", "instagram", "meta"]);
-    expect(canUse("pro", PLATFORMS.tiktok.tier)).toBe(true);
+  it("todas as plataformas em todos os planos, sem restrição", () => {
+    for (const t of TIERS) for (const p of Object.values(PLATFORMS)) expect(canUse(t, p.tier)).toBe(true);
+    expect(TIERS.map((t) => ENTITLEMENTS[t].platforms)).toEqual(["all", "all", "all", "all"]);
+    expect(LIMIT_TIERS.map((t) => LIMIT_ROWS.find((r) => r.label === "Plataformas")?.value(t))).toEqual(["todas", "todas", "todas"]);
+  });
+
+  it("as que funcionam hoje: Meta Ads, Instagram, Facebook, Google Ads e GA4", () => {
+    expect(availablePlatformsText()).toBe("Meta Ads, Instagram, Facebook, Google Ads e GA4");
+    for (const id of AVAILABLE_PLATFORMS) expect(CONNECTIONS[id].status).toBe("live");
   });
 
   it("páginas: Base essenciais, Pro + Pro, Avançado todas", () => {

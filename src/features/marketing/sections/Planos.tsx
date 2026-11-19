@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowRight, Check, LayoutTemplate } from "lucide-react";
+import { ArrowRight, Check, LayoutTemplate, Wrench } from "lucide-react";
 import Link from "next/link";
 import { type PointerEvent, type ReactNode } from "react";
+import { PlatformIcon } from "@/components/brand/PlatformIcon";
 import { CutReveal } from "@/components/motion/CutReveal";
 import { Reveal } from "@/components/motion/Reveal";
 import { SectionWipe } from "@/components/motion/SectionWipe";
@@ -10,6 +11,7 @@ import { Odometer } from "@/components/ui/Odometer";
 import { Segmented } from "@/components/ui/Segmented";
 import { btn } from "@/components/ui/styles";
 import { SHOW_LANDING_PAGES } from "@/lib/flags";
+import { AVAILABLE_PLATFORM_LABEL, AVAILABLE_PLATFORMS } from "@/features/accounts/platforms";
 import { usePlan } from "@/features/marketing/state/PlanProvider";
 import { ENTITLEMENTS, membersLabel } from "@/features/pricing/entitlements";
 import {
@@ -38,8 +40,11 @@ import { SnapCarousel } from "./SnapCarousel";
 
 const TIERS: PlanId[] = ["base", "pro", "avancado"];
 
-// O que vale para qualquer plano: sai dos cartões e vira uma linha só, abaixo deles.
+// O que vale para qualquer plano: sai dos cartões e vai para o quadro abaixo deles.
 const COMMON: ReactNode[] = ["Dashboards responsivos", "App para iOS e Android"];
+
+// As que ainda não estão 100% (login, sincronização e dashboards): só no texto, sem ícone.
+const IN_DEVELOPMENT = "TikTok Ads, LinkedIn Ads, YouTube, CRMs e outras";
 
 type Card = {
   pitch: string;
@@ -65,7 +70,7 @@ function dashCard(tier: PlanId, period: Period): Card {
     return {
       ...base,
       pitch: "Você conecta as contas e escolhe o template. Pronto em minutos.",
-      features: [`${projectsLabel("base", { capital: true })} (clientes)`, "Meta Ads, Google Ads e GA4, com visão geral", "1 conta por plataforma em cada workspace", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", membersLabel("base", { capital: true })],
+      features: [`${projectsLabel("base", { capital: true })} (clientes)`, "Todas as plataformas, com visão geral", "1 conta por plataforma em cada workspace", `${e.maxDashboards} dashboards`, "Criativos em lista", "Link para o cliente e PDF", membersLabel("base", { capital: true })],
     };
   }
   if (tier === "pro") {
@@ -76,7 +81,6 @@ function dashCard(tier: PlanId, period: Period): Card {
         "Tudo do Básico",
         `${projectsLabel("pro", { capital: true })} (clientes), compartilhados entre os usuários`,
         `Até ${e.maxAccountsPerPlatform} contas por plataforma em cada workspace`,
-        "+ TikTok Ads, LinkedIn Ads e CRMs (RD Station e HubSpot)",
         "Criativos em galeria, com previews",
         `${e.maxDashboards} dashboards · ${membersLabel("pro")}`,
       ],
@@ -89,12 +93,50 @@ function dashCard(tier: PlanId, period: Period): Card {
     features: [
       "Tudo do Padrão",
       `${projectsLabel("avancado", { capital: true })} (clientes)`,
-      "Todas as plataformas: + X, Spotify, Globo, ChatGPT, YouTube, Shopee Ads e Mercado Ads (em breve)",
       "Análise por voz: pergunte e ouça a leitura dos números", "Comparativo de criativos",
       "MMM, análise preditiva, correlações e estatística avançada",
       `${e.maxDashboards} dashboards · ${membersLabel("avancado")}`,
     ],
   };
+}
+
+/** Abaixo dos cartões: as plataformas que já funcionam (todas em todos os planos) e o que vem. */
+function AllPlans() {
+  return (
+    <Reveal className="mt-8">
+      <div className="rounded-card border border-line bg-card p-5 sm:p-7">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-10">
+          <div className="max-w-[30rem]">
+            <h3 className="title text-xl text-fg">Todas as plataformas, em todos os planos.</h3>
+            <p className="mt-1.5 text-[14.5px] leading-relaxed text-fg-2">Nenhum plano tem restrição de plataforma. Estas já funcionam hoje:</p>
+          </div>
+          <ul aria-label="Plataformas disponíveis hoje" className="flex flex-wrap gap-x-5 gap-y-3">
+            {AVAILABLE_PLATFORMS.map((id) => (
+              <li key={id} className="flex items-center gap-2 text-[14.5px] font-semibold text-fg">
+                <PlatformIcon id={id} size={30} />
+                {AVAILABLE_PLATFORM_LABEL[id]}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="dotted mt-5 flex gap-2.5 pt-4 text-[14px] leading-relaxed text-fg-2">
+          <Wrench size={16} aria-hidden className="mt-0.5 shrink-0 text-accent" />
+          <span>
+            <span className="font-semibold text-fg">Em desenvolvimento:</span> {IN_DEVELOPMENT}. Cada uma entra em todos os planos assim que estiver 100%.
+          </span>
+        </p>
+        <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[14px] text-fg">
+          <span className="font-semibold">Também em todos os planos:</span>
+          {COMMON.map((c, i) => (
+            <span key={i} className="inline-flex items-center gap-1.5 text-fg-2">
+              <Check size={15} aria-hidden className="text-accent" />
+              {c}
+            </span>
+          ))}
+        </p>
+      </div>
+    </Reveal>
+  );
 }
 
 function lpCard(tier: PlanId): Card {
@@ -267,17 +309,7 @@ export function Planos() {
           </SnapCarousel>
         </div>
 
-        {product === "dash" && (
-          <p className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[14.5px] text-fg">
-            <span className="font-semibold">Em todos os planos:</span>
-            {COMMON.map((c, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 text-fg-2">
-                <Check size={15} aria-hidden className="text-accent" />
-                {c}
-              </span>
-            ))}
-          </p>
-        )}
+        {product === "dash" && <AllPlans />}
 
         <div className="mt-8 flex flex-col gap-3 text-sm text-fg-2 sm:flex-row sm:items-center sm:justify-between">
           <p>
