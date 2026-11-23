@@ -13,9 +13,11 @@ import { account, clientCredentials } from "./oauth2";
 import { ProviderError, type OAuthProvider } from "./types";
 
 const PORTAL = "https://business-api.tiktok.com/portal/auth";
-const API = "https://business-api.tiktok.com/open_api/v1.3";
+export const TIKTOK_API = "https://business-api.tiktok.com/open_api/v1.3";
+const API = TIKTOK_API;
 
-type Envelope<T> = { code: number; message?: string; data?: T };
+export type TiktokEnvelope<T> = { code: number; message?: string; data?: T };
+type Envelope<T> = TiktokEnvelope<T>;
 
 const creds = () => {
   const { clientId, clientSecret } = clientCredentials("tiktok", "TIKTOK_APP_ID", "TIKTOK_APP_SECRET");
@@ -23,7 +25,7 @@ const creds = () => {
 };
 
 /** A API responde 200 com code != 0 quando recusa. */
-function data<T>(res: Envelope<T>, label: string): T {
+export function tiktokData<T>(res: Envelope<T>, label: string): T {
   if (res.code !== 0 || !res.data) throw new ProviderError("troca_falhou", `${label}: code=${res.code}`);
   return res.data;
 }
@@ -47,7 +49,7 @@ export function tiktokProvider(): OAuthProvider {
         body: JSON.stringify({ app_id: appId, secret, auth_code: code }),
         label: "TikTok: troca do código",
       });
-      const d = data(res, "TikTok: troca do código");
+      const d = tiktokData(res, "TikTok: troca do código");
       return { accessToken: d.access_token, scopes: (d.scope ?? []).map(String) };
     },
     async fetchProfile(accessToken) {
@@ -55,7 +57,7 @@ export function tiktokProvider(): OAuthProvider {
         headers: { "Access-Token": accessToken },
         label: "TikTok: perfil",
       });
-      const d = data(res, "TikTok: perfil");
+      const d = tiktokData(res, "TikTok: perfil");
       return { id: String(d.core_user_id ?? "tiktok"), name: d.display_name?.trim() || "Login do TikTok", email: d.email || undefined };
     },
     async listAccounts(accessToken) {
@@ -66,7 +68,7 @@ export function tiktokProvider(): OAuthProvider {
         headers: { "Access-Token": accessToken },
         label: "TikTok: contas de anúncio",
       });
-      return (data(res, "TikTok: contas de anúncio").list ?? []).map((a) => account("tiktok", a.advertiser_id, a.advertiser_name));
+      return (tiktokData(res, "TikTok: contas de anúncio").list ?? []).map((a) => account("tiktok", a.advertiser_id, a.advertiser_name));
     },
   };
 }

@@ -11,7 +11,7 @@ import { btn } from "@/components/ui/styles";
 import { plural } from "@/lib/format";
 import { connectWithToken } from "@/server/integrations/actions";
 import { PROVIDERS, type ProviderId } from "./providers";
-import { tokenGuide, type TokenGuide } from "./token-connect";
+import { PLAIN_FIELDS, tokenGuide, type TokenGuide } from "./token-connect";
 import { btnSmallGhost } from "./ui";
 
 type Result = { accounts: number; enabled: number };
@@ -110,7 +110,7 @@ function TokenModal({ guide, onClose }: { guide: TokenGuide; onClose: () => void
           {guide.fields.map((f) => (
             <TextField
               key={f.name}
-              type="password"
+              type={PLAIN_FIELDS.has(f.name) ? "text" : "password"}
               label={f.label}
               placeholder={f.placeholder}
               hint={f.hint}

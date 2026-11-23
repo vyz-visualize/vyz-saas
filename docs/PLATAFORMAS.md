@@ -46,12 +46,20 @@ Enquanto o login de uma plataforma depende de aprovação (a Análise do App do 
 - **Conferência:** `src/server/integrations/token-flow.ts` (`checkToken`) confere o token na plataforma, lê as permissões e lista as contas. O erro volta em linguagem de tutorial ("falta permissão, gere de novo marcando as do passo 5").
 - **Gravação:** a ação `connectWithToken` (`src/server/integrations/actions.ts`) grava pelo mesmo caminho do login (`saveConnection` em `flow.ts`): token no Vault, contas novas ligadas se couberem no plano e primeira sincronização. A conexão leva a marca `vyz:token` nos escopos (`TOKEN_SCOPE`); não há coluna nova no banco.
 - **Meta:** o token é do app do cliente, então as chamadas dele vão sem o `appsecret_proof` do VYZ (a prova feita com o nosso segredo não bate). A regra fica num lugar só, `src/server/integrations/meta-auth.ts`: `getValidAccessToken` marca o token das conexões com `vyz:token` e todas as chamadas à Graph API passam por `metaAuthParams`. No tutorial, o cliente deixa "Exigir segredo do app" desligado no app dele.
+- **Perfil:** a conexão por token grava o perfil com o prefixo `token:` (menos no Meta, em que o usuário do sistema já é outro), para não substituir o login da mesma pessoa.
 - **Desconectar:** apaga a conexão e o token do Vault. O VYZ não revoga nada no provedor (o token é do app do cliente); o tutorial explica como remover o usuário do sistema.
 
 | Plataforma | Por token hoje | O que o cliente cola |
 |---|---|---|
 | Meta Ads, Instagram e Página do Facebook | Sim | Token de usuário do sistema do Business Manager dele (não expira), com `ads_read`, `business_management`, `pages_show_list`, `pages_read_engagement`, `read_insights`, `instagram_basic`, `instagram_manage_insights` e, para o botão Aplicar, `ads_management` |
-| Demais plataformas | Em construção | Ver PENDENCIAS |
+| GA4 | Sim | Chave JSON de uma conta de serviço do Google Cloud dele, com acesso de Leitor na propriedade. A chave fica no Vault (no lugar do refresh token, prefixo `sa:`) e gera o token de 1 hora quando precisa (`providers/google-service-account.ts`). Não expira |
+| TikTok Ads | Sim, para quem tem app aprovado | App ID, Secret e o `auth_code` da autorização do anunciante no app dele. O VYZ troca pelo token de longo prazo; o Secret não fica guardado |
+| LinkedIn Ads | Sim, para quem tem o Advertising API aprovado | Token do gerador do app dele (`r_ads` e `r_ads_reporting`). Vale 60 dias: a conexão expira e pede "Trocar token" |
+| HubSpot | Sim | Token de app privado (`pat-…`) com `crm.objects.contacts.read`, `crm.objects.deals.read` e `crm.schemas.deals.read`. Não expira |
+| Pipedrive | Sim | Token de API pessoal. Guardado como `api_token:<token>`; vai no endereço da chamada (`pipedriveAuth`), não no cabeçalho |
+| Kommo | Sim | Endereço da conta e token de longa duração de uma integração privada. Guardado como `domínio|token`, o mesmo formato do login; a validade vem do próprio token (JWT) |
+| Google Ads | Não | Desde 9/9/2026 o acesso à API é do projeto do Google Cloud. Projeto novo só lê contas de teste até o Google aprovar: a espera seria a mesma, e o login do VYZ já está aprovado |
+| RD Station CRM | Não | A API v2 (a que a sincronização usa) só aceita o login. O token pessoal é da API v1, que pediria outra sincronização |
 
 Ressalva do Meta: sem a Análise do App, o token lê com segurança as contas da própria empresa do Business Manager. Contas de clientes que chegam como parceiro podem não aparecer; nesse caso, o token é gerado no Business Manager do próprio cliente (o tutorial avisa).
 

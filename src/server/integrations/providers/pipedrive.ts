@@ -30,8 +30,19 @@ function tokenRequest(fields: Record<string, string>, label: string) {
   });
 }
 
+/** Token pessoal da API (conexão por token), guardado como "api_token:<token>". */
+export const PIPEDRIVE_API_TOKEN = "api_token:";
+
+/** Autenticação de uma chamada: o token do login vai no cabeçalho; o token pessoal da API, no endereço. */
+export function pipedriveAuth(token: string, url: URL): Record<string, string> {
+  if (!token.startsWith(PIPEDRIVE_API_TOKEN)) return bearer(token);
+  url.searchParams.set("api_token", token.slice(PIPEDRIVE_API_TOKEN.length));
+  return {};
+}
+
 async function me(accessToken: string): Promise<NonNullable<Me["data"]>> {
-  const res = await fetchJson<Me>(`${DEFAULT_API}/v1/users/me`, { headers: bearer(accessToken), label: "Pipedrive: perfil" });
+  const url = new URL(`${DEFAULT_API}/v1/users/me`);
+  const res = await fetchJson<Me>(url, { headers: pipedriveAuth(accessToken, url), label: "Pipedrive: perfil" });
   if (!res.data) throw new ProviderError("troca_falhou", "Pipedrive: perfil vazio");
   return res.data;
 }
