@@ -24,6 +24,8 @@ export type ConnectionDTO = {
   lastSyncedAt: string | null;
   lastError: string | null;
   accountsCount: number;
+  /** Conectada com token colado (opção secundária ao login): troca-se o token, não se reconecta pelo login. */
+  viaToken?: boolean;
 };
 
 export type LastSyncDTO = {
@@ -80,8 +82,10 @@ export type PlatformConnectState = {
 
 export type ConnectState = {
   platforms: Record<ProviderId, PlatformConnectState>;
-  /** Logins mostrados na tela de contas (com credencial no servidor ou já conectados), na ordem. */
+  /** Plataformas mostradas na tela de contas (login com credencial, conexão por token ou já conectadas), na ordem. */
   providers: ProviderId[];
+  /** Logins (OAuth) com credencial no servidor: só nestes aparece o botão Conectar. Os outros da lista conectam por token. */
+  loginReady: ProviderId[];
   limit: {
     /** Projetos contratados. */
     accountsQuantity: number;

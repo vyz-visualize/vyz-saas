@@ -15,6 +15,7 @@ import { Badge, EmptyState, Modal, PageHeader, PendingChip, SectionHeader } from
 import { btn } from "@/components/ui/styles";
 import { AccountPicker } from "@/features/integrations/AccountPicker";
 import { ConnectButton } from "@/features/integrations/ConnectButton";
+import { TokenConnectButton } from "@/features/integrations/TokenConnect";
 import { ConnectionCard } from "@/features/integrations/ConnectionCard";
 import { MOCK_NOTICE } from "@/features/integrations/mock-data";
 import { capitalize, CORE_PROVIDER_IDS, loginVia, noAccount, PROVIDER_CATEGORIES, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
@@ -135,7 +136,8 @@ function ProviderSection({
             ))}
           </ul>
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <ConnectButton provider={provider} next={RETURN_PATH} canManage={state.canManage} />
+            <ConnectButton provider={provider} available={state.loginReady.includes(provider)} next={RETURN_PATH} canManage={state.canManage} />
+            <TokenConnectButton provider={provider} canManage={state.canManage} />
             {state.mock && showTestBadges && <PendingChip label="Modo de teste" detail={MOCK_NOTICE[provider]} />}
           </div>
         </div>
@@ -143,10 +145,13 @@ function ProviderSection({
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className={subhead}>Logins</h3>
-            <ConnectButton provider={provider} next={RETURN_PATH} variant="secondary" label="Conectar outro login" canManage={state.canManage} />
+            <span className="flex flex-wrap items-center gap-1">
+              <TokenConnectButton provider={provider} canManage={state.canManage} />
+              <ConnectButton provider={provider} available={state.loginReady.includes(provider)} next={RETURN_PATH} variant="secondary" label="Conectar outro login" canManage={state.canManage} />
+            </span>
           </div>
           {platform.connections.map((c) => (
-            <ConnectionCard key={c.id} connection={c} canManage={state.canManage} next={RETURN_PATH} timeZone={timeZone} showTestBadge={showTestBadges} />
+            <ConnectionCard key={c.id} connection={c} canManage={state.canManage} next={RETURN_PATH} timeZone={timeZone} showTestBadge={showTestBadges} loginReady={state.loginReady.includes(c.provider)} />
           ))}
         </div>
       )}
@@ -428,10 +433,16 @@ export function AccountsPage({ state, manual, imported, result, now, timeZone, s
                     onOpen={st.connected || stopped ? () => setOpenProvider(p, st.only) : undefined}
                     action={
                       st.connected ? null : stopped ? (
-                        <ConnectButton provider={p} next={RETURN_PATH} canManage={state.canManage} connected />
+                        <span className="flex flex-wrap items-center justify-end gap-1">
+                          <TokenConnectButton provider={p} canManage={state.canManage} />
+                          <ConnectButton provider={p} available={state.loginReady.includes(p)} next={RETURN_PATH} canManage={state.canManage} connected />
+                        </span>
                       ) : (
                         // na conta nova, os dois logins principais puxam o olho; o resto fica em contorno
-                        <ConnectButton provider={p} next={RETURN_PATH} canManage={state.canManage} compact variant={nothingConnected && (CORE_PROVIDER_IDS as readonly string[]).includes(p) ? "primary" : "secondary"} />
+                        <span className="flex flex-wrap items-center justify-end gap-1">
+                          <TokenConnectButton provider={p} canManage={state.canManage} />
+                          <ConnectButton provider={p} available={state.loginReady.includes(p)} next={RETURN_PATH} canManage={state.canManage} compact variant={nothingConnected && (CORE_PROVIDER_IDS as readonly string[]).includes(p) ? "primary" : "secondary"} />
+                        </span>
                       )
                     }
                   />

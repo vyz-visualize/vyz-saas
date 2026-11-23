@@ -129,6 +129,7 @@ const ACCOUNTS: ProjectAccountsData = {
   ],
   connections: [conn("cn1", "meta", "Pedro Freitas (Facebook)", "active", 9), conn("cn2", "google", "dados@agenciaexemplo.com", "active", 5), conn("cn3", "meta", "Facebook antigo da agência", "expired", 2)],
   providers: ["meta", "google", "ga4", "tiktok", "linkedin", "rdstation", "hubspot"],
+  loginReady: ["meta", "google", "ga4", "tiktok", "linkedin", "rdstation", "hubspot"],
   projects: [
     { id: P2, name: "Clínica Sol" },
     { id: P3, name: "Imobiliária Vista do Parque Empreendimentos" },

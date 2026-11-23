@@ -5,9 +5,11 @@ import "server-only";
 // autoriza antes. Nunca logue o retorno destas funções.
 
 import type { ProviderId } from "@/features/integrations/providers";
+import { isTokenConnection } from "@/features/integrations/token-connect";
 import type { DB } from "@/server/supabase/server";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import { appError, fromPostgrest } from "@/server/supabase/errors";
+import { markOwnAppToken } from "./meta-auth";
 import { providerForConnection, ProviderError } from "./providers";
 
 export type StoredTokens = { accessToken: string; refreshToken: string | null; expiresAt: string | null };
@@ -38,11 +40,13 @@ async function markConnection(admin: DB, connectionId: string, status: "expired"
  */
 export async function getValidAccessToken(connectionId: string, opts: { actorId?: string | null } = {}): Promise<string> {
   const admin = createAdminSupabase({ actorId: opts.actorId });
-  const { data: conn, error } = await admin.from("connections").select("id, provider, is_mock").eq("id", connectionId).maybeSingle();
+  const { data: conn, error } = await admin.from("connections").select("id, provider, is_mock, scopes").eq("id", connectionId).maybeSingle();
   if (error) throw fromPostgrest(error);
   if (!conn) throw appError("integration:not_found");
   const tokens = await readConnectionTokens(connectionId, admin);
   if (!tokens) throw appError("integration:missing_token");
+  // token colado pelo cliente (app dele): as chamadas ao Meta vão sem a prova do segredo do VYZ
+  if (conn.provider === "meta" && isTokenConnection(conn.scopes)) markOwnAppToken(tokens.accessToken);
 
   const expiresAt = tokens.expiresAt ? Date.parse(tokens.expiresAt) : null;
   if (expiresAt === null || expiresAt - Date.now() > REFRESH_MARGIN_MS) return tokens.accessToken;

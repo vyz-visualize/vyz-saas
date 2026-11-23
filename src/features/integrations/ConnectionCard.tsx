@@ -8,6 +8,7 @@ import { useState, useTransition } from "react";
 import { Badge, Modal, PendingChip, type BadgeTone } from "@/components/ui/kit";
 import { disconnect } from "@/server/integrations/actions";
 import { ConnectButton } from "./ConnectButton";
+import { TokenConnectButton } from "./TokenConnect";
 import { MOCK_NOTICE } from "./mock-data";
 import { PROVIDERS } from "./providers";
 import { shortDate } from "./sync-label";
@@ -37,9 +38,11 @@ type ConnectionCardProps = {
   timeZone?: string;
   /** Selo "Modo de teste" na conexão simulada: só em desenvolvimento ou para ONBOARDING_REPLAY_EMAILS. */
   showTestBadge?: boolean;
+  /** Login (OAuth) com credencial no servidor: sem ela, o Reconectar não aparece. */
+  loginReady?: boolean;
 };
 
-export function ConnectionCard({ connection: c, canManage, next, timeZone, showTestBadge = false }: ConnectionCardProps) {
+export function ConnectionCard({ connection: c, canManage, next, timeZone, showTestBadge = false, loginReady = true }: ConnectionCardProps) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -83,7 +86,11 @@ export function ConnectionCard({ connection: c, canManage, next, timeZone, showT
         </div>
         {canManage && (
           <div className="flex shrink-0 gap-2 max-sm:[&>*]:flex-1">
-            <ConnectButton provider={c.provider} next={next} connected variant={c.status === "active" ? "secondary" : "primary"} />
+            {c.viaToken ? (
+              <TokenConnectButton provider={c.provider} label="Trocar token" />
+            ) : (
+              <ConnectButton provider={c.provider} next={next} connected variant={c.status === "active" ? "secondary" : "primary"} available={loginReady} />
+            )}
             <button type="button" onClick={() => setConfirming(true)} className={btnSmallOutline}>
               <Unplug size={15} aria-hidden /> Desconectar
             </button>

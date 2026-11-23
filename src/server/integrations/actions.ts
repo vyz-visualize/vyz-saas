@@ -12,7 +12,9 @@ import { z } from "zod";
 import { buildManualAccount, isManualPlatform } from "@/features/accounts/manual";
 import { PLATFORM_ORDER, PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { CORE_PROVIDER_IDS, isProviderId, PROVIDERS, type ProviderId } from "@/features/integrations/providers";
+import { isTokenConnection, tokenGuide } from "@/features/integrations/token-connect";
 import type { SyncOutcome } from "@/features/integrations/types";
+import type { Json } from "@/lib/supabase/database.types";
 import { canUse } from "@/features/pricing/entitlements";
 import { authorize } from "@/server/auth/workspace";
 import { isMockIntegrations } from "@/server/env";
@@ -22,8 +24,11 @@ import { createAdminSupabase } from "@/server/supabase/admin";
 import { appError, fromPostgrest, toActionError, unwrap, type ActionResult } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
 import { createServerSupabase } from "@/server/supabase/server";
+import { hitRateLimit } from "@/server/security/rate-limit";
 import { syncAdAccount } from "@/server/sync/run";
+import { connectClock, saveConnection } from "./flow";
 import { providerForConnection } from "./providers";
+import { checkToken } from "./token-flow";
 import { readConnectionTokens } from "./tokens";
 
 const Id = z.uuid();
@@ -108,7 +113,9 @@ export async function setEnabledAccounts(platformId: string, adAccountIds: strin
 }
 
 /** Revoga no provedor (melhor esforço): a conexão sai do VYZ de qualquer jeito. */
-async function revokeAtProvider(admin: DB, conn: { id: string; provider: ProviderId; is_mock: boolean }) {
+async function revokeAtProvider(admin: DB, conn: { id: string; provider: ProviderId; is_mock: boolean; scopes: string[] }) {
+  // token colado pelo cliente: é do app dele; o acesso acaba ao apagar a conexão (e ele remove no provedor)
+  if (isTokenConnection(conn.scopes)) return;
   try {
     const provider = providerForConnection(conn);
     const tokens = await readConnectionTokens(conn.id, admin);
@@ -129,7 +136,7 @@ export async function disconnect(connectionId: string): Promise<ActionResult> {
     const session = await authorize("admin", { access: false });
     const ws = session.workspace.id;
     const supabase = await createServerSupabase();
-    const conn = unwrap(await supabase.from("connections").select("id, provider, is_mock").eq("id", connectionId).eq("workspace_id", ws).maybeSingle());
+    const conn = unwrap(await supabase.from("connections").select("id, provider, is_mock, scopes").eq("id", connectionId).eq("workspace_id", ws).maybeSingle());
     if (!conn) throw appError("integration:not_found");
     const { count } = await supabase.from("ad_accounts").select("id", { count: "exact", head: true }).eq("workspace_id", ws).eq("connection_id", conn.id).eq("is_enabled", true);
 
@@ -150,6 +157,43 @@ export async function disconnect(connectionId: string): Promise<ActionResult> {
     });
     refresh();
     return { ok: true, data: undefined };
+  } catch (err) {
+    unstable_rethrow(err);
+    return toActionError(err);
+  }
+}
+
+const TokenFields = z.record(z.string().max(40), z.string().max(8192));
+
+/**
+ * Conecta com um token colado (opção secundária ao login, admin): confere o token na
+ * plataforma, grava a conexão como o login faria (tokens no Vault, contas novas ligadas se
+ * couberem no plano) e já começa a sincronizar. Erro do token volta no campo "token".
+ */
+export async function connectWithToken(provider: string, fields: Record<string, string>): Promise<ActionResult<{ accounts: number; enabled: number }>> {
+  try {
+    if (!isProviderId(provider) || !tokenGuide(provider)) throw appError("validation", "Esta plataforma ainda não aceita conexão por token.");
+    const parsed = TokenFields.safeParse(fields);
+    if (!parsed.success) throw appError("validation", "Confira o que foi colado.");
+    const session = await authorize("admin");
+    if (!(await hitRateLimit("oauth_start_user", session.user.id))) throw appError("rate_limited", "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.");
+    const workspaceId = session.workspace.id;
+    const ctx = await requestContext();
+    const admin = createAdminSupabase({ actorId: session.user.id, forwardHeaders: ctx.forwardHeaders });
+    const log = (event: Parameters<typeof logActivity>[0]["event"], metadata: Record<string, Json>, entityId?: string) =>
+      logActivity({ workspaceId, actorId: session.user.id, event, entityType: entityId ? "connection" : undefined, entityId, metadata: { provider, method: "token", ...metadata } });
+
+    const connectStartedAt = connectClock();
+    let checked;
+    try {
+      checked = await checkToken(provider, parsed.data);
+    } catch (err) {
+      await log("integration.connect_failed", { code: err instanceof Error && "code" in err ? String(err.code) : "unknown" });
+      throw err;
+    }
+    const { enabled } = await saveConnection({ admin, workspaceId, userId: session.user.id, provider, isMock: false, ...checked, connectStartedAt, log });
+    refresh();
+    return { ok: true, data: { accounts: checked.accounts.length, enabled: enabled.length } };
   } catch (err) {
     unstable_rethrow(err);
     return toActionError(err);

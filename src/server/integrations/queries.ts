@@ -15,6 +15,7 @@ import { hasRole } from "@/features/workspace/session";
 import { listProjects } from "@/server/projects/queries";
 import { currentWorkspaceSession } from "@/server/auth/workspace";
 import { isMockIntegrations } from "@/server/env";
+import { isTokenConnection, tokenGuide } from "@/features/integrations/token-connect";
 import { isProviderConfigured } from "./providers";
 import { unwrap } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
@@ -91,7 +92,7 @@ const loadConnections = cache(async (): Promise<ConnectionDTO[]> => {
   const [rows, accounts] = await Promise.all([
     supabase
       .from("connections")
-      .select("id, provider, status, external_user_name, external_user_email, is_mock, connected_by, connected_at, token_expires_at, last_synced_at, last_error")
+      .select("id, provider, status, external_user_name, external_user_email, is_mock, scopes, connected_by, connected_at, token_expires_at, last_synced_at, last_error")
       .eq("workspace_id", session.workspace.id)
       .order("connected_at")
       .then((r) => unwrap(r) ?? []),
@@ -116,6 +117,7 @@ const loadConnections = cache(async (): Promise<ConnectionDTO[]> => {
     lastSyncedAt: r.last_synced_at,
     lastError: r.last_error,
     accountsCount: accounts.filter((a) => a.connectionId === r.id).length,
+    viaToken: isTokenConnection(r.scopes),
   }));
 });
 
@@ -152,8 +154,9 @@ export async function getConnectState(): Promise<ConnectState> {
 
   return {
     platforms: Object.fromEntries(PROVIDER_IDS.map((p) => [p, platform(p)])) as Record<ProviderId, PlatformConnectState>,
-    // Logins que aparecem na tela: com credencial no servidor, ou com conexão já feita.
-    providers: PROVIDER_IDS.filter((p) => isProviderConfigured(p) || connections.some((c) => c.provider === p)),
+    // Na tela: login com credencial no servidor, conexão por token (tutorial) ou conexão já feita.
+    providers: PROVIDER_IDS.filter((p) => isProviderConfigured(p) || !!tokenGuide(p) || connections.some((c) => c.provider === p)),
+    loginReady: PROVIDER_IDS.filter((p) => isProviderConfigured(p)),
     limit: {
       accountsQuantity: session.access.accountsQuantity,
       billableAccounts: countUnits(accounts.filter((a) => a.isEnabled)),

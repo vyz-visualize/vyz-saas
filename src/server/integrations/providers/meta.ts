@@ -19,8 +19,8 @@ import "server-only";
 // .../facebook-login/guides/access-tokens/get-long-lived,
 // .../marketing-api/reference/ad-account.
 
-import { createHmac } from "node:crypto";
 import { serverEnv } from "@/server/env";
+import { metaAuthParams } from "../meta-auth";
 import { fetchJson } from "./http";
 import { ProviderError, type DiscoveredAccount, type OAuthProvider } from "./types";
 
@@ -62,14 +62,14 @@ function credentials() {
   return { appId: env.META_APP_ID, appSecret: env.META_APP_SECRET, configId: env.META_LOGIN_CONFIG_ID };
 }
 
-/** appsecret_proof: HMAC-SHA256 do token com o segredo do app. */
-const appSecretProof = (token: string, secret: string) => createHmac("sha256", secret).update(token).digest("hex");
-
-/** Chamada à Graph API com o token do usuário (e a prova do segredo do app). Também usada pelas otimizações. */
+/**
+ * Chamada à Graph API com o token (e a prova do segredo do app, menos para token do app do
+ * cliente: ver meta-auth). Também usada pelas otimizações e pelo orgânico. Não exige as
+ * credenciais do app do VYZ: a conexão por token funciona sem elas.
+ */
 export function graph<T>(path: string, params: Record<string, string>, accessToken: string, label: string, method = "GET"): Promise<T> {
-  const { appSecret } = credentials();
   const url = new URL(`${GRAPH}${path}`);
-  url.search = new URLSearchParams({ ...params, access_token: accessToken, appsecret_proof: appSecretProof(accessToken, appSecret) }).toString();
+  url.search = new URLSearchParams({ ...params, ...metaAuthParams(accessToken) }).toString();
   return fetchJson<T>(url, { method, label });
 }
 

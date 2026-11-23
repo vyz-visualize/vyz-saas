@@ -63,7 +63,7 @@ function ConnectLink({ href, provider, connected, canManage }: { href: string; p
 
 /**
  * As outras plataformas (docs/PLATAFORMAS.md): conecta só a que tem o login com credencial no
- * servidor (state.providers); as outras aparecem como "Em breve", desligadas. A planilha não
+ * servidor (state.loginReady); as outras aparecem como "Em breve", desligadas. A planilha não
  * tem login: entra pela tela de Contas, depois.
  */
 function MorePlatforms({ state, api, open, onToggle }: { state: ConnectState; api: FlowApi; open: boolean; onToggle: () => void }) {
@@ -78,7 +78,7 @@ function MorePlatforms({ state, api, open, onToggle }: { state: ConnectState; ap
           <p className="text-[13px] text-fg-2">O primeiro dashboard usa o Meta Ads e o Google Ads. As outras plataformas entram nos dashboards depois.</p>
           <ul className="mt-3 divide-y divide-line">
             {EXTRA_PLATFORMS.map((x) => {
-              const ready = !x.soon && x.provider ? state.providers.includes(x.provider) : false;
+              const ready = !x.soon && x.provider ? state.loginReady.includes(x.provider) : false;
               const connected = x.provider ? state.platforms[x.provider]?.connected : false;
               return (
                 <li key={x.id} data-extra-platform={x.id} className="flex items-center justify-between gap-3 py-2.5">
