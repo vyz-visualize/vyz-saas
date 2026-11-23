@@ -95,6 +95,10 @@ api/dashboards/[id]/atualizar           atualiza as contas atrasadas ao abrir um
 api/landing-pages/leads                 formulário das LPs publicadas
 api/sessao                              nome de quem está logado, para o site estático
 api/cron/sync, digest, whatsapp, resumo-admin   agendamentos (vercel.json; rejectCron em server/sync/cron.ts exige o Bearer CRON_SECRET)
+                                                 sync: ?grupo=anuncios (Meta, Google, GA4, CRMs; 09, 15, 21 UTC) e ?grupo=organico
+                                                 (Instagram e Página; 07, 12, 19 UTC). Regras da rodada em features/sync/round.ts:
+                                                 só começa conta que cabe no tempo, encerra a que passa do limite, fecha as
+                                                 abertas há 15 min e avisa as contas há mais de 24 h sem sincronizar.
 ```
 
 `src/proxy.ts` (o antigo middleware): renova a sessão, manda quem não está logado para `/entrar`, devolve 404 de verdade para `/p` e `/r` inexistentes e, nos subdomínios `dash.`/`lps.`, reescreve `/<cliente>` para `/painel/w/<cliente>`.

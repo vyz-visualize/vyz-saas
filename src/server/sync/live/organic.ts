@@ -16,6 +16,8 @@ import "server-only";
 // .../pages-api/platforminsights/page
 
 import { addDays, dateRange, type SyncRange } from "@/features/sync/dates";
+import { RECENT_POST_DAYS } from "@/features/sync/round";
+import { isRateLimited, runPool } from "@/features/sync/throttle";
 import type { OrganicDataset } from "@/features/sync/organic";
 import { graph } from "@/server/integrations/providers/meta";
 import { getValidAccessToken } from "@/server/integrations/tokens";
@@ -52,16 +54,34 @@ async function pages<T>(path: string, params: Record<string, string>, token: str
   return out;
 }
 
+/** Pedidos de números ao mesmo tempo (posts e dias): um por vez deixava uma conta grande passar de 150 s. */
+const PARALLEL = 5;
+
+/** O mesmo que items.map(fn), com até `limit` pedidos ao mesmo tempo e o resultado na ordem da lista. */
+async function mapPool<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  const indexed = items.map((item, i) => ({ item, i }));
+  await runPool(indexed, limit, async ({ item, i }) => {
+    out[i] = await fn(item);
+  });
+  return out;
+}
+
 /** Pedido que pode ser recusado (métrica fora do tipo de mídia, conta pequena demais para o recorte): volta vazio. */
 async function soft<T>(run: () => Promise<T>, empty: T): Promise<T> {
   try {
     return await run();
-  } catch {
+  } catch (err) {
+    // limite de taxa não é "métrica recusada": a conta inteira espera a próxima rodada, em vez de
+    // gravar zero por cima dos números do post
+    if (isRateLimited(err)) throw err;
     return empty;
   }
 }
 
-async function fetchInstagram(account: SyncAccount, range: SyncRange, token: string): Promise<OrganicDataset> {
+type PostOptions = { allPosts?: boolean };
+
+async function fetchInstagram(account: SyncAccount, range: SyncRange, token: string, opts: PostOptions): Promise<OrganicDataset> {
   const ig = account.externalId;
   const days = dateRange(range.to, range.days);
   const profile = await graph<{ followers_count?: number }>(`/${ig}`, { fields: "followers_count" }, token, "Instagram: perfil");
@@ -76,32 +96,35 @@ async function fetchInstagram(account: SyncAccount, range: SyncRange, token: str
   const stories = await soft(() => pages<IgMedia>(`/${ig}/stories`, { fields: "id,caption,media_type,media_product_type,permalink,thumbnail_url,media_url,timestamp" }, token, "Instagram: stories"), []);
   const all = [...media, ...stories.filter((s) => !media.some((m) => m.id === s.id))];
 
-  const posts = [];
-  for (const m of all) {
-    const metrics = IG_POST_METRICS[m.media_product_type === "STORY" ? "story" : "default"];
-    const res = await soft(() => graph<{ data?: InsightValue[] }>(`/${m.id}/insights`, { metric: metrics.join(",") }, token, "Instagram: números do post"), { data: [] });
-    posts.push(igPost(m, res.data ?? []));
-  }
-
+  // posts por dia: de todos os da janela (a contagem não depende dos números relidos)
   const perDay = new Map<string, number>();
-  for (const p of posts) {
-    const d = localDay(p.publishedAt, account.timezone);
+  for (const m of all) {
+    const d = localDay(m.timestamp, account.timezone);
     perDay.set(d, (perDay.get(d) ?? 0) + 1);
   }
 
-  const daily = [];
-  for (const date of days) {
+  // os números de vida inteira: dos posts recentes em toda rodada; dos antigos, só quando a rodada relê tudo
+  // (os já gravados ficam: o orgânico grava os posts por upsert, sem apagar)
+  const recentFrom = addDays(range.to, -RECENT_POST_DAYS + 1);
+  const reread = opts.allPosts ? all : all.filter((m) => m.media_product_type === "STORY" || localDay(m.timestamp, account.timezone) >= recentFrom);
+  const posts = await mapPool(reread, PARALLEL, async (m) => {
+    const metrics = IG_POST_METRICS[m.media_product_type === "STORY" ? "story" : "default"];
+    const res = await soft(() => graph<{ data?: InsightValue[] }>(`/${m.id}/insights`, { metric: metrics.join(",") }, token, "Instagram: números do post"), { data: [] });
+    return igPost(m, res.data ?? []);
+  });
+
+  const daily = await mapPool(days, PARALLEL, async (date) => {
     const base = { metric_type: "total_value", period: "day", since: unixStart(date), until: unixStart(addDays(date, 1)) };
     const main = await graph<{ data?: InsightValue[] }>(`/${ig}/insights`, { ...base, metric: IG_DAY_METRICS.join(",") }, token, "Instagram: números do dia");
     // seguir e deixar de seguir só sai para perfis com 100+ seguidores
     const follows = await soft(() => graph<{ data?: InsightValue[] }>(`/${ig}/insights`, { ...base, metric: "follows_and_unfollows", breakdown: "follow_type" }, token, "Instagram: seguidores do dia"), { data: [] });
     // o total de seguidores só existe "agora": vai no último dia
-    daily.push(igDay(date, [...(main.data ?? []), ...(follows.data ?? [])], date === range.to ? (profile.followers_count ?? null) : null, perDay.get(date) ?? 0));
-  }
+    return igDay(date, [...(main.data ?? []), ...(follows.data ?? [])], date === range.to ? (profile.followers_count ?? null) : null, perDay.get(date) ?? 0);
+  });
   return { platform: "instagram", accountExternalId: ig, range: { from: range.from, to: range.to }, daily, posts };
 }
 
-async function fetchPage(account: SyncAccount, range: SyncRange, userToken: string): Promise<OrganicDataset> {
+async function fetchPage(account: SyncAccount, range: SyncRange, userToken: string, opts: PostOptions): Promise<OrganicDataset> {
   const pageId = account.externalId;
   const { access_token: token } = await graph<{ access_token?: string }>(`/${pageId}`, { fields: "access_token" }, userToken, "Página: token");
   if (!token) throw new Error("Meta: a Página não devolveu o token (falta pages_show_list ou a Página não está na integração)");
@@ -109,13 +132,12 @@ async function fetchPage(account: SyncAccount, range: SyncRange, userToken: stri
   const dateOf = (endTime: string) => addDays(localDay(endTime, account.timezone), -1);
 
   const series: Record<string, Map<string, number>> = {};
-  for (const metric of PAGE_METRICS) {
-    const res = await soft(
-      () => graph<{ data?: InsightValue[] }>(`/${pageId}/insights`, { metric, period: "day", since: range.from, until: addDays(range.to, 1) }, token, "Página: números do dia"),
-      { data: [] },
-    );
-    series[metric] = pageSeries(res.data?.[0], dateOf);
-  }
+  const metricRows = await mapPool(PAGE_METRICS, PARALLEL, (metric) =>
+    soft(() => graph<{ data?: InsightValue[] }>(`/${pageId}/insights`, { metric, period: "day", since: range.from, until: addDays(range.to, 1) }, token, "Página: números do dia"), { data: [] }),
+  );
+  PAGE_METRICS.forEach((metric, i) => {
+    series[metric] = pageSeries(metricRows[i].data?.[0], dateOf);
+  });
 
   const since = addDays(range.to, -POST_WINDOW_DAYS + 1) < range.from ? addDays(range.to, -POST_WINDOW_DAYS + 1) : range.from;
   const window = { since: unixStart(since), until: unixStart(addDays(range.to, 1)) };
@@ -125,21 +147,25 @@ async function fetchPage(account: SyncAccount, range: SyncRange, userToken: stri
     if (!/code=10\b/.test(err instanceof Error ? err.message : "")) throw err;
     return pages<PagePost>(`/${pageId}/posts`, { fields: BASIC, ...window }, token, "Página: posts");
   });
-  const posts = [];
-  for (const p of list) {
-    const res = await soft(() => graph<{ data?: InsightValue[] }>(`/${p.id}/insights`, { metric: PAGE_POST_METRICS.join(",") }, token, "Página: números do post"), { data: [] });
-    posts.push(pagePost(p, res.data ?? []));
-  }
+  // posts por dia: de todos os da janela; números relidos como no Instagram (recentes sempre, antigos quando relê tudo)
   const perDay = new Map<string, number>();
-  for (const p of posts) {
-    const d = localDay(p.publishedAt, account.timezone);
+  for (const p of list) {
+    const d = localDay(p.created_time, account.timezone);
     perDay.set(d, (perDay.get(d) ?? 0) + 1);
   }
+  const recentFrom = addDays(range.to, -RECENT_POST_DAYS + 1);
+  const reread = opts.allPosts ? list : list.filter((p) => localDay(p.created_time, account.timezone) >= recentFrom);
+  const posts = await mapPool(reread, PARALLEL, async (p) => {
+    const res = await soft(() => graph<{ data?: InsightValue[] }>(`/${p.id}/insights`, { metric: PAGE_POST_METRICS.join(",") }, token, "Página: números do post"), { data: [] });
+    return pagePost(p, res.data ?? []);
+  });
   const daily = dateRange(range.to, range.days).map((date) => pageDay(date, series, perDay.get(date) ?? 0));
   return { platform: "facebook", accountExternalId: pageId, range: { from: range.from, to: range.to }, daily, posts };
 }
 
-export async function fetchOrganicDataset(account: SyncAccount, range: SyncRange): Promise<OrganicDataset> {
+export async function fetchOrganicDataset(account: SyncAccount, range: SyncRange, opts: PostOptions = {}): Promise<OrganicDataset> {
   const token = await getValidAccessToken(account.connectionId);
-  return account.platform === "instagram" ? fetchInstagram(account, range, token) : fetchPage(account, range, token);
+  // sem opção (scripts, testes): relê tudo, como antes
+  const o = { allPosts: opts.allPosts ?? true };
+  return account.platform === "instagram" ? fetchInstagram(account, range, token, o) : fetchPage(account, range, token, o);
 }
