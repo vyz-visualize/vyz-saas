@@ -116,6 +116,9 @@ export function withoutBlocks(items: PageGrid, hidden: readonly string[]): PageG
     else if (right) {
       right.x = gone.x;
       right.w += gone.w;
+    } else if (!out.some((it) => it.y < gone.y + gone.h && it.y + it.h > gone.y)) {
+      // ocupava a fileira sozinho: os blocos de baixo sobem, sem deixar o buraco
+      for (const it of out) if (it.y >= gone.y + gone.h) it.y -= gone.h;
     }
   }
   return out;

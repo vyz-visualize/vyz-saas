@@ -1,34 +1,31 @@
 "use client";
 
-// Visual "Lavanda": cards claros com gráfico em cima, barra de filtros e o
-// painel escuro com a lista de campanhas e o detalhe da escolhida em lilás.
+// Visual "Lavanda": claro, em lilás. Cards claros com gráfico em cima (o custo por resultado
+// ao longo do período, as barras da receita com o valor de cada parte), barra de filtros e o
+// painel escuro com a lista de campanhas e o detalhe da escolhida em lilás. Sem dado
+// inventado: o status das campanhas não vem das plataformas, então não aparece.
 
 import {
   AlertCircle,
   ArrowDownRight,
-  ArrowLeft,
   ArrowUpRight,
-  Bell,
   CalendarDays,
-  ChevronDown,
   Clock,
-  FileText,
-  Link2,
   Plus,
   Search,
-  SlidersHorizontal,
   Wallet,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { PlatformId } from "@/features/accounts/platforms";
 import { PAGES } from "@/features/templates/pages";
+import { hasGoal } from "@/features/metrics/targets";
 import { ChartTheme, dayDates, FlowLines, SkinBar, SkinChrome, SkinPage, WeekBars, type SkinPalette } from "./bklit-blocks";
+import { FullName } from "./FullName";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
   change,
   chrono,
-  dayLabel,
   decimal,
   goalOf,
   initials,
@@ -82,8 +79,10 @@ export function LavandaSkin({
   );
   const platforms = ctx.ds.adPlatforms;
   const [tab, setTab] = useState<Tab>("todas");
-  const list =
-    tab === "todas" ? campaigns : campaigns.filter((c) => c.platform === tab);
+  // busca de campanha (no painel das campanhas): filtra a lista pelo nome
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLocaleLowerCase("pt-BR");
+  const list = (tab === "todas" ? campaigns : campaigns.filter((c) => c.platform === tab)).filter((c) => !q || c.name.toLocaleLowerCase("pt-BR").includes(q));
   const [picked, setPicked] = useState<string | null>(null);
   const sel = list.find((c) => c.id === picked) ?? list[0];
   const days = chrono(ctx.ds.current);
@@ -117,8 +116,20 @@ export function LavandaSkin({
       .reduce((a, c) => a + c.spend, 0),
   }));
   const topPlat = [...byPlat].sort((a, b) => b.spend - a.spend)[0]?.id;
-  const status = (i: number) =>
-    i % 3 === 0 ? "Ativa" : i % 3 === 1 ? "Aprendizado" : "Limitada";
+  // as plataformas com investimento no período (com uma só, a divisão não diz nada)
+  const spendingPlats = byPlat.filter((p) => p.spend > 0);
+  const topShare = Math.round(((byPlat.find((p) => p.id === topPlat)?.spend ?? 0) / Math.max(1, ctx.cur.spend)) * 100);
+  // valor curto embaixo de cada barra ("9,4 mil"): o título do card já diz o que é (dinheiro vem em centavos)
+  const shortValue = (v: number) => (g.sales ? money(ctx, v, true).replace(/^R\$\s?/, "") : v >= 10_000 ? `${decimal(v / 1000, 0)} mil` : int(v));
+  // custo por resultado ao longo do período (9 partes): o gráfico do primeiro card
+  const costParts = buckets(days.map((d) => d.spend), 9).map((sp, i) => {
+    const r = buckets(days.map((d) => d[g.conv]), 9)[i];
+    return r > 0 ? sp / r : 0;
+  });
+  const costDates = dayDates(days.filter((_, i) => i % roasStep === 0).map((d) => d.ago), ctx.today);
+  const costKnown = costParts.filter((v) => v > 0);
+  const withGoal = hasGoal(ctx.ds);
+  const campaignSpend = Math.max(1, campaigns.reduce((a, c) => a + c.spend, 0));
 
   return (
     // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
@@ -177,42 +188,11 @@ export function LavandaSkin({
               </button>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-1.5">
-            {[FileText, CalendarDays, Link2].map((Icon, i) => (
-              <span
-                key={i}
-                className="hidden size-9 place-items-center rounded-full border @[900px]:grid"
-                style={{ borderColor: C.line, background: C.card }}
-              >
-                <Icon size={15} />
-              </span>
-            ))}
-            <span
-              className="relative grid size-9 place-items-center rounded-full border"
-              style={{ borderColor: C.line, background: C.card }}
-            >
-              <Bell size={15} />
-              <span className="absolute top-2 right-2.5 size-1.5 rounded-full bg-red-500" />
-            </span>
-            <span
-              className="grid size-9 place-items-center rounded-full text-[12px] font-bold text-white"
-              style={{ background: C.dark }}
-            >
-              {initials(client)}
-            </span>
-          </div>
+          {/* os atalhos de enfeite (PDF, agenda, link, sino) e o avatar repetido não tinham ação: saíram */}
         </div>
 
         {/* título (com o voltar de verdade no topo, a seta de enfeite sai para não repetir) */}
         <div className={`flex flex-wrap items-center ${screen ? "mt-3 gap-3" : "mt-6 gap-4"}`}>
-          {!bar && (
-            <span
-              className="grid size-10 place-items-center rounded-full border"
-              style={{ borderColor: C.line, background: C.card }}
-            >
-              <ArrowLeft size={16} />
-            </span>
-          )}
           {/* na tela do dashboard, título e frase dividem a linha: sobra altura para os blocos */}
           <div className={screen ? "min-w-0 flex-1 @[1000px]:flex @[1000px]:items-baseline @[1000px]:gap-3" : "min-w-0 flex-1"}>
             <h2 className={`leading-none font-bold tracking-[-0.03em] ${screen ? "text-[24px]" : "text-[30px]"}`}>
@@ -223,18 +203,14 @@ export function LavandaSkin({
               {periodLabel}
             </p>
           </div>
-          <span
-            className={`grid place-items-center rounded-[14px] border ${screen ? "size-9" : "size-11"}`}
-            style={{ borderColor: C.line, background: C.card }}
+          {/* selo informativo (não é botão): o número principal do objetivo no período */}
+          <p
+            className="flex shrink-0 items-baseline gap-2 rounded-full border px-4 py-1.5 text-[12px]"
+            style={{ borderColor: C.accentSoft, background: "#eeedfd", color: C.fg2 }}
+            data-selo
           >
-            <SlidersHorizontal size={16} />
-          </span>
-          <span
-            className={`flex items-center gap-2 rounded-[14px] text-[13px] font-semibold text-white ${screen ? "h-9 px-4" : "h-11 px-5"}`}
-            style={{ background: C.accent }}
-          >
-            <Plus size={16} /> {label(ctx, g.value)}: {value(ctx, g.value)}
-          </span>
+            {label(ctx, g.value)} <strong className="text-[15px] font-bold tnum" style={{ color: C.accent }}>{value(ctx, g.value)}</strong>
+          </p>
         </div>
 
         <SkinChrome palette={PAGE} controls={controls} note={note} screen={screen} className="mt-4" />
@@ -248,7 +224,8 @@ export function LavandaSkin({
           ctx={ctx}
           grid={grid}
           // nada em branco: sem campanhas no período (só GA4 ou orgânico), a lista e os filtros dela saem
-          hide={campaigns.length ? [] : ["s-filtros", "s-campanhas"]}
+          // a barra de filtros era só desenho: sai (a plataforma e a busca ficam no painel das campanhas)
+          hide={campaigns.length ? ["s-filtros"] : ["s-filtros", "s-campanhas"]}
           nodes={{
             "s-cpa": (
               <section
@@ -256,14 +233,47 @@ export function LavandaSkin({
                 style={{ borderColor: C.line, background: C.card }}
               >
                 <header className="flex shrink-0 items-center justify-between text-[13px] font-semibold">
-                  {label(ctx, "cpa")}
-                  <AlertCircle size={16} className="text-red-500" />
+                  {label(ctx, g.cost)}
+                  {/* o alerta só aparece quando o custo piorou */}
+                  {cpa.good === false ? <AlertCircle size={16} className="text-red-500" aria-label="Custo subiu" /> : <Wallet size={16} style={{ color: C.accent }} aria-hidden />}
                 </header>
                 <p className="mt-3 shrink-0 text-[28px] leading-tight font-bold tracking-tight tnum">
-                  {value(ctx, "cpa")}
+                  {value(ctx, g.cost)}
                 </p>
                 <Trend c={cpa} />
-                <DeskArt />
+                {costKnown.length >= 2 && !ctx.hideSpend ? (
+                  <>
+                    <ChartTheme palette={CHART} className="mt-2 flex min-h-[min(72px,var(--fit-cap,72px))] flex-1 flex-col">
+                      <FlowLines
+                        className="flex-1"
+                        points={costParts.map((v) => ({ custo: v, ...(withGoal ? { meta: ctx.ds.goal } : {}) }))}
+                        dates={costDates}
+                        series={[
+                          { key: "custo", label: label(ctx, g.cost), color: C.accent, width: 2.2, area: 0.18 },
+                          ...(withGoal ? [{ key: "meta", label: "Meta de custo", color: "#9aa0b8", width: 1.4, dashed: true }] : []),
+                        ]}
+                        format={(_, v) => money(ctx, v)}
+                        summary={`${label(ctx, g.cost)} ao longo do período: de ${money(ctx, Math.min(...costKnown))} a ${money(ctx, Math.max(...costKnown))}.`}
+                      />
+                    </ChartTheme>
+                    <p className="mt-1 flex shrink-0 justify-between gap-2 text-[10.5px] tnum" style={{ color: C.fg2 }}>
+                      {withGoal ? (
+                        <span>
+                          Meta {money(ctx, ctx.ds.goal)} · <strong style={{ color: ctx.cur[g.cost] <= ctx.ds.goal ? "#2f9e5b" : "#e5484d" }}>{ctx.cur[g.cost] <= ctx.ds.goal ? "dentro" : "acima"}</strong>
+                        </span>
+                      ) : (
+                        <>
+                          <span>Menor {money(ctx, Math.min(...costKnown), true)}</span>
+                          <span>Maior {money(ctx, Math.max(...costKnown), true)}</span>
+                        </>
+                      )}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-auto text-[11.5px]" style={{ color: C.fg2 }}>
+                    {ctx.hideSpend ? "Investimento oculto neste link." : "Poucos dias com resultado para mostrar a evolução."}
+                  </p>
+                )}
               </section>
             ),
             "s-receita": (
@@ -294,6 +304,8 @@ export function LavandaSkin({
                     what={label(ctx, g.value)}
                     format={(v) => showValue(v, true)}
                     summary={`${label(ctx, g.value)} em ${revenueBars.length} partes do período: total de ${value(ctx, g.value)}.`}
+                    showValues
+                    valueFormat={shortValue}
                   />
                 </ChartTheme>
               </section>
@@ -330,12 +342,6 @@ export function LavandaSkin({
               >
                 <header className="flex shrink-0 items-center justify-between text-[13px] font-semibold">
                   Investimento por plataforma
-                  <span
-                    className="grid size-7 place-items-center rounded-full border"
-                    style={{ borderColor: C.line }}
-                  >
-                    <ArrowUpRight size={14} />
-                  </span>
                 </header>
                 <div className="mt-3 flex shrink-0 items-center gap-2">
                   <p className="text-[26px] leading-tight font-bold tracking-tight whitespace-nowrap tnum">
@@ -372,50 +378,17 @@ export function LavandaSkin({
                       </div>
                     );
                   })}
-                  <span
-                    className="self-end rounded-full px-3 py-2 text-[10.5px] font-semibold whitespace-nowrap text-white"
-                    style={{ background: C.dark }}
-                  >
-                    {Math.round(
-                      ((byPlat.find((p) => p.id === topPlat)?.spend ?? 0) /
-                        Math.max(1, ctx.cur.spend)) *
-                        100,
-                    )}
-                    % na maior
-                  </span>
+                  {/* com uma plataforma só, a divisão não diz nada: a etiqueta some */}
+                  {spendingPlats.length > 1 && topPlat && (
+                    <span
+                      className="self-end rounded-full px-3 py-2 text-[10.5px] font-semibold whitespace-nowrap text-white"
+                      style={{ background: C.dark }}
+                    >
+                      {topShare}% no {platformName(topPlat)}
+                    </span>
+                  )}
                 </div>
               </section>
-            ),
-            "s-filtros": (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-2 flex items-center gap-2 text-[13px] font-semibold">
-                  Filtros ativos
-                  <span
-                    className="grid size-5 place-items-center rounded-full text-[10px] text-white"
-                    style={{ background: C.dark }}
-                  >
-                    {tab === "todas" ? 1 : 2}
-                  </span>
-                </span>
-                <Pill>
-                  {tab === "todas" ? "Todas as plataformas" : platformName(tab)}{" "}
-                  <ChevronDown size={14} />
-                </Pill>
-                <Pill>
-                  {sel ? sel.name : "Todas as campanhas"}{" "}
-                  <ChevronDown size={14} />
-                </Pill>
-                <Pill>
-                  {dayLabel(days.length, ctx.today)} <CalendarDays size={14} />
-                </Pill>
-                <Pill>
-                  {dayLabel(0, ctx.today)} <CalendarDays size={14} />
-                </Pill>
-                <Pill grow>
-                  <span style={{ color: C.fg2 }}>Buscar campanha</span>{" "}
-                  <Search size={14} />
-                </Pill>
-              </div>
             ),
             "s-campanhas": (
               <div
@@ -426,6 +399,20 @@ export function LavandaSkin({
                   <h3 className="text-[14px] font-semibold">
                     Campanhas no período
                   </h3>
+                  <label className="order-last flex h-9 w-full items-center gap-2 rounded-full bg-white/10 px-3 text-[12px] @[900px]:order-none @[900px]:ml-auto @[900px]:w-[220px]">
+                    <Search size={14} className="shrink-0 opacity-70" aria-hidden />
+                    <input
+                      type="search"
+                      value={query}
+                      onChange={(e) => {
+                        setQuery(e.target.value);
+                        setPicked(null);
+                      }}
+                      placeholder="Buscar campanha"
+                      aria-label="Buscar campanha"
+                      className="min-w-0 flex-1 bg-transparent text-white outline-none placeholder:text-white/50"
+                    />
+                  </label>
                   <div
                     className="flex gap-1 rounded-full bg-white p-1 text-[12px]"
                     style={{ color: C.fg }}
@@ -465,7 +452,8 @@ export function LavandaSkin({
                 <div className="mt-4 grid min-h-0 flex-1 gap-4 @[900px]:grid-cols-[minmax(0,0.85fr)_minmax(0,1.5fr)] @[900px]:grid-rows-[minmax(0,1fr)]">
                   {/* a lista rola dentro do painel quando não cabe inteira */}
                   <ul className="min-h-0 space-y-1.5 overflow-y-auto [scrollbar-width:thin]">
-                    {list.slice(0, 6).map((c, i) => {
+                    {list.length === 0 && <li className="px-3 py-2.5 text-[12.5px] opacity-70">Nenhuma campanha com “{query.trim()}”.</li>}
+                    {list.slice(0, 6).map((c) => {
                       const on = c.id === sel?.id;
                       return (
                         <li key={c.id}>
@@ -489,23 +477,27 @@ export function LavandaSkin({
                               {initials(c.name)}
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[12.5px] font-semibold">
+                              <span className="block truncate text-[12.5px] font-semibold" title={c.name}>
                                 {c.name}
                               </span>
                               <span className="block text-[10.5px] opacity-60">
                                 {platformName(c.platform)}
                               </span>
                             </span>
-                            <span
-                              className="rounded-full px-2.5 py-1 text-[10px] font-medium"
-                              style={
-                                on
-                                  ? { background: "#fff", color: C.fg }
-                                  : { background: C.dark2, color: "#cfd0e0" }
-                              }
-                            >
-                              {status(i)}
-                            </span>
+                            {/* parte da verba do período (o status da campanha não vem das plataformas) */}
+                            {!ctx.hideSpend && (
+                              <span
+                                className="hidden shrink-0 rounded-full px-2.5 py-1 text-[10px] font-medium tnum @[520px]:inline"
+                                style={
+                                  on
+                                    ? { background: "#fff", color: C.fg }
+                                    : { background: C.dark2, color: "#cfd0e0" }
+                                }
+                                title="Parte do investimento do período"
+                              >
+                                {decimal((c.spend / campaignSpend) * 100, 0)}% da verba
+                              </span>
+                            )}
                             <span className="w-[86px] shrink-0 text-right text-[12.5px] font-semibold tnum">
                               {money(ctx, c.spend, true)}
                             </span>
@@ -523,14 +515,8 @@ export function LavandaSkin({
                       <div className="grid shrink-0 gap-3 text-[11px] @[700px]:grid-cols-3">
                         <div>
                           <p className="opacity-70">Campanha</p>
-                          <p className="mt-1 flex flex-wrap items-center gap-2">
-                            <span className="text-[22px] font-bold tracking-tight">
-                              {sel.name}
-                            </span>
-                            <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10px]">
-                              {status(list.indexOf(sel))}
-                            </span>
-                          </p>
+                          {/* nome longo: duas linhas com reticências; o inteiro ao apontar ou tocar */}
+                          <FullName key={sel.id} text={sel.name} lines={2} className="mt-1 text-[18px] leading-tight font-bold tracking-tight @[700px]:text-[22px]" />
                         </div>
                         <div>
                           <p className="opacity-70">Plataforma</p>
@@ -559,13 +545,13 @@ export function LavandaSkin({
                         </div>
                       </div>
 
-                      <div className="mt-4 grid min-h-[60px] flex-[1_1_96px] grid-cols-2 gap-2.5 @[700px]:grid-cols-4">
+                      <div className="mt-4 grid flex-[1_1_96px] auto-rows-[minmax(68px,1fr)] grid-cols-2 gap-2.5 @[700px]:grid-cols-4">
                         {[
-                          { v: money(ctx, sel.spend), l: "Investimento" },
+                          { v: money(ctx, sel.spend, true), l: "Investimento" },
                           ...(g.sales
                             ? [
                                 {
-                                  v: money(ctx, sel.revenue),
+                                  v: money(ctx, sel.revenue, true),
                                   l: label(ctx, "revenue"),
                                 },
                               ]
@@ -582,15 +568,12 @@ export function LavandaSkin({
                         ].map((tile) => (
                           <div
                             key={tile.l}
-                            className="flex min-h-0 flex-col justify-between rounded-[14px] bg-white/12 p-3"
+                            className="flex min-w-0 flex-col justify-between gap-1 rounded-[14px] bg-white/12 p-3"
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <span className="text-[16px] font-bold tnum">
-                                {tile.v}
-                              </span>
-                              <ArrowUpRight size={14} className="opacity-70" />
-                            </div>
-                            <span className="text-[11px] opacity-80">
+                            <span className="min-w-0 truncate text-[14px] font-bold tnum @[700px]:text-[16px]">
+                              {tile.v}
+                            </span>
+                            <span className="truncate text-[11px] opacity-80">
                               {tile.l}
                             </span>
                           </div>
@@ -604,7 +587,7 @@ export function LavandaSkin({
                                 : (pages[1] ?? active),
                             )
                           }
-                          className="flex min-h-0 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[14px] border border-dashed border-white/50 text-[11px]"
+                          className="flex min-w-0 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[14px] border border-dashed border-white/50 p-2 text-center text-[11px]"
                         >
                           <span className="grid size-7 place-items-center rounded-full bg-white/15">
                             <Plus size={14} />
@@ -648,14 +631,6 @@ export function LavandaSkin({
                           </div>
                         ))}
                         <div className="ml-auto flex items-center gap-2">
-                          {[Link2, CalendarDays].map((Icon, i) => (
-                            <span
-                              key={i}
-                              className="grid size-9 place-items-center rounded-full border border-white/30"
-                            >
-                              <Icon size={14} />
-                            </span>
-                          ))}
                           <span
                             className="rounded-full bg-white px-4 py-2.5 text-[12px] font-semibold"
                             style={{ color: C.fg }}
@@ -695,54 +670,3 @@ function Trend({ c }: { c: ReturnType<typeof change> }) {
   );
 }
 
-function Pill({
-  children,
-  grow,
-}: {
-  children: React.ReactNode;
-  grow?: boolean;
-}) {
-  return (
-    <span
-      className={`flex h-10 items-center justify-between gap-3 rounded-[12px] border px-3 text-[12px] ${grow ? "min-w-[180px] flex-1" : "min-w-[150px]"}`}
-      style={{ borderColor: C.line, background: C.card }}
-    >
-      {children}
-    </span>
-  );
-}
-
-/** Ilustração da mesa (planta, notebook, luminária), feita em SVG. */
-function DeskArt() {
-  return (
-    <svg
-      viewBox="0 0 240 100"
-      className="mt-auto -mx-4 -mb-4 min-h-[40px] w-[calc(100%+2rem)] flex-[0_1_104px]"
-      aria-hidden
-    >
-      <rect x="0" y="0" width="240" height="100" fill="#f1f1f4" />
-      <rect x="0" y="78" width="240" height="22" fill="#e4e3e8" />
-      <rect x="0" y="76" width="240" height="4" fill="#d6d5dc" />
-      {/* planta */}
-      <path d="M38 76 L44 56 L58 56 L64 76 Z" fill="#fafafa" stroke="#d9d9de" />
-      <path d="M51 56 C40 40 30 36 26 22 C38 26 46 36 51 56" fill="#3d6b4f" />
-      <path d="M51 56 C56 38 64 30 74 24 C70 38 62 46 51 56" fill="#4f8462" />
-      <path d="M51 56 C48 40 50 28 54 14 C58 28 56 42 51 56" fill="#2f5a40" />
-      {/* notebook */}
-      <rect x="100" y="52" width="40" height="24" rx="2" fill="#2b2c33" />
-      <rect x="94" y="75" width="52" height="3" rx="1" fill="#3a3b44" />
-      {/* xícara */}
-      <rect x="152" y="66" width="10" height="10" rx="2" fill="#2b2c33" />
-      {/* luminária */}
-      <rect x="182" y="74" width="26" height="4" rx="2" fill="#2b2c33" />
-      <path
-        d="M195 74 L188 48 L206 30"
-        stroke="#2b2c33"
-        strokeWidth="3"
-        fill="none"
-      />
-      <path d="M200 28 L218 22 L222 38 Z" fill="#2b2c33" />
-      <circle cx="216" cy="36" r="5" fill="#fff6c9" opacity="0.8" />
-    </svg>
-  );
-}

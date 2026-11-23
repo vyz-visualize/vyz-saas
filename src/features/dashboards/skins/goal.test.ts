@@ -47,3 +47,12 @@ describe("blocos sem nada para mostrar saem sem deixar buraco", () => {
     expect(withoutBlocks(base, [])).toBe(base);
   });
 });
+
+describe("bloco escondido que ocupava a fileira sozinho", () => {
+  it("os blocos de baixo sobem (sem buraco): a barra de filtros do Lavanda", () => {
+    const g = withoutBlocks(skinGrid("lavanda"), ["s-filtros"]);
+    expect(g.find((it) => it.id === "s-filtros")).toBeUndefined();
+    expect(g.find((it) => it.id === "s-campanhas")?.y).toBe(9);
+    expect(g.find((it) => it.id === "s-cpa")?.y).toBe(0);
+  });
+});
