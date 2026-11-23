@@ -7,6 +7,7 @@ import "server-only";
 // consentimento e <site>/api/integrations/ga4/callback nos redirecionamentos.
 // Docs: developers.google.com/analytics/devguides/config/admin/v1/rest/v1beta/accountSummaries/list
 
+import { isPackedServiceAccount, serviceAccountTokens } from "./google-service-account";
 import { fetchJson, fetchOk, form } from "./http";
 import { account, bearer, clientCredentials, toTokens, type TokenResponse } from "./oauth2";
 import { ProviderError, type DiscoveredAccount, type OAuthProvider } from "./types";
@@ -91,6 +92,8 @@ export function ga4Provider(): OAuthProvider {
       return out;
     },
     async refresh(refreshToken) {
+      // conexão por token: a chave da conta de serviço do cliente gera o token de 1 hora
+      if (isPackedServiceAccount(refreshToken)) return serviceAccountTokens(refreshToken, GA4_SCOPE);
       const { clientId, clientSecret } = creds();
       const res = await fetchJson<TokenResponse>(TOKEN_URL, {
         ...form({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, grant_type: "refresh_token" }),

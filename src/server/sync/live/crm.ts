@@ -20,6 +20,7 @@ import { addDays } from "@/features/sync/dates";
 import { fetchJson } from "@/server/integrations/providers/http";
 import { kommoDomain } from "@/server/integrations/providers/kommo";
 import { bearer } from "@/server/integrations/providers/oauth2";
+import { pipedriveAuth } from "@/server/integrations/providers/pipedrive";
 import { ProviderError } from "@/server/integrations/providers/types";
 import { getValidAccessToken } from "@/server/integrations/tokens";
 import type { SyncAccount } from "../source";
@@ -126,7 +127,7 @@ async function pipedriveList<T>(token: string, path: string, params: Record<stri
   for (let page = 0; page < MAX_PAGES; page++) {
     const url = new URL(`${PIPEDRIVE}${path}`);
     url.search = new URLSearchParams({ ...params, start: String(start), limit: "500" }).toString();
-    const res = await fetchJson<PdList<T>>(url, { headers: bearer(token), label, rejectCode: "provedor_recusou", timeoutMs: 30_000 });
+    const res = await fetchJson<PdList<T>>(url, { headers: pipedriveAuth(token, url), label, rejectCode: "provedor_recusou", timeoutMs: 30_000 });
     const items = res.data ?? [];
     out.push(...items);
     const last = items.at(-1);
@@ -141,7 +142,8 @@ async function pipedriveList<T>(token: string, path: string, params: Record<stri
 async function pipedrive(token: string, range: SyncRange): Promise<Collected> {
   const { from } = bounds(range);
   const stages = await optional("Pipedrive: etapas", new Map<number, { name: string; order: number }>(), async () => {
-    const res = await fetchJson<PdList<{ id: number; name?: string; order_nr?: number; pipeline_id?: number }>>(`${PIPEDRIVE}/stages`, { headers: bearer(token), label: "Pipedrive: etapas", rejectCode: "provedor_recusou" });
+    const stagesUrl = new URL(`${PIPEDRIVE}/stages`);
+    const res = await fetchJson<PdList<{ id: number; name?: string; order_nr?: number; pipeline_id?: number }>>(stagesUrl, { headers: pipedriveAuth(token, stagesUrl), label: "Pipedrive: etapas", rejectCode: "provedor_recusou" });
     return new Map((res.data ?? []).map((s) => [s.id, { name: s.name || `Etapa ${s.id}`, order: s.order_nr ?? 0 }]));
   });
   const created = await pipedriveList<PdDeal>(token, "/deals", { status: "all_not_deleted", sort: "add_time DESC" }, (d) => crmInstant(d.add_time), from, "Pipedrive: negócios");

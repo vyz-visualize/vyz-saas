@@ -14,7 +14,6 @@ Situação de cada uma em `docs/PLATAFORMAS.md`. Funcionam de ponta a ponta hoje
 | Google | Verificação do app no Google (escopos `adwords` e `analytics.readonly`); hoje no nível Exploração da API |
 | TikTok, LinkedIn, RD Station, HubSpot, Pipedrive, Kommo | Login pronto no código; falta o app aprovado na plataforma e as credenciais na Vercel |
 | Mercado Ads | Login pronto no código; app ainda não criado |
-| Conexão por token nas outras plataformas | Só o Meta tem o "Usar token" (`docs/PLATAFORMAS.md`, seção Conexão por token) | Tutorial e conferência por plataforma: Kommo (subdomínio e token de longa duração), HubSpot (token de app privado), Pipedrive (token pessoal), LinkedIn (token do app dele, vence em 60 dias), TikTok (token de longo prazo e IDs dos anunciantes), GA4 (chave JSON de conta de serviço) e Google Ads (credenciais do Google Cloud e token de desenvolvedor dele) |
 | Planilha do Google fechada | Hoje a importação só lê planilha aberta por link; a do lançamento (Fachada) lê fechada com a conta de serviço em `GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON`, que faltava criar e pôr na Vercel (13/11, `docs/TEMPLATES.md`) |
 
 ## Assistente VYZ

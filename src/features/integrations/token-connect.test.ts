@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PROVIDER_IDS } from "./providers";
-import { cleanToken, isTokenConnection, META_TOKEN_PERMISSIONS, metaTokenProblem, TOKEN_GUIDES, TOKEN_SCOPE, tokenGuide } from "./token-connect";
+import { cleanToken, isTokenConnection, jwtExpiry, META_TOKEN_PERMISSIONS, metaTokenProblem, tiktokAuthCode, TOKEN_GUIDES, TOKEN_SCOPE, tokenGuide } from "./token-connect";
 
 describe("conexão por token", () => {
   it("limpa o que vem colado junto com o token", () => {
@@ -39,5 +39,28 @@ describe("conexão por token", () => {
       const text = [g!.title, g!.intro, ...g!.notes, ...g!.steps.flatMap((s) => [s.title, s.text])].join(" ");
       expect(text).not.toMatch(/—/);
     }
+  });
+
+  it("token em todas as plataformas com API e conferência pronta; Google Ads e RD Station seguem só pelo login", () => {
+    expect(Object.keys(TOKEN_GUIDES).sort()).toEqual(["ga4", "hubspot", "kommo", "linkedin", "meta", "pipedrive", "tiktok"]);
+    expect(tokenGuide("google")).toBeNull();
+    expect(tokenGuide("rdstation")).toBeNull();
+    for (const g of Object.values(TOKEN_GUIDES)) {
+      expect(g!.fields.length).toBeGreaterThan(0);
+      expect(g!.steps.length).toBeGreaterThan(1);
+    }
+  });
+
+  it("acha o auth_code do TikTok no endereço inteiro ou sozinho", () => {
+    expect(tiktokAuthCode("https://loja.com/retorno?state=1&auth_code=a%2Bb&x=2")).toBe("a+b");
+    expect(tiktokAuthCode("  abc123 ")).toBe("abc123");
+  });
+
+  it("lê a validade de um token JWT (Kommo) sem conferir a assinatura", () => {
+    const exp = 1_900_000_000;
+    const jwt = `x.${Buffer.from(JSON.stringify({ exp })).toString("base64url")}.y`;
+    expect(jwtExpiry(jwt)).toBe(new Date(exp * 1000).toISOString());
+    expect(jwtExpiry("sem-pontos")).toBeUndefined();
+    expect(jwtExpiry("a.b.c")).toBeUndefined();
   });
 });
