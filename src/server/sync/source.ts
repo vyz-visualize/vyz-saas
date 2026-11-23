@@ -42,7 +42,8 @@ export interface SyncSource {
   /** Entidades e fatos diários da conta no intervalo (inclusive). */
   fetch(account: SyncAccount & { platform: SyncPlatform }, range: SyncRange): Promise<AccountDataset>;
   /** Orgânico (Instagram e Página do Facebook). */
-  fetchOrganic(account: SyncAccount & { platform: OrganicPlatform }, range: SyncRange): Promise<OrganicDataset>;
+  /** allPosts: relê os números de todos os posts da janela de 30 dias (false: só os dos últimos 7). */
+  fetchOrganic(account: SyncAccount & { platform: OrganicPlatform }, range: SyncRange, opts?: { allPosts?: boolean }): Promise<OrganicDataset>;
   /** Site (GA4): sessões, eventos-chave e receita por dia e canal. */
   fetchAnalytics(account: SyncAccount & { platform: AnalyticsPlatform }, range: SyncRange): Promise<AnalyticsDataset>;
   /** CRM (RD Station, HubSpot, Pipedrive, Kommo): leads, negócios por etapa e ganhos por dia. */
@@ -93,8 +94,8 @@ export const liveSource: SyncSource = {
     if (account.platform === "linkedin") return fetchLinkedInDataset(account, range);
     throw appError("sync:not_configured", `A importação de dados reais do ${PLATFORMS[account.platform as keyof typeof PLATFORMS]?.name ?? account.platform} ainda não está configurada.`);
   },
-  async fetchOrganic(account, range) {
-    return fetchOrganicDataset(account, range);
+  async fetchOrganic(account, range, opts) {
+    return fetchOrganicDataset(account, range, opts);
   },
   async fetchAnalytics(account, range) {
     return fetchGa4Dataset(account, range);

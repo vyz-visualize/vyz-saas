@@ -91,7 +91,7 @@ Cada passo que altera dados é uma migration ou um script revisado antes, nunca 
 
 1. Stripe live pronta (seção 3) e endpoint do webhook live criado (seção 4); anotar o `whsec_…`.
 2. Avisar os clientes das 2 assinaturas de teste (seção 5.1) e definir a saída.
-3. Janela curta, fora do horário dos crons (09, 15 e 21 UTC):
+3. Janela curta, fora do horário dos crons de sincronização (anúncios 09, 15 e 21 UTC; orgânico 07, 12 e 19 UTC):
    1. aplicar a limpeza da seção 5 (clientes, pedidos abertos e as 2 assinaturas);
    2. na Vercel (Production), trocar **juntas** `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET` para as live;
    3. **redeploy** da produção;
