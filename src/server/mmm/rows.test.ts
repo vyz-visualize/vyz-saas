@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { googleMediaRows, metaMediaRows, metaThrottle, monthRange, requestHash } from "./rows";
+import { googleMediaRows, metaMediaRows, metaMonthRange, metaThrottle, metaWindowStart, monthRange, requestHash } from "./rows";
 
 describe("carga do MMM: linhas da mídia tratada", () => {
   it("Meta: compras pelo omni_purchase, receita, moeda e reais", () => {
@@ -40,5 +40,20 @@ describe("carga do MMM: linhas da mídia tratada", () => {
     expect(metaThrottle("lixo")).toBe(0);
     expect(requestHash(["meta", "act_1", "2025-03-01"])).toBe(requestHash(["meta", "act_1", "2025-03-01"]));
     expect(requestHash(["meta", "act_1", "2025-03-01"])).not.toBe(requestHash(["meta", "act_1", "2025-04-01"]));
+  });
+});
+
+describe("carga do MMM: janela de 37 meses da Meta", () => {
+  it("o primeiro dia que a Meta ainda devolve", () => {
+    expect(metaWindowStart("2026-11-23")).toBe("2023-10-24");
+    expect(metaWindowStart("2026-03-31")).toBe("2023-03-01"); // 31 → último dia de fevereiro + 1
+    expect(metaWindowStart("2027-05-29")).toBe("2024-04-30");
+  });
+
+  it("o mês do trabalho preso à janela; fora dela, nada a buscar", () => {
+    expect(metaMonthRange("2023-10-01", "2026-11-23")).toEqual({ from: "2023-10-24", to: "2023-10-31" });
+    expect(metaMonthRange("2023-11-01", "2026-11-23")).toEqual({ from: "2023-11-01", to: "2023-11-30" });
+    expect(metaMonthRange("2023-09-01", "2026-11-23")).toBeNull();
+    expect(metaMonthRange("2023-10-01", "2026-12-05")).toBeNull();
   });
 });

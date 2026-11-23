@@ -93,16 +93,21 @@ describe("fila da carga", () => {
     expect((await db.query(`select * from public.mmm_claim_backfill(3)`)).rows).toEqual([]);
     const on = (await db.query<{ s: { ativo: boolean } }>(`select public.mmm_backfill_control(true) as s`)).rows[0].s;
     expect(on.ativo).toBe(true);
-    const jobs = (await db.query<{ id: number; status: string; tentativas: number; mes: string }>(`select id, status, tentativas, mes::text mes from public.mmm_claim_backfill(3)`)).rows;
-    expect(jobs).toHaveLength(3);
+    const jobs = (await db.query<{ id: number; status: string; tentativas: number; mes: string; ad_account_id: string }>(`select id, status, tentativas, mes::text mes, ad_account_id from public.mmm_claim_backfill(3)`)).rows;
+    // um trabalho por conta (as contas na fila), cada um com o mês mais antigo dela
+    const accounts = (await db.query<{ n: number }>(`select count(distinct ad_account_id)::int n from mmm.backfill_jobs`)).rows[0].n;
+    expect(jobs).toHaveLength(Math.min(3, accounts));
+    expect(new Set(jobs.map((j) => j.ad_account_id)).size).toBe(jobs.length);
     expect(jobs.every((j) => j.status === "rodando" && j.tentativas === 1)).toBe(true);
+    const oldest = (await db.query<{ mes: string }>(`select min(mes)::text mes from mmm.backfill_jobs where ad_account_id = $1`, [jobs[0].ad_account_id])).rows[0].mes;
+    expect(jobs[0].mes).toBe(oldest);
     // pausar: nada novo sai
     await db.query(`select public.mmm_backfill_control(false)`);
     expect((await db.query(`select * from public.mmm_claim_backfill(3)`)).rows).toEqual([]);
   });
 
   it("grava o bruto e a mídia do mês, recalcula a base pronta e conclui o trabalho", async () => {
-    const job = (await db.query<{ id: number; mes: string }>(`select id, mes::text mes from mmm.backfill_jobs where ad_account_id = $1 and status = 'rodando' order by mes desc limit 1`, [accA])).rows[0];
+    const job = (await db.query<{ id: number; mes: string }>(`select id, mes::text mes from mmm.backfill_jobs where ad_account_id = $1 and status = 'rodando' limit 1`, [accA])).rows[0];
     const day = job.mes.slice(0, 8) + "15";
     const fora = "2001-01-01";
     const rows = [
@@ -130,10 +135,51 @@ describe("fila da carga", () => {
 
   it("aguardando (relatório da Meta) volta na próxima rodada; o limite da plataforma não gasta tentativa", async () => {
     await db.query(`select public.mmm_backfill_control(true)`);
+    // ninguém rodando (os testes de cima deixaram trabalhos pegos)
+    await db.query(`update mmm.backfill_jobs set status = 'pendente', updated_at = now() - interval '1 hour' where status = 'rodando'`);
     const job = (await db.query<{ id: number; tentativas: number }>(`select id, tentativas from public.mmm_claim_backfill(1)`)).rows[0];
     await db.query(`select public.mmm_update_backfill($1, 'aguardando', null, '1234567890', true)`, [job.id]);
+    // o relatório que ainda processava espera 20 s antes de voltar
+    expect((await db.query(`select * from public.mmm_claim_backfill(1)`)).rows.map((r) => (r as { id: number }).id)).not.toContain(job.id);
+    await db.query(`update mmm.backfill_jobs set updated_at = now() - interval '1 minute' where id = $1`, [job.id]);
     const again = (await db.query<{ id: number; report_run_id: string; tentativas: number }>(`select id, report_run_id, tentativas from public.mmm_claim_backfill(1)`)).rows[0];
     expect(again).toEqual({ id: job.id, report_run_id: "1234567890", tentativas: job.tentativas });
+    await db.query(`select public.mmm_backfill_control(false)`);
+  });
+
+  it("ritmo: mês mais antigo primeiro, um trabalho por conta e a fase de pedir só com relatórios da Meta", async () => {
+    // fila limpa e uma segunda conta (Google) no mesmo workspace
+    await db.query(`update mmm.backfill_jobs set status = 'pendente', tentativas = 0, report_run_id = null, updated_at = now() - interval '1 hour' where status <> 'concluido'`);
+    // a outra conta da fila faz o papel da conta do Google
+    const accG = (await db.query<{ id: string }>(`select distinct ad_account_id id from mmm.backfill_jobs where ad_account_id <> $1 limit 1`, [accA])).rows[0].id;
+    await db.query(`update mmm.backfill_jobs set platform_id = 'google' where ad_account_id = $1`, [accG]);
+    const oldestG = (await db.query<{ mes: string }>(`select min(mes)::text mes from mmm.backfill_jobs where ad_account_id = $1`, [accG])).rows[0].mes;
+    await db.query(`select public.mmm_backfill_control(true)`);
+
+    // pedir: só a Meta, um por conta, o mês mais antigo
+    const oldestMeta = (await db.query<{ mes: string }>(`select min(mes)::text mes from mmm.backfill_jobs where ad_account_id = $1 and status = 'pendente'`, [accA])).rows[0].mes;
+    const pedir = (await db.query<{ id: number; platform_id: string; mes: string }>(`select id, platform_id, mes::text mes from public.mmm_claim_backfill(10, 'pedir')`)).rows;
+    expect(pedir).toHaveLength(1);
+    expect(pedir[0]).toMatchObject({ platform_id: "meta", mes: oldestMeta });
+    // conta com trabalho rodando não entrega outro
+    expect((await db.query(`select * from public.mmm_claim_backfill(10, 'pedir')`)).rows).toEqual([]);
+    await db.query(`select public.mmm_update_backfill($1, 'aguardando', null, '111', true)`, [pedir[0].id]);
+
+    // tudo: um por conta (a Meta e o Google), o Google também do mais antigo
+    await db.query(`update mmm.backfill_jobs set updated_at = now() - interval '1 minute' where id = $1`, [pedir[0].id]);
+    const tudo = (await db.query<{ id: number; ad_account_id: string; platform_id: string; mes: string; status: string }>(`select id, ad_account_id, platform_id, mes::text mes from public.mmm_claim_backfill(10)`)).rows;
+    expect(tudo).toHaveLength(2);
+    expect(new Set(tudo.map((j) => j.ad_account_id)).size).toBe(2);
+    expect(tudo.find((j) => j.platform_id === "google")?.mes).toBe(oldestG);
+    // o relatório que esperava vem primeiro para a conta da Meta
+    expect(tudo.find((j) => j.platform_id === "meta")?.id).toBe(pedir[0].id);
+
+    // até 3 relatórios esperando por conta na fase de pedir
+    await db.query(`update mmm.backfill_jobs set status = 'pendente', updated_at = now() - interval '1 hour' where status = 'rodando'`);
+    await db.query(`update mmm.backfill_jobs set status = 'aguardando', report_run_id = '222' where id in (select id from mmm.backfill_jobs where ad_account_id = $1 and status = 'pendente' order by mes limit 3)`, [accA]);
+    expect((await db.query(`select * from public.mmm_claim_backfill(10, 'pedir')`)).rows).toEqual([]);
+    await expect(db.query(`select * from public.mmm_claim_backfill(1, 'outra')`)).rejects.toThrow(/mmm:fase_invalida/);
+    await db.query(`update mmm.backfill_jobs set platform_id = 'meta' where ad_account_id = $1`, [accG]);
     await db.query(`select public.mmm_backfill_control(false)`);
   });
 });
