@@ -18,6 +18,14 @@ Marcações:
 
 Medição de 16/11, antes da decisão de ligar a carga (seção 12). Para ver o estado atual da fila: `npm run mmm:backfill -- --status`.
 
+**Ritmo da carga (23/11, migration `20261123090000_mmm_backfill_ritmo`).** A carga foi ligada em 16/11 com 444 trabalhos e parou no mesmo dia: rodava no tempo que sobrava do `/api/cron/sync`, e desde 16/11 18h a sincronização ocupa a rodada inteira (37 contas, 262–296 s). Agora:
+
+- **Cron próprio** `/api/cron/mmm`, 6 vezes por dia (01, 03, 05, 13, 17 e 23 UTC), longe da sincronização (09, 15, 21) e do digest (11), cada rodada com os 300 s da função.
+- **Duas fases por rodada:** (1) pede os relatórios assíncronos da Meta de vários meses de uma vez, até 3 esperando por conta; (2) baixa os prontos e os meses do Google.
+- **6 trabalhos ao mesmo tempo**, sempre de contas diferentes; a pausa a 75% da cota da Meta e o teto diário do Google continuam.
+- **Mês mais antigo primeiro.** Na Meta, o começo do mês fica preso aos 37 meses que ela guarda; o mês que já saiu inteiro da janela conclui sem linhas.
+- Contas ligadas depois de montar a fila entram com `npm run mmm:backfill -- --enqueue` (não duplica).
+
 
 - **Schema `mmm` v1:** aplicado (migration `20261117090000_mmm_schema`) e **vazio** [M]: `raw_insights` 0 linhas, `media_daily` 0, `daily` 0.
 - **Fila `mmm.backfill_jobs`:** existe e está **desligada** [M].
