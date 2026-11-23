@@ -176,10 +176,12 @@ type StatBlockProps = {
   icon?: ComponentType<{ size?: number; strokeWidth?: number }>;
   /** Cartão de destaque: fundo na cor do visual. */
   solid?: string;
+  /** Embaixo dos números, no lugar da minilinha (ex.: a barra com o marcador da meta). */
+  footer?: React.ReactNode;
 };
 
 /** Número do período com a variação e a minilinha embaixo. */
-export function StatBlock({ title, v, delta, note, values, bars, color = "var(--accent)", icon: Icon, solid }: StatBlockProps) {
+export function StatBlock({ title, v, delta, note, values, bars, color = "var(--accent)", icon: Icon, solid, footer }: StatBlockProps) {
   return (
     <section
       className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-[22px] px-4 py-3 ${solid ? "" : "border border-line bg-card"}`}
@@ -201,6 +203,7 @@ export function StatBlock({ title, v, delta, note, values, bars, color = "var(--
       {/* a minilinha é a parte que encolhe quando o bloco fica baixo (edição, bloco redimensionado) */}
       {values && <Spark values={values} color={solid ? "currentColor" : color} className="mt-1 -mx-1 min-h-0 flex-[1_1_40px]" />}
       {bars && <MiniBars values={bars} color={solid ? "currentColor" : color} className="mt-2 min-h-0 flex-[1_1_36px]" />}
+      {footer && <div className="mt-auto shrink-0 pt-2">{footer}</div>}
     </section>
   );
 }

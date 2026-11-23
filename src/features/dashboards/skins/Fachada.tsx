@@ -12,7 +12,6 @@
 
 import {
   ArrowLeftRight,
-  ArrowRight,
   ArrowUpRight,
   CalendarDays,
   Camera,
@@ -40,6 +39,8 @@ import {
   Wallet,
   Waypoints,
   type LucideIcon,
+  Clock,
+  MapPin,
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { useElementSize } from "@/components/charts/useSize";
@@ -56,8 +57,12 @@ import { DeltaChip, SkinBar, SkinChrome, SkinPage, themeVars, type Delta, type S
 import { CoverDialog, SheetDialog } from "./fachada/CoverPanel";
 import { ArcMeter, CapsuleBars, DialMeter, TrackMeter } from "./fachada/meters";
 import { Tower } from "./fachada/Tower";
+import { BrTiles, HourBars } from "./extras";
+import { FullName } from "./FullName";
+import { stateShares } from "./insights";
+import { BR_STATES } from "@/features/sync/breakdowns";
 import { SkinGrid } from "./SkinGrid";
-import { brl, change, chrono, dayLabel, goalOf, initials, int, label, pct, platformName, platformShort, value, type SkinProps } from "./shared";
+import { brl, change, chrono, dayLabel, goalOf, int, label, pct, platformName, platformShort, value, type SkinProps } from "./shared";
 
 const P: SkinPalette = {
   scheme: "light",
@@ -158,7 +163,8 @@ function Rail({ pages, active, onPage }: { pages: PageId[]; active: PageId; onPa
 /** A imagem do empreendimento, atrás dos blocos da capa: a que a pessoa subiu ou a ilustração padrão. */
 function CoverArt({ cover, inside = false }: { cover: DashboardCover; /** Dentro do bloco da capa (na edição ou com a capa fora do lugar padrão): acompanha o bloco. */ inside?: boolean }) {
   return (
-    <div className={`pointer-events-none absolute z-0 ${inside ? "inset-y-0 right-0 w-[44%]" : "top-0 right-0 h-[340px] w-[56%] @[720px]:bottom-0 @[720px]:h-auto @[720px]:w-[45%]"}`}>
+    // no celular a imagem fica numa faixa no topo e o texto da capa começa embaixo dela (não cobre o título)
+    <div className={`pointer-events-none absolute z-0 ${inside ? "top-0 right-0 h-[170px] w-[64%] @[720px]:inset-y-0 @[720px]:h-auto @[720px]:w-[44%]" : "top-0 right-0 h-[170px] w-[64%] @[720px]:bottom-0 @[720px]:h-auto @[720px]:w-[45%]"}`}>
       {!cover.image ? (
         <Tower className="size-full" />
       ) : cover.fit === "foto" ? (
@@ -267,6 +273,9 @@ type CapaProps = {
   art?: ReactNode;
 };
 
+/** "lead" → "leads"; "impressões" fica. */
+const plural = (w: string) => (w.endsWith("s") ? w : `${w}s`);
+
 const PILL = "flex h-9 items-center gap-2 rounded-full border border-white/60 bg-white/[0.46] px-3.5 text-[12px]";
 
 /**
@@ -277,28 +286,27 @@ const PILL = "flex h-9 items-center gap-2 rounded-full border border-white/60 bg
  */
 function Capa({ client, name, subtitle, campaigns, campaignShare, funnel, funnelSource, funnelValue, funnelUnit, platforms, sheet, period, onEdit, art }: CapaProps) {
   const [ref, size] = useElementSize<HTMLElement>();
-  const roomy = !size || size.height >= 340;
-  const tall = !size || size.height >= 250;
+  // no celular (bloco estreito) a capa cresce para baixo: destaques e funil sempre aparecem, um embaixo do outro
+  const narrow = !!size && size.width < 700;
+  const roomy = !size || size.height >= 340 || narrow;
+  const tall = !size || size.height >= 250 || narrow;
   return (
     <section ref={ref} className="relative isolate flex h-full min-h-[330px] flex-col @[720px]:min-h-0">
       {art}
-      <div className="relative z-10 flex min-h-0 max-w-[62%] flex-1 flex-col justify-center pl-1 @[720px]:max-w-[49%] @[1100px]:pl-3">
+      <div className="relative z-10 flex min-h-0 max-w-full flex-1 flex-col justify-center pt-[150px] pl-1 @[720px]:max-w-[49%] @[720px]:pt-0 @[1100px]:pl-3">
         <p className="truncate text-[11.5px] font-medium tracking-[0.14em] text-fg-2 uppercase">{client}</p>
         <h1 className="mt-1.5 text-[34px] leading-[1.03] font-normal tracking-[-0.035em] text-balance @[720px]:text-[clamp(34px,4.3cqw,60px)]">{name}</h1>
         <p className="mt-2.5 max-w-[38ch] text-[13px] leading-snug text-fg-2">{subtitle}</p>
         {roomy && campaigns.length > 0 && (
           <div className={`${GLASS} mt-5 w-fit max-w-full px-4 py-3`}>
             <p className="text-[12.5px] font-medium">Campanhas em destaque</p>
-            <div className="mt-2 flex items-center gap-3.5">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-2">
               <span className="grid h-11 shrink-0 place-items-center rounded-[14px] bg-white/55 px-2.5">
                 <span className="rounded-full bg-accent px-2 py-0.5 text-[10.5px] font-semibold whitespace-nowrap text-on-accent">{campaignShare} do total</span>
               </span>
-              <span className={`${ROUND} size-8`}>
-                <ArrowRight size={14} aria-hidden />
-              </span>
               {campaigns.map((c, i) => (
-                <div key={c.id} className={`min-w-0 max-w-[132px] ${i === 2 ? "hidden @[1100px]:block" : ""}`}>
-                  <p className="truncate text-[12px]">{c.name}</p>
+                <div key={c.id} className={`min-w-0 max-w-[132px] ${i === 2 && !narrow ? "hidden @[1100px]:block" : ""}`}>
+                  <FullName text={c.name} className="text-[12px]" />
                   <p className="truncate text-[10.5px] text-fg-2">{c.note}</p>
                 </div>
               ))}
@@ -309,7 +317,7 @@ function Capa({ client, name, subtitle, campaigns, campaignShare, funnel, funnel
 
       {/* o funil do período, sobre a imagem (só quando a grade está lado a lado) */}
       {funnel.length > 1 && (
-        <div className={`${GLASS} absolute top-[5%] left-[52%] hidden w-[min(238px,25%)] p-3.5 @[720px]:block`}>
+        <div className={`${GLASS} p-3.5 ${narrow ? "relative z-10 mt-3" : "absolute top-[5%] left-[52%] hidden w-[min(238px,25%)] @[720px]:block"}`}>
           <div className="flex items-center gap-2.5">
             <span className={`${ROUND} size-9`}>
               <Funnel size={15} strokeWidth={1.8} aria-hidden />
@@ -413,7 +421,7 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
       const rest = launch.origins.slice(3).reduce((a, o) => a + o.leads, 0);
       return rest > 0 ? [...top, { label: "Outras", short: "Outras", value: rest, color: P.muted }] : top;
     }
-    if (ds.adPlatforms.length > 1) return ds.adPlatforms.map((id: PlatformId, i) => ({ label: platformName(id), short: platformShort(id), value: platformPart(ds, id, "current")[g.conv], color: colorAt(i) })).filter((s) => s.value > 0);
+    if (ds.adPlatforms.length > 1) return ds.adPlatforms.map((id: PlatformId, i) => ({ label: platformName(id), short: platformName(id), value: platformPart(ds, id, "current")[g.conv], color: colorAt(i) })).filter((s) => s.value > 0);
     return [];
   }, [ds, g.conv, launch]);
   const sourceTotal = sources.reduce((a, s) => a + s.value, 0);
@@ -432,7 +440,7 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
   const { budget } = ds;
   const withBudget = hasBudget(ds);
   const projected = budget.day > 0 ? Math.round((budget.spent / budget.day) * budget.daysInMonth) : 0;
-  const spendBy = ds.adPlatforms.map((id, i) => ({ label: platformShort(id), color: colorAt(i), value: platformPart(ds, id, "current").spend }));
+  const spendBy = ds.adPlatforms.map((id, i) => ({ label: platformName(id), color: colorAt(i), value: platformPart(ds, id, "current").spend }));
   const spendTotal = spendBy.reduce((a, s) => a + s.value, 0);
 
   const cost = ctx.cur[g.cost];
@@ -443,7 +451,21 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
   const counted = ds.funnel.some((s) => s.count != null);
 
   // sem o investimento (link que esconde a verba), os dois medidores de dinheiro saem e os outros ocupam a fileira
-  const hidden = hide ? ["s-verba", "s-custo"] : [];
+  // negócio local: de onde vêm (estados) e a hora de pico (as quebras da Meta; sem elas, os blocos saem)
+  const states = useMemo(() => stateShares(ds.breakdowns?.region), [ds.breakdowns]);
+  const hours = useMemo(() => {
+    const out = Array.from({ length: 24 }, () => 0);
+    for (const r of ds.breakdowns?.hour ?? []) {
+      const h = Number.parseInt(r.key, 10);
+      if (h >= 0 && h < 24) out[h] += r.conversions;
+    }
+    return out;
+  }, [ds.breakdowns]);
+  const peakHour = hours.some((v) => v > 0) ? hours.indexOf(Math.max(...hours)) : null;
+  const topStates = [...states].sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const tone = { fg: P.fg, fg2: P.fg2, line: P.line, accent: P.accent, good: P.good, bad: P.error };
+
+  const hidden = [...(hide ? ["s-verba", "s-custo"] : []), ...(states.size ? [] : ["s-estados"]), ...(peakHour === null ? ["s-horas"] : [])];
   // a imagem do prédio fica atrás da grade (passando por trás dos medidores) só com a capa no lugar
   // padrão (em cima, de ponta a ponta) e fora da edição; senão ela vai dentro do bloco da capa e o acompanha
   const capaAt = (grid?.items ?? []).find((it) => it.id === "s-capa");
@@ -455,10 +477,10 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
         client={client}
         name={name}
         subtitle={coverValue.address || `${int(total)} ${resultLower} · ${periodLabel.toLowerCase()}`}
-        campaigns={topCampaigns.map((c) => ({ id: c.id, name: c.name, note: `${platformShort(c.platform)} · ${int(c.conversions)} ${resultLower}` }))}
+        campaigns={topCampaigns.map((c) => ({ id: c.id, name: c.name, note: `${platformName(c.platform)} · ${int(c.conversions)} ${resultLower}` }))}
         campaignShare={campaignTotal > 0 ? pct(topCampaigns.reduce((a, c) => a + c.conversions, 0) / campaignTotal, 0) : "—"}
         funnel={funnel}
-        funnelSource={launch ? "Planilha do lançamento" : funnel[0] ? `A partir de ${funnel[0].label.toLowerCase()}` : ""}
+        funnelSource={launch ? "Planilha do lançamento" : funnel[0] ? `% sobre o total de ${plural(funnel[0].label.toLowerCase())}` : ""}
         funnelValue={launch ? (launch.value > 0 ? brlCompact(launch.value) : int(launch.sales)) : counted && funnel[0] ? funnel[0].display : int(total)}
         funnelUnit={launch ? (launch.value > 0 ? "em vendas" : "vendas") : counted && funnel[0] ? funnel[0].label.toLowerCase() : resultLower}
         platforms={ds.adPlatforms.map((id, i) => ({ id, name: platformName(id), color: colorAt(i) }))}
@@ -523,7 +545,8 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
         {withBudget ? (
           <Headline v={pct(budget.spent / budget.monthly, 0)} note={`usada · dia ${budget.day} de ${budget.daysInMonth}`} />
         ) : (
-          <Headline v={value(ctx, "spend")} delta={cmp ? change(ctx, "spend") : undefined} note="no período" />
+          // sem verba: o convite (o investimento do período não é a verba do mês)
+          <Headline v="—" note="sem verba definida" />
         )}
         <TrackMeter
           className="mt-1 flex-1"
@@ -545,6 +568,28 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
       </Card>
     ),
 
+    "s-estados": (
+      <Card icon={MapPin} title="De onde vêm os resultados">
+        <div className="flex min-h-0 flex-1 items-center gap-4">
+          <BrTiles shares={states} color={P.accent} tone={tone} />
+          <ol className="min-w-0 flex-1 space-y-1.5 text-[12px]">
+            {topStates.map(([uf, share]) => (
+              <li key={uf} className="flex items-center justify-between gap-2">
+                <span className="truncate">{BR_STATES[uf] ?? uf}</span>
+                <span className="font-medium tnum">{pct(share, 0)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <p className="mt-2 shrink-0 text-[10.5px] text-fg-2">{resultName} por estado, pela Meta.</p>
+      </Card>
+    ),
+    "s-horas": (
+      <Card icon={Clock} title="Horário de pico">
+        <Headline v={peakHour !== null ? `${peakHour}h` : "—"} note={`mais ${resultLower} · bom para escalar o atendimento`} />
+        <HourBars values={hours} color={P.accent} tone={tone} what={resultName} />
+      </Card>
+    ),
     "s-custo": (
       <Card icon={Target} title={costLabel} {...openOf("campanhas", "meta-ads", "google-ads")}>
         <Headline v={value(ctx, g.cost)} delta={cmp ? change(ctx, g.cost) : undefined} note={versus} />
@@ -575,17 +620,7 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
             <span className={`${ROUND} size-10`}>
               <Mark />
             </span>
-            <div className="ml-auto flex min-w-0 items-center gap-2">
-              <span className="flex h-10 min-w-0 items-center gap-2.5 rounded-full border border-white/60 bg-white/[0.42] py-1 pr-4 pl-1">
-                <span className="grid size-8 shrink-0 place-items-center rounded-full text-[10.5px] font-bold" style={{ background: P.fg, color: P.bg }}>
-                  {initials(client)}
-                </span>
-                <span className="min-w-0 leading-tight">
-                  <span className="block truncate text-[12px] font-medium">{client}</span>
-                  <span className="block truncate text-[10.5px] text-fg-2">{children ? name : periodLabel}</span>
-                </span>
-              </span>
-            </div>
+            {/* o selo com o cliente e o período saiu: repetia o que a capa e os controles já mostram */}
           </div>
         )}
 

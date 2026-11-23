@@ -1,6 +1,7 @@
 // DataSource: de onde vêm os números dos widgets. Hoje só existe a MockSource
 // (determinística, com seed); a DbSource entra quando houver conexões reais.
 
+import { monthPosition, spentThisMonth } from "./month";
 import { apportion } from "@/features/sync/apportion";
 import { isAdPlatform, type PlatformId } from "@/features/accounts/platforms";
 import { hash, rng, type Rng } from "@/lib/random";
@@ -44,7 +45,22 @@ export type DayRow = {
   maturing: boolean;
 };
 
-export type Campaign = { /** Estável no mesmo modelo: é o que vai na URL do filtro. */ id: string; name: string; platform: PlatformId; spend: number; impressions: number; clicks: number; conversions: number; revenue: number };
+/** Números de uma campanha num período (centavos no dinheiro). */
+export type CampaignTotals = { spend: number; conversions: number; revenue: number };
+export type Campaign = {
+  /** Estável no mesmo modelo: é o que vai na URL do filtro. */ id: string;
+  name: string;
+  platform: PlatformId;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  /** O período anterior, do mesmo tamanho (ranking com subiu/desceu e a cascata da variação). */
+  prev?: CampaignTotals;
+  /** Dia a dia no período, do mais antigo ao mais recente (minigráficos e "precisa de ação hoje"). */
+  daily?: { spend: number[]; conversions: number[] };
+};
 export type Creative = {
   id: string;
   name: string;
@@ -68,7 +84,7 @@ import { sampleDetail, sampleVideo, type DatasetDetail, type VideoRetention } fr
 export type { FunnelStep };
 export type Project = { name: string; invest: number; cpl: number; bad?: boolean };
 export type AudienceRow = { label: string; share: number; cpa: number };
-export type Product = { name: string; sold: number; revenue: number; spend: number };
+export type Product = { name: string; sold: number; revenue: number; spend: number; /** O período anterior (ranking com subiu/desceu). */ prev?: { sold: number; revenue: number } };
 export type CrmStage = { stage: string; count: number; value: number };
 export type Client = { name: string; spend: number; conversions: number; goal: number };
 export type Alert = { level: "erro" | "atencao" | "info"; title: string; detail: string };
@@ -227,7 +243,7 @@ function emptyDay(ago: number): DayRow {
   return { ago, spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0, leads: 0, qualified: 0, visits: 0, calls: 0, sessions: 0, views: 0, byPlatform: {}, maturing: false };
 }
 
-type CampaignTotals = Pick<Campaign, "spend" | "impressions" | "clicks" | "conversions" | "revenue">;
+type CampaignSums = Pick<Campaign, "spend" | "impressions" | "clicks" | "conversions" | "revenue">;
 
 /** Reparte um total pelos pesos, com pelo menos 1 para cada quando dá (nenhuma campanha fica sem conversão). */
 function shareOut(total: number, weights: readonly number[], atLeastOne = false): number[] {
@@ -241,10 +257,46 @@ function shareOut(total: number, weights: readonly number[], atLeastOne = false)
  * totais dos cards; com mais de uma, a parte de cada plataforma (a mesma de platformPart).
  * Os cards não mudam: quem se ajusta é a campanha.
  */
+/**
+ * Amostra: o dia a dia de cada campanha (o total dela repartido pelos dias do período, com
+ * variação) e o período anterior (o total do anterior na mesma proporção, com variação). Os dias
+ * de cada campanha somam o total dela.
+ */
+function withCampaignSeries(campaigns: Campaign[], current: readonly DayRow[], previous: readonly DayRow[], r: { range: (a: number, b: number) => number }): Campaign[] {
+  const days = chrono(current);
+  const curSpend = Math.max(1, current.reduce((a, d) => a + d.spend, 0));
+  const prevSpend = previous.reduce((a, d) => a + d.spend, 0);
+  const prevConv = previous.reduce((a, d) => a + d.conversions, 0);
+  const curConv = Math.max(1, current.reduce((a, d) => a + d.conversions, 0));
+  const prevRev = previous.reduce((a, d) => a + d.revenue, 0);
+  const curRev = Math.max(1, current.reduce((a, d) => a + d.revenue, 0));
+  return campaigns.map((c) => {
+    const w = days.map((d) => (d.spend / curSpend) * r.range(0.6, 1.4));
+    const ws = w.reduce((a, x) => a + x, 0) || 1;
+    const cw = days.map((d, i) => (d.conversions > 0 ? (w[i] / ws) * r.range(0.5, 1.5) : 0));
+    const cs = cw.reduce((a, x) => a + x, 0) || 1;
+    const spend = shareOut(c.spend, w);
+    const conversions = shareOut(c.conversions, cw.map((x) => x / cs));
+    const drift = r.range(0.7, 1.3);
+    return {
+      ...c,
+      daily: { spend, conversions },
+      prev: {
+        spend: Math.round((c.spend / curSpend) * prevSpend * drift),
+        conversions: Math.round((c.conversions / curConv) * prevConv * r.range(0.65, 1.35)),
+        revenue: Math.round((c.revenue / curRev) * prevRev * drift),
+      },
+    };
+  });
+}
+
+/** Dias do mais antigo para o mais recente (DayRow.ago: 0 = hoje). */
+const chrono = (rows: readonly DayRow[]) => [...rows].sort((a, b) => b.ago - a.ago);
+
 function closeCampaigns(raw: readonly Campaign[], current: readonly DayRow[], adPlatforms: readonly PlatformId[]): Campaign[] {
   const sum = (pick: (d: DayRow) => number) => current.reduce((a, d) => a + pick(d), 0);
   const attributed = adPlatforms.reduce((a, id) => a + sum((d) => d.byPlatform[id]?.conv ?? 0), 0);
-  const target = (id: PlatformId): CampaignTotals => {
+  const target = (id: PlatformId): CampaignSums => {
     if (adPlatforms.length <= 1 || !adPlatforms.includes(id)) {
       return { spend: sum((d) => d.spend), impressions: sum((d) => d.impressions), clicks: sum((d) => d.clicks), conversions: sum((d) => d.conversions), revenue: sum((d) => d.revenue) };
     }
@@ -390,7 +442,7 @@ export const MockSource: DataSource = {
       return { id: `c${i}`, name, platform: adPlatforms[i % Math.max(1, adPlatforms.length)] ?? "ga4", spend, impressions, clicks, conversions, revenue: Math.round(conversions * (ticket || siteTicket) * r.range(0.85, 1.15)) };
     });
 
-    const campaigns = closeCampaigns(rawCampaigns, current, adPlatforms);
+    const campaigns = withCampaignSeries(closeCampaigns(rawCampaigns, current, adPlatforms), current, previous, rng(hash(`${spec.seed}|campanhas-dia`)));
 
     const creatives: Creative[] = CREATIVES.map(([name, format], i) => {
       const spend = Math.round((totalSpend / CREATIVES.length) * r.range(0.4, 1.8));
@@ -427,7 +479,8 @@ export const MockSource: DataSource = {
     const products: Product[] = PRODUCTS.default.map((name) => {
       const sold = r.int(20, 260);
       const revenue = Math.round(sold * (ticket || siteTicket) * r.range(0.4, 1.2));
-      return { name, sold, revenue, spend: Math.round(revenue / r.range(1.6, 6)) };
+      const drift = r.range(0.6, 1.4);
+      return { name, sold, revenue, spend: Math.round(revenue / r.range(1.6, 6)), prev: { sold: Math.round(sold * drift), revenue: Math.round(revenue * drift) } };
     });
 
     const totalLeads = current.reduce((a, d) => a + (d.leads || d.conversions), 0);
@@ -456,10 +509,10 @@ export const MockSource: DataSource = {
       { level: "info", title: "Tag de conversão ativa", detail: "Eventos chegando normalmente nas últimas 24 h." },
     ];
 
-    const daysInMonth = 30;
-    const day = r.int(12, 26);
+    // o mês de hoje em São Paulo (o mesmo dos dados reais); o gasto do mês, somado dos próprios dias
+    const { day, daysInMonth } = monthPosition();
     const monthly = spec.budget ?? Math.round((spendDay * daysInMonth * r.range(0.95, 1.15)) / 100000) * 100000;
-    const spent = Math.round(spendDay * day * r.range(0.9, 1.12));
+    const spent = spentThisMonth([...current, ...previous], day);
 
     return {
       spec,

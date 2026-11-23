@@ -575,7 +575,7 @@ async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
     meta
       ? []
       : fetchAll((a, b) =>
-          db.from("insights_product_daily").select(`product_id, date, ${BASIC_COLUMNS}`).in("ad_account_id", ids).gte("date", cur.from).lte("date", cur.to).order("product_id").order("date").range(a, b),
+          db.from("insights_product_daily").select(`product_id, date, ${BASIC_COLUMNS}`).in("ad_account_id", ids).gte("date", prev.from).lte("date", cur.to).order("product_id").order("date").range(a, b),
         ).then((rows): ProductDayRow[] => rows.map((r) => ({ productId: r.product_id, date: r.date, ...basicRow(r) }))),
   ]);
 

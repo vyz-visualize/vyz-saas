@@ -4,6 +4,7 @@
 // O CRM vem das contas de CRM ligadas (crm_daily); o que as contas não trazem
 // (carteira de clientes, projetos) fica vazio.
 
+import { monthPosition, spentThisMonth } from "./month";
 import type { PlatformId } from "@/features/accounts/platforms";
 import type { WarehouseRows } from "@/features/analytics/types";
 import { BR_STATES, DEVICE_LABEL, parseAgeGender, PLACEMENT_LABEL } from "@/features/sync/breakdowns";
@@ -93,12 +94,32 @@ function daysOf(sets: readonly WarehouseRows[], range: { from: string; to: strin
 
 const inRange = (date: string, r: { from: string; to: string }) => date >= r.from && date <= r.to;
 
+/** As datas do intervalo, da mais antiga à mais recente. */
+function datesOf(r: { from: string; to: string }): string[] {
+  const out: string[] = [];
+  for (let d = r.from; d <= r.to && out.length < 400; d = isoAdd(d, 1)) out.push(d);
+  return out;
+}
+
 function campaignsOf(sets: readonly WarehouseRows[]): Campaign[] {
   const out: Campaign[] = [];
   for (const rows of sets) {
     const names = new Map(rows.campaigns.map((c) => [c.id, c.name]));
     const sum = new Map<string, Campaign>();
+    const prev = new Map<string, { spend: number; conversions: number; revenue: number }>();
+    // dia a dia no período (minigráficos e "precisa de ação hoje"), na ordem das datas
+    const dates = datesOf(rows.current);
+    const at = new Map(dates.map((d, i) => [d, i]));
+    const series = new Map<string, { spend: number[]; conversions: number[] }>();
     for (const r of rows.campaignDaily) {
+      if (inRange(r.date, rows.previous)) {
+        // o período anterior, por campanha: o ranking com subiu/desceu e a cascata da variação
+        const p = prev.get(r.campaignId) ?? { spend: 0, conversions: 0, revenue: 0 };
+        p.spend += cents(r.spend);
+        p.conversions += Math.round(r.conversions);
+        p.revenue += cents(r.conversionValue);
+        prev.set(r.campaignId, p);
+      }
       if (!inRange(r.date, rows.current)) continue;
       const c = sum.get(r.campaignId) ?? { id: r.campaignId, name: names.get(r.campaignId) ?? "Campanha", platform: rows.platform as PlatformId, spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0 };
       c.spend += cents(r.spend);
@@ -107,8 +128,15 @@ function campaignsOf(sets: readonly WarehouseRows[]): Campaign[] {
       c.conversions += Math.round(r.conversions);
       c.revenue += cents(r.conversionValue);
       sum.set(r.campaignId, c);
+      const sr = series.get(r.campaignId) ?? { spend: dates.map(() => 0), conversions: dates.map(() => 0) };
+      const i = at.get(r.date);
+      if (i !== undefined) {
+        sr.spend[i] += cents(r.spend);
+        sr.conversions[i] += Math.round(r.conversions);
+      }
+      series.set(r.campaignId, sr);
     }
-    out.push(...sum.values());
+    for (const c of sum.values()) out.push({ ...c, prev: prev.get(c.id) ?? { spend: 0, conversions: 0, revenue: 0 }, daily: series.get(c.id) });
   }
   return out.filter((c) => c.spend > 0 || c.impressions > 0).sort((a, b) => b.spend - a.spend);
 }
@@ -150,6 +178,23 @@ function creativesOf(sets: readonly WarehouseRows[]): Creative[] {
     );
   }
   return out.filter((c) => c.spend > 0).sort((a, b) => b.spend - a.spend);
+}
+
+/** Conversões por dia da semana × hora no período (da quebra por hora de cada dia). Sem a quebra, nada. */
+function hourWeekOf(sets: readonly WarehouseRows[]): number[][] | undefined {
+  const grid = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0));
+  let any = false;
+  for (const rows of sets) {
+    for (const r of rows.breakdownDaily) {
+      if (r.dimension !== "hour" || !inRange(r.date, rows.current)) continue;
+      const h = Number.parseInt(r.value, 10);
+      if (!Number.isInteger(h) || h < 0 || h > 23) continue;
+      const wd = new Date(`${r.date}T12:00:00Z`).getUTCDay();
+      grid[wd][h] += r.conversions;
+      any = true;
+    }
+  }
+  return any ? grid.map((row) => row.map((v) => Math.round(v * 100) / 100)) : undefined;
 }
 
 /** Quebras do período (posicionamento, dispositivo, estado, hora), somadas por valor e plataforma. */
@@ -234,7 +279,14 @@ function productsOf(sets: readonly WarehouseRows[]): Product[] {
   for (const rows of sets) {
     const titles = new Map(rows.products.map((p) => [p.id, p.title]));
     const sum = new Map<string, Product>();
+    const prev = new Map<string, { sold: number; revenue: number }>();
     for (const r of rows.productDaily) {
+      if (inRange(r.date, rows.previous)) {
+        const q = prev.get(r.productId) ?? { sold: 0, revenue: 0 };
+        q.sold += Math.round(r.conversions);
+        q.revenue += cents(r.conversionValue);
+        prev.set(r.productId, q);
+      }
       if (!inRange(r.date, rows.current)) continue;
       const p = sum.get(r.productId) ?? { name: titles.get(r.productId) ?? "Produto", sold: 0, revenue: 0, spend: 0 };
       p.sold += Math.round(r.conversions);
@@ -242,7 +294,7 @@ function productsOf(sets: readonly WarehouseRows[]): Product[] {
       p.spend += cents(r.spend);
       sum.set(r.productId, p);
     }
-    out.push(...sum.values());
+    for (const [id, p] of sum) out.push({ ...p, prev: prev.get(id) ?? { sold: 0, revenue: 0 } });
   }
   return out.sort((a, b) => b.revenue - a.revenue);
 }
@@ -297,11 +349,8 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
   const metaFunnel = meta && curRange && SHOP_PROFILES.includes(spec.profile) ? metaPurchaseFunnel(meta.accountDaily, curRange) : [];
 
   // verba: gasto do mês corrente (até hoje) contra a verba mensal das configurações
-  const month = spec.today.slice(0, 7);
-  const spentMonth = current.concat(previous).reduce((s, d) => (isoAdd(spec.today, -d.ago).slice(0, 7) === month ? s + d.spend : s), 0);
-  const [y, m] = month.split("-").map(Number);
-  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const day = Number(spec.today.slice(8, 10));
+  const { day, daysInMonth } = monthPosition(spec.today);
+  const spentMonth = spentThisMonth(current.concat(previous), day);
 
   return {
     spec: { seed: "warehouse", profile: spec.profile, sources: sets.map((s) => s.platform as PlatformId), days: current.length, goal: spec.goal, margin: spec.margin, budget: spec.budget },
@@ -311,6 +360,7 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
     campaigns: campaignsOf(sets),
     creatives: creativesOf(sets),
     breakdowns: breakdownsOf(sets),
+    hourWeek: hourWeekOf(sets),
     searchTerms: searchTermsOf(sets),
     // e-commerce com a Meta: o funil de compra dela (cada etapa sobre a anterior); senão o do
     // site (GA4); senão impressões → cliques → conversões

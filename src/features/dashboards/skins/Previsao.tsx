@@ -27,52 +27,7 @@ type Target = "revenue" | "conversions" | "spend";
 /** Elasticidade das conversões à verba (retorno decrescente). */
 const ELASTICITY = 0.72;
 
-type Forecast = {
-  hist: number[];
-  fit: number[];
-  future: number[];
-  lo: number[];
-  hi: number[];
-  sd: number;
-  anomalies: number[];
-};
-
-/** Regressão linear com efeito do dia da semana; resíduo dá a faixa. */
-export function forecast(values: number[], horizon: number): Forecast {
-  const n = values.length;
-  const xs = values.map((_, i) => i);
-  const mx = (n - 1) / 2;
-  const my = values.reduce((a, b) => a + b, 0) / Math.max(1, n);
-  const sxx = xs.reduce((a, x) => a + (x - mx) ** 2, 0) || 1;
-  const slope =
-    xs.reduce((a, x, i) => a + (x - mx) * (values[i] - my), 0) / sxx;
-  const trend = (x: number) => my + slope * (x - mx);
-  const season = Array.from({ length: 7 }, (_, d) => {
-    const r = values
-      .map((v, i) => [i, v - trend(i)] as const)
-      .filter(([i]) => i % 7 === d);
-    return r.length ? r.reduce((a, [, v]) => a + v, 0) / r.length : 0;
-  });
-  const fit = xs.map((x) => trend(x) + season[x % 7]);
-  const res = values.map((v, i) => v - fit[i]);
-  const sd = Math.sqrt(res.reduce((a, r) => a + r * r, 0) / Math.max(1, n - 2));
-  const future = Array.from({ length: horizon }, (_, h) =>
-    Math.max(0, trend(n + h) + season[(n + h) % 7]),
-  );
-  const band = (h: number) =>
-    1.96 * sd * Math.sqrt(1 + 1 / n + (n + h - mx) ** 2 / sxx);
-  return {
-    hist: values,
-    fit,
-    future,
-    lo: future.map((v, h) => Math.max(0, v - band(h))),
-    hi: future.map((v, h) => v + band(h)),
-    sd,
-    anomalies: res
-      .map((r, i) => (Math.abs(r) > 2 * sd ? i : -1))
-      .filter((i) => i >= 0),
-  };
-}
+import { forecast, type Forecast } from "./insights";
 
 export function PrevisaoSkin({ ctx, grid }: SkinProps) {
   const current = ctx.ds.current;

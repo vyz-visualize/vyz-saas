@@ -23,6 +23,11 @@ export type VideoRetention = { views: number; p25: number; p50: number; p75: num
 export type DatasetDetail = {
   breakdowns?: Partial<Record<DetailDimension, BreakdownRow[]>>;
   searchTerms?: SearchTermRow[];
+  /**
+   * Conversões por dia da semana × hora no período (7 linhas, domingo = 0, por 24 colunas), da
+   * quebra por hora de cada dia (Meta). Sem a quebra por hora, não vem.
+   */
+  hourWeek?: number[][];
 };
 
 export const MATCH_LABEL: Record<string, string> = { exact: "Exata", phrase: "Frase", broad: "Ampla", near_exact: "Exata (variação)", near_phrase: "Frase (variação)" };
@@ -146,6 +151,14 @@ export function sampleDetail(seed: string, current: readonly DayRow[], adPlatfor
     b.device.push(...breakdown(r, id === "google" ? GOOGLE_DEVICES : META_DEVICES, t, id, (k) => DEVICE_LABEL[k] ?? k));
     b.region.push(...breakdown(r, STATES, t, id, (k) => BR_STATES[k] ?? k));
     b.hour.push(...breakdown(r, HOUR_WEIGHT.map((w, h) => [String(h).padStart(2, "0"), w] as [string, number]), t, id, (k) => `${k}h`));
+  }
+  // conversões por dia da semana × hora: o peso da hora (o mesmo da quebra) × o peso do dia da semana
+  const conv = current.reduce((a, d) => a + d.conversions, 0);
+  if (conv > 0) {
+    const wd = [0.82, 1.08, 1.12, 1.06, 1.02, 0.97, 0.78].map((w) => w * r.range(0.9, 1.1));
+    const cells = wd.map((w) => HOUR_WEIGHT.map((h) => w * h * r.range(0.75, 1.25)));
+    const total = cells.flat().reduce((a, x) => a + x, 0) || 1;
+    out.hourWeek = cells.map((row) => row.map((x) => Math.round(((x / total) * conv) * 100) / 100));
   }
   const google = adPlatforms.includes("google") ? sumPlatform(current, "google") : null;
   if (google?.spend) {

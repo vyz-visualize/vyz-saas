@@ -12,6 +12,7 @@ import { availableIn, canUse, type Tier } from "@/features/pricing/entitlements"
 import { anyDashboardTemplate } from "@/features/templates/live";
 import { composedId, OBJECTIVES, VISUALS, type ObjectiveId } from "@/features/templates/dashboards/composed";
 import { TemplateThumb } from "./TemplatePreview";
+import { VisualBlurb } from "./VisualBlurb";
 
 export function ModelPicker({
   tier,
@@ -72,7 +73,7 @@ export function ModelPicker({
                   <div className="flex items-center justify-between gap-3 border-t border-line p-3">
                     <div className="min-w-0">
                       <p className="font-medium text-fg">{v.name}</p>
-                      <p className="text-[12.5px] text-fg-2">{v.description}</p>
+                      <VisualBlurb v={v} objective={objective} />
                     </div>
                     {open ? (
                       <button type="button" className={`${btn.small} shrink-0`} onClick={() => onUse(t.id)}>

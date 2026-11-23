@@ -14,9 +14,12 @@ import { biggestDrop, platformPart } from "@/features/metrics/compute";
 import { metric } from "@/features/metrics/definitions";
 import { PAGES } from "@/features/templates/pages";
 import { brlCompact } from "@/lib/format";
-import { Block, SkinBar, SkinChrome, SkinPage, DailyChart, dayDates, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
+import { Block, SkinBar, SkinChrome, SkinPage, DailyChart, dayDates, LegendDots, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
+import { HeatGrid, MiniSpark, MonthCloseChart, MoveTag } from "./extras";
+import { FullName } from "./FullName";
+import { dayNotes, heatPeak, monthClose, productMovers, sharesOfTotal, WEEKDAYS } from "./insights";
 import { SkinGrid } from "./SkinGrid";
-import { brl, change, chrono, daily, dayLabel, decimal, goalOf, HIDDEN, initials, int, Invite, label, money, platformName, platformShort, value, type SkinProps } from "./shared";
+import { brl, change, chrono, daily, dayLabel, decimal, goalOf, HIDDEN, initials, int, Invite, label, money, platformName, value, type SkinProps } from "./shared";
 
 const P: SkinPalette = {
   scheme: "dark",
@@ -38,6 +41,8 @@ const VIOLET = "#b392ff";
 const TEAL = "#5fd6c0";
 const CHANNEL = [P.accent, BLUE, VIOLET, TEAL];
 const HERO = "linear-gradient(140deg,#ffc76e 0%,#ff9f43 100%)";
+/** Cores dos blocos exclusivos (extras.tsx). */
+const TONE = { fg: P.fg, fg2: P.fg2, line: P.line, accent: P.accent, good: P.good, bad: P.error };
 
 export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar }: SkinProps) {
   const [mode, setMode] = useState<"dia" | "semana">("dia");
@@ -78,6 +83,9 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
     [ctx.ds, valueKey],
   );
   const totalRevenue = channels.reduce((a, c) => a + c.t[valueKey], 0);
+  // o anel divide o total do card na proporção do que cada canal atribui a si (as partes somam o card)
+  const cardTotal = ctx.cur[valueKey];
+  const channelShares = sharesOfTotal(channels.map((c) => ({ ...c, value: g.sales ? c.t.revenue / 100 : c.t[valueKey] })), g.sales ? cardTotal / 100 : cardTotal);
 
   const funnel = ctx.ds.funnel;
   const drop = funnel.length > 1 ? biggestDrop(funnel) : 0;
@@ -85,8 +93,26 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
   const campaigns = useMemo(() => [...ctx.ds.campaigns].sort((a, b) => (g.sales ? b.revenue - a.revenue : b.conversions - a.conversions)).slice(0, 5), [ctx.ds.campaigns, g.sales]);
   const breakEven = ctx.ds.breakEven;
 
-  // nada em branco: fora de venda, produtos saem (o funil ocupa o espaço); funil e campanhas vazios também saem
-  const hidden = [...(g.sales ? [] : ["s-produtos"]), ...(funnel.length < 2 ? ["s-funil"] : []), ...(campaigns.length ? [] : ["s-campanhas"])];
+  // tendência: dias fora do padrão, dia da semana × hora, onde o mês fecha e as campanhas dia a dia
+  const notes = useMemo(() => dayNotes(current, (d) => d[valueKey], 3), [current, valueKey]);
+  const hourWeek = ctx.ds.hourWeek;
+  const peak = useMemo(() => heatPeak(hourWeek), [hourWeek]);
+  const close = useMemo(() => monthClose(current, (d) => d[valueKey], ctx.ds.budget), [current, valueKey, ctx.ds.budget]);
+  const moving = useMemo(() => new Map(productMovers(ctx.ds.products, 5).map((m) => [m.item.name, m.moved])), [ctx.ds.products]);
+  const minis = useMemo(() => [...ctx.ds.campaigns].filter((c) => c.daily && c.conversions > 0).sort((a, b) => b.conversions - a.conversions).slice(0, 6), [ctx.ds.campaigns]);
+  const miniMax = Math.max(1e-9, ...minis.flatMap((c) => c.daily?.conversions ?? []));
+
+  // nada em branco: fora de venda, produtos saem (o funil ocupa o espaço); funil e campanhas vazios também saem;
+  // com um canal só, o anel de 100% não diz nada (o gráfico do lado ocupa); sem a quebra por hora, a grade sai
+  const hidden = [
+    ...(g.sales ? [] : ["s-produtos"]),
+    ...(funnel.length < 2 ? ["s-funil"] : []),
+    ...(campaigns.length ? [] : ["s-campanhas"]),
+    ...(channels.length < 2 ? ["s-canais"] : []),
+    ...(peak ? [] : ["s-calor"]),
+    ...(close ? [] : ["s-fecha"]),
+    ...(minis.length >= 2 ? [] : ["s-minis"]),
+  ];
 
   const nodes = {
     "s-receita": <StatBlock title={label(ctx, valueKey)} v={value(ctx, valueKey)} delta={change(ctx, valueKey)} note="contra o período anterior" values={daily(ctx, valueKey)} icon={g.sales ? CircleDollarSign : Target} solid={HERO} />,
@@ -122,27 +148,84 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
           formatY={g.sales ? brlCompact : int}
           summary={`${label(ctx, valueKey)} por ${mode}: total de ${value(ctx, valueKey)} no período.`}
         />
+        {notes.length > 0 && (
+          // os dias fora do padrão, explicados: o esperado vem da tendência com o dia da semana
+          <p className="mt-2 shrink-0 text-[11px] text-fg-2" data-notas>
+            Fora do padrão:{" "}
+            {notes.map((n, i) => (
+              <span key={n.ago}>
+                {i > 0 && " · "}
+                <strong className="font-semibold text-fg">{dayLabel(n.ago, ctx.today)}</strong>{" "}
+                <span style={{ color: n.change > 0 ? P.good : P.error }}>
+                  {n.change > 0 ? "+" : "−"}
+                  {decimal(Math.abs(n.change) * 100, 0)}%
+                </span>{" "}
+                contra o esperado
+              </span>
+            ))}
+          </p>
+        )}
+      </Block>
+    ),
+    "s-calor": (
+      <Block title={`${resultName} por dia da semana e hora`} aside={peak ? <span className="text-[11px] text-fg-2">pico: {WEEKDAYS[peak.day]}, {peak.hour}h</span> : undefined}>
+        {hourWeek && <HeatGrid grid={hourWeek} color={P.accent} tone={TONE} what={resultName} format={(v) => decimal(v, v < 10 ? 1 : 0)} />}
+        <p className="mt-auto pt-2 text-[10.5px] text-fg-2">Pela hora de cada dia na Meta, no fuso da conta.</p>
+      </Block>
+    ),
+    "s-fecha": (
+      <Block title="Onde o mês fecha" aside={<span className="text-[11px] text-fg-2">dia {ctx.ds.budget.day} de {ctx.ds.budget.daysInMonth}</span>}>
+        {close && !(hide && g.sales) && (
+          <>
+            <p className="text-[24px] leading-tight font-bold tnum">{showValue(close.total)}</p>
+            <p className="text-[11.5px] text-fg-2 tnum">
+              entre {showValue(close.totalLo)} e {showValue(close.totalHi)} · {label(ctx, valueKey).toLowerCase()} no mês
+            </p>
+            <MonthCloseChart m={close} color={P.accent} tone={TONE} label={`${label(ctx, valueKey)} no mês: ${showValue(close.done.at(-1) ?? 0)} até hoje; deve fechar em ${showValue(close.total)}.`} className="mt-3 min-h-[70px] flex-1" />
+            <p className="mt-1 text-[10.5px] text-fg-2">Cheio: até hoje · tracejado: a previsão, com a faixa de 95%</p>
+          </>
+        )}
+      </Block>
+    ),
+    "s-minis": (
+      <Block title="Campanhas dia a dia" aside={<span className="text-[11px] text-fg-2">{label(ctx, "conversions").toLowerCase()} · mesma escala</span>}>
+        {/* a fileira se ajusta ao número de campanhas: cada cartão cresce e não sobra buraco */}
+        <div className="flex min-h-0 flex-1 flex-wrap gap-3">
+          {minis.map((c) => (
+            <div key={c.id} className="flex min-w-[140px] flex-[1_1_140px] flex-col rounded-[12px] border border-line p-2.5">
+              <FullName text={c.name} className="text-[11.5px] font-medium" />
+              <p className="text-[15px] font-bold tnum">{int(c.conversions)}</p>
+              <MiniSpark values={c.daily?.conversions ?? []} color={P.accent} scaleMax={miniMax} className="mt-auto h-8 w-full" label={`${c.name}: ${int(c.conversions)} ${label(ctx, "conversions").toLowerCase()} no período`} />
+            </div>
+          ))}
+        </div>
       </Block>
     ),
     "s-canais": (
       <Block title={`${label(ctx, valueKey)} por canal`}>
+        <span hidden data-anel-total={g.sales ? cardTotal / 100 : cardTotal} data-anel-partes={channelShares.items.reduce((x, c) => x + c.value, 0)} />
         <ShareRings
           className="flex-1"
-          items={channels.map((c) => ({ label: platformName(c.id), value: Math.round(g.sales ? c.t.revenue / 100 : c.t[valueKey]), color: c.color }))}
+          items={channelShares.items.map((c) => ({ label: platformName(c.id), value: c.value, color: c.color }))}
           centerLabel={label(ctx, valueKey)}
           format={g.sales ? { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 } : { maximumFractionDigits: 0 }}
-          summary={`${label(ctx, valueKey)} por canal: ${channels.map((c) => `${platformName(c.id)} ${showValue(c.t[valueKey])}`).join(", ")}.`}
+          summary={`${label(ctx, valueKey)} por canal (total ${value(ctx, valueKey)}): ${channelShares.items.map((c) => `${platformName(c.id)} ${showValue(g.sales ? c.value * 100 : c.value)}`).join(", ")}.`}
         />
         <ul className="mt-3 space-y-1.5 text-[12px]">
-          {channels.map((c) => (
+          {channelShares.items.map((c) => (
             <li key={c.id} className="flex items-center gap-2">
               <span className="size-2 shrink-0 rounded-full" style={{ background: c.color }} aria-hidden />
               <span className="min-w-0 flex-1 truncate">{platformName(c.id)}</span>
               <span className="text-fg-2 tnum">{totalRevenue > 0 ? `${Math.round((c.t[valueKey] / totalRevenue) * 100)}%` : "—"}</span>
-              <span className="w-[74px] text-right font-semibold tnum">{showValue(c.t[valueKey])}</span>
+              <span className="w-[74px] text-right font-semibold tnum">{showValue(g.sales ? c.value * 100 : c.value)}</span>
             </li>
           ))}
         </ul>
+        {Math.round(channelShares.attributed) !== Math.round(g.sales ? cardTotal / 100 : cardTotal) && (
+          <p className="mt-2 text-[10.5px] leading-snug text-fg-2" data-atribuicao>
+            Total do card dividido pelo que cada canal atribui a si. Juntos, eles contam {showValue(g.sales ? channelShares.attributed * 100 : channelShares.attributed)}: a mesma venda pode entrar nos dois.
+          </p>
+        )}
       </Block>
     ),
     "s-funil": (
@@ -159,12 +242,19 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
     "s-produtos": (
       <Block title="Produtos que mais vendem">
         {products.length ? (
-          <RankBars
-            className="flex-1"
-            color={P.accent}
-            rows={products.map((p) => ({ name: p.name, value: p.revenue, display: brlCompact(p.revenue) }))}
-            summary={`Produtos por receita: ${products.map((p) => `${p.name} ${brlCompact(p.revenue)}`).join(", ")}.`}
-          />
+          <ol className="flex min-h-0 flex-1 flex-col justify-around gap-1.5" aria-label="Produtos por receita, com a posição contra o período anterior">
+            {products.map((p, i) => (
+              <li key={p.name} className="flex min-w-0 items-center gap-2">
+                <span className="w-4 shrink-0 text-[11px] font-bold text-fg-2 tnum">{i + 1}</span>
+                <MoveTag moved={moving.get(p.name) ?? null} tone={TONE} />
+                <span className="min-w-0 flex-1">
+                  <FullName text={p.name} className="text-[12px] font-medium" />
+                  <span className="mt-0.5 block h-1.5 rounded-full" style={{ width: `${Math.max(4, (p.revenue / Math.max(1, products[0].revenue)) * 100)}%`, background: P.accent }} aria-hidden />
+                </span>
+                <span className="shrink-0 text-[12px] font-semibold tnum">{brlCompact(p.revenue)}</span>
+              </li>
+            ))}
+          </ol>
         ) : (
           <Invite>Os produtos aparecem quando o período tem campanhas de catálogo na Meta ou de Shopping no Google.</Invite>
         )}
@@ -184,9 +274,9 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
                   {initials(c.name)}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12.5px] leading-tight font-medium">{c.name}</span>
+                  <FullName text={c.name} className="text-[12.5px] leading-tight font-medium" />
                   <span className="mt-0.5 block truncate text-[11px] leading-tight text-fg-2">
-                    {platformShort(c.platform)} · {g.sales ? money(ctx, c.revenue, true) : `${int(c.conversions)} ${resultName.toLowerCase()}`}
+                    {platformName(c.platform)} · {g.sales ? money(ctx, c.revenue, true) : `${int(c.conversions)} ${resultName.toLowerCase()}`}
                   </span>
                 </span>
                 <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tnum" style={{ color: tone, background: `color-mix(in srgb, ${tone} 14%, transparent)` }}>
@@ -237,9 +327,6 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
                 <CalendarDays size={14} /> {periodLabel}
               </span>
             )}
-            <span className="grid size-9 place-items-center rounded-full text-[11px] font-bold" style={{ background: P.card, border: `1px solid ${P.line}` }}>
-              {initials(client)}
-            </span>
           </div>
         </div>
 

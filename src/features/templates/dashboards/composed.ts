@@ -18,6 +18,12 @@ export type Visual = {
   skin?: SkinId;
   tier: Exclude<Tier, "personalizado">;
   description: string;
+  /** Na escolha do visual: para quem é ("Para o gestor de tráfego no dia a dia."). */
+  forWhom?: string;
+  /** Na escolha do visual: o que só ele tem ("ritmo da verba e o que precisa de ação hoje"). */
+  only?: string;
+  /** Objetivos em que ele aparece como "Recomendado" (qualquer visual funciona com qualquer objetivo). */
+  recommended?: ObjectiveId[];
   /** Rascunho: só aparece na bancada local (/dev/templates); fica fora da galeria, do onboarding e do banco. */
   draft?: boolean;
   /**
@@ -44,6 +50,9 @@ export const OBJECTIVES: Objective[] = [
   { id: "educacao", label: "Educação", hint: "Matrículas: do lead à matrícula e custo por aluno.", profile: "educacao", category: "Leads" },
   { id: "agencia", label: "Agência", hint: "Vários clientes: investimento, resultado e saúde de cada conta.", profile: "agencia", category: "Agência" },
 ];
+
+/** Visual recomendado para o objetivo? */
+export const recommendedFor = (v: Pick<Visual, "recommended">, objective: ObjectiveId | null | undefined) => !!objective && !!v.recommended?.includes(objective);
 
 /** Objetivo de cada nicho do onboarding (o primeiro acesso já monta pelo segmento). */
 const OBJECTIVE_BY_BUSINESS: Record<string, ObjectiveId> = { ecommerce: "ecommerce", leads: "leads", imobiliario: "imob", local: "local", infoproduto: "infoproduto", saude: "saude", educacao: "educacao", agencia: "agencia" };

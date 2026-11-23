@@ -35,11 +35,13 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { DayRow } from "@/features/metrics/source";
-import { GOAL_INVITE, hasBudget, hasGoal } from "@/features/metrics/targets";
+import { BUDGET_INVITE, GOAL_INVITE, hasBudget, hasGoal } from "@/features/metrics/targets";
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
 import { ChartTheme, dayDates, FlowLines, SkinBar, SkinChrome, SkinPage, Spark, type SkinPalette } from "./bklit-blocks";
+import { BulletBar, MiniSpark, MoveTag, PacingChart } from "./extras";
 import { FullName } from "./FullName";
+import { actionToday, campaignMovers, dayNotes, pacing, yesterdayVsWeek } from "./insights";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
@@ -104,6 +106,22 @@ const PAGE_ICON: Partial<Record<PageId, LucideIcon>> = {
 };
 
 const CARD_ICONS: LucideIcon[] = [Target, TrendingUp, Zap];
+
+/** Cores dos blocos exclusivos (extras.tsx) no escuro do Pulso. */
+const TONE = { fg: C.fg, fg2: C.fg2, line: C.line, accent: C.pinkFlat, good: C.green, bad: "#ff6b8b" };
+
+/** Card escuro dos blocos novos, com título e a linha de apoio. */
+function Card({ title, note, children, ...data }: { title: string; note?: React.ReactNode; children: React.ReactNode; "data-ritmo"?: number }) {
+  return (
+    <section className="flex min-w-0 flex-col rounded-[22px] border p-4" style={{ background: C.card, borderColor: C.line }} {...data}>
+      <header className="flex shrink-0 items-baseline justify-between gap-2">
+        <h3 className="text-[14.5px] font-bold">{title}</h3>
+        {note && <span className="truncate text-[11px]" style={{ color: C.fg2 }}>{note}</span>}
+      </header>
+      <div className="mt-3 flex min-h-0 flex-1 flex-col">{children}</div>
+    </section>
+  );
+}
 
 export function PulsoSkin({
   ctx,
@@ -192,6 +210,17 @@ export function PulsoSkin({
   const campaignTotal = Math.max(1, campaigns.reduce((a, c) => a + c.conversions, 0));
   const convWord = label(ctx, "conversions").toLowerCase();
   const costWord = label(ctx, cost).replace(/^Custo por /i, "por ");
+
+  // blocos de operação do dia: ritmo da verba, ontem, o que pede ação e o ranking
+  const pace = useMemo(() => pacing(ctx.ds), [ctx.ds]);
+  const actions = useMemo(() => actionToday(campaigns, costNow), [campaigns, costNow]);
+  // (o React Compiler memoriza estes cálculos)
+  const movers = campaignMovers(ctx.ds.campaigns, sales ? "revenue" : "conversions");
+  const yday = [
+    { label: "Investimento", check: yesterdayVsWeek(ctx.ds.current, (d) => d.spend), fmt: (v: number) => money(ctx, v, true), money: true },
+    { label: label(ctx, conv), check: yesterdayVsWeek(ctx.ds.current, (d) => d[conv]), fmt: (v: number) => decimal(v, v < 10 ? 1 : 0), money: false },
+  ];
+  const notes = dayNotes(ctx.ds.current, (d) => d[conv], 2);
 
   /** Uma das campanhas que mais trazem resultado: a participação dela e o custo contra a média. */
   const progCard = (k: number) => {
@@ -372,14 +401,30 @@ export function PulsoSkin({
                           </span>
                         ))}
                       </div>
+                      {notes.length > 0 && (
+                        // dias fora do padrão, explicados (a tendência com o dia da semana dá o esperado)
+                        <p className="px-5 pt-2 text-[11px] text-white/85" data-notas>
+                          Fora do padrão:{" "}
+                          {notes.map((n, i) => (
+                            <span key={n.ago}>
+                              {i > 0 && " · "}
+                              <strong className="font-semibold">{dayLabel(n.ago, ctx.today)}</strong> {n.change > 0 ? "+" : "−"}
+                              {decimal(Math.abs(n.change) * 100, 0)}% contra o esperado
+                            </span>
+                          ))}
+                        </p>
+                      )}
                       <div className="relative mt-3 grid grid-cols-3 items-end text-center">
                         <div className="min-w-0 px-1 pb-5">
                           <p className="text-[10.5px] text-white/70">Investimento</p>
                           <p className="text-[15px] leading-tight font-semibold whitespace-nowrap tnum @[420px]:text-[18px] @[520px]:text-[22px]">{money(ctx, ctx.cur.spend, true)}</p>
-                          {/* com a verba do mês definida: quanto dela já foi e quantos dias faltam */}
-                          <p className="text-[11px] text-white/70">
-                            {withBudget && !ctx.hideSpend ? `${decimal((budget.spent / budget.monthly) * 100, 0)}% da verba do mês · ${left} ${left === 1 ? "dia restante" : "dias restantes"}` : periodLabel}
-                          </p>
+                          {/* o número é do período; a verba é do mês até hoje (o mesmo gasto do bloco de ritmo) */}
+                          <p className="text-[11px] text-white/70">{periodLabel}</p>
+                          {withBudget && !ctx.hideSpend && (
+                            <p className="text-[10.5px] text-white/70" data-verba-mes={budget.spent}>
+                              {decimal((budget.spent / budget.monthly) * 100, 0)}% da verba no mês até hoje
+                            </p>
+                          )}
                         </div>
                         <div className="mx-1 min-w-0 rounded-t-[22px] border border-b-0 border-white/20 bg-white/12 px-2 pt-4 pb-5">
                           <p className="text-[10.5px] text-white/70">Total de {label(ctx, conv).toLowerCase()}</p>
@@ -398,9 +443,9 @@ export function PulsoSkin({
                         ) : withGoal ? (
                           // meta de custo do dashboard: o custo do período contra ela
                           <div className="min-w-0 px-1 pb-5">
-                            <p className="text-[10.5px] text-white/70">Meta de custo</p>
+                            <p className="text-[10.5px] text-white/70">Alvo de custo</p>
                             <p className="text-[15px] leading-tight font-semibold whitespace-nowrap tnum @[420px]:text-[18px] @[520px]:text-[22px]">{money(ctx, ctx.ds.goal)}</p>
-                            <p className="text-[11px] text-white/70">{goalOk ? "dentro da meta" : "acima da meta"}</p>
+                            <p className="text-[11px] text-white/70">{goalOk ? "dentro do alvo" : "acima do alvo"}</p>
                           </div>
                         ) : (
                           // sem meta: a taxa de conversão (dado real) e o convite para definir a meta
@@ -452,7 +497,7 @@ export function PulsoSkin({
                         <div className="min-w-0">
                           <p className="text-[26px] leading-tight font-bold tnum">{value(ctx, cost)}</p>
                           <p className="text-[11px] text-white/85">
-                            {withGoal ? `Meta ${money(ctx, ctx.ds.goal)} · ${goalOk ? "dentro" : "acima"}` : `${GOAL_INVITE} de custo`}
+                            {withGoal ? `Alvo ${money(ctx, ctx.ds.goal)} · ${goalOk ? "dentro" : "acima"}` : `${GOAL_INVITE} de custo`}
                           </p>
                         </div>
                         {pages.includes("campanhas") && (
@@ -462,6 +507,99 @@ export function PulsoSkin({
                         )}
                       </div>
                     </section>
+                  ),
+                  "s-ritmo": (
+                    <Card data-ritmo={pace?.spent} title="Ritmo da verba no mês" note={pace ? `dia ${pace.day} de ${pace.daysInMonth} · ${left} ${left === 1 ? "dia restante" : "dias restantes"}` : undefined}>
+                      {pace && !ctx.hideSpend ? (
+                        <>
+                          <p className="flex flex-wrap items-baseline gap-x-2 text-[12px]" style={{ color: C.fg2 }}>
+                            <strong className="text-[20px] font-bold tnum" style={{ color: C.fg }}>{money(ctx, pace.spent, true)}</strong> de {money(ctx, pace.monthly, true)} no mês até hoje ·{" "}
+                            <span className="font-semibold" style={{ color: pace.status === "no ritmo" ? C.green : pace.status === "estoura" ? "#ff6b8b" : C.pinkFlat }}>
+                              {pace.status === "no ritmo" ? "no ritmo" : pace.status === "estoura" ? `vai estourar: fecha em ${money(ctx, pace.projected, true)}` : `vai sobrar: fecha em ${money(ctx, pace.projected, true)}`}
+                            </span>
+                          </p>
+                          <PacingChart p={pace} tone={TONE} format={(v) => money(ctx, v, true)} className="mt-3 h-[110px] flex-1" />
+                          <p className="mt-2 text-[10.5px]" style={{ color: C.fg2 }}>Tracejado: o ideal até o fim do mês · pontilhado: para onde vai no ritmo dos últimos 7 dias</p>
+                        </>
+                      ) : (
+                        <p className="m-auto text-center text-[12.5px]" style={{ color: C.fg2 }}>
+                          {ctx.hideSpend ? "Investimento oculto neste link." : `${BUDGET_INVITE} para ver se o mês vai estourar ou sobrar.`}
+                        </p>
+                      )}
+                    </Card>
+                  ),
+                  "s-ontem": (
+                    <Card title="Ontem contra a semana" note="faixa: mínimo a máximo dos 7 dias antes">
+                      <ul className="space-y-4">
+                        {yday
+                          .filter((y) => !(y.money && ctx.hideSpend))
+                          .map((y) =>
+                            y.check ? (
+                              <li key={y.label}>
+                                <p className="mb-1.5 flex items-baseline justify-between gap-2 text-[12px]">
+                                  <span style={{ color: C.fg2 }}>{y.label}</span>
+                                  <span>
+                                    <strong className="text-[16px] font-bold tnum">{y.fmt(y.check.value)}</strong>{" "}
+                                    <span className="text-[11px] font-semibold" style={{ color: y.check.status === "normal" ? C.fg2 : y.check.status === "acima" ? C.green : "#ff6b8b" }}>
+                                      {y.check.status === "normal" ? "normal" : y.check.status === "acima" ? "acima do normal" : "abaixo do normal"}
+                                    </span>
+                                  </span>
+                                </p>
+                                <BulletBar value={y.check.value} target={y.check.mean} lo={y.check.lo} hi={y.check.hi} color={C.pinkFlat} tone={TONE} label={`${y.label} ontem: ${y.fmt(y.check.value)}; média dos 7 dias antes: ${y.fmt(y.check.mean)}.`} />
+                                <p className="mt-1 text-[10.5px] tnum" style={{ color: C.fg2 }}>média {y.fmt(y.check.mean)}</p>
+                              </li>
+                            ) : (
+                              <li key={y.label} className="text-[12px]" style={{ color: C.fg2 }}>
+                                {y.label}: poucos dias para comparar.
+                              </li>
+                            ),
+                          )}
+                      </ul>
+                      <p className="mt-auto pt-3 text-[10.5px]" style={{ color: C.fg2 }}>Ontem ainda está em maturação: as conversões podem subir.</p>
+                    </Card>
+                  ),
+                  "s-acao": (
+                    <Card title="Precisa de ação hoje" note="últimos 3 dias">
+                      {actions.length === 0 ? (
+                        <p className="m-auto text-center text-[12.5px]" style={{ color: C.fg2 }}>
+                          Nenhuma campanha gastando sem resultado ou com o custo subindo nos últimos 3 dias.
+                        </p>
+                      ) : (
+                        <ul className="divide-y" style={{ borderColor: C.line }}>
+                          {actions.map((a) => (
+                            <li key={a.campaign.id} className="flex min-w-0 items-center gap-3 py-2.5" style={{ borderColor: C.line }}>
+                              <span className="size-2 shrink-0 rounded-full" style={{ background: a.reason === "sem resultado" ? "#ff6b8b" : C.pinkFlat }} aria-hidden />
+                              <span className="min-w-0 flex-1">
+                                <FullName text={a.campaign.name} className="text-[12.5px] font-semibold" />
+                                <span className="block text-[11px]" style={{ color: C.fg2 }}>
+                                  {a.detail}
+                                </span>
+                              </span>
+                              <MiniSpark values={a.spark} color={C.pinkFlat} className="h-7 w-20 shrink-0" label="Investimento nos últimos 7 dias" />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <p className="mt-auto pt-2 text-[10.5px]" style={{ color: C.fg2 }}>Os últimos dias ainda estão em maturação: confira antes de pausar.</p>
+                    </Card>
+                  ),
+                  "s-ranking": (
+                    <Card title={`Ranking por ${sales ? "receita" : convWord}`} note="contra o período anterior">
+                      {movers.length === 0 ? (
+                        <p className="m-auto text-center text-[12.5px]" style={{ color: C.fg2 }}>Sem campanhas com resultado no período.</p>
+                      ) : (
+                        <ol className="space-y-2">
+                          {movers.map((m) => (
+                            <li key={m.item.id} className="flex min-w-0 items-center gap-2">
+                              <span className="w-5 shrink-0 text-[12px] font-bold tnum" style={{ color: C.fg2 }}>{m.rank}</span>
+                              <MoveTag moved={m.moved} tone={TONE} />
+                              <FullName text={m.item.name} className="min-w-0 flex-1 text-[12.5px] font-semibold" />
+                              <span className="shrink-0 text-[12px] font-bold tnum">{sales ? money(ctx, m.value, true) : int(m.value)}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </Card>
                   ),
                   "s-prog1": progCard(0),
                   "s-prog2": progCard(1),

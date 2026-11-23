@@ -20,12 +20,16 @@ import type { PlatformId } from "@/features/accounts/platforms";
 import { PAGES } from "@/features/templates/pages";
 import { hasGoal } from "@/features/metrics/targets";
 import { ChartTheme, dayDates, FlowLines, SkinBar, SkinChrome, SkinPage, WeekBars, type SkinPalette } from "./bklit-blocks";
+import { BulletBar, WaterfallBars } from "./extras";
 import { FullName } from "./FullName";
+import { ADJUST_LABEL, bestDay, waterfall } from "./insights";
+import { CreativeImage, isVideoFormat } from "../widgets/CreativeImage";
 import { SkinGrid } from "./SkinGrid";
 import {
   buckets,
   change,
   chrono,
+  dayLabel,
   decimal,
   goalOf,
   initials,
@@ -49,6 +53,30 @@ const C = {
   dark2: "#2a2b3c",
   panel: "linear-gradient(140deg,#5d55d8 0%,#6f63e6 55%,#5a4fd2 100%)",
 };
+
+/** Dia da semana de "hoje − ago" (pela data, sem fuso: igual no servidor e no navegador). */
+const WEEKDAY_LONG = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+function weekdayOf(today: string | undefined, ago: number): string {
+  // sem o dia de hoje (miniatura, render no servidor): sem dia da semana, nada de relógio no render
+  if (!today) return "";
+  return WEEKDAY_LONG[new Date(Date.parse(`${today}T12:00:00Z`) - ago * 86_400_000).getUTCDay()];
+}
+
+/** Cores dos blocos exclusivos (extras.tsx) nos cards claros do Lavanda. */
+const TONE = { fg: C.fg, fg2: C.fg2, line: C.line, accent: C.accent, good: "#1f9d55", bad: "#e5484d" };
+
+/** Card claro dos blocos novos. */
+function Card({ title, note, children }: { title: string; note?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="fit-fill flex min-w-0 flex-col overflow-hidden rounded-[20px] border p-4" style={{ borderColor: C.line, background: C.card }}>
+      <header className="flex shrink-0 items-baseline justify-between gap-2 text-[13px] font-semibold">
+        {title}
+        {note && <span className="truncate text-[11px] font-normal" style={{ color: C.fg2 }}>{note}</span>}
+      </header>
+      <div className="mt-3 flex min-h-0 flex-1 flex-col">{children}</div>
+    </section>
+  );
+}
 
 // cores dos gráficos (Bklit UI) dentro dos cards claros
 const CHART: SkinPalette = { scheme: "light", bg: "#ffffff", card: "#ffffff", fg: C.fg, fg2: C.fg2, line: C.line, accent: C.accent, accentSoft: C.accentSoft, onAccent: "#ffffff", muted: C.accentSoft, error: "#d92d20", errorSoft: "#fde7e4", good: "#1f9d55" };
@@ -130,6 +158,23 @@ export function LavandaSkin({
   const costKnown = costParts.filter((v) => v > 0);
   const withGoal = hasGoal(ctx.ds);
   const campaignSpend = Math.max(1, campaigns.reduce((a, c) => a + c.spend, 0));
+
+  // apresentação ao cliente: resumo em texto, destaques, comparativo e cascata da variação
+  const valueKey = g.sales ? "revenue" : "conversions";
+  // a cascata começa e termina nos mesmos totais do comparativo e dos cards (ctx.prev e ctx.cur)
+  const cascade = waterfall(ctx.ds.campaigns, valueKey, 4, { start: ctx.prev[valueKey], end: ctx.cur[valueKey] });
+  const bestCampaign = useMemo(() => [...ctx.ds.campaigns].sort((a, b) => b.conversions - a.conversions)[0], [ctx.ds.campaigns]);
+  const bestCreative = useMemo(() => [...ctx.ds.creatives].sort((a, b) => b.conversions - a.conversions).find((c) => c.conversions > 0), [ctx.ds.creatives]);
+  const topDay = bestDay(ctx.ds.current, (d) => d[g.conv]);
+  const totalConv = Math.max(1, ctx.ds.campaigns.reduce((a, c) => a + c.conversions, 0));
+  const word = (c: ReturnType<typeof change>) => (c.text === "—" ? "" : `${c.up ? "subiu" : "caiu"} ${c.text}`);
+  const cost = change(ctx, g.cost);
+  const cmpRows = [
+    { id: g.value, label: label(ctx, g.value), money: g.sales },
+    { id: "spend" as const, label: label(ctx, "spend"), money: true },
+    { id: g.cost, label: label(ctx, g.cost), money: true },
+    { id: g.efficiency, label: label(ctx, g.efficiency), money: false },
+  ].filter((r) => !(ctx.hideSpend && r.money));
 
   return (
     // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
@@ -250,16 +295,19 @@ export function LavandaSkin({
                         dates={costDates}
                         series={[
                           { key: "custo", label: label(ctx, g.cost), color: C.accent, width: 2.2, area: 0.18 },
-                          ...(withGoal ? [{ key: "meta", label: "Meta de custo", color: "#9aa0b8", width: 1.4, dashed: true }] : []),
+                          ...(withGoal ? [{ key: "meta", label: "Alvo de custo", color: "#9aa0b8", width: 1.4, dashed: true }] : []),
                         ]}
                         format={(_, v) => money(ctx, v)}
                         summary={`${label(ctx, g.cost)} ao longo do período: de ${money(ctx, Math.min(...costKnown))} a ${money(ctx, Math.max(...costKnown))}.`}
                       />
                     </ChartTheme>
-                    <p className="mt-1 flex shrink-0 justify-between gap-2 text-[10.5px] tnum" style={{ color: C.fg2 }}>
+                    <div className="mt-1 flex shrink-0 justify-between gap-2 text-[10.5px] tnum" style={{ color: C.fg2 }}>
                       {withGoal ? (
-                        <span>
-                          Meta {money(ctx, ctx.ds.goal)} · <strong style={{ color: ctx.cur[g.cost] <= ctx.ds.goal ? "#2f9e5b" : "#e5484d" }}>{ctx.cur[g.cost] <= ctx.ds.goal ? "dentro" : "acima"}</strong>
+                        <span className="w-full">
+                          <BulletBar value={ctx.cur[g.cost]} target={ctx.ds.goal} color={ctx.cur[g.cost] <= ctx.ds.goal ? "#2f9e5b" : "#e5484d"} tone={TONE} label={`${label(ctx, g.cost)} ${value(ctx, g.cost)} contra o alvo de ${money(ctx, ctx.ds.goal)}.`} />
+                          <span className="mt-1 block">
+                            Alvo {money(ctx, ctx.ds.goal)} · <strong style={{ color: ctx.cur[g.cost] <= ctx.ds.goal ? "#2f9e5b" : "#e5484d" }}>{ctx.cur[g.cost] <= ctx.ds.goal ? "dentro" : "acima"}</strong>
+                          </span>
                         </span>
                       ) : (
                         <>
@@ -267,7 +315,7 @@ export function LavandaSkin({
                           <span>Maior {money(ctx, Math.max(...costKnown), true)}</span>
                         </>
                       )}
-                    </p>
+                    </div>
                   </>
                 ) : (
                   <p className="mt-auto text-[11.5px]" style={{ color: C.fg2 }}>
@@ -275,6 +323,131 @@ export function LavandaSkin({
                   </p>
                 )}
               </section>
+            ),
+            "s-resumo": (
+              // resumo do período em texto, montado pelos números (para ler em voz alta na reunião)
+              <section className="fit-fill flex min-w-0 flex-col justify-center rounded-[20px] p-4 text-white @[700px]:px-6" style={{ background: C.panel }} data-resumo>
+                <p className="text-[11px] tracking-[0.12em] uppercase opacity-75">Resumo · {periodLabel}</p>
+                <p className="mt-1.5 text-[14px] leading-relaxed @[700px]:text-[15.5px]">
+                  <strong className="font-bold">{value(ctx, g.value)}</strong> {g.sales ? "de receita" : label(ctx, g.value).toLowerCase()}
+                  {!ctx.hideSpend && (
+                    <>
+                      {" "}com <strong className="font-bold">{money(ctx, ctx.cur.spend, true)}</strong> investidos
+                    </>
+                  )}
+                  {word(rev) && <> ({word(rev)} contra o período anterior)</>}.{" "}
+                  {!ctx.hideSpend && (
+                    <>
+                      O {label(ctx, g.cost).toLowerCase()} ficou em <strong className="font-bold">{value(ctx, g.cost)}</strong>
+                      {word(cost) && <> ({word(cost)})</>}.{" "}
+                    </>
+                  )}
+                  {bestCampaign && bestCampaign.conversions > 0 && (
+                    <>
+                      A campanha <strong className="font-bold">{bestCampaign.name}</strong> trouxe {decimal((bestCampaign.conversions / totalConv) * 100, 0)}% dos resultados.
+                    </>
+                  )}
+                </p>
+              </section>
+            ),
+            "s-destaques": (
+              <Card title="Destaques do período">
+                <div className="grid min-h-0 flex-1 gap-3 @[700px]:grid-cols-3">
+                  <div className="flex min-w-0 flex-col rounded-[14px] p-3" style={{ background: "#f6f5fe" }}>
+                    <p className="text-[11px]" style={{ color: C.fg2 }}>Melhor campanha</p>
+                    {bestCampaign && bestCampaign.conversions > 0 ? (
+                      <>
+                        <FullName text={bestCampaign.name} lines={2} className="mt-1 text-[14px] leading-snug font-bold" />
+                        <p className="mt-auto pt-2 text-[12px] tnum" style={{ color: C.fg2 }}>
+                          <strong style={{ color: C.accent }}>{int(bestCampaign.conversions)}</strong> {label(ctx, "conversions").toLowerCase()} · {decimal((bestCampaign.conversions / totalConv) * 100, 0)}% do total
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-1 text-[12.5px]" style={{ color: C.fg2 }}>Sem campanhas com resultado no período.</p>
+                    )}
+                  </div>
+                  <div className="flex min-w-0 items-center gap-3 rounded-[14px] p-3" style={{ background: "#f6f5fe" }}>
+                    {bestCreative ? (
+                      <>
+                        <CreativeImage src={bestCreative.imageUrl} video={isVideoFormat(bestCreative.format)} compact className="size-14 shrink-0 rounded-[12px]" fallback={<span className="grid size-full place-items-center text-[12px] font-bold text-white" style={{ background: C.accent }}>{initials(bestCreative.name)}</span>} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[11px]" style={{ color: C.fg2 }}>Melhor criativo</span>
+                          <FullName text={bestCreative.name} className="text-[13.5px] font-bold" />
+                          <span className="block text-[12px] tnum" style={{ color: C.fg2 }}>
+                            <strong style={{ color: C.accent }}>{int(bestCreative.conversions)}</strong> {label(ctx, "conversions").toLowerCase()} · {bestCreative.format}
+                          </span>
+                        </span>
+                      </>
+                    ) : (
+                      <p className="text-[12.5px]" style={{ color: C.fg2 }}>Os criativos aparecem quando o período tem anúncios com resultado.</p>
+                    )}
+                  </div>
+                  <div className="flex min-w-0 flex-col rounded-[14px] p-3" style={{ background: "#f6f5fe" }}>
+                    <p className="text-[11px]" style={{ color: C.fg2 }}>Melhor dia</p>
+                    {topDay ? (
+                      <>
+                        <p className="mt-1 text-[18px] font-bold">{[weekdayOf(ctx.today, topDay.ago), dayLabel(topDay.ago, ctx.today)].filter(Boolean).join(", ")}</p>
+                        <p className="mt-auto pt-2 text-[12px] tnum" style={{ color: C.fg2 }}>
+                          <strong style={{ color: C.accent }}>{int(topDay[g.conv])}</strong> {label(ctx, g.conv).toLowerCase()}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-1 text-[12.5px]" style={{ color: C.fg2 }}>Sem resultado no período.</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ),
+            "s-comparativo": (
+              <Card title="Este período e o anterior" note="mesmo número de dias">
+                <ul className="space-y-3">
+                  {cmpRows.map((r) => {
+                    const now = ctx.cur[r.id];
+                    const before = ctx.prev[r.id];
+                    const top = Math.max(now, before, 1e-9);
+                    const c = change(ctx, r.id);
+                    return (
+                      <li key={r.id} data-comparativo={r.id} data-anterior={before} data-atual={now}>
+                        <p className="flex items-baseline justify-between gap-2 text-[12px]">
+                          <span style={{ color: C.fg2 }}>{r.label}</span>
+                          <span className="tnum">
+                            <strong className="font-bold">{value(ctx, r.id)}</strong>{" "}
+                            <span style={{ color: c.good === null ? C.fg2 : c.good ? "#2f9e5b" : "#e5484d" }} className="text-[11px] font-semibold">
+                              {c.text === "—" ? "" : `${c.up ? "▲" : "▼"} ${c.text}`}
+                            </span>
+                          </span>
+                        </p>
+                        <div className="mt-1 space-y-1" aria-hidden>
+                          <span className="block h-2 rounded-full" style={{ width: `${(before / top) * 100}%`, background: C.accentSoft }} title="Período anterior" />
+                          <span className="block h-2 rounded-full" style={{ width: `${(now / top) * 100}%`, background: C.accent }} title="Este período" />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-auto flex gap-3 pt-3 text-[10.5px]" style={{ color: C.fg2 }}>
+                  <span className="flex items-center gap-1"><span className="size-2 rounded-full" style={{ background: C.accentSoft }} /> anterior</span>
+                  <span className="flex items-center gap-1"><span className="size-2 rounded-full" style={{ background: C.accent }} /> este período</span>
+                </p>
+              </Card>
+            ),
+            "s-cascata": (
+              <Card title="O que explica a variação" note={`${label(ctx, valueKey)} por campanha`}>
+                {cascade && !(ctx.hideSpend && g.sales) ? (
+                  <>
+                    <div className="flex min-h-0 flex-1 flex-col" data-cascata-de={cascade.start} data-cascata-para={cascade.end}>
+                      <WaterfallBars w={cascade} tone={TONE} base={C.accent} format={(v) => (g.sales ? money(ctx, v, true) : int(v))} />
+                    </div>
+                    {cascade.steps.some((st) => st.label === ADJUST_LABEL) && (
+                      <p className="mt-2 shrink-0 text-[10.5px] leading-snug" style={{ color: C.fg2 }}>
+                        {ADJUST_LABEL}: o que o total do dashboard conta e as campanhas não, ou contam duas vezes (a mesma conversão atribuída a duas plataformas).
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="m-auto text-center text-[12.5px]" style={{ color: C.fg2 }}>Sem o período anterior por campanha para comparar.</p>
+                )}
+              </Card>
             ),
             "s-receita": (
               <section
