@@ -2,7 +2,7 @@
 // colunas. A moldura do desenho (fundo, menu, topo) fica fixa; estes blocos são o que
 // a pessoa move e redimensiona no Personalizar. Puro: painel e servidor usam igual.
 
-import type { SkinId } from "@/features/templates/types";
+import type { PageId, SkinId } from "@/features/templates/types";
 import type { PageGrid } from "../layout/model";
 
 /** `card`: bloco que é só um número (ou uma barra de filtros). No encaixe da tela, a fileira dele tem altura fixa e não cresce. */
@@ -30,11 +30,9 @@ export const SKIN_BLOCKS: Record<SkinId, SkinBlock[]> = {
     b("s-custo", "Custo por lead", 8, 4, 4, 10),
     b("s-ritmo", "Ritmo da verba no mês", 0, 14, 7, 10),
     b("s-ontem", "Ontem contra a semana", 7, 14, 5, 10),
-    b("s-acao", "Precisa de ação hoje", 0, 24, 7, 11),
-    b("s-ranking", "Ranking de campanhas", 7, 24, 5, 11),
-    b("s-prog1", "Campanha 1", 0, 35, 4, 9),
-    b("s-prog2", "Campanha 2", 4, 35, 4, 9),
-    b("s-prog3", "Campanha 3", 8, 35, 4, 9),
+    // o que pede ação saiu para a aba "Ações de hoje" e a lateral "Atenção agora"
+    b("s-tabela", "Campanhas agora", 0, 24, 8, 16),
+    b("s-ranking", "Ranking de campanhas", 8, 24, 4, 16),
   ],
   monocromo: [
     b("s-gantt", "Linha do tempo", 0, 0, 6, 12),
@@ -48,14 +46,10 @@ export const SKIN_BLOCKS: Record<SkinId, SkinBlock[]> = {
     c("s-invest", "Investimento", 3, 0, 3, 6),
     c("s-roas", "ROAS", 6, 0, 3, 6),
     c("s-cpa", "Custo por venda", 9, 0, 3, 6),
-    b("s-vendas", "Receita e investimento", 0, 6, 8, 12),
-    b("s-canais", "Receita por canal", 8, 6, 4, 12),
-    b("s-calor", "Dia da semana e hora", 0, 18, 8, 11),
-    b("s-fecha", "Onde o mês fecha", 8, 18, 4, 11),
-    b("s-funil", "Funil de compra", 0, 29, 5, 11),
-    b("s-produtos", "Produtos que mais vendem", 5, 29, 4, 11),
-    b("s-campanhas", "Campanhas", 9, 29, 3, 11),
-    b("s-minis", "Campanhas dia a dia", 0, 40, 12, 9),
+    // análise: a lista e o detalhe do escolhido (os produtos têm aba própria; o funil, a dele)
+    b("s-analise", "Campanhas e o detalhe", 0, 6, 12, 18),
+    b("s-calor", "Dia da semana e hora", 0, 24, 7, 11),
+    b("s-fecha", "Onde o mês fecha", 7, 24, 5, 11),
   ],
   areia: [
     c("s-leads", "Leads", 0, 0, 3, 6),
@@ -77,8 +71,10 @@ export const SKIN_BLOCKS: Record<SkinId, SkinBlock[]> = {
     b("s-verba", "Verba do mês", 3, 13, 3, 10),
     b("s-ritmo", "Ritmo por dia", 6, 13, 3, 10),
     b("s-custo", "Custo por resultado", 9, 13, 3, 10),
-    b("s-estados", "De onde vêm os resultados", 0, 23, 6, 11),
-    b("s-horas", "Horário de pico", 6, 23, 6, 11),
+    // abaixo da primeira tela, em seções: o lançamento (planilha) e de onde vêm / quando chamam
+    b("s-lancamento", "Lançamento", 0, 23, 12, 11),
+    b("s-estados", "De onde vêm os resultados", 0, 34, 6, 11),
+    b("s-horas", "Horário de pico", 6, 34, 6, 11),
   ],
   "criativos-ao-vivo": [
     c("s-stat0", "Investimento hoje", 0, 0, 3, 4),
@@ -150,3 +146,23 @@ export const isFramedSkin = (skin: SkinId | undefined): boolean => !!skin && FRA
 /** Visuais com capa (imagem do empreendimento, endereço e planilha do lançamento na primeira aba). */
 export const COVER_SKINS: SkinId[] = ["fachada"];
 export const hasCoverSkin = (skin: SkinId | undefined): boolean => !!skin && COVER_SKINS.includes(skin);
+
+/**
+ * Abas que o próprio visual desenha (não ficam gravadas no dashboard: todo dashboard do visual
+ * tem, inclusive os que já existiam). Entram logo depois da primeira aba.
+ *   - Pulso: "Ações de hoje" (o que pede ação, com o detalhe);
+ *   - Noturno: "Produtos" (só quando o catálogo vem: ranking com subiu/desceu e o detalhe).
+ */
+const SKIN_PAGES: Partial<Record<SkinId, readonly { page: PageId; when?: (d: { products: readonly unknown[] }) => boolean }[]>> = {
+  pulso: [{ page: "acoes-hoje" }],
+  noturno: [{ page: "produtos", when: (d) => d.products.length > 0 }],
+};
+
+export const isSkinPage = (skin: SkinId | undefined, page: PageId): boolean => !!skin && !!SKIN_PAGES[skin]?.some((o) => o.page === page);
+
+/** As abas do dashboard com as do visual (depois da primeira). Sem os dados, todas as que o visual pode ter. */
+export function skinTabs(skin: SkinId | undefined, pages: readonly PageId[], data?: { products: readonly unknown[] }): PageId[] {
+  const own = ((skin && SKIN_PAGES[skin]) || []).filter((o) => !pages.includes(o.page) && (!data || !o.when || o.when(data))).map((o) => o.page);
+  if (!own.length || !pages.length) return [...pages];
+  return [pages[0], ...own, ...pages.slice(1)];
+}

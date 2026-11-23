@@ -2,7 +2,7 @@
 // testar. Só dado real: o que depende de verba ou meta do dashboard volta null (o bloco mostra o
 // convite) e nada é estimado sem dizer.
 
-import type { Campaign, Dataset, DayRow, Product } from "@/features/metrics/source";
+import type { Campaign, Creative, Dataset, DayRow, Product } from "@/features/metrics/source";
 
 // ---- Previsão (tendência + dia da semana; o resíduo dá a faixa e os dias fora do padrão) ----
 
@@ -135,6 +135,45 @@ export type ActionItem = {
   weight: number;
 };
 
+/** Como a campanha está nos últimos dias (o status da tabela do Pulso). */
+export type CampaignStatus = {
+  status: "sem resultado" | "custo subindo" | "sem gasto" | "normal";
+  /** O texto curto do motivo (vazio no normal). */
+  detail: string;
+  /** Resultado dos últimos 7 dias (o minigráfico). */
+  spark: number[];
+  /** Investimento dos últimos 7 dias. */
+  spendSpark: number[];
+  /** O gasto em risco nos últimos 3 dias. */
+  weight: number;
+};
+
+/**
+ * Status de uma campanha pelo dia a dia dela (as plataformas não mandam o liga/desliga):
+ *   - sem gasto: nada investido nos últimos 3 dias;
+ *   - sem resultado: gastou nos últimos 3 dias o custo de pelo menos um resultado médio, sem resultado;
+ *   - custo subindo: custo por resultado dos últimos 3 dias 30% acima dos 7 dias antes deles;
+ *   - normal: o resto. Sem o dia a dia (menos de 7 dias), null.
+ */
+export function campaignStatus(c: Campaign, avgCost: number): CampaignStatus | null {
+  const d = c.daily;
+  if (!d || d.spend.length < 7) return null;
+  const n = d.spend.length;
+  const s3 = sum(d.spend.slice(n - 3));
+  const c3 = sum(d.conversions.slice(n - 3));
+  const sBefore = sum(d.spend.slice(Math.max(0, n - 10), n - 3));
+  const cBefore = sum(d.conversions.slice(Math.max(0, n - 10), n - 3));
+  const base = { spark: d.conversions.slice(n - 7), spendSpark: d.spend.slice(n - 7), weight: s3 };
+  if (s3 <= 0) return { ...base, status: "sem gasto", detail: "sem investimento nos últimos 3 dias" };
+  if (c3 === 0 && avgCost > 0 && s3 >= avgCost) return { ...base, status: "sem resultado", detail: "gastou nos últimos 3 dias sem resultado" };
+  if (c3 > 0 && cBefore > 0) {
+    const now = s3 / c3;
+    const before = sBefore / cBefore;
+    if (before > 0 && now > before * 1.3) return { ...base, status: "custo subindo", detail: `custo por resultado ${Math.round((now / before - 1) * 100)}% acima da semana anterior` };
+  }
+  return { ...base, status: "normal", detail: "" };
+}
+
 /**
  * Campanhas que pedem ação: gastaram nos últimos 3 dias o custo de pelo menos um resultado médio
  * sem nenhum resultado, ou com o custo por resultado 30% acima da semana anterior a esses 3 dias.
@@ -142,27 +181,33 @@ export type ActionItem = {
 export function actionToday(campaigns: readonly Campaign[], avgCost: number, limit = 5): ActionItem[] {
   const out: ActionItem[] = [];
   for (const c of campaigns) {
-    const d = c.daily;
-    if (!d || d.spend.length < 7) continue;
-    const n = d.spend.length;
-    const s3 = sum(d.spend.slice(n - 3));
-    const c3 = sum(d.conversions.slice(n - 3));
-    const sBefore = sum(d.spend.slice(Math.max(0, n - 10), n - 3));
-    const cBefore = sum(d.conversions.slice(Math.max(0, n - 10), n - 3));
-    const spark = d.spend.slice(n - 7);
-    if (s3 > 0 && c3 === 0 && avgCost > 0 && s3 >= avgCost) {
-      out.push({ campaign: c, reason: "sem resultado", detail: "gastou nos últimos 3 dias sem resultado", spark, weight: s3 });
-      continue;
-    }
-    if (c3 > 0 && cBefore > 0) {
-      const now = s3 / c3;
-      const before = sBefore / cBefore;
-      if (before > 0 && now > before * 1.3) {
-        out.push({ campaign: c, reason: "custo subindo", detail: `custo por resultado ${Math.round((now / before - 1) * 100)}% acima da semana anterior`, spark, weight: s3 });
-      }
-    }
+    const s = campaignStatus(c, avgCost);
+    if (s && (s.status === "sem resultado" || s.status === "custo subindo")) out.push({ campaign: c, reason: s.status, detail: s.detail, spark: s.spendSpark, weight: s.weight });
   }
   return out.sort((a, b) => b.weight - a.weight).slice(0, limit);
+}
+
+// ---- Criativo cansando (Pulso) -------------------------------------------------------------------
+
+export type TiredCreative = { creative: Creative; ctr: number; avgCtr: number };
+
+/** Frequência a partir da qual o mesmo público já viu o anúncio vezes demais. */
+export const TIRED_FREQUENCY = 3;
+
+/**
+ * Criativos cansando: frequência de 3 ou mais no período e CTR abaixo da média dos criativos.
+ * Os mais repetidos primeiro. Sem frequência (outras plataformas), não entram.
+ */
+export function tiredCreatives(creatives: readonly Creative[], limit = 5): TiredCreative[] {
+  const seen = creatives.filter((c) => c.impressions > 0);
+  const impressions = sum(seen.map((c) => c.impressions));
+  if (!impressions) return [];
+  const avgCtr = sum(seen.map((c) => c.clicks)) / impressions;
+  return seen
+    .filter((c) => c.frequency >= TIRED_FREQUENCY && c.clicks / c.impressions < avgCtr)
+    .sort((a, b) => b.frequency - a.frequency)
+    .slice(0, limit)
+    .map((c) => ({ creative: c, ctr: c.clicks / c.impressions, avgCtr }));
 }
 
 // ---- Ontem contra a média de 7 dias (Pulso) ------------------------------------------------------

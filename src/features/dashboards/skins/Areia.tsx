@@ -1,9 +1,10 @@
 "use client";
 
-// Visual "Areia" (leads com CRM): tons de areia com terracota nos leads e verde-petróleo
-// nos qualificados. Título que já conta o resultado, faixa de números com minilinha,
-// leads por dia, funil do CRM, origem dos leads, verba do mês e custo por campanha.
-// Gráficos da Bklit UI.
+// Visual "Areia" (pipeline do lead): tons de areia com terracota nos leads e verde-petróleo
+// nos qualificados. Título que já conta o resultado e, na primeira aba, o trilho do funil é a
+// navegação (Anúncio → Lead → as etapas do CRM, com a passagem entre elas): clicar numa etapa
+// mostra o detalhe dela embaixo. Sem CRM, as etapas dele viram um convite só. Nas abas de cada
+// plataforma, "de onde vem o lead" (AreiaParts). Gráficos da Bklit UI.
 
 import { BUDGET_INVITE, GOAL_INVITE, hasBudget, hasGoal } from "@/features/metrics/targets";
 import { BadgeCheck, CalendarDays, CircleDollarSign, Handshake, Percent, Target, Users } from "lucide-react";
@@ -17,6 +18,9 @@ import { BulletBar, HeatGrid, MiniSpark, MoveTag } from "./extras";
 import { FullName } from "./FullName";
 import { heatPeak, sharesOfTotal, WEEKDAYS } from "./insights";
 import { SkinGrid } from "./SkinGrid";
+import { skinGrid } from "./blocks";
+import { CrmStageDetail, FunnelRail, LeadSources, stagesOf, type Stage } from "./AreiaParts";
+import { PAGE_PLATFORM } from "@/features/templates/dashboards/composed";
 import { brl, change, chrono, daily, dayLabel, goalOf, HIDDEN, initials, int, Invite, label, money, pct, platformName, value, type SkinProps } from "./shared";
 
 const P: SkinPalette = {
@@ -44,6 +48,10 @@ const TONE = { fg: P.fg, fg2: P.fg2, line: P.line, accent: P.accent, good: TEAL,
 
 export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar }: SkinProps) {
   const [mode, setMode] = useState<"dia" | "semana">("dia");
+  // o trilho do funil: a etapa escolhida (começa no lead)
+  const [stagePick, setStagePick] = useState("lead");
+  const only = PAGE_PLATFORM[active];
+  const platformTab = only && (active === "meta-ads" || active === "google-ads") && ctx.ds.campaigns.some((c) => c.platform === only) ? only : null;
   const hide = !!ctx.hideSpend;
   const current = ctx.ds.current;
   const days = useMemo(() => chrono(current), [current]);
@@ -261,6 +269,54 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
   // sem CRM: o convite único entra no lugar do primeiro bloco que dependia dele
   const shown: Record<string, React.ReactNode> = inviteIn ? { ...nodes, [inviteIn]: crmInvite } : nodes;
 
+  // a primeira aba: o trilho e o detalhe da etapa escolhida, com os blocos do visual que seguem na grade salva
+  const stages = stagesOf(ctx);
+  const stage = stages.find((st) => st.id === stagePick) ?? stages[1];
+  const present = new Set((grid?.items ?? skinGrid("areia")).map((i) => i.id).filter((id) => !hidden.includes(id)));
+  const cards = (ids: string[]) => {
+    const on = ids.filter((id) => present.has(id));
+    return on.length ? <div className="grid gap-4 @[700px]:grid-cols-3">{on.map((id) => <div key={id} className="min-w-0">{nodes[id as keyof typeof nodes]}</div>)}</div> : null;
+  };
+  const blocks = (ids: { id: string; wide?: boolean; h: string }[]) => {
+    const on = ids.filter((b) => present.has(b.id));
+    return on.length ? (
+      <div className="grid gap-4 @[900px]:grid-cols-3">
+        {on.map((b) => (
+          <div key={b.id} className={`flex min-w-0 flex-col [&>*]:flex-1 ${b.h} ${b.wide || on.length === 1 ? "@[900px]:col-span-2" : ""} ${on.length === 1 ? "@[900px]:col-span-3" : ""}`}>
+            {nodes[b.id as keyof typeof nodes]}
+          </div>
+        ))}
+      </div>
+    ) : null;
+  };
+  const detail = (st: Stage) =>
+    st.kind === "anuncio" ? (
+      <div className="space-y-4">
+        {cards(["s-cpl"])}
+        {blocks([{ id: "s-campanhas", wide: true, h: "h-[340px]" }, { id: "s-verba", h: "h-[340px]" }])}
+      </div>
+    ) : st.kind === "lead" ? (
+      <div className="space-y-4">
+        {/* o número de leads e a variação já estão no trilho; no objetivo de venda, a receita e o ROAS */}
+        {salesGoal && cards(["s-qualificados", "s-vendas"])}
+        {blocks([{ id: "s-diario", wide: true, h: "h-[340px]" }, { id: "s-origem", h: "h-[340px]" }])}
+        {blocks([{ id: "s-calor", wide: true, h: "h-[300px]" }])}
+      </div>
+    ) : st.kind === "crm" && st.crm ? (
+      <CrmStageDetail ctx={ctx} stage={st} stages={stages} accent={P.accent} />
+    ) : st.kind === "crm" ? (
+      // qualificados sem CRM (imobiliário): a parte dos leads, sem o resto do funil
+      cards(["s-qualificados"])
+    ) : (
+      <div className="h-[160px]">{crmInvite}</div>
+    );
+  const pipeline = (
+    <div className="space-y-4" data-pipeline>
+      <FunnelRail stages={stages} picked={stage.id} onPick={setStagePick} money={hide ? undefined : (v) => brlCompact(v)} accent={P.accent} />
+      <div key={stage.id} className="m-in">{detail(stage)}</div>
+    </div>
+  );
+
   // título: na primeira aba conta o resultado do período; nas outras, o nome da aba
   const headline = children ? (
     PAGES[active].name
@@ -318,7 +374,19 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
           <h2 className="mt-1 max-w-[24ch] text-[26px] leading-[1.15] font-bold tracking-tight text-balance @[700px]:text-[32px]">{headline}</h2>
         </div>
 
-        <div className={screen ? "mt-4" : "mt-5"}>{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="areia" ctx={ctx} grid={grid} nodes={shown} hide={hidden} />}</div>
+        <div className={screen ? "mt-4" : "mt-5"}>
+          {children ? (
+            <>
+              {platformTab && <LeadSources ctx={ctx} platform={platformTab} accent={P.accent} />}
+              <SkinPage palette={P}>{children}</SkinPage>
+            </>
+          ) : grid?.editing ? (
+            // no Personalizar, a grade de sempre: esconder e adicionar blocos valem no detalhe das etapas
+            <SkinGrid skin="areia" ctx={ctx} grid={grid} nodes={shown} hide={hidden} />
+          ) : (
+            pipeline
+          )}
+        </div>
       </div>
     </div>
   );

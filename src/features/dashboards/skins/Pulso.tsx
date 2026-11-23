@@ -1,13 +1,13 @@
 "use client";
 
-// Visual "Pulso": escuro, com destaque vibrante. Barra lateral com as abas (ícone e nome),
-// card de visão geral em roxo com a onda e o pico marcado, dois blocos coloridos (roxo e
-// rosa), as campanhas que mais trazem resultado (participação e custo de cada uma, contra a
-// média) e a coluna da direita com os criativos e o público (idade e gênero).
+// Visual "Pulso": painel de operação, escuro e com destaque vibrante. Barra lateral com as abas,
+// a primeira aba densa (visão geral com a onda, custo, ritmo da verba, ontem contra a semana, a
+// tabela de status das campanhas e o ranking), a aba "Ações de hoje" e, em todas as abas, a
+// lateral "Atenção agora" (recolhível). Nas abas de cada plataforma, o status das campanhas
+// dela; em Criativos, os que estão cansando primeiro (PulsoParts.tsx).
 // Nada de número inventado: meta de custo e verba do mês só aparecem quando o dashboard tem
 // (metrics/targets); sem elas, o bloco mostra outro dado real ou o convite para definir.
 
-import { CreativeImage, isVideoFormat } from "../widgets/CreativeImage";
 import {
   ArrowLeftRight,
   BarChart3,
@@ -26,6 +26,7 @@ import {
   PieChart,
   Search,
   Share2,
+  Siren,
   Target,
   TrendingUp,
   Type,
@@ -39,10 +40,12 @@ import { BUDGET_INVITE, GOAL_INVITE, hasBudget, hasGoal } from "@/features/metri
 import { PAGES } from "@/features/templates/pages";
 import type { PageId } from "@/features/templates/types";
 import { ChartTheme, dayDates, FlowLines, SkinBar, SkinChrome, SkinPage, Spark, type SkinPalette } from "./bklit-blocks";
-import { BulletBar, MiniSpark, MoveTag, PacingChart } from "./extras";
+import { BulletBar, MoveTag, PacingChart } from "./extras";
 import { FullName } from "./FullName";
-import { actionToday, campaignMovers, dayNotes, pacing, yesterdayVsWeek } from "./insights";
+import { campaignMovers, dayNotes, pacing, yesterdayVsWeek } from "./insights";
 import { SkinGrid } from "./SkinGrid";
+import { ActionsPage, AttentionPanel, C, PlatformStatus, StatusTable, TiredStrip, TONE, useAttentionClosed } from "./PulsoParts";
+import { PAGE_PLATFORM } from "@/features/templates/dashboards/composed";
 import {
   buckets,
   change,
@@ -54,27 +57,10 @@ import {
   int,
   label,
   money,
-  platformName,
   value,
   type SkinProps,
 } from "./shared";
 
-const C = {
-  bg: "#07050f",
-  frame: "#110d1e",
-  card: "#1a1530",
-  card2: "#221b3d",
-  side: "linear-gradient(180deg,#2b1e63 0%,#1a1340 100%)",
-  sideActive: "#7b5cff",
-  purple: "linear-gradient(150deg,#7c5cff 0%,#5434d4 100%)",
-  purpleFlat: "#7b5cff",
-  pink: "linear-gradient(150deg,#ff5fa9 0%,#de2f7e 100%)",
-  pinkFlat: "#ff5fa9",
-  fg: "#f4f1ff",
-  fg2: "#a79ecf",
-  line: "#2a2346",
-  green: "#3ee08f",
-};
 
 // cores dos gráficos (Bklit UI) sobre o roxo: tooltip escuro, texto branco
 const CHART: SkinPalette = { scheme: "dark", bg: "#2e1f78", card: "#5434d4", fg: "#ffffff", fg2: "rgb(255 255 255 / 0.75)", line: "rgb(255 255 255 / 0.25)", accent: "#ff7ab8", accentSoft: "#4a1f45", onAccent: "#ffffff", muted: "rgb(255 255 255 / 0.3)", error: "#ffd0c8", errorSoft: "#5a2a3a", good: "#8ff0b0" };
@@ -85,6 +71,7 @@ const PAGE: SkinPalette = { scheme: "dark", bg: C.frame, card: C.card, fg: C.fg,
 /** Ícone de cada aba na barra lateral (o nome vai embaixo). */
 const PAGE_ICON: Partial<Record<PageId, LucideIcon>> = {
   "visao-geral": Gauge,
+  "acoes-hoje": Siren,
   "meta-ads": Megaphone,
   criativos: ImageIcon,
   publico: Users,
@@ -105,10 +92,6 @@ const PAGE_ICON: Partial<Record<PageId, LucideIcon>> = {
   campanhas: Megaphone,
 };
 
-const CARD_ICONS: LucideIcon[] = [Target, TrendingUp, Zap];
-
-/** Cores dos blocos exclusivos (extras.tsx) no escuro do Pulso. */
-const TONE = { fg: C.fg, fg2: C.fg2, line: C.line, accent: C.pinkFlat, good: C.green, bad: "#ff6b8b" };
 
 /** Card escuro dos blocos novos, com título e a linha de apoio. */
 function Card({ title, note, children, ...data }: { title: string; note?: React.ReactNode; children: React.ReactNode; "data-ritmo"?: number }) {
@@ -137,7 +120,13 @@ export function PulsoSkin({
   children,
   screen,
   bar,
+  syncHours,
 }: SkinProps) {
+  // "Ações de hoje": a aba do próprio visual (a lateral some, a aba é ela por inteiro)
+  const ownPage = active === "acoes-hoje" && !children;
+  const closed = useAttentionClosed();
+  const only = PAGE_PLATFORM[active];
+  const platformTab = only && (active === "meta-ads" || active === "google-ads") ? only : null;
   const days = chrono(ctx.ds.current);
   // vendas, leads, agendamentos...: pelo objetivo do modelo
   const { sales, conv, cost } = goalOf(ctx.profile, ctx.cur.leads);
@@ -179,16 +168,6 @@ export function PulsoSkin({
   const left = Math.max(0, budget.daysInMonth - budget.day);
   const withBudget = hasBudget(ctx.ds);
   const withGoal = hasGoal(ctx.ds);
-  const creatives = useMemo(
-    () => [...ctx.ds.creatives].sort((a, b) => b.conversions - a.conversions),
-    [ctx.ds.creatives],
-  );
-  const [crTab, setCrTab] = useState<"todos" | "video">("todos");
-  const crList = (
-    crTab === "todos"
-      ? creatives
-      : creatives.filter((c) => /v[íi]deo|reels/i.test(c.format))
-  ).slice(0, 5);
   const costSeries = buckets(
     days.map((d) => d.spend),
     8,
@@ -207,13 +186,11 @@ export function PulsoSkin({
   const costNow = ctx.cur[cost];
   const costTrend = change(ctx, cost);
   const goalOk = withGoal ? costNow <= ctx.ds.goal : null;
-  const campaignTotal = Math.max(1, campaigns.reduce((a, c) => a + c.conversions, 0));
   const convWord = label(ctx, "conversions").toLowerCase();
   const costWord = label(ctx, cost).replace(/^Custo por /i, "por ");
 
   // blocos de operação do dia: ritmo da verba, ontem, o que pede ação e o ranking
   const pace = useMemo(() => pacing(ctx.ds), [ctx.ds]);
-  const actions = useMemo(() => actionToday(campaigns, costNow), [campaigns, costNow]);
   // (o React Compiler memoriza estes cálculos)
   const movers = campaignMovers(ctx.ds.campaigns, sales ? "revenue" : "conversions");
   const yday = [
@@ -221,57 +198,6 @@ export function PulsoSkin({
     { label: label(ctx, conv), check: yesterdayVsWeek(ctx.ds.current, (d) => d[conv]), fmt: (v: number) => decimal(v, v < 10 ? 1 : 0), money: false },
   ];
   const notes = dayNotes(ctx.ds.current, (d) => d[conv], 2);
-
-  /** Uma das campanhas que mais trazem resultado: a participação dela e o custo contra a média. */
-  const progCard = (k: number) => {
-    const c = campaigns[k];
-    if (!c) return null;
-    const Icon = CARD_ICONS[k % CARD_ICONS.length];
-    const share = c.conversions / campaignTotal;
-    const cpaC = c.conversions > 0 ? c.spend / c.conversions : null;
-    const cheaper = cpaC !== null && cpaC <= costNow;
-    // o ícone flutua acima do card: o espaço dele fica dentro do bloco da grade
-    return (
-      <div className="flex min-w-0 flex-col pt-7">
-        <section
-          className="relative flex min-w-0 flex-1 flex-col rounded-[22px] border px-4 pt-11 pb-4"
-          style={{ background: C.card, borderColor: C.line }}
-        >
-          <span
-            className="absolute -top-7 left-1/2 grid size-[58px] -translate-x-1/2 place-items-center rounded-[16px] text-white shadow-[0_10px_30px_rgba(123,92,255,.45)]"
-            style={{ background: C.purple }}
-          >
-            <Icon size={26} strokeWidth={1.8} />
-          </span>
-          <FullName text={c.name} className="text-center text-[15px] font-bold" />
-          <p className="text-center text-[11px]" style={{ color: C.fg2 }}>
-            {platformName(c.platform)} · {money(ctx, c.spend, true)}
-          </p>
-          {/* a participação fica na base do card: sobra de altura vira respiro no meio, não um vazio embaixo */}
-          <p className="mt-auto flex justify-between gap-2 pt-4 text-[11.5px] font-semibold">
-            <span>Participação em {convWord}</span>
-            <span className="tnum">{decimal(share * 100, 0)}%</span>
-          </p>
-          <div className="mt-1.5 h-[7px] rounded-full" style={{ background: C.line }}>
-            <div className="h-full rounded-full" style={{ width: `${Math.max(2, share * 100)}%`, background: C.pink }} />
-          </div>
-          <p className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10.5px]" style={{ color: C.fg2 }}>
-            <span className="tnum">
-              {int(c.conversions)} de {int(campaignTotal)}
-            </span>
-            {cpaC !== null && !ctx.hideSpend && (
-              <span
-                className="rounded-full px-3 py-1 font-semibold tnum"
-                style={cheaper ? { background: "rgb(62 224 143 / 0.14)", color: C.green } : { background: "rgb(255 95 169 / 0.16)", color: C.pinkFlat }}
-              >
-                {money(ctx, cpaC, true)} {costWord} · {cheaper ? "abaixo" : "acima"} da média
-              </span>
-            )}
-          </p>
-        </section>
-      </div>
-    );
-  };
 
   return (
     // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
@@ -282,7 +208,7 @@ export function PulsoSkin({
     >
       <SkinBar palette={PAGE} bar={bar} className="px-4 pt-3 @[700px]:px-5" />
       <div
-        className={`grid overflow-hidden ${screen ? "flex-1" : "rounded-[28px] border"} ${children ? "" : "@[1000px]:grid-cols-[minmax(0,1fr)_260px]"}`}
+        className={`grid overflow-hidden ${screen ? "flex-1" : "rounded-[28px] border"} ${ownPage ? "" : closed ? "@[1000px]:grid-cols-[minmax(0,1fr)_64px]" : "@[1000px]:grid-cols-[minmax(0,1fr)_300px]"}`}
         style={{ background: C.frame, borderColor: C.line }}
       >
         <div className={`flex min-w-0 gap-5 p-4 @[700px]:p-5 ${screen ? "pb-[var(--screen-pb,7rem)] @[700px]:pb-[var(--screen-pb,7rem)]" : ""}`}>
@@ -357,14 +283,23 @@ export function PulsoSkin({
             <SkinChrome palette={PAGE} controls={controls} note={note} screen={screen} className="mt-4" />
 
             <div className="mt-5">
-              {children ? <SkinPage palette={PAGE}>{children}</SkinPage> : (
+              {children ? (
+                <>
+                  {/* abas de uma plataforma: o status das campanhas dela; Criativos: os que estão cansando primeiro */}
+                  {platformTab && campaigns.some((c) => c.platform === platformTab) && <PlatformStatus ctx={ctx} platform={platformTab} />}
+                  {active === "criativos" && ctx.ds.creatives.length > 0 && <TiredStrip ctx={ctx} />}
+                  <SkinPage palette={PAGE}>{children}</SkinPage>
+                </>
+              ) : ownPage ? (
+                <ActionsPage ctx={ctx} syncHours={syncHours} pages={pages} onPage={onPage} />
+              ) : (
               <SkinGrid
                 skin="pulso"
                 palette={PAGE}
                 ctx={ctx}
                 grid={grid}
-                // nada em branco: com menos de 3 campanhas no período, os cards que sobrariam vazios saem
-                hide={[0, 1, 2].filter((k) => !campaigns[k]).map((k) => `s-prog${k + 1}`)}
+                // nada em branco: sem campanhas no período (só GA4 ou orgânico), a tabela sai
+                hide={campaigns.length ? [] : ["s-tabela"]}
                 nodes={{
                   "s-visao": (
                     <section className="relative min-w-0 overflow-hidden rounded-[24px] text-white shadow-[0_18px_50px_rgba(84,52,212,.35)]" style={{ background: C.purple }}>
@@ -518,7 +453,7 @@ export function PulsoSkin({
                               {pace.status === "no ritmo" ? "no ritmo" : pace.status === "estoura" ? `vai estourar: fecha em ${money(ctx, pace.projected, true)}` : `vai sobrar: fecha em ${money(ctx, pace.projected, true)}`}
                             </span>
                           </p>
-                          <PacingChart p={pace} tone={TONE} format={(v) => money(ctx, v, true)} className="mt-3 h-[110px] flex-1" />
+                          <PacingChart p={pace} tone={TONE} format={(v) => money(ctx, v, true)} className="mt-3 min-h-[110px] flex-1" />
                           <p className="mt-2 text-[10.5px]" style={{ color: C.fg2 }}>Tracejado: o ideal até o fim do mês · pontilhado: para onde vai no ritmo dos últimos 7 dias</p>
                         </>
                       ) : (
@@ -558,29 +493,9 @@ export function PulsoSkin({
                       <p className="mt-auto pt-3 text-[10.5px]" style={{ color: C.fg2 }}>Ontem ainda está em maturação: as conversões podem subir.</p>
                     </Card>
                   ),
-                  "s-acao": (
-                    <Card title="Precisa de ação hoje" note="últimos 3 dias">
-                      {actions.length === 0 ? (
-                        <p className="m-auto text-center text-[12.5px]" style={{ color: C.fg2 }}>
-                          Nenhuma campanha gastando sem resultado ou com o custo subindo nos últimos 3 dias.
-                        </p>
-                      ) : (
-                        <ul className="divide-y" style={{ borderColor: C.line }}>
-                          {actions.map((a) => (
-                            <li key={a.campaign.id} className="flex min-w-0 items-center gap-3 py-2.5" style={{ borderColor: C.line }}>
-                              <span className="size-2 shrink-0 rounded-full" style={{ background: a.reason === "sem resultado" ? "#ff6b8b" : C.pinkFlat }} aria-hidden />
-                              <span className="min-w-0 flex-1">
-                                <FullName text={a.campaign.name} className="text-[12.5px] font-semibold" />
-                                <span className="block text-[11px]" style={{ color: C.fg2 }}>
-                                  {a.detail}
-                                </span>
-                              </span>
-                              <MiniSpark values={a.spark} color={C.pinkFlat} className="h-7 w-20 shrink-0" label="Investimento nos últimos 7 dias" />
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      <p className="mt-auto pt-2 text-[10.5px]" style={{ color: C.fg2 }}>Os últimos dias ainda estão em maturação: confira antes de pausar.</p>
+                  "s-tabela": (
+                    <Card title="Campanhas agora" note="status pelos últimos dias · clique no nome para filtrar">
+                      <StatusTable ctx={ctx} className="-mx-1 flex-1 px-1" />
                     </Card>
                   ),
                   "s-ranking": (
@@ -601,9 +516,6 @@ export function PulsoSkin({
                       )}
                     </Card>
                   ),
-                  "s-prog1": progCard(0),
-                  "s-prog2": progCard(1),
-                  "s-prog3": progCard(2),
                 }}
               />
               )}
@@ -611,129 +523,17 @@ export function PulsoSkin({
           </div>
         </div>
 
-        {/* coluna da direita: só na primeira aba (as outras usam a largura toda) */}
-        {!children && (
+        {/* lateral "Atenção agora": em todas as abas (em Ações de hoje, a aba é ela por inteiro); recolhível */}
+        {!ownPage && (
           <aside
-            // na tela do dashboard a coluna da direita não dita a altura: acompanha a dos blocos e rola dentro
-            className={`min-w-0 border-t p-5 @[1000px]:border-t-0 @[1000px]:border-l ${screen ? "@[1000px]:overflow-y-auto @[1000px]:[contain:size] @[1000px]:[scrollbar-width:thin]" : ""}`}
+            // na tela do dashboard a lateral não dita a altura: acompanha a dos blocos e rola dentro; no estreito, vem antes dos blocos
+            className={`order-first min-w-0 p-4 @[700px]:px-5 @[1000px]:order-none @[1000px]:border-l ${closed ? "@[1000px]:p-0" : "@[1000px]:p-5"} ${screen ? "@[1000px]:overflow-y-auto @[1000px]:[contain:size] @[1000px]:[scrollbar-width:thin]" : ""}`}
             style={{ borderColor: C.line, background: "#0d0a18" }}
           >
-            <div className="flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-[15px] font-bold">
-                <ImageIcon size={17} style={{ color: C.pinkFlat }} /> Criativos
-              </h3>
-              {pages.includes("criativos") && (
-                <button type="button" onClick={() => onPage?.("criativos")} className="text-[11px] font-semibold" style={{ color: C.pinkFlat }}>
-                  Ver todos
-                </button>
-              )}
-            </div>
-            <div className="mt-4 grid grid-cols-2 rounded-[14px] p-1 text-[12px]" style={{ background: C.card }}>
-              {(["todos", "video"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setCrTab(t)}
-                  className="rounded-[10px] py-2 font-semibold"
-                  style={t === crTab ? { background: C.purple, color: "#fff" } : { color: C.fg2 }}
-                >
-                  {t === "todos" ? "Ativos" : "Vídeos"}
-                </button>
-              ))}
-            </div>
-            <ul className="mt-4 space-y-4">
-              {crList.length === 0 && (
-                <li className="text-[12px]" style={{ color: C.fg2 }}>
-                  {crTab === "video" ? "Nenhum vídeo no período." : "Nenhum criativo no período."}
-                </li>
-              )}
-              {crList.map((c, i) => (
-                <li key={c.id} className="flex min-w-0 items-center gap-3">
-                  {/* dados reais: a imagem do anúncio; amostra ou sem imagem: as iniciais */}
-                  <CreativeImage
-                    src={c.imageUrl}
-                    video={isVideoFormat(c.format)}
-                    compact
-                    className="size-10 shrink-0 rounded-full ring-2 ring-[#7b5cff]/40"
-                    fallback={
-                      <span className="grid size-full place-items-center text-[11px] font-bold text-white" style={{ background: ["#7b5cff", "#ff5fa9", "#3ea7ff", "#ffb347", "#3ee08f"][i % 5] }}>
-                        {initials(c.name)}
-                      </span>
-                    }
-                  />
-                  <span className="min-w-0 flex-1 leading-tight">
-                    <FullName text={c.name} className="text-[12.5px] font-bold" />
-                    <span className="block truncate text-[10.5px]" style={{ color: C.fg2 }}>
-                      {c.format} · {platformName(c.platform)}
-                    </span>
-                    <span className="block text-[10.5px] tnum">
-                      <strong className="font-bold" style={{ color: C.pinkFlat }}>{int(c.conversions)}</strong> <span style={{ color: C.fg2 }}>{convWord}</span>
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-
-            <Audience ctx={ctx} />
+            <AttentionPanel ctx={ctx} syncHours={syncHours} pages={pages} onPage={onPage} closed={closed} />
           </aside>
         )}
       </div>
-    </div>
-  );
-}
-
-/** Público de verdade: idade (barras) e gênero, pela parte das impressões; sem o dado, diz que falta. */
-function Audience({ ctx }: { ctx: SkinProps["ctx"] }) {
-  const ages = ctx.ds.audience.filter((a) => a.share > 0).slice(0, 5);
-  const gender = ctx.ds.gender.filter((g) => g.share > 0);
-  const top = Math.max(0.0001, ...ages.map((a) => a.share));
-  return (
-    <div className="mt-6 border-t pt-5" style={{ borderColor: C.line }}>
-      <h3 className="flex items-center justify-between text-[15px] font-bold">
-        <span className="flex items-center gap-2">
-          <Users size={17} style={{ color: C.pinkFlat }} /> Público
-        </span>
-        <span className="text-[10.5px] font-medium" style={{ color: C.fg2 }}>
-          parte das impressões
-        </span>
-      </h3>
-      {ages.length === 0 && gender.length === 0 ? (
-        <p className="mt-3 text-[12px]" style={{ color: C.fg2 }}>
-          Sem dados de idade e gênero no período.
-        </p>
-      ) : (
-        <>
-          {ages.length > 0 && (
-            <ul className="mt-3 space-y-2" aria-label="Idade">
-              {ages.map((a) => (
-                <li key={a.label} className="grid grid-cols-[44px_minmax(0,1fr)_34px] items-center gap-2 text-[11px]">
-                  <span style={{ color: C.fg2 }}>{a.label}</span>
-                  <span className="h-[8px] rounded-full" style={{ background: C.line }}>
-                    <span className="block h-full rounded-full" style={{ width: `${(a.share / top) * 100}%`, background: a.share === top ? C.pink : C.purple }} />
-                  </span>
-                  <span className="text-right font-semibold tnum">{decimal(a.share * 100, 0)}%</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {gender.length > 0 && (
-            <div className="mt-4" aria-label="Gênero">
-              <div className="flex h-[10px] overflow-hidden rounded-full">
-                {gender.map((g, i) => (
-                  <span key={g.label} style={{ width: `${g.share * 100}%`, background: i === 0 ? C.pinkFlat : C.purpleFlat }} />
-                ))}
-              </div>
-              <p className="mt-1.5 flex justify-between text-[11px]" style={{ color: C.fg2 }}>
-                {gender.map((g) => (
-                  <span key={g.label}>
-                    {g.label} <span className="font-semibold tnum" style={{ color: C.fg }}>{decimal(g.share * 100, 0)}%</span>
-                  </span>
-                ))}
-              </p>
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
 }

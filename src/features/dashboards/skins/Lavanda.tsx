@@ -24,7 +24,7 @@ import { BulletBar, WaterfallBars } from "./extras";
 import { FullName } from "./FullName";
 import { ADJUST_LABEL, bestDay, waterfall } from "./insights";
 import { CreativeImage, isVideoFormat } from "../widgets/CreativeImage";
-import { SkinGrid } from "./SkinGrid";
+import { LavandaReport } from "./LavandaReport";
 import {
   buckets,
   change,
@@ -87,7 +87,7 @@ const PAGE: SkinPalette = { ...CHART, bg: "#f8f9fd", accentSoft: "#e4e1fd", mute
 type Tab = "todas" | PlatformId;
 
 export function LavandaSkin({
-  ctx,
+  ctx: baseCtx,
   name,
   client,
   pages,
@@ -100,7 +100,12 @@ export function LavandaSkin({
   children,
   screen,
   bar,
+  month,
 }: SkinProps) {
+  // "Mês anterior fechado": o mês inteiro contra o mês antes dele (não contra o trecho do período anterior)
+  const monthOn = !!month?.active && !!month.before;
+  const ctx = monthOn ? { ...baseCtx, prev: month!.before! } : baseCtx;
+  const prevName = monthOn ? month!.info.beforeLabel : "o período anterior";
   const campaigns = useMemo(
     () => [...ctx.ds.campaigns].sort((a, b) => b.spend - a.spend),
     [ctx.ds.campaigns],
@@ -176,102 +181,9 @@ export function LavandaSkin({
     { id: g.efficiency, label: label(ctx, g.efficiency), money: false },
   ].filter((r) => !(ctx.hideSpend && r.money));
 
-  return (
-    // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
-    <div
-      className={screen ? "@container" : "@container rounded-[28px] p-3 @[700px]:p-6"}
-      style={{ background: screen ? "#f8f9fd" : C.bg, color: C.fg }}
-    >
-      <div
-        className={screen ? "min-h-dvh px-4 pt-3 pb-[var(--screen-pb,7rem)] @[700px]:px-6" : "rounded-[24px] p-4 @[700px]:p-6"}
-        style={{ background: "#f8f9fd" }}
-      >
-        <SkinBar palette={PAGE} bar={bar} className="mb-3" />
-        {/* topo: marca, navegação em pílulas e ícones */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span
-              className="grid size-8 place-items-center rounded-[10px] text-white"
-              style={{ background: C.accent }}
-            >
-              <Wallet size={16} />
-            </span>
-            <div className="leading-tight">
-              <p className="text-[15px] font-bold tracking-tight uppercase">
-                {client}
-              </p>
-              <p className="text-[10px]" style={{ color: C.fg2 }}>
-                Mídia paga, decisões melhores
-              </p>
-            </div>
-          </div>
-          <span
-            className="grid size-9 place-items-center rounded-full border text-[12px] font-semibold"
-            style={{ borderColor: C.line, background: C.card }}
-          >
-            {days.length}
-          </span>
-          <nav
-            data-tour="abas"
-            className="flex min-w-0 max-w-full flex-nowrap gap-1 overflow-x-auto rounded-full p-1 [scrollbar-width:none] [&>*]:shrink-0 [&>*]:whitespace-nowrap"
-            style={{ background: C.dark }}
-          >
-            {pages.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => onPage?.(p)}
-                className="rounded-full px-3 py-1.5 text-[11.5px] font-medium transition-colors"
-                style={
-                  p === active
-                    ? { background: C.accent, color: "#fff" }
-                    : { color: "#d6d7e4" }
-                }
-              >
-                {p === active ? "+ " : ""}
-                {PAGES[p].name}
-              </button>
-            ))}
-          </nav>
-          {/* os atalhos de enfeite (PDF, agenda, link, sino) e o avatar repetido não tinham ação: saíram */}
-        </div>
-
-        {/* título (com o voltar de verdade no topo, a seta de enfeite sai para não repetir) */}
-        <div className={`flex flex-wrap items-center ${screen ? "mt-3 gap-3" : "mt-6 gap-4"}`}>
-          {/* na tela do dashboard, título e frase dividem a linha: sobra altura para os blocos */}
-          <div className={screen ? "min-w-0 flex-1 @[1000px]:flex @[1000px]:items-baseline @[1000px]:gap-3" : "min-w-0 flex-1"}>
-            <h2 className={`leading-none font-bold tracking-[-0.03em] ${screen ? "text-[24px]" : "text-[30px]"}`}>
-              {name}
-            </h2>
-            <p className={`text-[13px] ${screen ? "mt-1 min-w-0 truncate @[1000px]:mt-0" : "mt-1"}`} style={{ color: C.fg2 }}>
-              Acompanhe {g.sales ? "receita" : label(ctx, g.conv).toLowerCase()}, investimento e campanhas num lugar só ·{" "}
-              {periodLabel}
-            </p>
-          </div>
-          {/* selo informativo (não é botão): o número principal do objetivo no período */}
-          <p
-            className="flex shrink-0 items-baseline gap-2 rounded-full border px-4 py-1.5 text-[12px]"
-            style={{ borderColor: C.accentSoft, background: "#eeedfd", color: C.fg2 }}
-            data-selo
-          >
-            {label(ctx, g.value)} <strong className="text-[15px] font-bold tnum" style={{ color: C.accent }}>{value(ctx, g.value)}</strong>
-          </p>
-        </div>
-
-        <SkinChrome palette={PAGE} controls={controls} note={note} screen={screen} className="mt-4" />
-
-        {/* respiro entre o título e os cards; nas outras abas, os blocos padrão na paleta do visual */}
-        <div className={screen ? "mt-3" : "mt-5"}>
-        {children ? <SkinPage palette={PAGE}>{children}</SkinPage> : (
-        <SkinGrid
-          skin="lavanda"
-          palette={PAGE}
-          ctx={ctx}
-          grid={grid}
-          // nada em branco: sem campanhas no período (só GA4 ou orgânico), a lista e os filtros dela saem
-          // a barra de filtros era só desenho: sai (a plataforma e a busca ficam no painel das campanhas)
-          hide={campaigns.length ? ["s-filtros"] : ["s-filtros", "s-campanhas"]}
-          nodes={{
+  // nada em branco: sem campanhas no período (só GA4 ou orgânico), a lista sai; a barra de filtros era só desenho
+  const hide = campaigns.length ? ["s-filtros"] : ["s-filtros", "s-campanhas"];
+  const nodes: Record<string, React.ReactNode> = {
             "s-cpa": (
               <section
                 className="fit-fill flex min-h-[230px] flex-col overflow-hidden rounded-[20px] border p-4"
@@ -285,7 +197,7 @@ export function LavandaSkin({
                 <p className="mt-3 shrink-0 text-[28px] leading-tight font-bold tracking-tight tnum">
                   {value(ctx, g.cost)}
                 </p>
-                <Trend c={cpa} />
+                <Trend c={cpa} against={monthOn ? `a ${prevName}` : "ao período anterior"} />
                 {costKnown.length >= 2 && !ctx.hideSpend ? (
                   <>
                     <ChartTheme palette={CHART} className="mt-2 flex min-h-[min(72px,var(--fit-cap,72px))] flex-1 flex-col">
@@ -327,7 +239,7 @@ export function LavandaSkin({
             "s-resumo": (
               // resumo do período em texto, montado pelos números (para ler em voz alta na reunião)
               <section className="fit-fill flex min-w-0 flex-col justify-center rounded-[20px] p-4 text-white @[700px]:px-6" style={{ background: C.panel }} data-resumo>
-                <p className="text-[11px] tracking-[0.12em] uppercase opacity-75">Resumo · {periodLabel}</p>
+                <p className="text-[11px] tracking-[0.12em] uppercase opacity-75">Resumo · {monthOn ? month!.info.label : periodLabel}</p>
                 <p className="mt-1.5 text-[14px] leading-relaxed @[700px]:text-[15.5px]">
                   <strong className="font-bold">{value(ctx, g.value)}</strong> {g.sales ? "de receita" : label(ctx, g.value).toLowerCase()}
                   {!ctx.hideSpend && (
@@ -335,7 +247,7 @@ export function LavandaSkin({
                       {" "}com <strong className="font-bold">{money(ctx, ctx.cur.spend, true)}</strong> investidos
                     </>
                   )}
-                  {word(rev) && <> ({word(rev)} contra o período anterior)</>}.{" "}
+                  {word(rev) && <> ({word(rev)} contra {prevName})</>}.{" "}
                   {!ctx.hideSpend && (
                     <>
                       O {label(ctx, g.cost).toLowerCase()} ficou em <strong className="font-bold">{value(ctx, g.cost)}</strong>
@@ -399,7 +311,7 @@ export function LavandaSkin({
               </Card>
             ),
             "s-comparativo": (
-              <Card title="Este período e o anterior" note="mesmo número de dias">
+              <Card title={monthOn ? `${cap(month!.info.label.replace(/ de \d+$/, ""))} e ${prevName}` : "Este período e o anterior"} note={monthOn ? "mês contra mês" : "mesmo número de dias"}>
                 <ul className="space-y-3">
                   {cmpRows.map((r) => {
                     const now = ctx.cur[r.id];
@@ -426,14 +338,14 @@ export function LavandaSkin({
                   })}
                 </ul>
                 <p className="mt-auto flex gap-3 pt-3 text-[10.5px]" style={{ color: C.fg2 }}>
-                  <span className="flex items-center gap-1"><span className="size-2 rounded-full" style={{ background: C.accentSoft }} /> anterior</span>
-                  <span className="flex items-center gap-1"><span className="size-2 rounded-full" style={{ background: C.accent }} /> este período</span>
+                  <span className="flex items-center gap-1"><span className="size-2 rounded-full" style={{ background: C.accentSoft }} /> {monthOn ? prevName : "anterior"}</span>
+                  <span className="flex items-center gap-1"><span className="size-2 rounded-full" style={{ background: C.accent }} /> {monthOn ? month!.info.label.replace(/ de \d+$/, "") : "este período"}</span>
                 </p>
               </Card>
             ),
             "s-cascata": (
               <Card title="O que explica a variação" note={`${label(ctx, valueKey)} por campanha`}>
-                {cascade && !(ctx.hideSpend && g.sales) ? (
+                {cascade && !monthOn && !(ctx.hideSpend && g.sales) ? (
                   <>
                     <div className="flex min-h-0 flex-1 flex-col" data-cascata-de={cascade.start} data-cascata-para={cascade.end}>
                       <WaterfallBars w={cascade} tone={TONE} base={C.accent} format={(v) => (g.sales ? money(ctx, v, true) : int(v))} />
@@ -445,7 +357,7 @@ export function LavandaSkin({
                     )}
                   </>
                 ) : (
-                  <p className="m-auto text-center text-[12.5px]" style={{ color: C.fg2 }}>Sem o período anterior por campanha para comparar.</p>
+                  <p className="m-auto text-center text-[12.5px]" style={{ color: C.fg2 }}>{monthOn ? `No mês fechado, a comparação com ${prevName} é dos totais: por campanha, só no período corrido.` : "Sem o período anterior por campanha para comparar."}</p>
                 )}
               </Card>
             ),
@@ -466,7 +378,7 @@ export function LavandaSkin({
                 <p className="mt-3 shrink-0 text-[28px] leading-tight font-bold tracking-tight tnum">
                   {value(ctx, g.value)}
                 </p>
-                <Trend c={rev} />
+                <Trend c={rev} against={monthOn ? `a ${prevName}` : "ao período anterior"} />
                 <ChartTheme palette={CHART} className="mt-2 flex min-h-[min(92px,var(--fit-cap,92px))] flex-1 flex-col">
                   <WeekBars
                     className="flex-1"
@@ -495,7 +407,7 @@ export function LavandaSkin({
                 <p className="mt-3 shrink-0 text-[28px] leading-tight font-bold tracking-tight tnum">
                   {value(ctx, g.efficiency)}
                 </p>
-                <Trend c={roas} />
+                <Trend c={roas} against={monthOn ? `a ${prevName}` : "ao período anterior"} />
                 <ChartTheme palette={CHART} className="mt-2 flex min-h-[min(92px,var(--fit-cap,92px))] flex-1 flex-col">
                   <FlowLines
                     className="-mx-4 -mb-4 flex-1 overflow-hidden rounded-b-[20px]"
@@ -817,7 +729,107 @@ export function LavandaSkin({
                 </div>
               </div>
             ),
-          }}
+};
+
+  return (
+    // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
+    <div
+      className={screen ? "@container" : "@container rounded-[28px] p-3 @[700px]:p-6"}
+      style={{ background: screen ? "#f8f9fd" : C.bg, color: C.fg }}
+    >
+      <div
+        className={screen ? "min-h-dvh px-4 pt-3 pb-[var(--screen-pb,7rem)] @[700px]:px-6" : "rounded-[24px] p-4 @[700px]:p-6"}
+        style={{ background: "#f8f9fd" }}
+      >
+        <SkinBar palette={PAGE} bar={bar} className="mb-3" />
+        {/* topo: marca, navegação em pílulas e ícones */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span
+              className="grid size-8 place-items-center rounded-[10px] text-white"
+              style={{ background: C.accent }}
+            >
+              <Wallet size={16} />
+            </span>
+            <div className="leading-tight">
+              <p className="text-[15px] font-bold tracking-tight uppercase">
+                {client}
+              </p>
+              <p className="text-[10px]" style={{ color: C.fg2 }}>
+                Mídia paga, decisões melhores
+              </p>
+            </div>
+          </div>
+          <span
+            className="grid size-9 place-items-center rounded-full border text-[12px] font-semibold"
+            style={{ borderColor: C.line, background: C.card }}
+          >
+            {days.length}
+          </span>
+          <nav
+            data-tour="abas"
+            className="flex min-w-0 max-w-full flex-nowrap gap-1 overflow-x-auto rounded-full p-1 [scrollbar-width:none] [&>*]:shrink-0 [&>*]:whitespace-nowrap"
+            style={{ background: C.dark }}
+          >
+            {pages.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => onPage?.(p)}
+                className="rounded-full px-3 py-1.5 text-[11.5px] font-medium transition-colors"
+                style={
+                  p === active
+                    ? { background: C.accent, color: "#fff" }
+                    : { color: "#d6d7e4" }
+                }
+              >
+                {p === active ? "+ " : ""}
+                {p === "visao-geral" ? REPORT_NAME : PAGES[p].name}
+              </button>
+            ))}
+          </nav>
+          {/* os atalhos de enfeite (PDF, agenda, link, sino) e o avatar repetido não tinham ação: saíram */}
+        </div>
+
+        {/* título (com o voltar de verdade no topo, a seta de enfeite sai para não repetir) */}
+        <div className={`flex flex-wrap items-center ${screen ? "mt-3 gap-3" : "mt-6 gap-4"}`}>
+          {/* na tela do dashboard, título e frase dividem a linha: sobra altura para os blocos */}
+          <div className={screen ? "min-w-0 flex-1 @[1000px]:flex @[1000px]:items-baseline @[1000px]:gap-3" : "min-w-0 flex-1"}>
+            <h2 className={`leading-none font-bold tracking-[-0.03em] ${screen ? "text-[24px]" : "text-[30px]"}`}>
+              {name}
+            </h2>
+            <p className={`text-[13px] ${screen ? "mt-1 min-w-0 truncate @[1000px]:mt-0" : "mt-1"}`} style={{ color: C.fg2 }}>
+              Acompanhe {g.sales ? "receita" : label(ctx, g.conv).toLowerCase()}, investimento e campanhas num lugar só ·{" "}
+              {monthOn ? `mês fechado · ${month!.info.label}` : periodLabel}
+            </p>
+          </div>
+          {/* selo informativo (não é botão): o número principal do objetivo no período */}
+          <p
+            className="flex shrink-0 items-baseline gap-2 rounded-full border px-4 py-1.5 text-[12px]"
+            style={{ borderColor: C.accentSoft, background: "#eeedfd", color: C.fg2 }}
+            data-selo
+          >
+            {label(ctx, g.value)} <strong className="text-[15px] font-bold tnum" style={{ color: C.accent }}>{value(ctx, g.value)}</strong>
+          </p>
+        </div>
+
+        <SkinChrome palette={PAGE} controls={controls} note={note} screen={screen} className="mt-4" />
+
+        {/* respiro entre o título e os cards; nas outras abas, os blocos padrão na paleta do visual */}
+        <div className={screen ? "mt-3" : "mt-5"}>
+        {children ? <SkinPage palette={PAGE}>{children}</SkinPage> : (
+        <LavandaReport
+          ctx={ctx}
+          nodes={nodes}
+          grid={grid}
+          hide={hide}
+          pages={pages}
+          onPage={onPage}
+          periodLabel={periodLabel}
+          month={month}
+          monthOn={monthOn}
+          palette={PAGE}
+          tone={{ fg: C.fg, fg2: C.fg2, line: C.line, accent: C.accent, accentSoft: C.accentSoft, dark: C.dark, card: C.card }}
         />
         )}
         </div>
@@ -826,7 +838,12 @@ export function LavandaSkin({
   );
 }
 
-function Trend({ c }: { c: ReturnType<typeof change> }) {
+/** A primeira aba do Lavanda é o relatório. */
+export const REPORT_NAME = "Relatório do período";
+
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
+function Trend({ c, against }: { c: ReturnType<typeof change>; against: string }) {
   const color = c.good === null ? C.fg2 : c.good ? "#3b9bdc" : "#e5484d";
   const Icon = c.up ? ArrowUpRight : ArrowDownRight;
   return (
@@ -838,7 +855,7 @@ function Trend({ c }: { c: ReturnType<typeof change> }) {
       <span className="font-semibold" style={{ color }}>
         {c.text}
       </span>
-      em relação ao período anterior
+      em relação {against}
     </p>
   );
 }

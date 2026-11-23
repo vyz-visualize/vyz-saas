@@ -109,3 +109,22 @@ describe("grade de horários, funil e estados", () => {
     expect(m.has("XX")).toBe(false);
   });
 });
+
+import { campaignStatus, tiredCreatives } from "./insights";
+import type { Creative } from "@/features/metrics/source";
+
+describe("status das campanhas e criativos cansando (Pulso)", () => {
+  const flat = (n: number, v: number) => Array.from({ length: n }, () => v);
+  it("sem gasto, sem resultado, custo subindo e normal pelo dia a dia", () => {
+    expect(campaignStatus(camp("A", 1, 1, { spend: [...flat(7, 100), 0, 0, 0], conversions: flat(10, 1) }), 100)?.status).toBe("sem gasto");
+    expect(campaignStatus(camp("B", 1, 1, { spend: flat(10, 100), conversions: [...flat(7, 1), 0, 0, 0] }), 100)?.status).toBe("sem resultado");
+    expect(campaignStatus(camp("C", 1, 1, { spend: flat(10, 100), conversions: [...flat(7, 2), 1, 0, 0] }), 100)?.status).toBe("custo subindo");
+    expect(campaignStatus(camp("D", 1, 1, { spend: flat(10, 100), conversions: flat(10, 2) }), 100)?.status).toBe("normal");
+    expect(campaignStatus(camp("E", 1, 1), 100)).toBeNull();
+  });
+  it("cansando: frequência de 3 ou mais e CTR abaixo da média, os mais repetidos primeiro", () => {
+    const cr = (id: string, frequency: number, clicks: number) => ({ id, name: id, frequency, clicks, impressions: 1000 }) as Creative;
+    const r = tiredCreatives([cr("ok", 4, 30), cr("a", 3.2, 5), cr("b", 4.5, 8), cr("baixa", 2, 1)]);
+    expect(r.map((t) => t.creative.id)).toEqual(["b", "a"]);
+  });
+});

@@ -51,11 +51,13 @@ type Props = {
   linkedPlatforms?: PlatformId[];
   /** Selo "atualizado em" / "Atualizando…" (só no painel, com dados reais). */
   syncStamp?: ReactNode;
+  /** Horas desde a última sincronização (no servidor, na hora de abrir): o Pulso avisa quando atrasa. */
+  syncHours?: number;
   /** Visuais com capa: a capa e a planilha do lançamento salvas. */
   coverData?: CoverData;
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms, syncStamp, sampleOnly = false, coverData }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms, syncStamp, syncHours, sampleOnly = false, coverData }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -116,6 +118,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       sourceExtras={sourceExtras}
       linkedPlatforms={linkedPlatforms}
       syncStamp={syncStamp}
+      syncHours={syncHours}
       hideSpend={hideSpend}
       assemble={assemble}
       printing={printing}
@@ -128,12 +131,17 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       onFilterNavigate={creatives || extraMetrics?.length || realData ? (search) => router.replace(`${pathname}${search}`, { scroll: false }) : undefined}
       onPeriodChange={
         creatives || extraMetrics?.length || realData
-          ? (period, customDays) => {
+          ? (period, customDays, days) => {
               const q = new URLSearchParams(params?.toString() ?? "");
               q.delete("periodo");
               q.delete("dias");
               q.delete("de");
               q.delete("ate");
+              // "Mês anterior fechado": o período e o trecho do mês vão juntos
+              if (days) {
+                q.set("de", days.from);
+                q.set("ate", days.to);
+              }
               const rest = q.toString();
               router.push(`${pathname}?${periodQuery({ period, customDays })}${rest ? `&${rest}` : ""}`, { scroll: false });
             }

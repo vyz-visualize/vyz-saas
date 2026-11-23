@@ -62,6 +62,7 @@ import { FullName } from "./FullName";
 import { stateShares } from "./insights";
 import { BR_STATES } from "@/features/sync/breakdowns";
 import { SkinGrid } from "./SkinGrid";
+import { skinGrid } from "./blocks";
 import { brl, change, chrono, dayLabel, goalOf, int, label, pct, platformName, platformShort, value, type SkinProps } from "./shared";
 
 const P: SkinPalette = {
@@ -131,9 +132,33 @@ function Mark({ size = 18 }: { size?: number }) {
 
 // ---- moldura --------------------------------------------------------------------------
 
-function Rail({ pages, active, onPage }: { pages: PageId[]; active: PageId; onPage?: (p: PageId) => void }) {
+/** Seções da página do empreendimento (a primeira aba), com o ícone do atalho na barra. */
+const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
+  { id: "capa", label: "Capa e resultado", icon: House },
+  { id: "lancamento", label: "Lançamento", icon: FileSpreadsheet },
+  { id: "regiao", label: "De onde vêm e quando chamam", icon: MapPin },
+];
+
+function Rail({ pages, active, onPage, sections }: { pages: PageId[]; active: PageId; onPage?: (p: PageId) => void; /** Na primeira aba: atalhos para as seções dela. */ sections?: { id: string; label: string; icon: LucideIcon }[] }) {
   return (
-    <nav data-tour="abas" aria-label="Páginas do dashboard" className="flex min-w-0 shrink-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] @[900px]:w-10 @[900px]:flex-col @[900px]:overflow-visible @[900px]:pb-0">
+    <nav data-tour="abas" aria-label="Páginas do dashboard" className="flex min-w-0 shrink-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] @[900px]:sticky @[900px]:top-4 @[900px]:w-10 @[900px]:flex-col @[900px]:self-start @[900px]:overflow-visible @[900px]:pb-0">
+      {sections && sections.length > 1 && (
+        <>
+          {sections.map((sec) => (
+            <button
+              key={sec.id}
+              type="button"
+              onClick={() => document.getElementById(`secao-${sec.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              aria-label={`Ir para ${sec.label}`}
+              className="group relative hidden size-10 shrink-0 place-items-center rounded-full border border-dashed border-fg/25 text-fg-2 outline-none transition-colors hover:bg-white/60 hover:text-fg focus-visible:ring-2 focus-visible:ring-accent @[900px]:grid"
+            >
+              <sec.icon size={16} strokeWidth={1.8} aria-hidden />
+              <span className="pointer-events-none absolute left-[calc(100%+8px)] z-30 hidden rounded-full bg-[var(--fg)] px-2.5 py-1 text-[11.5px] whitespace-nowrap text-[var(--bg)] group-hover:block group-focus-visible:block">{sec.label}</span>
+            </button>
+          ))}
+          <span className="my-1 hidden h-px w-full bg-fg/15 @[900px]:block" aria-hidden />
+        </>
+      )}
       {pages.map((p) => {
         const Icon = PAGE_ICON[p] ?? ChartColumn;
         const on = p === active;
@@ -181,6 +206,80 @@ function CoverArt({ cover, inside = false }: { cover: DashboardCover; /** Dentro
 }
 
 // ---- peças dos blocos -----------------------------------------------------------------
+
+function SectionTitle({ icon: Icon, title, note }: { icon: LucideIcon; title: string; note?: string }) {
+  return (
+    <header className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className={`${ROUND} size-9`}>
+        <Icon size={16} strokeWidth={1.8} aria-hidden />
+      </span>
+      <h3 className="text-[22px] leading-tight font-normal tracking-[-0.03em]">{title}</h3>
+      {note && <span className="text-[12px] text-fg-2">{note}</span>}
+    </header>
+  );
+}
+
+/** Seção do lançamento (planilha ligada): os números do funil de vendas e cada origem, com a conversão em venda. */
+function LaunchSection({ launch, hideMoney, onSheet }: { launch: NonNullable<SkinProps["ctx"]["ds"]["launch"]>; hideMoney: boolean; onSheet?: () => void }) {
+  const leads = launch.origins.reduce((a, o) => a + o.leads, 0);
+  const tiles = [
+    { l: "Leads", v: int(leads) },
+    { l: "Propostas", v: int(launch.proposals), note: leads > 0 ? `${pct(launch.proposals / leads, 0)} dos leads` : undefined },
+    { l: "Vendas", v: int(launch.sales), note: launch.proposals > 0 ? `${pct(launch.sales / launch.proposals, 0)} das propostas` : undefined },
+    ...(launch.value > 0 && !hideMoney ? [{ l: "Valor vendido", v: brlCompact(launch.value), note: launch.sales > 0 ? `${brlCompact(launch.value / launch.sales)} por venda` : undefined }] : []),
+  ];
+  const top = Math.max(1, ...launch.origins.map((o) => o.leads));
+  const fmt = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  return (
+    <div className="grid gap-4 @[900px]:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]" data-lancamento>
+      <section className={`${GLASS} flex min-w-0 flex-col px-4 py-4`}>
+        <dl className="grid grid-cols-2 gap-3">
+          {tiles.map((t) => (
+            <div key={t.l} className="min-w-0 rounded-[18px] border border-white/60 bg-white/40 px-3 py-2.5">
+              <dt className="text-[11.5px] text-fg-2">{t.l}</dt>
+              <dd className="text-[26px] leading-tight font-normal tracking-[-0.03em]">{t.v}</dd>
+              {t.note && <dd className="text-[11px] text-fg-2">{t.note}</dd>}
+            </div>
+          ))}
+        </dl>
+        <p className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 text-[11px] text-fg-2">
+          Planilha: {fmt(launch.from)} a {fmt(launch.to)}
+          {onSheet && (
+            <button type="button" onClick={onSheet} className="font-medium text-accent underline-offset-2 hover:underline">
+              Ver a planilha
+            </button>
+          )}
+        </p>
+      </section>
+      <section className={`${GLASS} min-w-0 px-4 py-4`}>
+        <h4 className="text-[14.5px] font-medium tracking-tight">De onde vêm os leads e as vendas</h4>
+        <table className="mt-3 w-full text-[12.5px]">
+          <thead>
+            <tr className="text-left text-[11px] text-fg-2">
+              <th className="pb-1.5 font-medium">Origem</th>
+              <th className="pb-1.5 text-right font-medium">Leads</th>
+              <th className="pb-1.5 text-right font-medium">Vendas</th>
+              <th className="pb-1.5 text-right font-medium">Lead → venda</th>
+            </tr>
+          </thead>
+          <tbody>
+            {launch.origins.map((o) => (
+              <tr key={o.name} className="border-t border-white/60">
+                <td className="py-2 pr-2">
+                  <span className="block truncate">{o.name}</span>
+                  <span className="mt-1 block h-1.5 rounded-full bg-accent" style={{ width: `${Math.max(4, (o.leads / top) * 100)}%` }} aria-hidden />
+                </td>
+                <td className="py-2 text-right tnum">{int(o.leads)}</td>
+                <td className="py-2 text-right tnum">{int(o.sales)}</td>
+                <td className="py-2 text-right tnum">{o.leads > 0 ? pct(o.sales / o.leads, 1) : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    </div>
+  );
+}
 
 function Card({ icon: Icon, title, onOpen, openLabel, children }: { icon: LucideIcon; title: string; onOpen?: () => void; openLabel?: string; children: ReactNode }) {
   return (
@@ -465,7 +564,8 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
   const topStates = [...states].sort((a, b) => b[1] - a[1]).slice(0, 4);
   const tone = { fg: P.fg, fg2: P.fg2, line: P.line, accent: P.accent, good: P.good, bad: P.error };
 
-  const hidden = [...(hide ? ["s-verba", "s-custo"] : []), ...(states.size ? [] : ["s-estados"]), ...(peakHour === null ? ["s-horas"] : [])];
+  // sem planilha e sem como ligar (link público), a seção do lançamento sai
+  const hidden = [...(hide ? ["s-verba", "s-custo"] : []), ...(states.size ? [] : ["s-estados"]), ...(peakHour === null ? ["s-horas"] : []), ...(launch || sheet?.connect ? [] : ["s-lancamento"])];
   // a imagem do prédio fica atrás da grade (passando por trás dos medidores) só com a capa no lugar
   // padrão (em cima, de ponta a ponta) e fora da edição; senão ela vai dentro do bloco da capa e o acompanha
   const capaAt = (grid?.items ?? []).find((it) => it.id === "s-capa");
@@ -568,6 +668,19 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
       </Card>
     ),
 
+    "s-lancamento": launch ? (
+      <LaunchSection launch={launch} hideMoney={hide} onSheet={sheet?.connect ? () => setDialog("planilha") : undefined} />
+    ) : sheet?.connect ? (
+      <section className={`${GLASS} flex h-full min-w-0 flex-col items-start justify-center gap-2 px-5 py-5`} data-convite-planilha>
+        <p className="text-[15px] font-medium tracking-tight">{sheet.state.summary ? "A planilha está ligada, mas não tem linhas neste período" : "Ligue a planilha do lançamento"}</p>
+        <p className="max-w-[60ch] text-[12.5px] text-fg-2">
+          As plataformas não enxergam o que acontece depois do lead: com a planilha (origem, proposta, venda e valor), esta seção mostra de onde vêm as vendas e quanto o lançamento já vendeu.
+        </p>
+        <button type="button" onClick={() => setDialog("planilha")} className="mt-1 inline-flex h-9 items-center gap-1.5 rounded-full bg-accent px-4 text-[12.5px] font-medium text-on-accent">
+          <FileSpreadsheet size={14} aria-hidden /> {sheet.state.summary ? "Ver a planilha" : "Ligar a planilha"}
+        </button>
+      </section>
+    ) : null,
     "s-estados": (
       <Card icon={MapPin} title="De onde vêm os resultados">
         <div className="flex min-h-0 flex-1 items-center gap-4">
@@ -608,6 +721,15 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
     ),
   };
 
+  // seções: a capa com os quatro medidores (a primeira tela) vem da grade salva; lançamento e região descem na rolagem
+  const saved = grid?.items ?? skinGrid("fachada");
+  const below = new Set(["s-lancamento", "s-estados", "s-horas"]);
+  const coverItems = saved.filter((it) => !below.has(it.id));
+  const present = new Set(saved.map((it) => it.id).filter((id) => !hidden.includes(id)));
+  const regionIds = ["s-estados", "s-horas"].filter((id) => present.has(id));
+  const regionShown = regionIds.length > 0;
+  const launchNode = present.has("s-lancamento") ? nodes["s-lancamento"] : null;
+
   return (
     // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
     <div data-chart-theme className={screen ? "@container" : "@container rounded-[32px] p-2.5 @[700px]:p-4"} style={{ ...themeVars(P), background: screen ? P.bg : OUTER }}>
@@ -627,7 +749,7 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
         <SkinChrome palette={P} controls={controls} note={note} screen={screen} className="mb-4" />
 
         <div className="flex flex-col gap-3 @[900px]:flex-row @[900px]:gap-4">
-          <Rail pages={pages} active={active} onPage={onPage} />
+          <Rail pages={pages} active={active} onPage={onPage} sections={children || grid?.editing ? undefined : SECTIONS.filter((sec) => sec.id === "capa" || (sec.id === "lancamento" ? !!launchNode : regionShown))} />
           <div className="@container relative min-w-0 flex-1">
             {children ? (
               <>
@@ -648,12 +770,40 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
                 </SkinPage>
               </>
             ) : (
-              <>
-                {artBehind && <CoverArt cover={coverValue} />}
+              grid?.editing ? (
+                // no Personalizar, a grade de sempre (todos os blocos): esconder e adicionar valem nas seções
                 <div className="relative z-10">
                   <SkinGrid skin="fachada" ctx={ctx} grid={grid} nodes={nodes} hide={hidden} />
                 </div>
-              </>
+              ) : (
+                <>
+                  {/* a capa e o resultado: a primeira tela da página do empreendimento */}
+                  <section id="secao-capa" className="relative scroll-mt-4">
+                    {artBehind && <CoverArt cover={coverValue} />}
+                    <div className="relative z-10">
+                      <SkinGrid skin="fachada" ctx={ctx} grid={grid ? { ...grid, items: coverItems } : { items: coverItems }} nodes={nodes} hide={hidden} />
+                    </div>
+                  </section>
+                  {launchNode && (
+                    <section id="secao-lancamento" className="mt-8 scroll-mt-4" data-secao="lancamento">
+                      <SectionTitle icon={FileSpreadsheet} title="Lançamento" note="da planilha do lançamento: origem dos leads, propostas, vendas e valor" />
+                      {launchNode}
+                    </section>
+                  )}
+                  {regionShown && (
+                    <section id="secao-regiao" className="mt-8 scroll-mt-4" data-secao="regiao">
+                      <SectionTitle icon={MapPin} title="De onde vêm e quando chamam" note="pela Meta: estado e hora de cada resultado" />
+                      <div className="grid gap-4 @[900px]:grid-cols-2">
+                        {regionIds.map((id) => (
+                          <div key={id} className="h-[300px] min-w-0 [&>*]:h-full">
+                            {nodes[id as keyof typeof nodes]}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </>
+              )
             )}
           </div>
         </div>

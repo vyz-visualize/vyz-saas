@@ -12,6 +12,8 @@ import {
 } from "@/features/metrics/definitions";
 import type { DayRow } from "@/features/metrics/source";
 import type { PageId } from "@/features/templates/types";
+import type { ClosedMonth } from "@/features/analytics/closed-month";
+import type { Totals } from "@/features/metrics/compute";
 import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
 import type { CoverControl, LaunchSheetControl } from "../cover";
 import type { WidgetContext } from "../widgets/Widgets";
@@ -42,6 +44,20 @@ export type SkinProps = {
   cover?: CoverControl;
   /** Planilha do lançamento (o funil de vendas que as plataformas não enxergam). */
   sheet?: LaunchSheetControl;
+  /** Relatório (Lavanda): o atalho "Mês anterior fechado" e, com ele ativo, os totais do mês antes. */
+  month?: MonthReport;
+  /** Horas desde a última sincronização (dados reais). Sem isso, não há aviso de atraso. */
+  syncHours?: number;
+};
+
+export type MonthReport = {
+  info: ClosedMonth;
+  /** O período na tela é o mês fechado. */
+  active: boolean;
+  /** Totais do mês antes dele (a comparação); null quando as linhas não cobrem o mês inteiro. */
+  before: Totals | null;
+  /** Troca o período para o mês fechado (sem isso: já está nele, não cabe ou não dá para trocar aqui). */
+  select?: () => void;
 };
 
 export const HIDDEN = "•••";

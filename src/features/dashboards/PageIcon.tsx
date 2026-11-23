@@ -20,6 +20,7 @@ import {
   PieChart,
   Route,
   Search,
+  Siren,
   Target,
   TrendingUp,
   Users,
@@ -32,6 +33,7 @@ const BRAND: Partial<Record<PageId, string>> = { "meta-ads": "meta", "google-ads
 
 const LINE: Partial<Record<PageId, LucideIcon>> = {
   "visao-geral": LayoutDashboard,
+  "acoes-hoje": Siren,
   "por-plataforma": Layers,
   campanhas: Megaphone,
   funil: Filter,

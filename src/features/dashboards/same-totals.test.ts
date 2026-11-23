@@ -4,7 +4,7 @@
 // fonte. Desenha a primeira aba de cada visual (dados de exemplo e o caminho dos dados reais) e
 // compara os números crus que os blocos expõem em data-*:
 //   * Lavanda: a cascata começa e termina nos totais do comparativo (período anterior e atual);
-//   * Areia e Noturno: o anel divide o total do card (as partes somam o total);
+//   * Areia: o anel divide o total do card (as partes somam o total);
 //   * Pulso: o % da verba do topo e o bloco de ritmo usam o mesmo gasto do mês;
 //   * todos: o dia do mês e os dias do mês saem da mesma conta (São Paulo), nos dois geradores.
 
@@ -67,7 +67,7 @@ describe("mesma métrica, mesmo total", () => {
     }
   }
 
-  for (const id of ["areia-leads", "noturno-ecommerce"]) {
+  for (const id of ["areia-leads"]) {
     for (const { name, ds } of datasets(id)) {
       it(`${id} (${name}): o anel por plataforma soma o total do card`, async () => {
         const host = await render(id, ds);

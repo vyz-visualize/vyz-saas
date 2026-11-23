@@ -266,6 +266,15 @@ export const PAGES: Record<PageId, PageDef> = {
     description: "Quanto cada canal contribui de verdade e para onde mover a verba.",
     build: () => ({ kpis: [], widgets: [] }),
   },
+  // aba do visual Pulso (o visual desenha; não entra no seletor de abas)
+  "acoes-hoje": {
+    id: "acoes-hoje",
+    name: "Ações de hoje",
+    tier: "base",
+    templateOnly: true,
+    description: "O que pede ação hoje: campanhas sem resultado ou com o custo subindo, verba fora do ritmo e criativos cansando.",
+    build: () => ({ kpis: [], widgets: [] }),
+  },
   metas: {
     id: "metas",
     name: "Metas e progresso",
