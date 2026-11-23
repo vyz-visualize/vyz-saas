@@ -26,7 +26,7 @@ export function Diferenciais() {
             {SUPPORT_LEAD}{" "}
             {ROLES.map((r, i) => (
               <span key={r}>
-                <strong className="font-semibold text-fg">{r}</strong>
+                <strong className="font-bold text-accent" data-papel>{r}</strong>
                 {i === ROLES.length - 2 ? " e " : i < ROLES.length - 1 ? ", " : "."}
               </span>
             ))}

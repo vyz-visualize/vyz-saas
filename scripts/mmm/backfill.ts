@@ -1,5 +1,5 @@
 // Carga do histórico do MMM (docs/MMM.md). Liga, pausa e mostra a fila; quem anda com ela é
-// o /api/cron/sync (3 trabalhos por vez, no tempo que sobra da sincronização).
+// o /api/cron/mmm (6 vezes por dia; 6 trabalhos por vez, de contas diferentes, do mês mais antigo).
 //
 //   npm run mmm:backfill -- --status            a fila por status e se está ligada
 //   npm run mmm:backfill -- --enqueue           monta a fila (37 meses fechados por conta Meta/Google ativa)

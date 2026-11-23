@@ -12,6 +12,7 @@ import "server-only";
 // Os horários do histórico (sync_runs, last_synced_at) seguem o relógio do
 // banco, o mesmo de created_at: o fim nunca fica antes do início.
 
+import { failureMessage, rereadAllPosts } from "@/features/sync/round";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { PLATFORMS } from "@/features/accounts/platforms";
@@ -176,7 +177,8 @@ function toFailure(err: unknown): { code: SyncErrorCode; message: string; detail
     return { code: "sync:rate_limited", message: MESSAGES["sync:rate_limited"], detail, technical };
   }
   console.error("[vyz] sincronização falhou", detail ?? "", technical ?? err);
-  return { code: "sync:failed", message: MESSAGES["sync:failed"], detail, technical };
+  // sem permissão na plataforma (403): a tela diz o que fazer, com o código
+  return { code: "sync:failed", message: failureMessage(technical, MESSAGES["sync:failed"]), detail, technical };
 }
 
 /**
@@ -231,7 +233,8 @@ export async function syncAdAccount(adAccountId: string, trigger: SyncTrigger, o
       byTable = { analytics_daily: rowsWritten };
     } else if (isOrganicSyncPlatform(current.platform)) {
       // orgânico: tabelas próprias, sem rollup (o total por dia já vem da plataforma)
-      const organic = await source.fetchOrganic({ ...current, platform: current.platform }, range);
+      // nas rodadas do dia, só os posts recentes têm os números relidos (os antigos, na primeira do dia)
+      const organic = await source.fetchOrganic({ ...current, platform: current.platform }, range, { allPosts: rereadAllPosts(trigger, new Date()) });
       const written = await writeOrganic(db, current, organic, run.createdAt);
       rowsWritten = written.days + written.posts;
       byTable = { organic_daily: written.days, organic_posts: written.posts };

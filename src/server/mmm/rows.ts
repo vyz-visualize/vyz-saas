@@ -76,6 +76,33 @@ export function monthRange(mes: string): { from: string; to: string } {
   return { from: `${mes.slice(0, 7)}-01`, to: `${mes.slice(0, 7)}-${String(last).padStart(2, "0")}` };
 }
 
+/** Quantos meses para trás a Meta guarda os relatórios de anúncios. */
+export const META_HISTORY_MONTHS = 37;
+
+/**
+ * Primeiro dia que a Meta ainda devolve (hoje − 37 meses, com 1 dia de folga para o fuso).
+ * Ex.: em 2026-11-23, 2023-10-24.
+ */
+export function metaWindowStart(today: string): string {
+  const [y, m, d] = today.slice(0, 10).split("-").map(Number);
+  const back = new Date(Date.UTC(y, m - 1 - META_HISTORY_MONTHS, 1));
+  // o mesmo dia do mês, sem passar do último dia (31 → 30, 29 de fevereiro → 28)
+  const last = new Date(Date.UTC(back.getUTCFullYear(), back.getUTCMonth() + 1, 0)).getUTCDate();
+  back.setUTCDate(Math.min(d, last) + 1);
+  return back.toISOString().slice(0, 10);
+}
+
+/**
+ * O mês do trabalho dentro da janela da Meta: o começo preso ao limite de 37 meses.
+ * null = o mês inteiro já saiu da janela (não há o que buscar).
+ */
+export function metaMonthRange(mes: string, today: string): { from: string; to: string } | null {
+  const { from, to } = monthRange(mes);
+  const start = metaWindowStart(today);
+  if (to < start) return null;
+  return { from: from < start ? start : from, to };
+}
+
 /** Assinatura do pedido (vai no bruto: mesma busca, mesmo hash). */
 export const requestHash = (parts: readonly string[]) => createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 32);
 

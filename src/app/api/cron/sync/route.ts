@@ -1,14 +1,14 @@
 // GET|POST /api/cron/sync
 // Sincronização agendada (Vercel Cron ou outro agendador): traz os últimos 7
 // dias das contas ativas que não sincronizam há algumas horas e relê as
-// planilhas do Google Sheets ligadas a contas de planilha e, no tempo que sobra, anda com a
-// carga do histórico do MMM (se ligada: scripts/mmm/backfill.ts). Só com
-// "Authorization: Bearer <CRON_SECRET>"; sem o segredo configurado, 503.
+// planilhas do Google Sheets ligadas a contas de planilha. A carga do histórico do MMM tem o
+// cron próprio (/api/cron/mmm). Só com "Authorization: Bearer <CRON_SECRET>"; sem o segredo
+// configurado, 503.
 
 import { refreshSheetAccounts, type SheetRefreshSummary } from "@/server/import/scheduled";
 import { refreshLaunchSheets, type LaunchRefreshSummary } from "@/server/import/launch-scheduled";
 import { CRON_HEADERS, rejectCron } from "@/server/sync/cron";
-import { runBackfillRound, type BackfillSummary } from "@/server/mmm/backfill";
+import { parseSyncGroup } from "@/features/sync/round";
 import { syncDueAccounts } from "@/server/sync/scheduled";
 
 export const maxDuration = 300;
@@ -22,7 +22,13 @@ async function handle(request: Request) {
     const startedAt = Date.now();
     const total = (maxDuration - 45) * 1000;
     // as planilhas do Google Sheets ficam com o fim da rodada: no mínimo 20 s, no máximo o que sobrar
-    const summary = await syncDueAccounts({ budgetMs: total - 20_000 });
+    // ?grupo=anuncios (Meta, Google, GA4, CRMs) ou ?grupo=organico (Instagram e Página), cada um no
+    // cron dele; sem grupo, todas. Conta nova só começa até 60 s antes do fim; a que passar de 20 s
+    // antes do fim é encerrada aqui e volta na próxima rodada.
+    const group = parseSyncGroup(new URL(request.url).searchParams.get("grupo"));
+    const summary = await syncDueAccounts({ budgetMs: total - 60_000, hardStopMs: total - 20_000, ...(group ? { group } : {}) });
+    // as planilhas vão com os anúncios (o cron do orgânico só sincroniza o orgânico)
+    if (group === "organico") return Response.json({ ...summary, group }, { headers: CRON_HEADERS });
     let sheets: SheetRefreshSummary | { error: string };
     try {
       sheets = await refreshSheetAccounts({ budgetMs: Math.max(20_000, total - (Date.now() - startedAt)) });
@@ -40,18 +46,7 @@ async function handle(request: Request) {
         launch = { error: "unknown" };
       }
     }
-    // carga do histórico do MMM no tempo que sobrar (só com a fila ligada; desligada, uma consulta e sai)
-    let mmm: BackfillSummary | { error: string } | null = null;
-    const left = total - (Date.now() - startedAt);
-    if (left > 60_000) {
-      try {
-        mmm = await runBackfillRound({ budgetMs: left });
-      } catch (err) {
-        console.error("[vyz] cron do MMM", err instanceof Error ? err.message : err);
-        mmm = { error: "unknown" };
-      }
-    }
-    return Response.json({ ...summary, sheets, launch, mmm }, { headers: CRON_HEADERS });
+    return Response.json({ ...summary, sheets, launch }, { headers: CRON_HEADERS });
   } catch (err) {
     console.error("[vyz] cron de sincronização", err instanceof Error ? err.message : err);
     return Response.json({ ok: false, error: "unknown" }, { status: 500, headers: CRON_HEADERS });
