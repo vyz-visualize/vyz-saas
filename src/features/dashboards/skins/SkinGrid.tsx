@@ -51,7 +51,7 @@ export function SkinGrid({
   for (const s of SKIN_BLOCKS[skin])
     blocks[s.id] = {
       label: s.label,
-      node: <div className="h-full min-h-0 [&>*]:h-full">{nodes[s.id]}</div>,
+      node: <div className="h-full min-h-0 min-w-0 [&>*]:h-full [&>*]:min-w-0">{nodes[s.id]}</div>,
     };
   for (const it of items) {
     if (parseMetricCardId(it.id))

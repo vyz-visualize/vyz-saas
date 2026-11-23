@@ -1,22 +1,25 @@
 "use client";
 
-// Visual "Noturno": painel azul-noite com a receita em âmbar e o investimento em azul.
-// Faixa de números com minilinha, receita e investimento por dia, anéis por canal, funil
-// de compra, produtos e campanhas. Fora dos objetivos de venda, o resultado do objetivo
-// (leads, agendamentos...) toma o lugar da receita e a taxa de conversão o do ROAS.
-// Gráficos da Bklit UI.
+// Visual "Noturno": análise, em azul-noite com a receita em âmbar. Filtros fixos no topo
+// (plataforma, campanha, dia da semana e comparar), a faixa de números, o mestre-detalhe (as
+// campanhas à esquerda; o escolhido à direita, com o dia a dia, os dias fora do padrão e o
+// período anterior), dia da semana × hora e onde o mês fecha. Nas abas de cada plataforma, o
+// mesmo mestre-detalhe só com as campanhas dela; com o catálogo, a aba "Produtos" (NoturnoParts).
+// Fora dos objetivos de venda, o resultado do objetivo toma o lugar da receita.
 
-import { funnelRows, funnelSummary } from "@/features/metrics/funnel";
 import { breakEvenOf, GOAL_INVITE, hasGoal, hasMargin, MARGIN_INVITE } from "@/features/metrics/targets";
 import { CalendarDays, CircleDollarSign, Percent, ShoppingBag, Target, Wallet } from "lucide-react";
 import { useMemo, useState } from "react";
-import { biggestDrop, platformPart } from "@/features/metrics/compute";
 import { metric } from "@/features/metrics/definitions";
 import { PAGES } from "@/features/templates/pages";
 import { brlCompact } from "@/lib/format";
-import { Block, SkinBar, SkinChrome, SkinPage, DailyChart, dayDates, LegendDots, RankBars, Segmented, ShareRings, StageFunnel, StatBlock, themeVars, weekly, weekStarts, type DailySeries, type SkinPalette } from "./bklit-blocks";
+import { Block, SkinBar, SkinChrome, SkinPage, StatBlock, themeVars, type SkinPalette } from "./bklit-blocks";
+import { HeatGrid, MonthCloseChart } from "./extras";
+import { heatPeak, monthClose, WEEKDAYS } from "./insights";
 import { SkinGrid } from "./SkinGrid";
-import { brl, change, chrono, daily, dayLabel, decimal, goalOf, HIDDEN, initials, int, Invite, label, money, platformName, platformShort, value, type SkinProps } from "./shared";
+import { AnalysisBar, MasterDetail, ProductsPage } from "./NoturnoParts";
+import { PAGE_PLATFORM } from "@/features/templates/dashboards/composed";
+import { brl, change, daily, decimal, goalOf, int, label, value, type SkinProps } from "./shared";
 
 const P: SkinPalette = {
   scheme: "dark",
@@ -35,15 +38,21 @@ const P: SkinPalette = {
 };
 const BLUE = "#6ea8ff";
 const VIOLET = "#b392ff";
-const TEAL = "#5fd6c0";
-const CHANNEL = [P.accent, BLUE, VIOLET, TEAL];
+/** A linha do período anterior. */
+const PREV = "rgb(238 240 247 / 0.45)";
 const HERO = "linear-gradient(140deg,#ffc76e 0%,#ff9f43 100%)";
+/** Cores dos blocos exclusivos (extras.tsx). */
+const TONE = { fg: P.fg, fg2: P.fg2, line: P.line, accent: P.accent, good: P.good, bad: P.error };
 
 export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar }: SkinProps) {
-  const [mode, setMode] = useState<"dia" | "semana">("dia");
+  // filtros desta análise: o dia da semana e o comparar (plataforma e campanha são os do dashboard)
+  const [weekday, setWeekday] = useState<number | null>(null);
+  const [compare, setCompare] = useState(true);
+  const ownPage = active === "produtos" && !children;
+  const only = PAGE_PLATFORM[active];
+  const platformTab = only && (active === "meta-ads" || active === "google-ads") && ctx.ds.campaigns.some((c) => c.platform === only) ? only : null;
   const hide = !!ctx.hideSpend;
   const current = ctx.ds.current;
-  const days = useMemo(() => chrono(current), [current]);
   // objetivo de venda: receita, ROAS e funil de compra; nos outros, o resultado do objetivo
   // (leads, agendamentos...), a taxa de conversão e o custo por resultado
   // memorizado: o compilador do React sabe que não muda depois (as listas abaixo dependem dele)
@@ -52,41 +61,12 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
   const resultName = metric(g.conv, ctx.profile).label;
   const showValue = (v: number) => (g.sales ? brlCompact(v) : int(v));
 
-  // receita e investimento por dia (ou somados por semana); fora de venda, só o resultado (outra escala)
-  const chart = useMemo(() => {
-    const byWeek = mode === "semana";
-    const revenue = byWeek ? weekly(days.map((d) => d[valueKey])) : days.map((d) => d[valueKey]);
-    const spend = byWeek ? weekly(days.map((d) => d.spend)) : days.map((d) => d.spend);
-    const first = byWeek ? weekStarts(days) : days;
-    return {
-      points: revenue.map((r, i): Record<string, number> => (hide || valueKey !== "revenue" ? { revenue: r } : { revenue: r, spend: spend[i] })),
-      dates: dayDates(first.map((d) => d.ago), ctx.today),
-      labels: first.map((d) => dayLabel(d.ago, ctx.today)),
-    };
-  }, [ctx.today, days, hide, mode, valueKey]);
-  const series: DailySeries[] = [
-    ...(hide || !g.sales ? [] : [{ key: "spend", label: label(ctx, "spend"), color: BLUE, kind: "bar" as const }]),
-    { key: "revenue", label: label(ctx, valueKey), color: P.accent, kind: "area" as const },
-  ];
-
-  const channels = useMemo(
-    () =>
-      ctx.ds.adPlatforms
-        .map((id) => ({ id, t: platformPart(ctx.ds, id, "current") }))
-        .sort((a, b) => b.t[valueKey] - a.t[valueKey])
-        .map((c, i) => ({ ...c, color: CHANNEL[i % CHANNEL.length] })),
-    [ctx.ds, valueKey],
-  );
-  const totalRevenue = channels.reduce((a, c) => a + c.t[valueKey], 0);
-
-  const funnel = ctx.ds.funnel;
-  const drop = funnel.length > 1 ? biggestDrop(funnel) : 0;
-  const products = useMemo(() => [...ctx.ds.products].sort((a, b) => b.revenue - a.revenue).slice(0, 5), [ctx.ds.products]);
-  const campaigns = useMemo(() => [...ctx.ds.campaigns].sort((a, b) => (g.sales ? b.revenue - a.revenue : b.conversions - a.conversions)).slice(0, 5), [ctx.ds.campaigns, g.sales]);
-  const breakEven = ctx.ds.breakEven;
-
-  // nada em branco: fora de venda, produtos saem (o funil ocupa o espaço); funil e campanhas vazios também saem
-  const hidden = [...(g.sales ? [] : ["s-produtos"]), ...(funnel.length < 2 ? ["s-funil"] : []), ...(campaigns.length ? [] : ["s-campanhas"])];
+  // tendência: dias fora do padrão, dia da semana × hora, onde o mês fecha e as campanhas dia a dia
+  const hourWeek = ctx.ds.hourWeek;
+  const peak = useMemo(() => heatPeak(hourWeek), [hourWeek]);
+  const close = useMemo(() => monthClose(current, (d) => d[valueKey], ctx.ds.budget), [current, valueKey, ctx.ds.budget]);
+  // nada em branco: sem a quebra por hora, a grade sai; sem dias para a previsão, o fecha sai (o vizinho ocupa)
+  const hidden = [...(peak ? [] : ["s-calor"]), ...(close ? [] : ["s-fecha"])];
 
   const nodes = {
     "s-receita": <StatBlock title={label(ctx, valueKey)} v={value(ctx, valueKey)} delta={change(ctx, valueKey)} note="contra o período anterior" values={daily(ctx, valueKey)} icon={g.sales ? CircleDollarSign : Target} solid={HERO} />,
@@ -95,109 +75,27 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
       <StatBlock title={label(ctx, "convRate")} v={value(ctx, "convRate")} delta={change(ctx, "convRate")} note={`${resultName.toLowerCase()} ÷ visitas da página`} values={daily(ctx, "convRate")} color={P.accent} icon={Percent} />
     ) : <StatBlock title={label(ctx, "roas")} v={value(ctx, "roas")} delta={hide ? undefined : change(ctx, "roas")} note={hide ? undefined : `equilíbrio em ${decimal(breakEvenOf(ctx.ds), 1)}${hasMargin(ctx.ds) ? "" : ` · ${MARGIN_INVITE}`}`} values={hide ? undefined : daily(ctx, "roas")} color={P.accent} icon={Percent} />,
     "s-cpa": <StatBlock title={label(ctx, g.cost)} v={value(ctx, g.cost)} delta={hide ? undefined : change(ctx, g.cost)} note={hide ? undefined : hasGoal(ctx.ds) ? `alvo ${brl(ctx.ds.goal, { decimals: false })}` : GOAL_INVITE} values={hide ? undefined : daily(ctx, g.cost)} color={VIOLET} icon={Target} />,
-    "s-vendas": (
-      <Block
-        title={!g.sales ? `${resultName} por dia` : hide ? "Receita por dia" : "Receita e investimento"}
-        aside={
-          <div className="flex flex-wrap items-center gap-3">
-            <LegendDots items={series.map((s) => ({ label: s.label, color: s.color })).reverse()} />
-            <Segmented
-              label="Agrupar por"
-              value={mode}
-              onChange={setMode}
-              options={[
-                { value: "dia", label: "Dia" },
-                { value: "semana", label: "Semana" },
-              ]}
-            />
-          </div>
-        }
-      >
-        <DailyChart
-          points={chart.points}
-          dates={chart.dates}
-          labels={chart.labels}
-          series={series}
-          format={(_, v) => (g.sales ? brl(v, { decimals: false }) : int(v))}
-          formatY={g.sales ? brlCompact : int}
-          summary={`${label(ctx, valueKey)} por ${mode}: total de ${value(ctx, valueKey)} no período.`}
-        />
+    "s-calor": (
+      <Block title={`${resultName} por dia da semana e hora`} aside={peak ? <span className="text-[11px] text-fg-2">pico: {WEEKDAYS[peak.day]}, {peak.hour}h</span> : undefined}>
+        {hourWeek && <HeatGrid grid={hourWeek} color={P.accent} tone={TONE} what={resultName} format={(v) => decimal(v, v < 10 ? 1 : 0)} />}
+        <p className="mt-auto pt-2 text-[10.5px] text-fg-2">Pela hora de cada dia na Meta, no fuso da conta.</p>
       </Block>
     ),
-    "s-canais": (
-      <Block title={`${label(ctx, valueKey)} por canal`}>
-        <ShareRings
-          className="flex-1"
-          items={channels.map((c) => ({ label: platformName(c.id), value: Math.round(g.sales ? c.t.revenue / 100 : c.t[valueKey]), color: c.color }))}
-          centerLabel={label(ctx, valueKey)}
-          format={g.sales ? { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 } : { maximumFractionDigits: 0 }}
-          summary={`${label(ctx, valueKey)} por canal: ${channels.map((c) => `${platformName(c.id)} ${showValue(c.t[valueKey])}`).join(", ")}.`}
-        />
-        <ul className="mt-3 space-y-1.5 text-[12px]">
-          {channels.map((c) => (
-            <li key={c.id} className="flex items-center gap-2">
-              <span className="size-2 shrink-0 rounded-full" style={{ background: c.color }} aria-hidden />
-              <span className="min-w-0 flex-1 truncate">{platformName(c.id)}</span>
-              <span className="text-fg-2 tnum">{totalRevenue > 0 ? `${Math.round((c.t[valueKey] / totalRevenue) * 100)}%` : "—"}</span>
-              <span className="w-[74px] text-right font-semibold tnum">{showValue(c.t[valueKey])}</span>
-            </li>
-          ))}
-        </ul>
-      </Block>
-    ),
-    "s-funil": (
-      <Block title={g.sales ? "Funil de compra" : "Funil"} aside={funnel.length > 1 ? <span className="text-[11px] text-error-fg">maior queda: {funnel[drop - 1]?.label} → {funnel[drop].label}</span> : undefined}>
-        <StageFunnel
-          className="flex-1"
-          orientation="horizontal"
-          color={P.accent}
-          steps={funnelRows(funnel, "entrada").map((r, i) => ({ ...r, color: i === drop && funnel.length > 1 ? P.error : undefined }))}
-          summary={funnelSummary(g.sales ? "Funil de compra" : "Funil", funnel)}
-        />
-      </Block>
-    ),
-    "s-produtos": (
-      <Block title="Produtos que mais vendem">
-        {products.length ? (
-          <RankBars
-            className="flex-1"
-            color={P.accent}
-            rows={products.map((p) => ({ name: p.name, value: p.revenue, display: brlCompact(p.revenue) }))}
-            summary={`Produtos por receita: ${products.map((p) => `${p.name} ${brlCompact(p.revenue)}`).join(", ")}.`}
-          />
-        ) : (
-          <Invite>Os produtos aparecem quando o período tem campanhas de catálogo na Meta ou de Shopping no Google.</Invite>
+    "s-fecha": (
+      <Block title="Onde o mês fecha" aside={<span className="text-[11px] text-fg-2">dia {ctx.ds.budget.day} de {ctx.ds.budget.daysInMonth}</span>}>
+        {close && !(hide && g.sales) && (
+          <>
+            <p className="text-[24px] leading-tight font-bold tnum">{showValue(close.total)}</p>
+            <p className="text-[11.5px] text-fg-2 tnum">
+              entre {showValue(close.totalLo)} e {showValue(close.totalHi)} · {label(ctx, valueKey).toLowerCase()} no mês
+            </p>
+            <MonthCloseChart m={close} color={P.accent} tone={TONE} label={`${label(ctx, valueKey)} no mês: ${showValue(close.done.at(-1) ?? 0)} até hoje; deve fechar em ${showValue(close.total)}.`} className="mt-3 min-h-[70px] flex-1" />
+            <p className="mt-1 text-[10.5px] text-fg-2">Cheio: até hoje · tracejado: a previsão, com a faixa de 95%</p>
+          </>
         )}
       </Block>
     ),
-    "s-campanhas": (
-      <Block title="Campanhas">
-        <ul className="-my-1 min-h-0 flex-1 divide-y divide-line overflow-hidden">
-          {campaigns.map((c) => {
-            const roas = c.spend > 0 ? c.revenue / c.spend : 0;
-            // fora de venda: o custo por resultado, sem julgar (não há equilíbrio de ROAS)
-            const ok: boolean | null = g.sales ? roas >= breakEven : null;
-            const tone = hide || ok === null ? "var(--fg-2)" : ok ? "var(--good)" : "var(--error-fg)";
-            return (
-              <li key={c.id} className="flex items-center gap-2.5 py-[7px]">
-                <span className="grid size-[30px] shrink-0 place-items-center rounded-[10px] text-[10.5px] font-bold" style={{ background: "color-mix(in srgb, var(--fg) 8%, transparent)" }}>
-                  {initials(c.name)}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12.5px] leading-tight font-medium">{c.name}</span>
-                  <span className="mt-0.5 block truncate text-[11px] leading-tight text-fg-2">
-                    {platformShort(c.platform)} · {g.sales ? money(ctx, c.revenue, true) : `${int(c.conversions)} ${resultName.toLowerCase()}`}
-                  </span>
-                </span>
-                <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tnum" style={{ color: tone, background: `color-mix(in srgb, ${tone} 14%, transparent)` }}>
-                  {hide ? HIDDEN : g.sales ? `${decimal(roas, 1)}×` : c.conversions > 0 ? money(ctx, c.spend / c.conversions, true) : "—"}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </Block>
-    ),
+    "s-analise": <MasterDetail ctx={ctx} tone={TONE} weekday={weekday} compare={compare} accent={P.accent} prevColor={PREV} />,
   };
 
   return (
@@ -237,15 +135,37 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
                 <CalendarDays size={14} /> {periodLabel}
               </span>
             )}
-            <span className="grid size-9 place-items-center rounded-full text-[11px] font-bold" style={{ background: P.card, border: `1px solid ${P.line}` }}>
-              {initials(client)}
-            </span>
           </div>
         </div>
 
         <SkinChrome palette={P} controls={controls} note={note} screen={screen} className="mt-4" />
 
-        <div className="mt-5">{children ? <SkinPage palette={P}>{children}</SkinPage> : <SkinGrid skin="noturno" ctx={ctx} grid={grid} nodes={nodes} hide={hidden} />}</div>
+        <div className="mt-5">
+          {children ? (
+            <>
+              {/* abas de uma plataforma: o mesmo mestre-detalhe, só com as campanhas dela */}
+              {platformTab && (
+                <div className="mb-4 space-y-3">
+                  <AnalysisBar ctx={ctx} weekday={weekday} setWeekday={setWeekday} compare={compare} setCompare={setCompare} platformOnly={platformTab} />
+                  <div className="flex h-auto flex-col @[900px]:h-[440px] [&>*]:flex-1">
+                    <MasterDetail ctx={ctx} tone={TONE} weekday={weekday} compare={compare} platform={platformTab} accent={P.accent} prevColor={PREV} />
+                  </div>
+                </div>
+              )}
+              <SkinPage palette={P}>{children}</SkinPage>
+            </>
+          ) : ownPage ? (
+            <ProductsPage ctx={ctx} tone={TONE} />
+          ) : (
+            <>
+              {/* filtros fixos da análise: valem para a aba (plataforma e campanha) e para a lista e o detalhe (dia da semana) */}
+              <AnalysisBar ctx={ctx} weekday={weekday} setWeekday={setWeekday} compare={compare} setCompare={setCompare} />
+              <div className="mt-4">
+                <SkinGrid skin="noturno" ctx={ctx} grid={grid} nodes={nodes} hide={hidden} />
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

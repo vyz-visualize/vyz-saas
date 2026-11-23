@@ -33,7 +33,10 @@ const OAUTH: Partial<Record<PlatformId, ProviderId>> = { ...Object.fromEntries(P
 const CONNECT_READY: PlatformId[] = [...PROVIDER_IDS, "instagram", "facebook"];
 
 async function main() {
-  const sql = postgres(url!, { ssl: "require", max: 1, prepare: false, onnotice: () => {} });
+  // teste local (PGlite, sem SSL): SUPABASE_DB_SSL=off, só para um banco nesta máquina
+  const local = process.env.SUPABASE_DB_SSL === "off";
+  if (local && !["127.0.0.1", "localhost"].includes(new URL(url!).hostname)) throw new Error("SUPABASE_DB_SSL=off só vale para um banco local");
+  const sql = postgres(url!, { ssl: local ? false : "require", max: 1, prepare: false, onnotice: () => {} });
   const counts: Record<string, number> = {};
 
   await sql.begin(async (tx) => {

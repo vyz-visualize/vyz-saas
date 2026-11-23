@@ -6,4 +6,6 @@ export default {
   name: "Padrão VYZ",
   tier: "base",
   description: "O visual da casa: claro ou escuro, números grandes e leitura rápida.",
+  forWhom: "Para uma visão rápida.",
+  only: "números grandes, claro ou escuro",
 } satisfies Visual;

@@ -36,6 +36,11 @@ import { loadCoverData } from "@/server/dashboards/cover";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
+/** Horas desde a sincronização mais antiga das contas (na hora de abrir a página). */
+function hoursSince(iso: string): number {
+  return Math.max(0, (Date.now() - Date.parse(iso)) / 3_600_000);
+}
+
 export default function Page({ params, searchParams }: PageProps<"/painel/dashboards/[id]">) {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
@@ -138,6 +143,7 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
         linkedPlatforms={linkedPlatforms}
         sourceExtras={sourceExtras}
         syncStamp={sync?.lastSyncedAt ? <SyncStamp dashboardId={d.id} lastSyncedAt={sync.lastSyncedAt} timeZone={sync.timeZone} autoRefresh /> : undefined}
+        syncHours={sync?.lastSyncedAt ? hoursSince(sync.lastSyncedAt) : undefined}
         dashboard={{
           id: d.id,
           templateId: d.templateId,

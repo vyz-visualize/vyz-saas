@@ -57,5 +57,8 @@ export default {
   skin: "fachada",
   tier: "avancado",
   description: "Cinza de concreto com coral: capa com a imagem do empreendimento e medidores.",
+  forWhom: "Para imobiliário e negócio local.",
+  only: "capa, estados e planilha do lançamento",
+  recommended: ["imob", "local"],
   layout,
 } satisfies Visual;

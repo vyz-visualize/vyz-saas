@@ -57,7 +57,9 @@ import { PlatformTray } from "./layout/LayoutEditor";
 import type { DashboardLayout } from "./layout/model";
 import { useDashboardLayout, type SaveLayout } from "./layout/useDashboardLayout";
 import { SkinView } from "./skins";
-import { hasCoverSkin, isFramedSkin } from "./skins/blocks";
+import { hasCoverSkin, isFramedSkin, isSkinPage, skinTabs } from "./skins/blocks";
+import type { MonthReport } from "./skins/shared";
+import { closedMonth, coversRange, isClosedMonth, rowsIn } from "@/features/analytics/closed-month";
 import { withLaunchSheet } from "@/features/metrics/launch-dataset";
 import { useDashboardCover, type CoverHost } from "./useDashboardCover";
 import { PageView } from "./widgets/PageView";
@@ -105,7 +107,7 @@ type BodyProps = {
   /** Métricas novas do Personalizar, na escala do modelo. */
   extraMetrics?: readonly SampleExtraMetric[];
   /** A página de Criativos vem do servidor: trocar o período precisa navegar. */
-  onPeriodChange?: (period: PeriodId, customDays: number) => void;
+  onPeriodChange?: (period: PeriodId, customDays: number, days?: { from: string; to: string }) => void;
   /** Dados reais das contas ligadas (já no período da URL). Sem isso, a amostra do modelo. */
   dataset?: Dataset;
   /** GA4 e orgânico reais (modelos novos). Sem isso, a amostra. */
@@ -114,6 +116,8 @@ type BodyProps = {
   linkedPlatforms?: PlatformId[];
   /** Selo de sincronização ("atualizado em" / "Atualizando…"), ao lado de "Dados reais". */
   syncStamp?: ReactNode;
+  /** Horas desde a última sincronização (dados reais): o Pulso avisa quando atrasa. */
+  syncHours?: number;
   /** Filtros que vieram na URL. */
   initialFilters?: DashFilters;
   /** Galeria e métricas novas vêm do servidor: filtrar precisa navegar. Sem isso, só troca o endereço. */
@@ -135,9 +139,13 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, syncStamp, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, askLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref, coverHost }: BodyProps) {
+export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, syncStamp, syncHours, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, askLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref, coverHost }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
-  const [page, setPage] = useState<PageId>(initialPage && spec.pages.includes(initialPage) ? initialPage : (spec.pages[0] ?? "visao-geral"));
+  // as abas na tela: as do dashboard e as que o visual desenha (Pulso: Ações de hoje)
+  const [page, setPage] = useState<PageId>(() => {
+    const possible = skinTabs(t?.skin, spec.pages);
+    return initialPage && possible.includes(initialPage) ? initialPage : (possible[0] ?? "visao-geral");
+  });
   useWatchPage(page);
   const [period, setPeriod] = useState<PeriodId>(spec.settings.period);
   const [customDays, setCustomDays] = useState(spec.settings.customDays || 14);
@@ -153,11 +161,13 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     const base = dataset ?? datasetFor({ ...spec, settings: spec.settings }, days);
     return capa.launch ? withLaunchSheet(base, capa.launch.rows, { today, missing: capa.launch.missing }) : base;
   }, [dataset, spec, days, capa.launch, today]);
+  // as abas na tela: as do dashboard e as que o visual desenha (Pulso: Ações de hoje; Noturno: Produtos, com catálogo)
+  const tabs = useMemo(() => skinTabs(t?.skin, spec.pages, ds), [t?.skin, spec.pages, ds]);
   const defaults = useMemo(() => (t ? sampleDefaultKpis(t, spec.pages) : []), [t, spec.pages]);
   const catalog = useMemo(() => sampleCatalog(t?.profile ?? "ecommerce", defaults, t?.sources), [t, defaults]);
   const extraById = useMemo(() => new Map(extraMetrics.map((m) => [m.id, m])), [extraMetrics]);
   const pageKpis = useMemo(() => (t ? spec.pages.map((p) => pageLayout(t, p).kpis.map((k) => k.metric as string)) : []), [t, spec.pages]);
-  const active = spec.pages.includes(page) ? page : spec.pages[0];
+  const active = tabs.includes(page) ? page : tabs[0];
   const activeKpis = pageKpis[spec.pages.indexOf(active)];
   // o painel conta os cards da aba aberta: os mesmos que a tela mostra
   const activeCatalog = useMemo(() => pageCatalog(catalog, activeKpis ?? []), [catalog, activeKpis]);
@@ -184,7 +194,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   // aba Criativos com outras plataformas: os cards mostram a parte da Meta, a mesma dos anúncios
   const metaPart = !!creatives && active === "criativos" && ds.adPlatforms.length > 1 && ds.adPlatforms.includes("meta");
   // "Pedir ao Vyz": só nas abas desenhadas pela grade (fora a capa do visual, as páginas das fontes e a galeria de criativos)
-  const gridTab = !!t && !(t.skin && active === t.pages[0]) && !(t.composed && SOURCE_TABS.has(active)) && !(active === "criativos" && creatives);
+  const gridTab = !!t && !(t.skin && (active === t.pages[0] || isSkinPage(t.skin, active))) && !(t.composed && SOURCE_TABS.has(active)) && !(active === "criativos" && creatives);
   const askHost: AskHost | undefined =
     canArrange && t && gridTab && metrics.open
       ? {
@@ -289,7 +299,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     return { current, previous, currency: "BRL", analytics, crm, organic: { instagram: organic, facebook: organic, all: organic } };
   }, [t, realExtras, period, customDays, today, spec.name, spec.client]);
   // modo apresentação (botão Apresentar): tela cheia, sem botões de edição, abas com ← →
-  const { rootRef, presenting, stop: stopPresenting } = usePresentation({ pages: spec.pages, page, setPage, blocked: metrics.open });
+  const { rootRef, presenting, stop: stopPresenting } = usePresentation({ pages: tabs, page, setPage, blocked: metrics.open });
   if (!t) return <p className="text-fg-2">Template não encontrado.</p>;
   const ctxOptions = { hideSpend, compare, showPrevious: compare, visibleColumns: metrics.visibility.columns, today, goals: spec.metricGoals };
   const baseCtx = makeContext(ds, ctxOptions);
@@ -336,7 +346,30 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   const creativesCtx = creatives && ds.adPlatforms.length > 1 && ds.adPlatforms.includes("meta") ? { ...ctx, cur: metaIn("current"), prev: metaIn("previous"), labelSuffix: " · Meta" } : ctx;
   const periodLabel = PERIODS.find((p) => p.value === period)?.label ?? "";
   // template com visual próprio: a primeira aba dele sai no estilo da referência
-  const skinned = (p: PageId) => !!t.skin && p === t.pages[0];
+  const skinned = (p: PageId) => !!t.skin && (p === t.pages[0] || isSkinPage(t.skin, p));
+  // relatório do Lavanda: "Mês anterior fechado" e, com ele, a comparação com o mês antes
+  const cm = closedMonth(today);
+  const currentRange = dashboardRanges(period, customDays, today).current;
+  const monthOn = isClosedMonth(cm, filterState.filters.days ?? currentRange);
+  const monthRows = monthOn ? [...(ctx.chart ?? ctx.ds).previous, ...(ctx.chart ?? ctx.ds).current] : [];
+  const month: MonthReport = {
+    info: cm,
+    active: monthOn,
+    before: monthOn && coversRange(monthRows, today, cm.before) ? totals(rowsIn(monthRows, today, cm.before), ctx.prev.frequency) : null,
+    select:
+      cm.available && !monthOn && !editing
+        ? () => {
+            setPeriod("custom");
+            setRange(null);
+            setCustomDays(cm.periodDays);
+            // com dados do servidor, a URL leva o período e o trecho juntos; na amostra, o trecho fica aqui
+            if (onPeriodChange) onPeriodChange("custom", cm.periodDays, cm.month);
+            else if (!filterState.filters.days || filterState.filters.days.from !== cm.month.from || filterState.filters.days.to !== cm.month.to) filterState.selectDays(cm.month);
+          }
+        : undefined,
+  };
+  // no relatório com o mês fechado, a comparação é com o mês antes dele: o selo do filtro diz isso
+  const filterApi = month.active && month.before && active === t.pages[0] ? { ...filterState, compared: cm.before } : filterState;
   const skinView = (p: PageId, nav: boolean, content?: ReactNode) =>
     t.skin ? (
       <SkinView
@@ -344,9 +377,11 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
         ctx={ctx}
         name={spec.name}
         client={spec.client}
-        pages={spec.pages}
+        pages={tabs}
         active={p}
         periodLabel={periodLabel}
+        month={month}
+        syncHours={syncHours}
         controls={nav ? skinControls : undefined}
         note={nav ? skinNote : undefined}
         screen={nav && screen}
@@ -480,7 +515,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
 
   return (
     <MetricEditProvider value={edit.editor}>
-    <FilterProvider value={filterState}>
+    <FilterProvider value={filterApi}>
     {/* data-skin-screen: avisa a moldura do painel (globals.css) que este dashboard toma a tela toda */}
     <div
       ref={rootRef}
@@ -532,7 +567,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
             </>
           }
           tabs={{
-            items: spec.pages.map((p) => ({ value: p, label: PAGES[p].name, icon: <PageIcon page={p} /> })),
+            items: tabs.map((p) => ({ value: p, label: PAGES[p].name, icon: <PageIcon page={p} /> })),
             value: active,
             onChange: (p) => {
               setPage(p as PageId);
@@ -604,7 +639,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
               </p>
             )}
           </section>
-          {spec.pages.map((p) => (
+          {tabs.map((p) => (
             <section key={p} className="print-page">
               <p className="mb-3 flex items-baseline justify-between text-[13px] text-fg-2">
                 <span className="title text-[18px] text-fg">{PAGES[p].name}</span>
@@ -632,7 +667,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
         </div>
       )}
     </div>
-      {presenting && <PresenterBar pages={spec.pages} page={active} setPage={setPage} name={(p) => PAGES[p].name} onStop={stopPresenting} />}
+      {presenting && <PresenterBar pages={tabs} page={active} setPage={setPage} name={(p) => PAGES[p].name} onStop={stopPresenting} />}
       {customizeId && <MetricTray state={edit} />}
       {customizeId && <MetricNoticeBar notice={metrics.notice} onUndo={metrics.undo} onDismiss={metrics.dismiss} />}
     </div>

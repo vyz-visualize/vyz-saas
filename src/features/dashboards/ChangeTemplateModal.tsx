@@ -4,6 +4,7 @@
 // métricas e filtros ficam; só muda o desenho e os números do topo.
 
 import { Lock } from "lucide-react";
+import { VisualBlurb } from "./VisualBlurb";
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/ui/kit";
 import { btn } from "@/components/ui/styles";
@@ -60,7 +61,7 @@ function Picker({ dashboard, tier, onClose }: { dashboard: ChangeTemplateTarget;
                       </span>
                     )}
                   </span>
-                  <span className="block text-[12.5px] text-fg-2">{v.description}</span>
+                  <VisualBlurb v={v} objective={objective} />
                 </span>
               </label>
             );

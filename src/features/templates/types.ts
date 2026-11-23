@@ -73,7 +73,9 @@ export type PageId =
   // recursos do Avançado, escolhidos no novo dashboard (desenhados pelos visuais deles)
   | "criativos-ao-vivo"
   | "previsao"
-  | "mmm";
+  | "mmm"
+  // abas que o próprio visual desenha (não ficam gravadas no dashboard: todo dashboard do visual tem)
+  | "acoes-hoje";
 
 export type BuildContext = { profile: Profile; sources: PlatformId[] };
 

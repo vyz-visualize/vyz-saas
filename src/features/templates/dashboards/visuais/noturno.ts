@@ -7,4 +7,7 @@ export default {
   skin: "noturno",
   tier: "avancado",
   description: "Escuro em azul-noite e âmbar, com anéis e tendências.",
+  forWhom: "Para vendas online e tendência.",
+  only: "dias fora do padrão e onde o mês fecha",
+  recommended: ["ecommerce", "infoproduto"],
 } satisfies Visual;

@@ -43,11 +43,12 @@ export function StageFunnel({ steps, orientation = "vertical", color = "var(--ac
           </li>
         ) : (
           <li key={s.label} className="min-w-0 border-l border-line px-2 first:border-l-0 first:pl-0">
-            <span className={`block truncate text-fg-2 ${large ? "text-[12.5px]" : "text-[11px]"}`}>{s.label}</span>
+            {/* lado a lado, cada etapa é estreita no celular: o nome quebra em até 2 linhas (inteiro ao apontar) */}
+            <span title={s.label} className={`line-clamp-2 leading-tight break-words text-fg-2 ${large ? "text-[12.5px]" : "text-[11px]"}`}>{s.label}</span>
             <span className={`block leading-tight font-bold tnum ${large ? "text-[18px]" : "text-[15px]"}`} style={s.color ? { color: s.color } : undefined}>
               {s.display}
             </span>
-            {s.note && <span className={`block truncate text-fg-2 ${large ? "text-[11.5px]" : "text-[10.5px]"}`}>{s.note}</span>}
+            {s.note && <span title={s.note} className={`line-clamp-2 leading-tight break-words text-fg-2 ${large ? "text-[11.5px]" : "text-[10.5px]"}`}>{s.note}</span>}
           </li>
         ),
       )}

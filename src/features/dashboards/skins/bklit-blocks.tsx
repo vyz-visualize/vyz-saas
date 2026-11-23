@@ -176,10 +176,12 @@ type StatBlockProps = {
   icon?: ComponentType<{ size?: number; strokeWidth?: number }>;
   /** Cartão de destaque: fundo na cor do visual. */
   solid?: string;
+  /** Embaixo dos números, no lugar da minilinha (ex.: a barra com o marcador da meta). */
+  footer?: React.ReactNode;
 };
 
 /** Número do período com a variação e a minilinha embaixo. */
-export function StatBlock({ title, v, delta, note, values, bars, color = "var(--accent)", icon: Icon, solid }: StatBlockProps) {
+export function StatBlock({ title, v, delta, note, values, bars, color = "var(--accent)", icon: Icon, solid, footer }: StatBlockProps) {
   return (
     <section
       className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-[22px] px-4 py-3 ${solid ? "" : "border border-line bg-card"}`}
@@ -201,6 +203,7 @@ export function StatBlock({ title, v, delta, note, values, bars, color = "var(--
       {/* a minilinha é a parte que encolhe quando o bloco fica baixo (edição, bloco redimensionado) */}
       {values && <Spark values={values} color={solid ? "currentColor" : color} className="mt-1 -mx-1 min-h-0 flex-[1_1_40px]" />}
       {bars && <MiniBars values={bars} color={solid ? "currentColor" : color} className="mt-2 min-h-0 flex-[1_1_36px]" />}
+      {footer && <div className="mt-auto shrink-0 pt-2">{footer}</div>}
     </section>
   );
 }
@@ -379,10 +382,14 @@ type WeekBarsProps = {
   format: (v: number) => string;
   summary: string;
   className?: string;
+  /** O valor de cada barra escrito embaixo dela (não só ao apontar). */
+  showValues?: boolean;
+  /** Formato curto desses valores (padrão: o mesmo do tooltip). */
+  valueFormat?: (v: number) => string;
 };
 
 /** Uma barra por semana, com a mais recente em destaque e o valor ao apontar. */
-export function WeekBars({ values, labels, color, soft, what, format, summary, className = "" }: WeekBarsProps) {
+export function WeekBars({ values, labels, color, soft, what, format, summary, className = "", showValues = false, valueFormat }: WeekBarsProps) {
   const last = values.length - 1;
   // duas séries empilhadas (só uma tem valor em cada barra): é o que dá duas cores
   const data = useMemo(() => values.map((v, i) => ({ name: labels[i] ?? String(i + 1), antes: i === last ? 0 : v, atual: i === last ? v : 0 })), [labels, last, values]);
@@ -399,6 +406,15 @@ export function WeekBars({ values, labels, color, soft, what, format, summary, c
           </div>
         )}
       </FitChart>
+      {showValues && (
+        <div className="mt-1 grid shrink-0 text-center leading-none font-semibold text-fg tnum" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }} aria-hidden data-bar-values>
+          {values.map((v, i) => (
+            <span key={i} className="truncate px-px text-[9.5px]">
+              {(valueFormat ?? format)(v)}
+            </span>
+          ))}
+        </div>
+      )}
       {/* rótulos fora do gráfico: o eixo da biblioteca pede uma margem que não cabe num card pequeno */}
       <div className="mt-1 grid shrink-0 text-center leading-none text-fg-2" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }} aria-hidden>
         {data.map((d) => (
@@ -469,8 +485,9 @@ function PinnedPoint({ pin }: { pin: Pin }) {
   const c = pin.caption;
   const boxW = c ? Math.max(textWidth(c.value, 14), textWidth(c.label, 11.5)) + 24 : 0;
   const boxH = 44;
-  const left = x > innerWidth * 0.7;
-  const bx = left ? x - r - 10 - boxW : x + r + 10;
+  // a etiqueta vai do lado que tem espaço e nunca sai do gráfico (no celular o bloco é estreito)
+  const left = x + r + 10 + boxW > innerWidth && x - r - 10 - boxW >= 0 ? true : x > innerWidth * 0.7 && x - r - 10 - boxW >= 0;
+  const bx = Math.min(Math.max(0, left ? x - r - 10 - boxW : x + r + 10), Math.max(0, innerWidth - boxW));
   const by = Math.min(Math.max(0, y - 8), Math.max(0, innerHeight - boxH));
   return (
     <g pointerEvents="none">

@@ -5,6 +5,8 @@
 // "Contas e modelo" do primeiro acesso.
 
 import { Check, Eye, Lock, Radio, Target } from "lucide-react";
+import { VisualBlurb, visualOf } from "@/features/dashboards/VisualBlurb";
+import type { ObjectiveId } from "@/features/templates/dashboards/composed";
 import { useEffect, useState } from "react";
 import { ScaledPreview } from "@/components/ui/ScaledPreview";
 import { LiveDashboardPreview } from "@/features/analytics/LiveDashboardPreview";
@@ -147,7 +149,12 @@ export function LayoutCard({
             {TIER_LABEL[t.tier]}
           </span>
         </div>
-        <p className="line-clamp-2 text-[13px] text-fg-2">{t.description}</p>
+        {/* modelo novo: para quem é o visual, o que só ele tem e se é o recomendado para o objetivo */}
+        {t.composed && visualOf(t.composed.visual) ? (
+          <VisualBlurb v={visualOf(t.composed.visual)!} objective={t.composed.objective as ObjectiveId} />
+        ) : (
+          <p className="line-clamp-2 text-[13px] text-fg-2">{t.description}</p>
+        )}
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
           {live && (
             <span className="inline-flex items-center gap-1 rounded-chip bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-fg">
