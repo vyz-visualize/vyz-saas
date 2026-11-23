@@ -35,7 +35,25 @@ Em todas as plataformas, use:
 | Globo Ads | Planilha ou relatório | Não | Importação por planilha | Sem API pública |
 | ChatGPT Ads | Planilha | Não | Importação por planilha | Sem API para anunciantes |
 
-Os logins ficam em `src/server/integrations/providers/<plataforma>.ts` e a sincronização em `src/server/sync/live/`. Com `INTEGRATIONS_MODE=live`, cada login só aparece na tela de Contas quando o par de credenciais dele está na Vercel (`isProviderConfigured` em `src/server/integrations/providers/index.ts`).
+Os logins ficam em `src/server/integrations/providers/<plataforma>.ts` e a sincronização em `src/server/sync/live/`. Com `INTEGRATIONS_MODE=live`, o botão Conectar (login) só aparece quando o par de credenciais da plataforma está na Vercel (`isProviderConfigured` em `src/server/integrations/providers/index.ts`, lista `loginReady`). Plataforma com conexão por token aparece sempre, com o botão "Usar token".
+
+## Conexão por token (opção secundária ao login)
+
+Enquanto o login de uma plataforma depende de aprovação (a Análise do App do Meta, por exemplo), o cliente pode gerar um token no app dele e colar no VYZ.
+
+- **Na tela:** "Usar token" ao lado do Conectar, em Contas e na aba Contas do workspace. Abre o tutorial da plataforma com o campo do token. Conexão feita por token mostra "Trocar token" no lugar de "Reconectar".
+- **Tutorial e regras:** `src/features/integrations/token-connect.ts` (`TOKEN_GUIDES`), um por plataforma. É a fonte única do texto: a tela mostra o que está lá.
+- **Conferência:** `src/server/integrations/token-flow.ts` (`checkToken`) confere o token na plataforma, lê as permissões e lista as contas. O erro volta em linguagem de tutorial ("falta permissão, gere de novo marcando as do passo 5").
+- **Gravação:** a ação `connectWithToken` (`src/server/integrations/actions.ts`) grava pelo mesmo caminho do login (`saveConnection` em `flow.ts`): token no Vault, contas novas ligadas se couberem no plano e primeira sincronização. A conexão leva a marca `vyz:token` nos escopos (`TOKEN_SCOPE`); não há coluna nova no banco.
+- **Meta:** o token é do app do cliente, então as chamadas dele vão sem o `appsecret_proof` do VYZ (a prova feita com o nosso segredo não bate). A regra fica num lugar só, `src/server/integrations/meta-auth.ts`: `getValidAccessToken` marca o token das conexões com `vyz:token` e todas as chamadas à Graph API passam por `metaAuthParams`. No tutorial, o cliente deixa "Exigir segredo do app" desligado no app dele.
+- **Desconectar:** apaga a conexão e o token do Vault. O VYZ não revoga nada no provedor (o token é do app do cliente); o tutorial explica como remover o usuário do sistema.
+
+| Plataforma | Por token hoje | O que o cliente cola |
+|---|---|---|
+| Meta Ads, Instagram e Página do Facebook | Sim | Token de usuário do sistema do Business Manager dele (não expira), com `ads_read`, `business_management`, `pages_show_list`, `pages_read_engagement`, `read_insights`, `instagram_basic`, `instagram_manage_insights` e, para o botão Aplicar, `ads_management` |
+| Demais plataformas | Em construção | Ver PENDENCIAS |
+
+Ressalva do Meta: sem a Análise do App, o token lê com segurança as contas da própria empresa do Business Manager. Contas de clientes que chegam como parceiro podem não aparecer; nesse caso, o token é gerado no Business Manager do próprio cliente (o tutorial avisa).
 
 ## Meta Ads (inclui Instagram)
 

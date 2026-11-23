@@ -17,6 +17,7 @@ import { btn } from "@/components/ui/styles";
 import { useToast } from "@/components/ui/Toast";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { ConnectButton } from "@/features/integrations/ConnectButton";
+import { TokenConnectButton } from "@/features/integrations/TokenConnect";
 import { PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import { relativeTime, syncSummary } from "@/features/integrations/sync-label";
 import type { AdAccountDTO, ConnectionDTO } from "@/features/integrations/types";
@@ -152,12 +153,18 @@ function AddAccounts({ data, projectId, projectName, onDone }: { data: ProjectAc
       {!active.length ? (
         <div className="space-y-3 rounded-[calc(var(--r-card)-4px)] border border-dashed border-line p-5">
           <p className="text-[14px] text-fg-2">Entre com o {PROVIDERS[provider].loginName}. Depois você volta para cá e escolhe as contas de {projectName}.</p>
-          <ConnectButton provider={provider} next={next} canManage={data.canManage} />
+          <div className="flex flex-wrap items-center gap-2">
+            <ConnectButton provider={provider} available={data.loginReady.includes(provider)} next={next} canManage={data.canManage} />
+            <TokenConnectButton provider={provider} canManage={data.canManage} />
+          </div>
         </div>
       ) : list.length === 0 ? (
         <div className="space-y-3 rounded-[calc(var(--r-card)-4px)] border border-dashed border-line p-5">
           <p className="text-[14px] text-fg-2">Todas as contas que esses logins enxergam já estão neste workspace. Precisa de outra? Conecte o login que tem acesso a ela.</p>
-          <ConnectButton provider={provider} next={next} canManage={data.canManage} variant="secondary" label="Conectar outro login" />
+          <div className="flex flex-wrap items-center gap-2">
+            <ConnectButton provider={provider} available={data.loginReady.includes(provider)} next={next} canManage={data.canManage} variant="secondary" label="Conectar outro login" />
+            <TokenConnectButton provider={provider} canManage={data.canManage} />
+          </div>
         </div>
       ) : (
         <>
@@ -225,7 +232,7 @@ function AddAccounts({ data, projectId, projectName, onDone }: { data: ProjectAc
       )}
       {active.length > 0 && list.length > 0 && (
         <ModalActions>
-          <ConnectButton provider={provider} next={next} canManage={data.canManage} variant="secondary" label="Conectar outro login" className="max-sm:h-11" />
+          <ConnectButton provider={provider} available={data.loginReady.includes(provider)} next={next} canManage={data.canManage} variant="secondary" label="Conectar outro login" className="max-sm:h-11" />
           <button type="button" onClick={add} disabled={pending || picked.size === 0} className={`${btn.small} max-sm:h-11`}>
             {pending ? "Adicionando…" : picked.size ? `Adicionar ${plural(picked.size, "conta", "contas")}` : "Escolha as contas"}
           </button>
@@ -392,7 +399,7 @@ export function WorkspaceAccounts({ data, projectId, projectName }: { data: Proj
                     </span>
                   </span>
                   <Badge tone={st.tone}>{st.label}</Badge>
-                  {c.status !== "active" && <ConnectButton provider={c.provider} next={projectHref(projectId, "contas")} canManage={data.canManage} connected variant="secondary" compact />}
+                  {c.status !== "active" && (c.viaToken ? <TokenConnectButton provider={c.provider} canManage={data.canManage} label="Trocar token" /> : <ConnectButton provider={c.provider} available={data.loginReady.includes(c.provider)} next={projectHref(projectId, "contas")} canManage={data.canManage} connected variant="secondary" compact />)}
                 </li>
               );
             })}

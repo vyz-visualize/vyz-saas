@@ -11,11 +11,10 @@ import "server-only";
 // a Meta para até a próxima rodada. Google: uma busca GAQL por mês, até o teto diário de
 // operações do token (GOOGLE_ADS_DAILY_OPS, padrão 2.000; o Explorer permite 2.880).
 
-import { createHmac } from "node:crypto";
 import { isRateLimited, runPool } from "@/features/sync/throttle";
 import { pauseAfterRateLimit, pauseCalls, pausedPlatforms, RATE_LIMIT_PAUSE_SECONDS } from "@/server/cache/redis";
-import { serverEnv } from "@/server/env";
 import { ADS, adsHeaders } from "@/server/integrations/providers/google";
+import { metaAuthParams } from "@/server/integrations/meta-auth";
 import { fetchJson } from "@/server/integrations/providers/http";
 import { getValidAccessToken } from "@/server/integrations/tokens";
 import type { Json } from "@/lib/supabase/database.types";
@@ -39,10 +38,7 @@ export type BackfillSummary = { ran: number; concluded: number; waiting: number;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function metaAuth(token: string): Record<string, string> {
-  const secret = serverEnv().META_APP_SECRET;
-  return { access_token: token, ...(secret ? { appsecret_proof: createHmac("sha256", secret).update(token).digest("hex") } : {}) };
-}
+const metaAuth = metaAuthParams;
 
 /** Chamada à Graph devolvendo o corpo e o uso da cota de insights (o token só vai na URL da Graph, nunca no log). */
 async function graph<T>(path: string, params: Record<string, string>, token: string, method: "GET" | "POST" = "GET"): Promise<{ body: T; throttle: number }> {

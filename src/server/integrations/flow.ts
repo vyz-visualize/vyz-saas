@@ -20,6 +20,7 @@ import { createAdminSupabase } from "@/server/supabase/admin";
 import { AppError, unwrap } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
 import { getProvider, ProviderError } from "./providers";
+import type { DiscoveredAccount, OAuthTokens, ProviderProfile } from "./providers/types";
 import { syncAdAccounts } from "@/server/sync/run";
 import { nullable } from "./tokens";
 
@@ -197,38 +198,10 @@ export async function finishConnection(provider: ProviderId, params: URLSearchPa
 
   const oauth = getProvider(provider);
   try {
-    // relógio com folga: as contas criadas por esta conexão são as "novas" (ligadas a seguir)
-    const connectStartedAt = new Date(Date.now() - 60_000).toISOString();
+    const connectStartedAt = connectClock();
     const tokens = await oauth.exchangeCode({ code, codeVerifier: row.code_verifier ?? undefined, redirectUri: callbackUri(origin, provider), params });
     const [profile, accounts] = await Promise.all([oauth.fetchProfile(tokens.accessToken), oauth.listAccounts(tokens.accessToken)]);
-    // Tokens vão direto para o Vault (integration_connect); nada fica em coluna comum.
-    const connectionId = unwrap(
-      await admin.rpc("integration_connect", {
-        p_workspace_id: workspaceId,
-        p_provider: provider,
-        p_external_user_id: profile.id,
-        p_external_user_name: profile.name.slice(0, 200),
-        p_external_user_email: nullable(profile.email?.slice(0, 254)),
-        p_scopes: tokens.scopes,
-        p_is_mock: oauth.isMock,
-        p_connected_by: user.id,
-        p_access_token: tokens.accessToken,
-        p_refresh_token: nullable(tokens.refreshToken),
-        p_token_expires_at: nullable(tokens.expiresAt),
-        p_accounts: accounts,
-      }),
-    );
-    await log("integration.connected", { accounts: accounts.length, mock: oauth.isMock }, connectionId ?? undefined);
-    if (connectionId) {
-      const enabled = await enableNewAccounts(admin, workspaceId, connectionId, connectStartedAt).catch((err) => {
-        console.error("[vyz] ligar contas novas", provider, err instanceof Error ? err.message : err);
-        return [] as string[];
-      });
-      if (enabled.length) {
-        await log("ad_accounts.selection_changed", { enabled, disabled: [], automatic: true }, connectionId);
-        after(() => syncAdAccounts(enabled, "initial", { actorId: user.id }));
-      }
-    }
+    await saveConnection({ admin, workspaceId, userId: user.id, provider, isMock: oauth.isMock, tokens, profile, accounts, connectStartedAt, log });
     return new URL(withConnectResult(back, { conectado: provider }), origin);
   } catch (err) {
     const erro = connectFailureCode(err);
@@ -236,6 +209,58 @@ export async function finishConnection(provider: ProviderId, params: URLSearchPa
     await log("integration.connect_failed", { code: erro });
     return fail(erro);
   }
+}
+
+/** Relógio com folga: as contas criadas pela conexão depois dele são as "novas" (ligadas a seguir). */
+export const connectClock = () => new Date(Date.now() - 60_000).toISOString();
+
+type ConnectionLog = (event: ActivityEventName, metadata: Record<string, Json>, entityId?: string) => Promise<unknown>;
+
+/**
+ * Grava a conexão e as contas que ela enxerga; os tokens vão direto para o Vault
+ * (integration_connect), nada fica em coluna comum. Liga as contas novas que couberem no
+ * plano e já começa a sincronizar. O mesmo caminho para o login (OAuth) e para o token colado.
+ */
+export async function saveConnection(input: {
+  admin: DB;
+  workspaceId: string;
+  userId: string;
+  provider: ProviderId;
+  isMock: boolean;
+  tokens: OAuthTokens;
+  profile: ProviderProfile;
+  accounts: DiscoveredAccount[];
+  connectStartedAt: string;
+  log: ConnectionLog;
+}): Promise<{ connectionId: string | null; enabled: string[] }> {
+  const { admin, workspaceId, userId, provider, isMock, tokens, profile, accounts, connectStartedAt, log } = input;
+  const connectionId = unwrap(
+    await admin.rpc("integration_connect", {
+      p_workspace_id: workspaceId,
+      p_provider: provider,
+      p_external_user_id: profile.id,
+      p_external_user_name: profile.name.slice(0, 200),
+      p_external_user_email: nullable(profile.email?.slice(0, 254)),
+      p_scopes: tokens.scopes,
+      p_is_mock: isMock,
+      p_connected_by: userId,
+      p_access_token: tokens.accessToken,
+      p_refresh_token: nullable(tokens.refreshToken),
+      p_token_expires_at: nullable(tokens.expiresAt),
+      p_accounts: accounts,
+    }),
+  );
+  await log("integration.connected", { accounts: accounts.length, mock: isMock }, connectionId ?? undefined);
+  if (!connectionId) return { connectionId: null, enabled: [] };
+  const enabled = await enableNewAccounts(admin, workspaceId, connectionId, connectStartedAt).catch((err) => {
+    console.error("[vyz] ligar contas novas", provider, err instanceof Error ? err.message : err);
+    return [] as string[];
+  });
+  if (enabled.length) {
+    await log("ad_accounts.selection_changed", { enabled, disabled: [], automatic: true }, connectionId);
+    after(() => syncAdAccounts(enabled, "initial", { actorId: userId }));
+  }
+  return { connectionId, enabled };
 }
 
 /**

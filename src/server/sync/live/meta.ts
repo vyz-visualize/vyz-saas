@@ -5,10 +5,9 @@ import "server-only";
 // conta vem do nível account: pessoas únicas não somam entre campanhas.
 // Docs: developers.facebook.com/docs/marketing-api/insights
 
-import { createHmac } from "node:crypto";
 import type { AccountDataset } from "@/features/sync/dataset";
 import type { SyncRange } from "@/features/sync/dates";
-import { serverEnv } from "@/server/env";
+import { metaAuthParams } from "@/server/integrations/meta-auth";
 import { fetchJson, SYNC_CACHE_SECONDS } from "@/server/integrations/providers/http";
 import { getValidAccessToken } from "@/server/integrations/tokens";
 import type { SyncAccount } from "../source";
@@ -42,13 +41,8 @@ const AD_EXTRA_FIELDS = ["video_p25_watched_actions", "video_p50_watched_actions
 
 type Page<T> = { data?: T[]; paging?: { next?: string } };
 
-function authParams(token: string): Record<string, string> {
-  const secret = serverEnv().META_APP_SECRET;
-  const params: Record<string, string> = { access_token: token };
-  // Com "Exigir segredo do app" ligado, toda chamada leva o appsecret_proof.
-  if (secret) params.appsecret_proof = createHmac("sha256", secret).update(token).digest("hex");
-  return params;
-}
+// Com "Exigir segredo do app" ligado, toda chamada leva o appsecret_proof (menos a de token do app do cliente).
+const authParams = metaAuthParams;
 
 /** Páginas cada vez menores quando a Meta reclama de volume ("reduce the amount of data", HTTP 500 code=1) ou demora. */
 const LIMITS = [500, 200, 100, 50, 25] as const;

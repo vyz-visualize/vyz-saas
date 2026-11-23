@@ -113,6 +113,7 @@ function connectState(m: Mock): ConnectState {
   return {
     platforms: Object.fromEntries(PROVIDER_IDS.map((p) => [p, platform(p)])) as ConnectState["platforms"],
     providers: [...CORE_PROVIDER_IDS],
+    loginReady: [...CORE_PROVIDER_IDS],
     limit: { accountsQuantity: 2, billableAccounts: 0, maxAccountsPerPlatform: 3 },
     projects: m.project ? [m.project] : [],
     canManage: true,

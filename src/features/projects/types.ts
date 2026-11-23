@@ -85,6 +85,8 @@ export type ProjectAccountsData = {
   connections: ConnectionDTO[];
   /** Logins disponíveis (com credencial no servidor ou já conectados). */
   providers: ProviderId[];
+  /** Logins com credencial no servidor (o botão Conectar só aparece nestes; os outros conectam por token). */
+  loginReady: ProviderId[];
   /** Os outros workspaces (para mover uma conta). */
   projects: { id: string; name: string }[];
   maxAccountsPerPlatform: number;

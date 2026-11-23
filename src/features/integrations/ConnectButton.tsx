@@ -24,11 +24,14 @@ type ConnectButtonProps = {
   label?: string;
   /** Só "Conectar" no botão (cartões da tela de contas, onde o nome da ferramenta já está ao lado); o nome inteiro vai no rótulo acessível. */
   compact?: boolean;
+  /** Login com credencial no servidor (ConnectState.loginReady). Sem ela, o botão não aparece: a plataforma conecta por token. */
+  available?: boolean;
   className?: string;
 };
 
-export function ConnectButton({ provider, next = "/painel/contas", connected = false, canManage = true, variant = "primary", label, compact = false, className = "" }: ConnectButtonProps) {
+export function ConnectButton({ provider, next = "/painel/contas", connected = false, canManage = true, variant = "primary", label, compact = false, available = true, className = "" }: ConnectButtonProps) {
   const { leaving, leave } = useLeaving<ProviderId>();
+  if (!available) return null;
   const opening = leaving !== null;
   const name = PROVIDERS[provider].name;
   const full = connected ? `Reconectar ${name}` : `Conectar ${name}`;

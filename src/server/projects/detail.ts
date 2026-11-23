@@ -107,6 +107,7 @@ export async function getProjectAccounts(projectId: string): Promise<ProjectAcco
     candidates: all.filter((a) => a.projectId !== projectId && !a.manual && !a.imported && !!a.connectionId && a.status === "active").map((a) => ({ ...a, projectName: a.projectId ? (nameOf.get(a.projectId) ?? null) : null })),
     connections,
     providers: state.providers,
+    loginReady: state.loginReady,
     projects: state.projects.filter((p) => p.id !== projectId),
     maxAccountsPerPlatform: state.limit.maxAccountsPerPlatform,
     canManage: state.canManage,

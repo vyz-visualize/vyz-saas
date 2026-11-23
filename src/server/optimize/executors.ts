@@ -15,6 +15,7 @@ import "server-only";
 import type { OptimizationAction } from "@/features/optimize/actions";
 import { ADS, adsHeaders } from "@/server/integrations/providers/google";
 import { fetchJson } from "@/server/integrations/providers/http";
+import { isTokenConnection } from "@/features/integrations/token-connect";
 import { graph } from "@/server/integrations/providers/meta";
 import { getValidAccessToken } from "@/server/integrations/tokens";
 import type { DB } from "@/server/supabase/server";
@@ -61,7 +62,13 @@ async function applyMock(db: DB, action: OptimizationAction) {
 // ---- Meta -------------------------------------------------------------------------------
 
 async function applyMeta(action: OptimizationAction, t: ExecTarget) {
-  if (!t.scopes.includes("ads_management")) throw new ExecError("A conexão do Meta só tem permissão de leitura. Reconecte a conta para o VYZ poder aplicar mudanças.");
+  if (!t.scopes.includes("ads_management")) {
+    throw new ExecError(
+      isTokenConnection(t.scopes)
+        ? "O token do Meta só tem permissão de leitura. Gere um novo marcando ads_management e conecte de novo pelo botão Usar token."
+        : "A conexão do Meta só tem permissão de leitura. Reconecte a conta para o VYZ poder aplicar mudanças.",
+    );
+  }
   const token = await getValidAccessToken(t.connectionId);
   const id = t.campaignExternalId;
   const cur = await graph<{

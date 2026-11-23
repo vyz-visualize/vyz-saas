@@ -130,6 +130,7 @@ function connectState(role: MemberRole, connected: boolean): ConnectState {
   return {
     platforms,
     providers: ["meta", "google", "tiktok", "linkedin", "ga4", "rdstation", "hubspot", "pipedrive", "kommo"],
+    loginReady: ["meta", "google", "tiktok", "linkedin", "ga4", "rdstation", "hubspot", "pipedrive", "kommo"],
     limit: { accountsQuantity: 15, billableAccounts: connected ? 5 : 0, maxAccountsPerPlatform: 3 },
     projects: connected ? PROJECTS : [],
     canManage: role === "owner" || role === "admin",
