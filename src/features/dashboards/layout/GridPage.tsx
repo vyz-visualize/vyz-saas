@@ -1,16 +1,11 @@
 "use client";
 
 // Uma aba do dashboard na grade: os blocos do template (cards de KPI e widgets) e os
-// cards de métrica por plataforma, na disposição salva. No modo Personalizar, a grade
-// mostra as casinhas e aceita arrastar.
+// cards de métrica por plataforma, na disposição salva. No modo edição, cada bloco ganha o
+// cabeçalho com Ocultar ou Remover (todos os planos); no Avançado, a grade também arrasta.
 
-import type { PlatformId } from "@/features/accounts/platforms";
 import type { SampleExtraMetric } from "@/features/analytics/types";
-import {
-  isSalesProfile,
-  metric as metricDef,
-  type MetricId,
-} from "@/features/metrics/definitions";
+import { isSalesProfile } from "@/features/metrics/definitions";
 import type {
   PageId,
   PageLayout,
@@ -23,7 +18,7 @@ import { GridCanvas, type Block } from "./GridCanvas";
 import { PlatformMetricCard } from "./LayoutEditor";
 import { customSize, customSpec, customTitle, trendOptions } from "./custom-blocks";
 import { KPIS_ID, parseMetricCardId, widgetId } from "./model";
-import { platformLabel } from "./platform-metrics";
+import { metricCardLabel } from "./platform-metrics";
 import type { DashboardLayoutState } from "./useDashboardLayout";
 
 const WIDGET_LABEL: Record<WidgetSpec["type"], string> = {
@@ -57,6 +52,8 @@ type Props = {
   extraCards?: readonly SampleExtraMetric[];
   grid: DashboardLayoutState;
   editing?: boolean;
+  /** Na edição, mover e redimensionar (Avançado). */
+  arrange?: boolean;
   /** Encaixa a aba na altura da tela (sem rolar a página). */
   fit?: boolean;
 };
@@ -69,6 +66,7 @@ export function GridPage({
   extraCards = [],
   grid,
   editing,
+  arrange,
   fit,
 }: Props) {
   const kpiCount = layout.kpis.length + extraCards.length;
@@ -104,10 +102,9 @@ export function GridPage({
       blocks[it.id] = { label: title, node: <Widget spec={{ ...spec, title }} ctx={ctx} delay={440} /> };
       continue;
     }
-    const m = parseMetricCardId(it.id);
-    if (m)
+    if (parseMetricCardId(it.id))
       blocks[it.id] = {
-        label: `${metricDef(m.metric as MetricId, ctx.profile).label} · ${platformLabel(m.platform as PlatformId)}`,
+        label: metricCardLabel(it.id, ctx.profile),
         node: (
           <PlatformMetricCard
             id={it.id}
@@ -124,11 +121,12 @@ export function GridPage({
       items={items}
       blocks={blocks}
       editing={editing}
+      arrange={arrange}
       fit={fit}
       contain
       kpiCount={kpiCount}
       onChange={(g) => grid.change(page, g)}
-      onHide={(id) => grid.hide(page, id)}
+      onHide={(id) => grid.hide(page, id, kpiCount)}
       onDropNew={(id, x, y) => grid.add(page, id, { x, y }, kpiCount)}
       canDrop={(id) => grid.accepts(page, id)}
       sizeOf={(id) => {
@@ -141,6 +139,14 @@ export function GridPage({
   );
 
   return canvas;
+}
+
+/** Nome de qualquer bloco da grade: o do modelo (ou do visual), o que a pessoa deu ao bloco pedido ou o do card de plataforma. */
+export function gridBlockLabel(item: { id: string; title?: string }, known: readonly { id: string; label: string }[], profile: WidgetContext["profile"]): string {
+  const custom = customSpec(item.id);
+  if (custom) return item.title ?? customTitle(custom, profile);
+  if (parseMetricCardId(item.id)) return metricCardLabel(item.id, profile);
+  return known.find((b) => b.id === item.id)?.label ?? item.id;
 }
 
 /** Blocos do modelo nesta aba, com o nome que aparece na grade e na bandeja. */

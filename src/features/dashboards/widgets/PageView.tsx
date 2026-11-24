@@ -2,7 +2,7 @@ import type { PageLayout, Span } from "@/features/templates/types";
 import { KPI_GRID, kpiSpans } from "./kpi-grid";
 import type { KpiEdit } from "../metric-prefs-context";
 import type { SampleExtraMetric } from "@/features/analytics/types";
-import { EmptySlots, useKpiDropRow, useMetricEditor } from "../metric-edit-context";
+import { AddCardTile, EmptySlots, useKpiDropRow, useMetricEditor } from "../metric-edit-context";
 import { ExtraKpi, Kpi, Widget, type WidgetContext } from "./Widgets";
 
 // Grid por container query: 1 coluna no estreito, 2 no médio e 4 no largo.
@@ -66,7 +66,8 @@ export function PageView({ layout, ctx, variant = "full", kpiEdit, extraCards = 
               <ExtraKpi m={m} ctx={ctx} delay={200 + (layout.kpis.length + i) * 70} onHide={hide(m.id)} onRemove={remove(m.id)} />
             </div>
           ))}
-          {editingCards && <EmptySlots count={editor.slots - cards} onClick={editor.openTray} />}
+          {/* na fileira única (grade), um "+ card" no fim; na grade de 4, os encaixes vazios */}
+          {editingCards && (strip ? <AddCardTile free={editor.slots - cards} onClick={editor.openTray} className="shrink-0 @[720px]:w-24 @[720px]:snap-start" /> : <EmptySlots count={editor.slots - cards} onClick={editor.openTray} />)}
           {drop.overlay}
         </div>
       )}

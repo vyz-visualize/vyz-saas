@@ -6,7 +6,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { PageId, PageLayout } from "@/features/templates/types";
-import { alignGrid, compact, defaultGrid, firstFree, insertBlocks, kindOf, limitsOf, normalizeGrid, place, sameGrid, withAddedBlocks, type DashboardLayout, type LayoutItem, type PageGrid } from "./model";
+import { alignGrid, compact, defaultGrid, firstFree, fixedGrid, hideBlock, insertBlocks, kindOf, limitsOf, normalizeGrid, place, sameGrid, type DashboardLayout, type LayoutItem, type PageGrid } from "./model";
 
 export type SaveLayout = (page: PageId, items: PageGrid | null) => Promise<{ ok: true } | { ok: false; error: { message: string } }>;
 
@@ -18,7 +18,7 @@ type Input = {
   /** Disposição do template na aba (sem isso, a da linha de KPIs e widgets). */
   baseOf?: (p: PageId) => PageGrid;
   save?: SaveLayout;
-  /** Pode mover e redimensionar (Avançado). Sem isso, métricas entram no próximo espaço livre. */
+  /** Pode mover e redimensionar (Avançado). Sem isso, vale o modelo: blocos ocultos saem (o vizinho ocupa o espaço) e os somados entram no próximo espaço livre. */
   arrange?: boolean;
 };
 
@@ -46,20 +46,27 @@ export function useDashboardLayout({ initial, pages, templateOf, accept, baseOf,
     /** A aba aceita este bloco (do modelo, do visual ou métrica de uma plataforma dela)? */
     accepts: (p: PageId, id: string) => accept(p)(id),
     change: (p: PageId, g: PageGrid) => update(p, () => g),
-    hide: (p: PageId, id: string) => update(p, (g) => (arrange ? compact(g.filter((i) => i.id !== id)) : g.filter((i) => i.id !== id))),
+    /** Ocultar (bloco do modelo) ou remover (bloco somado): o vizinho ocupa o espaço. Fica pelo menos um bloco. */
+    hide: (p: PageId, id: string, kpiCount = 4) =>
+      update(p, (g) => {
+        if (g.length <= 1) return g;
+        const rest = g.filter((i) => i.id !== id);
+        return arrange ? hideBlock(g, id, kpiCount) : fixedGrid(base(p), rest, kpiCount);
+      }),
+    /** Mostrar de novo (bloco do modelo) ou somar (card de plataforma): no Avançado, onde a pessoa soltou ou no primeiro espaço livre; fora dele, o lugar do modelo. */
     add: (p: PageId, id: string, at?: { x: number; y: number }, kpiCount = 4) =>
       update(p, (g) => {
         if (g.some((i) => i.id === id)) return g;
         const size = kindOf(id) === "metric" ? { w: 3, h: 4 } : (base(p).find((b) => b.id === id) ?? { w: 6, h: limitsOf(id, kpiCount).minH });
-        if (!arrange) return [...g, { id, ...firstFree(g, size.w, size.h), w: size.w, h: size.h }];
-        return compact(place(g, { id, ...(at ?? firstFree(g, size.w, size.h)), w: size.w, h: size.h }));
+        const item = { id, ...(at ?? firstFree(g, size.w, size.h)), w: size.w, h: size.h };
+        return arrange ? compact(place(g, item)) : fixedGrid(base(p), [...g, item], kpiCount);
       }),
     /** Blocos pedidos no editor: logo abaixo dos cards (Avançado) ou no próximo espaço livre. Devolve os que entraram. */
     insert: (p: PageId, blocks: readonly Omit<LayoutItem, "x" | "y">[]): string[] => {
       const fresh = blocks.filter((b) => accept(p)(b.id) && !items(p).some((i) => i.id === b.id));
       if (!fresh.length) return [];
       const placed = fresh.map((b) => ({ ...b, x: 0, y: 0 }));
-      update(p, (g) => (arrange ? insertBlocks(g, placed) : withAddedBlocks(g, placed)));
+      update(p, (g) => (arrange ? insertBlocks(g, placed) : fixedGrid(base(p), [...g, ...placed])));
       return fresh.map((b) => b.id);
     },
     /** Alinhar grade: fecha as fileiras nas 12 colunas e iguala as alturas, sem trocar a ordem. */

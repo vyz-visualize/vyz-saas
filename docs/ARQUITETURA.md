@@ -226,7 +226,21 @@ Nos dashboards de exemplo cada aba tem os próprios cards: `pageKpiIds` é a fon
 
 ### Modo personalizar
 
-"Personalizar métricas" liga a edição no próprio dashboard (`features/dashboards/MetricEditor.tsx`): faixa no topo, encaixes na fileira de cards e bandeja embaixo. Mexe só no rascunho de `useMetricPrefsState`; o que pode e o que grava continua em `metric-prefs.ts`. Links internos e o voltar pedem confirmação em janela própria; fechar ou recarregar usa o aviso nativo do navegador, porque não há outra forma. A posição do card segue a ordem padrão, então arrastar destaca a fileira inteira. A bandeja é `fixed` e segue a tela cheia do dashboard (sem o menu lateral): 12 px de respiro dos dois lados no computador, largura toda no celular.
+"Editar dashboard" liga a edição no próprio dashboard (`features/dashboards/MetricEditor.tsx`). O painel fica na lateral direita no computador (o dashboard estreita ao lado, `EDITING_PAD`) e vira uma folha que sobe de baixo no tablet e no celular. Ele tem uma regra visual só:
+
+- **Resumo da aba, na ordem da tela:** Cards (com o ✕ de cada um e o limite de 10), Gráficos e tabelas (cada bloco com uma ação só: Ocultar, se é do modelo; Remover, se foi somado; Mostrar, nos ocultos) e Colunas das tabelas.
+- **"+ Adicionar" no fim de cada seção:** abre a lista dela, com Voltar no topo. São três listas: card, gráfico (Pedir ao Vyz, blocos ocultos do modelo e cards por plataforma, cada um com o limite) e colunas.
+- **Quantas telas a aba vira:** o dashboard não rola, então o painel diz quantas telas a aba ocupa. A grade abre um respiro com uma linha tracejada onde cada tela começa (`screenBreaks` em `layout/model.ts`).
+- **Apontar um bloco** no painel acende o mesmo bloco na grade, e vice-versa (`highlight` em `metric-edit-context.tsx`).
+
+Na grade (`layout/GridCanvas.tsx`, que vale para as abas padrão e para todos os visuais próprios), cada bloco ganha um cabeçalho com o nome, a largura em palavras (`widthLabel`: Inteira, Metade, 1/3...) e Ocultar ou Remover.
+
+**O que vale em cada plano:**
+
+- **Todos os planos:** ocultar, mostrar e somar blocos. Fora do Avançado, a disposição é sempre a do modelo, sem os ocultos (o vizinho da mesma fileira ocupa o espaço, `hideBlock`) e com os blocos somados no primeiro espaço livre (`fixedGrid`). O servidor grava a mesma conta (`saveDashboardLayout`).
+- **Avançado:** também move pelo título, muda o tamanho pelo canto e tem "Arrumar grade".
+
+Mexe só nos rascunhos (`useMetricPrefsState` e `useDashboardLayout`); o que pode e o que grava continua em `metric-prefs.ts` e `layout/model.ts`. Links internos e o voltar pedem confirmação em janela própria; fechar ou recarregar usa o aviso nativo do navegador, porque não há outra forma. Esc numa lista volta ao resumo; no resumo, descarta como o Cancelar. A posição do card segue a ordem padrão, então arrastar uma métrica destaca a fileira inteira; na fileira única da grade, as vagas viram um "+ Card" no fim.
 
 ### Dashboard interativo
 

@@ -5,7 +5,8 @@
 import { isAdPlatform, PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { currentTotals, platformPart, previousTotals, type Totals } from "@/features/metrics/compute";
 import { isSampleSpendDerived } from "../metric-prefs";
-import type { MetricId } from "@/features/metrics/definitions";
+import { metric as metricDef, type MetricId, type Profile } from "@/features/metrics/definitions";
+import { parseMetricCardId } from "./model";
 import type { Dataset } from "@/features/metrics/source";
 
 /** sync: a VYZ já sincroniza essa plataforma; soon: a API entrega, a conexão chega em breve. */
@@ -127,8 +128,6 @@ export const PLATFORM_API: Record<PlatformId, PlatformApi> = {
   chatgpt: { status: "soon", api: "ChatGPT Ads", metrics: [] },
 };
 
-export const API_STATUS_LABEL: Record<ApiStatus, string> = { sync: "Sincroniza hoje", soon: "Na API · conexão em breve" };
-
 /** Plataformas do dashboard que têm métricas para oferecer. */
 export function metricPlatforms(sources: readonly PlatformId[]): PlatformId[] {
   return sources.filter((s) => PLATFORM_API[s]?.metrics.length);
@@ -156,3 +155,9 @@ export function platformValue(ds: Dataset, platform: PlatformId, metric: MetricI
 }
 
 export const platformLabel = (id: PlatformId) => PLATFORMS[id].name;
+
+/** Nome do card de uma métrica de uma plataforma ("CTR · Meta Ads"). */
+export function metricCardLabel(id: string, profile: Profile): string {
+  const m = parseMetricCardId(id);
+  return m ? `${metricDef(m.metric as MetricId, profile).label} · ${platformLabel(m.platform as PlatformId)}` : id;
+}

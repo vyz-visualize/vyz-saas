@@ -23,7 +23,8 @@ describe("os visuais seguem o objetivo do modelo, não os números", () => {
   });
 });
 
-import { SKIN_BLOCKS, skinGrid, withoutBlocks } from "./blocks";
+import { SKIN_BLOCKS, skinGrid } from "./blocks";
+import { withoutBlocks } from "../layout/model";
 
 describe("blocos sem nada para mostrar saem sem deixar buraco", () => {
   const row = (g: ReturnType<typeof skinGrid>, y: number) => g.filter((it) => it.y === y).sort((a, b) => a.x - b.x).map((it) => `${it.id}:${it.x}+${it.w}`);

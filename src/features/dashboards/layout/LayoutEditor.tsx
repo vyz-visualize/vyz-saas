@@ -1,11 +1,10 @@
 "use client";
 
-// Aba "Por plataforma" da bandeja do Personalizar com os blocos do modelo, as métricas de cada plataforma (com o
-// campo da API e se a VYZ já sincroniza) e a disposição em forma de dados.
+// "Cards por plataforma" no Adicionar gráfico do Personalizar: cada plataforma com as
+// métricas que a API dela entrega, numa lista para somar à grade (+) ou arrastar (Avançado).
 
-import { Check, EyeOff, Plus } from "lucide-react";
-import { useState, type DragEvent, type PointerEvent } from "react";
-import { notify } from "@/components/ui/Toast";
+import { Check, Plus } from "lucide-react";
+import { useState, type DragEvent } from "react";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { delta } from "@/features/metrics/compute";
 import {
@@ -26,26 +25,21 @@ import {
   type PageGrid,
 } from "./model";
 import {
-  API_STATUS_LABEL,
   metricAllowed,
   metricPlatforms,
   PLATFORM_API,
   platformValue,
 } from "./platform-metrics";
 
-/** O que o painel precisa da aba aberta. */
+/** O que a lista precisa da aba aberta. */
 export type PanelState = {
   items: PageGrid;
   hide: (id: string) => void;
   add: (id: string) => void;
-  dirty: boolean;
 };
-
-// ---- painel lateral ---------------------------------------------------------------------
 
 type PanelProps = {
   state: PanelState;
-  blocks: { id: string; label: string }[];
   sources: readonly PlatformId[];
   ds: Dataset;
   profile: Profile;
@@ -59,105 +53,40 @@ const dragStart = (id: string) => (e: DragEvent) => {
   e.dataTransfer.effectAllowed = "copy";
 };
 
-/** Card que não dá para arrastar: ao tentar, um aviso curto diz o porquê (os botões do card seguem valendo). */
-const whyNot = (text: string) => (e: PointerEvent) => {
-  if ((e.target as HTMLElement).closest("button")) return;
-  notify(text);
-};
+/** Quantos cards de plataforma a aba tem (o limite é METRIC_CARDS_MAX). */
+export const platformCardCount = (items: PageGrid) => items.filter((i) => kindOf(i.id) === "metric").length;
 
 /**
- * Aba "Por plataforma" da bandeja do Personalizar: cada plataforma com o que a API
- * dela entrega (campo e estado da conexão), em cards para arrastar até a grade, e
- * os blocos do modelo que estão escondidos, para trazer de volta.
+ * Os cards de cada plataforma: o número de cada métrica nesta conta (ou no exemplo), com
+ * + para somar à aba e ✓ para tirar. No Avançado, também dá para arrastar até a grade.
  */
-export function PlatformTray({
-  state,
-  blocks,
-  sources,
-  ds,
-  profile,
-  hideSpend,
-  arrange = true,
-}: PanelProps) {
+export function PlatformTray({ state, sources, ds, profile, hideSpend, arrange = true }: PanelProps) {
   const platforms = metricPlatforms(sources);
   const [plat, setPlat] = useState<PlatformId | null>(platforms[0] ?? null);
   const onGrid = new Set(state.items.map((i) => i.id));
-  const metricCount = state.items.filter(
-    (i) => kindOf(i.id) === "metric",
-  ).length;
-  const full = metricCount >= METRIC_CARDS_MAX;
+  const full = platformCardCount(state.items) >= METRIC_CARDS_MAX;
   const api = plat ? PLATFORM_API[plat] : null;
-  const hidden = blocks.filter((b) => !onGrid.has(b.id));
+  if (!platforms.length) return null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <div
-          role="tablist"
-          aria-label="Plataformas"
-          className="flex flex-wrap gap-1"
-        >
-          {platforms.map((p) => (
-            <button
-              key={p}
-              type="button"
-              role="tab"
-              aria-selected={p === plat}
-              onClick={() => setPlat(p)}
-              className={`flex items-center gap-1.5 rounded-chip px-2.5 py-1 text-[12.5px] font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-accent ${p === plat ? "bg-accent-soft text-fg" : "text-fg-2 hover:text-fg"}`}
-            >
-              <span
-                className={`size-1.5 rounded-full ${PLATFORM_API[p].status === "sync" ? "bg-[#3fb27f]" : "bg-[#d9a23b]"}`}
-                aria-hidden
-              />
-              {PLATFORMS[p].name}
-            </button>
-          ))}
-        </div>
-        {api && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${api.status === "sync" ? "bg-[#3fb27f]/15 text-[#2f9a6a]" : "bg-[#d9a23b]/15 text-[#b07f1c]"}`}
+    <div className="flex flex-col gap-2">
+      <div role="tablist" aria-label="Plataformas" className="flex flex-wrap gap-1">
+        {platforms.map((p) => (
+          <button
+            key={p}
+            type="button"
+            role="tab"
+            aria-selected={p === plat}
+            onClick={() => setPlat(p)}
+            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-accent ${p === plat ? "bg-fg text-bg" : "text-fg-2 hover:bg-surface-2 hover:text-fg"}`}
           >
-            {api.api} · {API_STATUS_LABEL[api.status]}
-          </span>
-        )}
-        <span className="ml-auto text-[12px] text-fg-2 tnum">
-          {metricCount}/{METRIC_CARDS_MAX} cards de plataforma
-        </span>
-      </div>
-      <p className="truncate text-[12px] text-fg-2">
-        {api?.status === "sync"
-          ? `${arrange ? "Arraste para qualquer lugar da grade." : "Toque em + e o card entra no próximo espaço livre."} Com a conta conectada, o número vem das suas campanhas; no modelo, é a parte desta plataforma nos dados de exemplo.`
-          : "A API desta plataforma entrega estes campos. No modelo, já aparecem com dados de exemplo; com a conexão, passam a vir da sua conta."}
-      </p>
-      <ul className="flex min-h-0 flex-1 gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
-        {hidden.map((b) => (
-          <li
-            key={b.id}
-            draggable={arrange}
-            onDragStart={dragStart(b.id)}
-            onPointerDown={arrange ? undefined : whyNot("Arrastar é do plano Avançado. Use o + para trazer o bloco de volta.")}
-            className="flex w-44 shrink-0 cursor-grab flex-col rounded-[10px] border border-dashed border-accent/60 bg-accent-soft/25 p-2.5 active:cursor-grabbing"
-          >
-            <p className="flex items-center gap-1 text-[10.5px] font-semibold tracking-wide text-fg-2 uppercase">
-              <EyeOff size={11} aria-hidden /> Bloco escondido
-            </p>
-            <p className="mt-1 line-clamp-2 text-[12.5px] leading-tight font-medium">
-              {b.label}
-            </p>
-            <div className="mt-auto flex items-center justify-between pt-1">
-              <span className="text-[10.5px] text-fg-2">do modelo</span>
-              <button
-                type="button"
-                aria-label={`Trazer ${b.label} de volta`}
-                onClick={() => state.add(b.id)}
-                className="inline-flex size-6 items-center justify-center rounded-full bg-accent text-on-accent"
-              >
-                <Plus size={14} aria-hidden />
-              </button>
-            </div>
-          </li>
+            <span className={`size-1.5 rounded-full ${PLATFORM_API[p].status === "sync" ? "bg-[#3fb27f]" : "bg-[#d9a23b]"}`} aria-hidden />
+            {PLATFORMS[p].name}
+          </button>
         ))}
+      </div>
+      {api?.status === "soon" && <p className="text-[11.5px] text-fg-2">Conexão em breve: por enquanto, os números desta plataforma são de exemplo.</p>}
+      <ul className="flex flex-col gap-1">
         {plat &&
           api?.metrics.map((pm) => {
             const id = metricCardId(plat, pm.metric);
@@ -166,69 +95,43 @@ export function PlatformTray({
             const def = metricDef(pm.metric, profile);
             const v = allowed ? platformValue(ds, plat, pm.metric) : null;
             const addable = allowed && !added && !full;
+            const note = added ? "na aba" : !allowed ? "investimento oculto" : full ? "limite atingido" : null;
             return (
               <li
                 key={pm.metric}
                 draggable={addable && arrange}
                 onDragStart={dragStart(id)}
-                onPointerDown={
-                  addable && arrange
-                    ? undefined
-                    : whyNot(
-                        added
-                          ? "Este card já está na grade."
-                          : !allowed
-                            ? "Com o investimento oculto, esta métrica não entra."
-                            : full
-                              ? `Limite de ${METRIC_CARDS_MAX} cards de plataforma. Tire um para pôr outro.`
-                              : "Arrastar é do plano Avançado. Use o + para adicionar o card.",
-                      )
-                }
-                className={`flex w-44 shrink-0 flex-col rounded-[10px] border border-line bg-bg p-2.5 ${addable ? "cursor-grab active:cursor-grabbing" : "opacity-55"}`}
+                title={`Campo na API: ${pm.field}`}
+                className={`flex h-11 items-center gap-2 rounded-[10px] border border-line/70 bg-bg/60 px-2.5 ${addable ? (arrange ? "md:cursor-grab" : "") : added ? "" : "opacity-55"}`}
               >
-                <p className="line-clamp-2 text-[11.5px] leading-tight font-medium">
-                  {def.label}
-                </p>
-                <p className="mt-1 truncate text-[15px] leading-none font-bold tnum">
-                  {v ? formatValue(v.cur, def.format) : "—"}
-                </p>
-                <code
-                  className="mt-1.5 truncate rounded-[4px] bg-card px-1.5 py-0.5 font-mono text-[10px] text-fg-2"
-                  title={`Campo na API: ${pm.field}`}
-                >
-                  {pm.field}
-                </code>
-                <div className="mt-auto flex items-center justify-between gap-1 pt-1">
-                  <span className="text-[10.5px] text-fg-2">
-                    {added
-                      ? "na grade"
-                      : !allowed
-                        ? "investimento oculto"
-                        : full
-                          ? "limite atingido"
-                          : PLATFORMS[plat].short}
-                  </span>
-                  {added ? (
-                    <button
-                      type="button"
-                      aria-label={`Tirar ${def.label}`}
-                      onClick={() => state.hide(id)}
-                      className="inline-flex size-6 items-center justify-center rounded-full bg-accent-soft text-fg hover:bg-error-soft hover:text-error-fg"
-                    >
-                      <Check size={13} aria-hidden />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={!addable}
-                      aria-label={`Adicionar ${def.label} de ${PLATFORMS[plat].name}`}
-                      onClick={() => state.add(id)}
-                      className="inline-flex size-6 items-center justify-center rounded-full bg-accent text-on-accent disabled:bg-line disabled:text-fg-2"
-                    >
-                      <Plus size={14} aria-hidden />
-                    </button>
-                  )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12.5px] leading-tight font-medium">{def.label}</p>
+                  <p className="truncate text-[11px] text-fg-2">
+                    <span className="font-semibold text-fg tnum">{v ? formatValue(v.cur, def.format) : "—"}</span>
+                    {note && <span> · {note}</span>}
+                  </p>
                 </div>
+                {added ? (
+                  <button
+                    type="button"
+                    aria-label={`Tirar ${def.label} de ${PLATFORMS[plat].name}`}
+                    title="Na aba: clique para tirar"
+                    onClick={() => state.hide(id)}
+                    className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-fg outline-none hover:bg-error-soft hover:text-error-fg focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    <Check size={14} aria-hidden />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!addable}
+                    aria-label={`Adicionar ${def.label} de ${PLATFORMS[plat].name}`}
+                    onClick={() => state.add(id)}
+                    className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:bg-line disabled:text-fg-2"
+                  >
+                    <Plus size={15} aria-hidden />
+                  </button>
+                )}
               </li>
             );
           })}

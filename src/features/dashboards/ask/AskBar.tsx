@@ -121,9 +121,9 @@ export function useAsk(host: AskHost | undefined, kpi: KpiOps, onApplied?: () =>
 
 export type AskState = ReturnType<typeof useAsk>;
 
-/** A faixa de cima do editor: o campo do pedido. */
+/** O campo do pedido, no alto de "Adicionar gráfico" do editor. */
 export function AskInput({ ask }: { ask: AskState }) {
-  const { host, text, setText, run, inputRef, done, reading } = ask;
+  const { host, text, setText, run, inputRef, reading } = ask;
   if (!host) return null;
   return (
     <form
@@ -132,16 +132,20 @@ export function AskInput({ ask }: { ask: AskState }) {
         e.preventDefault();
         void run();
       }}
-      // no painel lateral (xl) o campo ganha a largura toda: o nome em cima, o campo embaixo
-      className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] px-3 py-2 md:px-4 xl:py-3"
+      className="flex flex-col gap-2.5 rounded-[14px] border border-accent/40 bg-[color-mix(in_srgb,var(--accent)_7%,transparent)] p-3"
     >
-      <span className="hidden size-8 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--accent),color-mix(in_srgb,var(--accent)_45%,#8b5cf6))] text-on-accent shadow-[0_6px_16px_-8px_var(--accent)] sm:inline-flex" aria-hidden>
-        <Sparkles size={15} />
-      </span>
-      <label htmlFor="vyz-ask" className="hidden shrink-0 text-[12.5px] font-semibold whitespace-nowrap lg:block xl:flex-1">
-        Pedir ao Vyz
-      </label>
-      <div className="flex h-10 min-w-0 flex-1 items-center rounded-full border border-line bg-field pr-1 pl-4 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent xl:order-last xl:basis-full">
+      <div className="flex items-center gap-2.5">
+        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--accent),color-mix(in_srgb,var(--accent)_45%,#8b5cf6))] text-on-accent shadow-[0_6px_16px_-8px_var(--accent)]" aria-hidden>
+          <Sparkles size={15} />
+        </span>
+        <div className="min-w-0">
+          <label htmlFor="vyz-ask" className="block text-[13px] font-semibold">
+            Pedir ao Vyz
+          </label>
+          <p className="text-[11.5px] leading-snug text-fg-2">Diga o que quer ver e o Vyz monta o gráfico com os seus números.</p>
+        </div>
+      </div>
+      <div className="flex h-10 min-w-0 items-center rounded-full border border-line bg-field pr-1 pl-4 focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
         <input
           id="vyz-ask"
           ref={inputRef}
@@ -149,20 +153,14 @@ export function AskInput({ ask }: { ask: AskState }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           aria-label="Pedir ao Vyz: o que você quer ver neste dashboard"
-          placeholder="Diga o que quer ver. Ex.: qual produto teve a maior receita e o melhor retorno"
+          placeholder="Ex.: produtos com maior receita"
           autoComplete="off"
-          className="h-full min-w-0 flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-fg-2/70"
+          className="h-full min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-fg-2/70"
         />
         <button type="submit" disabled={!text.trim() || !!reading} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-accent px-3.5 text-[12.5px] font-semibold text-on-accent outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40">
           {reading ? <LoaderCircle size={13} aria-hidden className="animate-spin" /> : <Sparkles size={13} aria-hidden />} {reading ? "Montando" : "Montar"}
         </button>
       </div>
-      {done && (
-        <p role="status" className="hidden max-w-[34%] shrink-0 truncate text-[12px] font-medium text-fg-2 xl:order-last xl:block xl:max-w-full xl:basis-full" title={done}>
-          <Check size={13} aria-hidden className="mr-1 inline text-accent" />
-          {done}
-        </p>
-      )}
     </form>
   );
 }
@@ -198,9 +196,9 @@ export function AskPlan({ ask }: { ask: AskState }) {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
+      <div className="space-y-2">
         {plan.blocks.length > 0 && (
-          <ul className="grid auto-rows-min grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="grid auto-rows-min grid-cols-1 gap-2">
             {plan.blocks.map((b) => {
               const on = !off.has(b.id);
               const Icon = iconOf(b);
@@ -285,7 +283,7 @@ export function AskPlan({ ask }: { ask: AskState }) {
             <Check size={14} aria-hidden /> Aplicar no dashboard{total ? ` (${total})` : ""}
           </button>
           <p className="min-w-0 flex-1 text-[11.5px] text-fg-2">
-            {chosen.length ? `Entram em ${host.pageName}, ${host.where}. Dá para tirar depois pelo ✕ de cada bloco.` : "Marque o que deve entrar."}
+            {chosen.length ? `Entram em ${host.pageName}, ${host.where}. Dá para tirar depois pelo Remover de cada bloco.` : "Marque o que deve entrar."}
           </p>
         </div>
       )}
@@ -309,7 +307,7 @@ function AskReading({ text, onCancel }: { text: string; onCancel: () => void }) 
       <p className="truncate text-[11.5px] text-fg-2" title={text}>
         “{text}”
       </p>
-      <ul aria-hidden className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      <ul aria-hidden className="grid grid-cols-1 gap-2">
         {[0, 1, 2].map((i) => (
           <li key={i} className="flex flex-col gap-2 rounded-[14px] border border-line p-2.5" style={{ opacity: 1 - i * 0.25 }}>
             <span className="h-3 w-3/4 animate-pulse rounded-full bg-surface-2" />

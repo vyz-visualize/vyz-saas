@@ -46,15 +46,15 @@ import { isSampleMetric, pageCatalog, pageKpiIds, sampleCatalog, type MetricPref
 import { useMetricPrefsState, type SaveMetricPrefs } from "./metric-prefs-context";
 import { MetricNoticeBar } from "./MetricActions";
 import { MetricEditProvider } from "./metric-edit-context";
-import { CustomizeButton, MetricTray, useMetricEditorState } from "./MetricEditor";
+import { CustomizeButton, EDITING_PAD, EDITING_PAD_COLLAPSED, MetricTray, useMetricEditorState, type EditorBlocks } from "./MetricEditor";
 import { pageRules } from "./layout/page-rules";
-import { customSize, isCustomId } from "./layout/custom-blocks";
+import { CUSTOM_BLOCKS_MAX, customSize, isCustomId } from "./layout/custom-blocks";
 import type { AskHost } from "./ask/AskBar";
 import type { AskLayoutAction } from "./ask/ai-plan";
 import { formatRank, rankRows } from "@/features/metrics/rank";
-import { GridPage, templateBlocksOf } from "./layout/GridPage";
-import { PlatformTray } from "./layout/LayoutEditor";
-import type { DashboardLayout } from "./layout/model";
+import { GridPage, gridBlockLabel, templateBlocksOf } from "./layout/GridPage";
+import { platformCardCount, PlatformTray } from "./layout/LayoutEditor";
+import { KPIS_ID, kindOf, METRIC_CARDS_MAX, readingOrder, type DashboardLayout } from "./layout/model";
 import { useDashboardLayout, type SaveLayout } from "./layout/useDashboardLayout";
 import { SkinView } from "./skins";
 import { hasCoverSkin, isFramedSkin, isSkinPage, skinTabs } from "./skins/blocks";
@@ -225,8 +225,43 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
             : undefined,
         }
       : undefined;
+  // gráficos e tabelas da aba no painel: as abas com grade (as das fontes, a galeria de criativos e as que o visual desenha à parte não têm)
+  const hasGrid = canArrange && !!t && !(t.composed && SOURCE_TABS.has(active)) && !(active === "criativos" && creatives) && !(t.skin && isSkinPage(t.skin, active));
+  const kpiN = (activeKpis ?? []).length;
+  const onGrid = hasGrid ? grid.items(active) : [];
+  const knownBlocks = t ? (rulesOf(active)?.labels ?? templateBlocksOf(templateOf(active), kpiN)) : [];
+  const editorBlocks: EditorBlocks | undefined =
+    hasGrid && t
+      ? {
+          shown: readingOrder(onGrid)
+            .filter((i) => i.id !== KPIS_ID)
+            .map((i) => ({ id: i.id, label: gridBlockLabel(i, knownBlocks, t.profile), w: i.w, added: kindOf(i.id) === "metric" || kindOf(i.id) === "custom" })),
+          hidden: knownBlocks.filter((b) => b.id !== KPIS_ID && !onGrid.some((i) => i.id === b.id)),
+          kpiStrip: !knownBlocks.some((b) => b.id === KPIS_ID) ? "none" : onGrid.some((i) => i.id === KPIS_ID) ? "shown" : "hidden",
+          hide: (id) => grid.hide(active, id, kpiN),
+          show: (id) => grid.add(active, id, undefined, kpiN),
+          canHide: onGrid.length > 1,
+          platform: {
+            count: platformCardCount(onGrid),
+            max: METRIC_CARDS_MAX,
+            render: () => (
+              <PlatformTray
+                state={{ items: grid.items(active), hide: (id) => grid.hide(active, id, kpiN), add: (id) => grid.add(active, id, undefined, kpiN) }}
+                sources={t.sources}
+                ds={ds}
+                profile={t.profile}
+                hideSpend={hideSpend}
+                arrange={arrangePlan}
+              />
+            ),
+          },
+          custom: { count: onGrid.filter((i) => kindOf(i.id) === "custom").length, max: CUSTOM_BLOCKS_MAX },
+        }
+      : undefined;
   const edit = useMetricEditorState({
     ask: askHost,
+    pageName: PAGES[active]?.name,
+    blocks: editorBlocks,
     metrics,
     visibleKpis: activeIds,
     hasData: (id) => {
@@ -249,32 +284,15 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     goToCards: pagesWithCards[0] ? () => setPage(pagesWithCards[0]) : undefined,
     arrange: canArrange ? arrangePlan : undefined,
     align:
-      canArrange && arrangePlan && t && !(active === "criativos" && creatives)
+      hasGrid && arrangePlan
         ? () => {
             const n = (activeKpis ?? []).length;
             if (grid.isAligned(active, n)) notify("A grade desta aba já está alinhada.", "ok");
             else grid.align(active, n);
           }
         : undefined,
-    extraTab:
-      canArrange && t && !(active === "criativos" && creatives)
-        ? {
-            label: "Por plataforma",
-            render: () => (
-              <PlatformTray
-                state={{ items: grid.items(active), hide: (id) => grid.hide(active, id), add: (id) => grid.add(active, id, undefined, (activeKpis ?? []).length), dirty: grid.companion.dirty }}
-                blocks={rulesOf(active)?.labels ?? templateBlocksOf(templateOf(active), (activeKpis ?? []).length)}
-                sources={t.sources}
-                ds={ds}
-                profile={t.profile}
-                hideSpend={hideSpend}
-                arrange={arrangePlan}
-              />
-            ),
-          }
-        : undefined,
   });
-  // "Ver em tela cheia" no editor: o dashboard volta ao normal (com as mudanças ainda não salvas)
+  // "Ver como fica" no editor: o dashboard volta ao normal (com as mudanças ainda não salvas)
   const editing = metrics.open && !edit.previewing;
   const filterLabels = useMemo(
     () => ({
@@ -391,9 +409,10 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
         grid={{
           items: grid.items(p),
           fit: nav && fit,
-          editing: nav && editing && canArrange && arrangePlan,
+          editing: nav && editing && canArrange,
+          arrange: arrangePlan,
           onChange: (g) => grid.change(p, g),
-          onHide: (id) => grid.hide(p, id),
+          onHide: (id) => grid.hide(p, id, (pageKpis[spec.pages.indexOf(p)] ?? []).length),
           onDropNew: (id, x, y) => grid.add(p, id, { x, y }),
           canDrop: (id) => grid.accepts(p, id),
         }}
@@ -510,7 +529,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
         </div>
       </div>
     ) : (
-      <GridPage page={active} layout={layoutOf(active)} ctx={ctxFor(active)} kpiEdit={metrics.edit} extraCards={extrasOf(active)} grid={grid} editing={editing && canArrange && arrangePlan} fit={fit} />
+      <GridPage page={active} layout={layoutOf(active)} ctx={ctxFor(active)} kpiEdit={metrics.edit} extraCards={extrasOf(active)} grid={grid} editing={editing && canArrange} arrange={arrangePlan} fit={fit} />
     ));
 
   return (
@@ -526,7 +545,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       data-fit-reserve={edit.previewing ? 64 : undefined}
       // apresentação: o dashboard cobre a tela (e entra em tela cheia, onde o navegador deixa); rola por dentro
       // editor aberto: no computador ele fica na lateral e o dashboard estreita ao lado (não fica por baixo); abaixo disso, a faixa do rodapé
-      className={presenting ? presentingClass(framed) : editing ? (edit.collapsed ? "pb-24" : "pb-[80dvh] md:pb-[412px] xl:pr-[412px] xl:pb-4") : edit.previewing ? "pb-20" : ""}
+      className={presenting ? presentingClass(framed) : editing ? (edit.collapsed ? EDITING_PAD_COLLAPSED : EDITING_PAD) : edit.previewing ? "pb-20" : ""}
     >
     {/* o espaçamento vale só entre as partes visíveis: a bandeja e o aviso (abaixo) não empurram a página */}
     <div className={screen ? "" : "space-y-4"}>

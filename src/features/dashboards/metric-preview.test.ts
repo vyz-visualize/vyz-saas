@@ -43,8 +43,13 @@ const click = async (el: Element | null | undefined) => {
 const openPanel = () => click([...host.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Editar dashboard"));
 const trayTabs = () => [...document.querySelectorAll<HTMLElement>("[data-tray-tab]")];
 const trayCardsNow = () => [...document.querySelectorAll<HTMLElement>("[data-tray-metric]")];
+/** A lista de cards fica a um clique do resumo ("Adicionar card"). */
+const toCards = async () => {
+  if (!document.querySelector("[data-metric-search]")) await click(document.querySelector('[data-add="cards"]'));
+};
 /** Procura o card da bandeja pelo nome, passando pelas categorias. */
 const trayCard = async (label: string) => {
+  await toCards();
   const find = () => trayCardsNow().find((c) => c.querySelector("p")?.textContent?.startsWith(label));
   for (const tab of trayTabs()) {
     await click(tab);
@@ -169,6 +174,7 @@ describe("prévia não salva", () => {
     const data = sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!;
     await mount(createElement(LiveDashboardView, { data, initialPage: "visao-geral", canCustomize: true, saveMetrics: save }));
     await openPanel();
+    await toCards();
     const heads = () => trayTabs().map((h) => h.textContent);
     expect(heads()).toEqual(["Todas", "Gerais", "Conversões", "Custos", "Taxas", "Vídeo", "Engajamento"]);
     const input = document.querySelector("[data-metric-search]") as HTMLInputElement;

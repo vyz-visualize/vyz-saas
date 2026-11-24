@@ -35,9 +35,15 @@ const enter = () => click(button("Editar"));
 const counter = () => document.querySelector("[data-metric-counter]")?.textContent ?? "";
 const count = () => Number(/^(\d+) de/.exec(counter())?.[1]);
 const cards = () => [...host.querySelectorAll<HTMLElement>("[data-edit-metric]")].map((e) => e.dataset.editMetric);
-const emptySlots = () => host.querySelectorAll("[data-empty-slot]").length;
+// vagas na fileira: os encaixes vazios (grade de 4) ou o "+ card" do fim da fileira única
+const emptySlots = () => host.querySelectorAll("[data-empty-slot]").length || Number(host.querySelector("[data-add-card]")?.getAttribute("data-free") ?? 0);
 const tray = () => document.querySelector("[data-metric-tray]");
+/** As listas de adicionar ficam a um clique do resumo ("Adicionar card"). */
+const toCards = async () => {
+  if (!document.querySelector("[data-metric-search]")) await click(document.querySelector('[data-add="cards"]'));
+};
 const trayCard = async (label: string) => {
+  await toCards();
   const find = () => [...document.querySelectorAll<HTMLElement>("[data-tray-metric]")].find((c) => c.querySelector("p")?.textContent?.startsWith(label));
   for (const tab of document.querySelectorAll<HTMLElement>("[data-tray-tab]")) {
     await click(tab);
@@ -95,16 +101,25 @@ describe("entrar no modo", () => {
     expect(count()).toBe(9);
   });
 
-  it("os encaixes vazios ficam numa fileira só, abaixo dos cards", async () => {
+  it('na fileira única, as vagas viram um "+ card" no fim, com quantas cabem', async () => {
     await sample();
+    await enter();
+    const tile = host.querySelector("[data-add-card]")!;
+    expect(tile.textContent).toContain("7 vagas");
+    const row = tile.parentElement!;
+    expect(row.hasAttribute("data-kpi-row")).toBe(true);
+    expect(row.lastElementChild === tile || row.lastElementChild?.getAttribute("aria-hidden") === "true").toBe(true);
+    expect(host.querySelector("[data-empty-row]")).toBeNull();
+  });
+
+  it("dados reais (grade de 4): os encaixes vazios ficam numa fileira só, abaixo dos cards", async () => {
+    await live({ metricPrefs: { meta: { kpis: { hidden: ["cpm", "ctr"], shown: [] } } } });
     await enter();
     const rows = host.querySelectorAll("[data-empty-row]");
     expect(rows).toHaveLength(1);
     expect(rows[0].querySelectorAll("[data-empty-slot]")).toHaveLength(emptySlots());
     expect(rows[0].className).toContain("col-span-full");
-    const grid = rows[0].parentElement!;
-    expect(grid.hasAttribute("data-kpi-row")).toBe(true);
-    expect(grid.lastElementChild === rows[0] || grid.lastElementChild?.getAttribute("aria-hidden") === "true").toBe(true);
+    expect(rows[0].parentElement!.hasAttribute("data-kpi-row")).toBe(true);
   });
 
   it("o editor fica embaixo da tela: respiro igual dos dois lados no computador e largura toda no celular", async () => {
@@ -116,17 +131,25 @@ describe("entrar no modo", () => {
     expect(classes.some((c) => c.includes("left-[260px]") || c.includes("sb-closed"))).toBe(false);
   });
 
-  it("encaixe vazio leva a busca da bandeja", async () => {
+  it('"+ card" e encaixe vazio levam à busca da lista de cards', async () => {
     await sample();
+    await enter();
+    await click(host.querySelector("[data-add-card]"));
+    expect(document.activeElement).toBe(document.querySelector("[data-metric-search]"));
+    await act(async () => root.unmount());
+    document.body.innerHTML = "";
+    await live({ metricPrefs: { meta: { kpis: { hidden: ["cpm"], shown: [] } } } });
     await enter();
     await click(host.querySelector("[data-empty-slot]"));
     expect(document.activeElement).toBe(document.querySelector("[data-metric-search]"));
   });
 
-  it('o alternador diz "Cards" e "Colunas da tabela"', async () => {
+  it("o resumo segue a ordem da tela: Cards e, com tabelas, Colunas das tabelas", async () => {
     await sample();
     await enter();
-    expect([...document.querySelectorAll('[data-metric-tray] [role="radio"]')].map((r) => r.textContent)).toEqual(["Cards", "Colunas da tabela"]);
+    expect([...document.querySelectorAll("[data-metric-tray] h3")].map((h) => h.textContent)[0]).toBe("Cards");
+    expect(document.querySelector("[data-columns-row]")?.textContent).toContain("Colunas das tabelas");
+    expect(document.querySelector('[data-add="cards"]')?.textContent).toContain("Adicionar card");
   });
 
   it("Período e Comparar ficam desligados no modo", async () => {
@@ -145,6 +168,7 @@ describe("entrar no modo", () => {
     await mount(createElement(LiveDashboardView, { data: sampleDashboardData("meta-ecommerce", { today: "2026-10-30" })!, initialPage: "visao-geral" }));
     expect(button("Editar")).toBeUndefined();
     expect(host.querySelector("[data-empty-slot]")).toBeNull();
+    expect(host.querySelector("[data-add-card]")).toBeNull();
   });
 });
 
@@ -197,17 +221,18 @@ describe("cards apagados", () => {
   it("já em uso: fica em Na tela, com o ✕, e sai de Adicionar", async () => {
     await sample();
     await enter();
-    expect(await trayCard("CTR")).toBeUndefined();
     const onScreen = document.querySelector('[data-metric-tray] ul[aria-label="Na tela"]');
     expect(onScreen?.textContent).toContain("CTR");
     expect(onScreen?.querySelector('button[aria-label="Tirar CTR"]')).toBeTruthy();
+    expect(await trayCard("CTR")).toBeUndefined();
   });
 
   it("ⓘ no toque: o primeiro toque já mostra a explicação", async () => {
     await sample();
     await enter();
+    await toCards();
     const info = document.querySelector<HTMLElement>('[data-metric-tray] [aria-label^="O que é"]')!;
-    const line = () => document.querySelector("[data-metric-tray] p.truncate")?.textContent ?? "";
+    const line = () => document.querySelector("[data-metric-tray] [data-metric-help]")?.textContent ?? "";
     // foco de toque: chega antes do clique e não é :focus-visible
     info.matches = () => false;
     const before = line();
@@ -267,11 +292,15 @@ describe("rascunho", () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it("Esc também", async () => {
+  it("Esc também (numa lista de adicionar, o primeiro Esc volta ao resumo)", async () => {
     await sample();
     await enter();
     await add("Investimento");
-    await act(async () => void document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    const esc = () => act(async () => void document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+    await esc();
+    expect(tray()).toBeTruthy();
+    expect(document.querySelector("[data-metric-search]")).toBeNull();
+    await esc();
     expect(tray()).toBeNull();
     expect(cards()).toEqual(["ctr", "cpa", "frequency"]);
     expect(save).not.toHaveBeenCalled();
@@ -316,7 +345,7 @@ describe("rascunho", () => {
 });
 
 describe("colunas da tabela", () => {
-  const colunas = () => click([...document.querySelectorAll('[role="radio"]')].find((r) => r.textContent === "Colunas da tabela"));
+  const colunas = () => click(document.querySelector("[data-columns-row]"));
   const headers = () => [...host.querySelectorAll("thead th")].map((t) => t.textContent);
 
   it("+ adiciona a coluna e ✕ no cabeçalho remove", async () => {
@@ -369,7 +398,7 @@ describe("arrastar", () => {
 
 });
 
-describe("ver em tela cheia", () => {
+describe("ver como fica", () => {
   const preview = () => document.querySelector('[aria-label="Pré-visualização"]');
   const shown = () => [...host.querySelectorAll<HTMLElement>("[data-vyz-metric]")].map((e) => e.dataset.vyzMetric);
 
@@ -377,7 +406,7 @@ describe("ver em tela cheia", () => {
     await sample();
     await enter();
     await add("Investimento");
-    await click(button("Ver em tela cheia"));
+    await click(button("Ver como fica"));
     expect(tray()).toBeNull();
     expect(preview()?.textContent).toContain("ainda não foram salvas");
     expect(shown()).toContain("spend");
@@ -394,7 +423,7 @@ describe("ver em tela cheia", () => {
     await sample();
     await enter();
     await add("Investimento");
-    await click(button("Ver em tela cheia"));
+    await click(button("Ver como fica"));
     await act(async () => void document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     expect(tray()).toBeTruthy();
     expect(counter()).toContain("4 de 10");
@@ -404,7 +433,7 @@ describe("ver em tela cheia", () => {
     await sample();
     await enter();
     await add("Investimento");
-    await click(button("Ver em tela cheia"));
+    await click(button("Ver como fica"));
     await click([...document.querySelectorAll<HTMLButtonElement>('[aria-label="Pré-visualização"] button')].find((b) => b.textContent?.trim() === "Salvar"));
     expect(save).toHaveBeenCalledTimes(1);
     expect(preview()).toBeNull();
@@ -470,6 +499,74 @@ describe("sair com mudança não salva", () => {
     expect(leave()).toBe(true);
     await click(button("Cancelar"));
     expect(leave()).toBe(false);
+  });
+});
+
+describe("gráficos e tabelas", () => {
+  const saveLayout = vi.fn(async () => ({ ok: true as const }));
+  const withGrid = (canArrange: boolean) => sample({ initialPage: "visao-geral", saveLayout, canArrange });
+  const rows = (list: string) => [...document.querySelectorAll<HTMLElement>(`[data-metric-tray] ul[aria-label="${list}"] [data-block-row]`)];
+  const names = (list: string) => rows(list).map((r) => r.querySelector("span")?.textContent);
+  beforeEach(() => saveLayout.mockClear());
+
+  it("o resumo lista os blocos da aba, cada um com uma ação só", async () => {
+    await withGrid(false);
+    await enter();
+    expect(rows("Na aba").length).toBeGreaterThan(1);
+    for (const r of rows("Na aba")) expect(r.querySelectorAll("button[aria-label]")).toHaveLength(1);
+    expect(document.querySelector('[data-add="blocks"]')?.textContent).toContain("Adicionar gráfico");
+    expect(document.querySelector("[data-metric-tray]")?.textContent).toContain("Mudar de lugar e de tamanho é do plano Avançado");
+  });
+
+  it("ocultar em qualquer plano: sai da aba, vai para Ocultos e volta pelo Mostrar", async () => {
+    await withGrid(false);
+    await enter();
+    const [first] = names("Na aba");
+    await click(rows("Na aba")[0].querySelector(`button[aria-label="Ocultar ${first}"]`));
+    expect(names("Na aba")).not.toContain(first);
+    expect(names("Ocultos")).toEqual([first]);
+    await click(document.querySelector(`button[aria-label="Mostrar ${first}"]`));
+    expect(names("Na aba")).toContain(first);
+    expect(rows("Ocultos")).toHaveLength(0);
+  });
+
+  it("Salvar grava a aba sem o bloco oculto, e Cancelar não grava nada", async () => {
+    await withGrid(false);
+    await enter();
+    const before = rows("Na aba").map((r) => r.dataset.blockRow);
+    const [first] = names("Na aba");
+    await click(document.querySelector(`button[aria-label="Ocultar ${first}"]`));
+    expect(document.querySelector("[data-dirty]")?.textContent).toContain("não salvas");
+    await click(button("Salvar"));
+    expect(saveLayout).toHaveBeenCalledTimes(1);
+    const items = (saveLayout.mock.calls[0] as unknown[])[2] as { id: string }[];
+    expect(items.map((i) => i.id)).not.toContain(before[0]);
+    expect(items.map((i) => i.id)).toEqual(expect.arrayContaining(before.slice(1) as string[]));
+  });
+
+  it("o último bloco da aba não sai", async () => {
+    await withGrid(true);
+    await enter();
+    while (rows("Na aba").length > 0) {
+      const live = rows("Na aba").find((r) => !r.querySelector("button[aria-label]")?.hasAttribute("disabled"));
+      if (!live) break;
+      await click(live.querySelector("button[aria-label]"));
+    }
+    // fica a fileira de cards ou um bloco: nunca a aba vazia
+    const left = rows("Na aba").length + (document.querySelector('[aria-label="Na tela"]') ? 1 : 0);
+    expect(left).toBeGreaterThan(0);
+  });
+
+  it("Adicionar gráfico abre o pedido ao Vyz e os cards por plataforma, com os limites", async () => {
+    await withGrid(true);
+    await enter();
+    await click(document.querySelector('[data-add="blocks"]'));
+    const panel = document.querySelector("[data-metric-tray]")!;
+    expect(panel.textContent).toContain("Adicionar gráfico");
+    expect(panel.textContent).toContain("Cards por plataforma");
+    expect(panel.textContent).toMatch(/0 de 12/);
+    await click(panel.querySelector('button[aria-label="Voltar ao resumo"]'));
+    expect(document.querySelector('[data-add="blocks"]')).toBeTruthy();
   });
 });
 

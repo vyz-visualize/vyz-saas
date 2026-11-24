@@ -301,6 +301,90 @@ export function firstFree(items: PageGrid, w: number, h: number): { x: number; y
   return { x: 0, y: gridRows(items) };
 }
 
+// ---- ocultar e telas (o Personalizar) ----------------------------------------------------
+
+/**
+ * Ocultar um bloco no Personalizar: o vizinho da mesma fileira (o da esquerda; sem ele, o da
+ * direita) cresce e ocupa o espaço, até onde o limite dele deixa. Sem vizinho que caiba, a
+ * grade fecha o buraco por baixo. Vale nos dois planos: no Avançado é a disposição da pessoa,
+ * fora dele é a do modelo sem os blocos ocultos (fixedGrid).
+ */
+export function hideBlock(items: PageGrid, id: string, kpiCount = 4): PageGrid {
+  const gone = items.find((i) => i.id === id);
+  if (!gone) return items;
+  const out = items.filter((i) => i.id !== id).map((i) => ({ ...i }));
+  const sameRow = (it: LayoutItem) => it.y <= gone.y && it.y + it.h >= gone.y + gone.h;
+  const fits = (it: LayoutItem) => it.w + gone.w <= limitsOf(it.id, kpiCount).maxW;
+  const left = out.find((it) => sameRow(it) && it.x + it.w === gone.x && fits(it));
+  const right = left ? undefined : out.find((it) => sameRow(it) && it.x === gone.x + gone.w && fits(it));
+  if (left) left.w += gone.w;
+  else if (right) {
+    right.x = gone.x;
+    right.w += gone.w;
+  }
+  return compact(out);
+}
+
+/**
+ * Fora do Avançado não se muda nada de lugar nem de tamanho: a disposição é a do modelo, sem
+ * os blocos que a pessoa ocultou (o vizinho ocupa o espaço) e com os blocos somados (cards de
+ * plataforma e blocos pedidos), cada um no primeiro espaço livre. Painel e servidor usam esta.
+ */
+export function fixedGrid(base: PageGrid, items: PageGrid, kpiCount = 4): PageGrid {
+  const on = new Set(items.map((i) => i.id));
+  let out = base;
+  for (const b of base) if (!on.has(b.id)) out = hideBlock(out, b.id, kpiCount);
+  const added = items.filter((i) => !base.some((b) => b.id === i.id) && (kindOf(i.id) === "metric" || kindOf(i.id) === "custom"));
+  return withAddedBlocks(out, added);
+}
+
+/** A largura do bloco em palavras (o Personalizar mostra isto, não colunas). */
+const WIDTH_LABEL: Record<number, string> = { 12: "Inteira", 9: "3/4", 8: "2/3", 6: "Metade", 4: "1/3", 3: "1/4", 2: "1/6" };
+export const widthLabel = (w: number) => WIDTH_LABEL[w] ?? `${w}/12`;
+
+/**
+ * Quantas telas a aba vira no dashboard (ele nunca rola: o que não cabe vai para a tela
+ * seguinte) e em que fileira da grade cada tela nova começa, para o Personalizar marcar.
+ * A faixa de cards do topo repete em todas as telas e não conta como começo de tela.
+ */
+export function screenBreaks(items: PageGrid, height: number, isCompact: (id: string) => boolean): { screens: number; breaks: number[] } | null {
+  const pages = paginate(items, height, isCompact);
+  if (!pages) return null;
+  if (pages.length < 2) return { screens: 1, breaks: [] };
+  const pinned = new Set(pages[0].items.filter((i) => pages[1].items.some((o) => o.id === i.id)).map((i) => i.id));
+  const breaks = pages.slice(1).map((p) => Math.min(...p.items.filter((i) => !pinned.has(i.id)).map((i) => items.find((o) => o.id === i.id)?.y ?? Infinity)));
+  return { screens: pages.length, breaks: breaks.filter(Number.isFinite) };
+}
+
+/**
+ * Tira da grade os blocos sem nada para mostrar (com dados reais, nenhum bloco aparece vazio)
+ * e passa o espaço ao vizinho da mesma fileira: o da esquerda cresce para a direita; sem ele,
+ * o da direita cresce para a esquerda. Sem vizinho na fileira, a grade fecha o buraco por baixo.
+ * Não muda o layout salvo: é só o que a tela desenha.
+ */
+export function withoutBlocks(items: PageGrid, hidden: readonly string[]): PageGrid {
+  if (!hidden.length) return items;
+  let out = items.map((it) => ({ ...it }));
+  for (const id of hidden) {
+    const gone = out.find((it) => it.id === id);
+    if (!gone) continue;
+    out = out.filter((it) => it.id !== id);
+    // mesma fileira: cobre toda a altura do bloco que saiu
+    const sameRow = (it: (typeof out)[number]) => it.y <= gone.y && it.y + it.h >= gone.y + gone.h;
+    const left = out.find((it) => sameRow(it) && it.x + it.w === gone.x);
+    const right = out.find((it) => sameRow(it) && it.x === gone.x + gone.w);
+    if (left) left.w += gone.w;
+    else if (right) {
+      right.x = gone.x;
+      right.w += gone.w;
+    } else if (!out.some((it) => it.y < gone.y + gone.h && it.y + it.h > gone.y)) {
+      // ocupava a fileira sozinho: os blocos de baixo sobem, sem deixar o buraco
+      for (const it of out) if (it.y >= gone.y + gone.h) it.y -= gone.h;
+    }
+  }
+  return out;
+}
+
 // ---- alinhar ---------------------------------------------------------------------------
 
 /**
