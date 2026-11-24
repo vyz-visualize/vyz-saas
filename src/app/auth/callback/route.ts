@@ -7,14 +7,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { failurePath, isRecoveryReturn, returnFailure } from "@/features/auth/links";
 import { amrMethods, isRecentRecovery, RESET_PASSWORD_PATH } from "@/features/auth/recovery";
 import { logAuthEvent } from "@/server/history/log";
-import { appOrigin, safeNextPath } from "@/server/http/request";
+import { loginOrigin, safeNextPath } from "@/server/http/request";
 import { createServerSupabase } from "@/server/supabase/server";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const next = safeNextPath(params.get("next"));
   const recovery = isRecoveryReturn(next);
-  const origin = await appOrigin();
+  const origin = await loginOrigin();
   const go = (path: string) => NextResponse.redirect(new URL(path, origin));
 
   const code = params.get("code");

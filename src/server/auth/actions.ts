@@ -20,7 +20,7 @@ import { ACTIVE_WORKSPACE_COOKIE, AUTH_COOKIE_OPTIONS } from "@/lib/supabase/coo
 import type { Database } from "@/lib/supabase/database.types";
 import { serverEnv } from "@/server/env";
 import { logAuthEvent, type AuthMethod } from "@/server/history/log";
-import { appOrigin, requestContext, safeNextPath } from "@/server/http/request";
+import { loginOrigin, requestContext, safeNextPath } from "@/server/http/request";
 import { hitRateLimit, type RateRule } from "@/server/security/rate-limit";
 import { AppError, appError, toActionError, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
@@ -126,7 +126,7 @@ async function signInWithProvider(provider: OAuthProvider, next?: string | null)
     const status = provider === "google" ? await googleSignInStatus() : await appleSignInStatus();
     if (status === "disabled") throw appError(`auth:${provider}_disabled`, `${(provider === "google" ? GOOGLE_PENDING : APPLE_PENDING).label}.`);
     const parsed = nextPathSchema.safeParse(next);
-    const callback = new URL("/auth/callback", await appOrigin());
+    const callback = new URL("/auth/callback", await loginOrigin());
     callback.searchParams.set("next", safeNextPath(parsed.success ? parsed.data : null));
     const supabase = await createServerSupabase();
     // PKCE: o verificador fica num cookie deste navegador até a volta.
@@ -171,7 +171,7 @@ export async function requestPasswordReset(_prev: AuthFormState<{ email: string 
       ],
       { email },
     );
-    const redirectTo = new URL("/auth/callback", await appOrigin());
+    const redirectTo = new URL("/auth/callback", await loginOrigin());
     redirectTo.searchParams.set("next", RESET_PASSWORD_PATH);
     const supabase = await resetLinkClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectTo.toString() });
