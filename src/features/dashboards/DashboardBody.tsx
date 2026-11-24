@@ -170,11 +170,13 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   const today = useMemo(() => localDate(new Date(), DEFAULT_TIME_ZONE), []);
   // capa (imagem, endereço) e planilha do lançamento: só os visuais com capa usam
   const capa = useDashboardCover({ initial: spec.cover, editable: !!customizeId, host: coverHost, today });
-  // com a planilha ligada, o funil de vendas dela entra por cima dos números das plataformas
+  // com a planilha ligada, o funil de vendas dela entra por cima dos números das plataformas (nos
+  // visuais com capa; nos outros, a planilha ligada pela tela do MMM só conta como resultado do modelo)
+  const coverSkin = hasCoverSkin(t?.skin);
   const ds = useMemo(() => {
     const base = dataset ?? datasetFor({ ...spec, settings: spec.settings }, days);
-    return capa.launch ? withLaunchSheet(base, capa.launch.rows, { today, missing: capa.launch.missing }) : base;
-  }, [dataset, spec, days, capa.launch, today]);
+    return capa.launch && coverSkin ? withLaunchSheet(base, capa.launch.rows, { today, missing: capa.launch.missing }) : base;
+  }, [dataset, spec, days, capa.launch, today, coverSkin]);
   // as abas na tela: as do dashboard e as que o visual desenha (Pulso: Ações de hoje; Noturno: Produtos, com catálogo)
   const tabs = useMemo(() => skinTabs(t?.skin, spec.pages, ds), [t?.skin, spec.pages, ds]);
   const defaults = useMemo(() => (t ? sampleDefaultKpis(t, spec.pages) : []), [t, spec.pages]);
@@ -362,7 +364,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       : p === "criativos-ao-vivo" || p === "previsao" || p === "mmm" ? (
         // o desenho do recurso ocupa a altura toda (sem sobrar faixa escura embaixo) e rola por dentro
         <div className="h-full min-h-0 overflow-auto rounded-card [&>*]:min-h-full">
-          <SkinView skin={p} ctx={ctxFor(p)} name={spec.name} client={spec.client} pages={[p]} active={p} periodLabel={periodLabel} syncedAt={syncedAt} timeZone={timeZone} mmm={p === "mmm" ? (isReal ? { real: mmmReadiness ?? null, connectHref: backHref ? "/painel/contas" : undefined } : { sample: true }) : undefined} />
+          <SkinView skin={p} ctx={ctxFor(p)} name={spec.name} client={spec.client} pages={[p]} active={p} periodLabel={periodLabel} syncedAt={syncedAt} timeZone={timeZone} mmm={p === "mmm" ? (isReal ? { real: mmmReadiness ?? null, connectHref: backHref ? "/painel/contas" : undefined, sheet: capa.sheet } : { sample: true }) : undefined} />
         </div>
       )
       : null;

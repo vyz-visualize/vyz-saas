@@ -13,7 +13,7 @@ import { niceStep } from "@/components/charts/axis";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/Menu";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { totals } from "@/features/metrics/compute";
-import { formatValue, metric, type MetricDef, type MetricId } from "@/features/metrics/definitions";
+import { formatMetric, formatValue, metric, type MetricDef, type MetricId } from "@/features/metrics/definitions";
 import type { DayRow } from "@/features/metrics/source";
 import { sampleRowDate } from "@/features/metrics/filter-dataset";
 import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
@@ -106,7 +106,7 @@ export function TrendWidget({ ctx, metrics, title }: { ctx: WidgetContext; metri
   const shown = all.filter((s) => !off.has(s.id));
   const dates = ctx.today ? rows.map((r) => sampleRowDate(ctx.today!, r.ago)) : rows.map((_, i) => `dia ${i + 1}`);
   const goal = (id === "cpa" || id === "cpl" || id === "cplq") && hasGoal(ctx.ds) ? ctx.ds.goal : undefined;
-  const totalNow = formatValue(ctx.cur[id], def.format);
+  const totalNow = formatMetric(id, ctx.cur[id], def.format);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

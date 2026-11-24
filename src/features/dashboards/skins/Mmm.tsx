@@ -49,7 +49,7 @@ const hill = (x: number, half: number, shape = 1) =>
 
 export function MmmSkin(props: SkinProps) {
   // dados reais: até existir o modelo de verdade, só o que falta para treiná-lo (por cliente)
-  if (props.mmm && "real" in props.mmm) return <MmmConstruction data={props.mmm.real} connectHref={props.mmm.connectHref} />;
+  if (props.mmm && "real" in props.mmm) return <MmmConstruction data={props.mmm.real} connectHref={props.mmm.connectHref} sheet={props.mmm.sheet} />;
   return <MmmExample {...props} />;
 }
 

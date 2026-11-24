@@ -871,7 +871,7 @@ function Trend({ c, against }: { c: ReturnType<typeof change>; against: string }
       className="mt-1 flex items-center gap-1 text-[11px]"
       style={{ color: C.fg2 }}
     >
-      <Icon size={13} style={{ color }} />
+      {c.text !== "—" && <Icon size={13} style={{ color }} />}
       <span className="font-semibold" style={{ color }}>
         {c.text}
       </span>

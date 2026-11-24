@@ -5,7 +5,11 @@
 import { int } from "@/lib/format";
 import type { Dataset } from "./source";
 
-const WHAT = { leads: { none: "leads", one: "lead" }, messages: { none: "conversas iniciadas", one: "conversa iniciada" } } as const;
+// o artigo e a concordância de cada resultado ("Os leads ... importados", "As conversas ... importadas")
+const WHAT = {
+  leads: { none: "leads", the: "Os", imported: "importados" },
+  messages: { none: "conversas iniciadas", the: "As", imported: "importadas" },
+} as const;
 
 export function resultNotice(ds: Pick<Dataset, "result" | "current">): string | null {
   const r = ds.result;
@@ -14,6 +18,6 @@ export function resultNotice(ds: Pick<Dataset, "result" | "current">): string | 
   if (total > 0) return null;
   const what = WHAT[r.field];
   if (!r.informed)
-    return `Os ${what.none} da Meta passam a ser importados na próxima sincronização; os dias de antes ficam sem esse dado.${r.purchases > 0 ? ` No período, a conta registrou ${int(r.purchases)} ${r.purchases === 1 ? "compra" : "compras"}.` : ""}`;
+    return `${what.the} ${what.none} da Meta passam a ser ${what.imported} na próxima sincronização; os dias de antes ficam sem esse dado.${r.purchases > 0 ? ` No período, a conta registrou ${int(r.purchases)} ${r.purchases === 1 ? "compra" : "compras"}.` : ""}`;
   return `A Meta não registrou ${what.none} no período.${r.purchases > 0 ? ` A conta registrou ${int(r.purchases)} ${r.purchases === 1 ? "compra" : "compras"}: se o resultado desta conta é a venda, escolha o objetivo de venda.` : ""}`;
 }

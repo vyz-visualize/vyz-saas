@@ -4,11 +4,14 @@
 // ROI, curva de resposta nem redistribuição. Mostra, por cliente (projeto), o que falta para o
 // modelo ser treinado e o histórico real de investimento por canal e mês.
 
-import { Check, Hammer, Plug, X } from "lucide-react";
+import { Check, FileSpreadsheet, Hammer, Plug, X } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { MMM_MIN_MONTHS, OUTCOME_LABEL, type ChannelReadiness, type MmmReadinessData, type ProjectReadiness } from "@/features/mmm/readiness";
 import { brlCompact } from "@/lib/format";
+import type { LaunchSheetControl } from "../cover";
+import { SheetDialog } from "./fachada/CoverPanel";
 
 const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const monthLabel = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]}/${ym.slice(2, 4)}`;
@@ -77,7 +80,7 @@ function SpendHistory({ p }: { p: ProjectReadiness }) {
   );
 }
 
-function ProjectBlock({ p, connectHref }: { p: ProjectReadiness; connectHref?: string }) {
+function ProjectBlock({ p, connectHref, onSheet }: { p: ProjectReadiness; connectHref?: string; onSheet?: () => void }) {
   const ok = Object.fromEntries(p.criteria.map((c) => [c.id, c.ok])) as Record<string, boolean>;
   const missing = p.criteria.filter((c) => !c.ok).length;
   return (
@@ -105,7 +108,12 @@ function ProjectBlock({ p, connectHref }: { p: ProjectReadiness; connectHref?: s
                   <Plug size={12} aria-hidden /> Ligar {o.source === "ga4" ? "o GA4" : "um CRM"}
                 </Link>
               )}
-              {!o.connected && o.source === "planilha" && <span className="text-[11.5px]">(liga na capa do visual Fachada)</span>}
+              {!o.connected && o.source === "planilha" && onSheet && (
+                <button type="button" onClick={onSheet} className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11.5px] font-medium text-fg hover:border-fg-2">
+                  <FileSpreadsheet size={12} aria-hidden /> Ligar a planilha
+                </button>
+              )}
+              {!o.connected && o.source === "planilha" && !onSheet && <span className="text-[11.5px]">(quem edita este dashboard liga por esta tela)</span>}
             </p>
           ))}
           <p className="pt-1 text-[11.5px]">A conversão que a própria plataforma informa não serve: o modelo explicaria o efeito da plataforma com o número dela mesma (resultado circular).</p>
@@ -128,7 +136,9 @@ function ProjectBlock({ p, connectHref }: { p: ProjectReadiness; connectHref?: s
   );
 }
 
-export function MmmConstruction({ data, connectHref }: { data: MmmReadinessData | null; connectHref?: string }) {
+export function MmmConstruction({ data, connectHref, sheet }: { data: MmmReadinessData | null; connectHref?: string; sheet?: LaunchSheetControl }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const onSheet = sheet?.connect ? () => setSheetOpen(true) : undefined;
   return (
     <div className="@container space-y-4" data-mmm-construcao>
       <header className="flex gap-3 rounded-card border border-dashed border-line bg-surface-2/50 p-4">
@@ -145,10 +155,11 @@ export function MmmConstruction({ data, connectHref }: { data: MmmReadinessData 
           {!data.fullHistory && <p className="text-[12px] text-fg-2">Histórico considerado: o que o VYZ sincroniza desde a primeira sincronização de cada conta. Os meses anteriores, já carregados para o MMM, entram assim que a leitura deles estiver liberada.</p>}
           {data.projects.length > 1 && <p className="text-[12.5px] text-fg-2">Este dashboard tem contas de {data.projects.length} clientes: cada um tem o seu modelo.</p>}
           {data.projects.map((p) => (
-            <ProjectBlock key={p.projectId} p={p} connectHref={connectHref} />
+            <ProjectBlock key={p.projectId} p={p} connectHref={connectHref} onSheet={onSheet} />
           ))}
         </>
       )}
+      {sheet?.connect && <SheetDialog open={sheetOpen} onClose={() => setSheetOpen(false)} sheet={sheet} />}
     </div>
   );
 }

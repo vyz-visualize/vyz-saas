@@ -133,7 +133,8 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
   // "Conectar" no aviso: com conta ativa no workspace, liga ao dashboard (editar); sem nenhuma, conecta em Contas
   const hasEnabledAccounts = sample ? await workspaceHasEnabledAccounts(session.workspace.id) : false;
   // visuais com capa: a imagem, o endereço e a planilha do lançamento
-  const coverData = hasCoverSkin(template?.skin) ? await loadCoverData(await createServerSupabase(), d.id, session.workspace.id) : undefined;
+  // a planilha do lançamento: a capa dos visuais com capa e a tela do MMM (resultado independente)
+  const coverData = hasCoverSkin(template?.skin) || d.pages.includes("mmm") ? await loadCoverData(await createServerSupabase(), d.id, session.workspace.id) : undefined;
   return (
     <>
       {sample && <SampleNotice connectHref={hasEnabledAccounts ? `/painel/dashboards/${d.id}/editar` : "/painel/contas"} canConnect={canEdit} />}

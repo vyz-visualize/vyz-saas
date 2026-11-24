@@ -162,3 +162,31 @@ describe("12. ranking por custo: sem venda não ganha nem mostra custo", () => {
     expect(r.at(-1)!.cpa).toBeNull();
   });
 });
+
+describe("sem resultado ou sem base: '—'", () => {
+  it("custo por resultado com 0 resultados é '—', nunca 'R$ 0,00'", async () => {
+    const { formatMetric } = await import("@/features/metrics/definitions");
+    for (const id of ["cpa", "cpl", "cplq", "cpv", "cpc", "cpm"]) expect(formatMetric(id, 0, "brl")).toBe("—");
+    expect(formatMetric("cpa", 1234, "brl")).not.toBe("—");
+    // gasto 0 continua R$ 0,00 (não é custo por resultado)
+    expect(formatMetric("spend", 0, "brl")).toContain("0,00");
+  });
+
+  it("variação com o período anterior em 0 é '—', nunca '0,0%'", async () => {
+    const { change } = await import("@/features/dashboards/skins/shared");
+    const zero = { conversions: 0 } as Record<string, number>;
+    const ctx = { cur: { ...zero }, prev: { ...zero }, profile: "ecommerce" } as unknown as Parameters<typeof change>[0];
+    expect(change(ctx, "conversions").text).toBe("—");
+    expect(change(ctx, "conversions").good).toBeNull();
+    const ctx2 = { cur: { conversions: 5 }, prev: { conversions: 0 }, profile: "ecommerce" } as unknown as Parameters<typeof change>[0];
+    expect(change(ctx2, "conversions").text).toBe("—");
+  });
+
+  it("aviso de resultado com a concordância certa", async () => {
+    const { resultNotice } = await import("@/features/metrics/result-notice");
+    const msgs = resultNotice({ result: { field: "messages", informed: false, purchases: 0 }, current: [] } as unknown as Parameters<typeof resultNotice>[0]);
+    expect(msgs).toContain("As conversas iniciadas da Meta passam a ser importadas");
+    const leads = resultNotice({ result: { field: "leads", informed: false, purchases: 0 }, current: [] } as unknown as Parameters<typeof resultNotice>[0]);
+    expect(leads).toContain("Os leads da Meta passam a ser importados");
+  });
+});

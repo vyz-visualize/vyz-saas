@@ -35,5 +35,8 @@ describe("tela do MMM em construção", () => {
     expect(html.match(/data-mmm-cliente=/g)?.length).toBe(2);
     expect(html).toContain("contas de 2 clientes");
     expect(html).not.toContain("Ligar o GA4");
+    // a dica da planilha vale para qualquer visual (nada de "capa do visual Fachada")
+    expect(html).not.toContain("Fachada");
+    expect(html).toContain("quem edita este dashboard liga por esta tela");
   });
 });

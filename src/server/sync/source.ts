@@ -19,7 +19,7 @@ import { fetchCrmDataset } from "./live/crm";
 import { fetchGa4Dataset } from "./live/ga4";
 import { fetchGoogleDataset } from "./live/google";
 import { fetchLinkedInDataset } from "./live/linkedin";
-import { fetchMetaDataset } from "./live/meta";
+import { fetchMetaBreakdowns, fetchMetaDataset } from "./live/meta";
 import { fetchOrganicDataset } from "./live/organic";
 import { fetchTikTokDataset } from "./live/tiktok";
 
@@ -42,6 +42,8 @@ export interface SyncSource {
   /** Entidades e fatos diários da conta no intervalo (inclusive). */
   /** breakdowns: false pula as quebras da Meta (elas vêm uma vez por dia; as do banco ficam). */
   fetch(account: SyncAccount & { platform: SyncPlatform }, range: SyncRange, opts?: { breakdowns?: boolean }): Promise<AccountDataset>;
+  /** Só as quebras (carga única de 90 dias das contas que ainda não têm nenhuma). Só a Meta real. */
+  fetchBreakdowns?(account: SyncAccount & { platform: SyncPlatform }, range: SyncRange): Promise<{ rows: AccountDataset["breakdownDaily"]; dimensions: NonNullable<AccountDataset["breakdownDimensions"]> }>;
   /** Orgânico (Instagram e Página do Facebook). */
   /** allPosts: relê os números de todos os posts da janela de 30 dias (false: só os dos últimos 7). */
   fetchOrganic(account: SyncAccount & { platform: OrganicPlatform }, range: SyncRange, opts?: { allPosts?: boolean }): Promise<OrganicDataset>;
@@ -94,6 +96,10 @@ export const liveSource: SyncSource = {
     if (account.platform === "tiktok") return fetchTikTokDataset(account, range);
     if (account.platform === "linkedin") return fetchLinkedInDataset(account, range);
     throw appError("sync:not_configured", `A importação de dados reais do ${PLATFORMS[account.platform as keyof typeof PLATFORMS]?.name ?? account.platform} ainda não está configurada.`);
+  },
+  async fetchBreakdowns(account, range) {
+    if (account.platform !== "meta") return { rows: [], dimensions: [] };
+    return fetchMetaBreakdowns(account, range);
   },
   async fetchOrganic(account, range, opts) {
     return fetchOrganicDataset(account, range, opts);

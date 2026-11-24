@@ -122,6 +122,15 @@ export function formatValue(value: number, format: Format): string {
   }
 }
 
+/** Custos por unidade: com 0 unidades (ou sem investimento), não há custo a mostrar. */
+const COST_PER: ReadonlySet<string> = new Set(["cpa", "cpl", "cplq", "cpv", "cpc", "cpm"]);
+
+/** O valor de uma métrica na tela: custo por resultado sem resultado é "—", nunca "R$ 0,00". */
+export function formatMetric(id: string, value: number, format: Format): string {
+  if (COST_PER.has(id) && !(value > 0)) return "—";
+  return formatValue(value, format);
+}
+
 /** Variação boa ou ruim, segundo o sentido da métrica. */
 export function isGood(delta: number, better: MetricDef["better"]): boolean | null {
   if (better === "neutral" || delta === 0) return null;
