@@ -1,21 +1,25 @@
 "use client";
 
 // Os blocos de um visual próprio na grade de 12 colunas. Sem controle (galeria, PDF),
-// mostra a disposição padrão do visual; no dashboard, a salva, e no Personalizar do
-// Avançado deixa arrastar e redimensionar com a mesma animação das outras abas.
+// mostra a disposição padrão do visual; no dashboard, a salva. No Personalizar, a mesma
+// edição das outras abas: ocultar e remover em todos os planos; arrastar e redimensionar
+// no Avançado.
 
 import type { ReactNode } from "react";
 import { GridCanvas, type Block } from "../layout/GridCanvas";
 import { PlatformMetricCard } from "../layout/LayoutEditor";
-import { kindOf, parseMetricCardId, type PageGrid } from "../layout/model";
+import { metricCardLabel } from "../layout/platform-metrics";
+import { kindOf, parseMetricCardId, withoutBlocks, type PageGrid } from "../layout/model";
 import type { WidgetContext } from "../widgets/Widgets";
 import type { SkinId } from "@/features/templates/types";
-import { isSkinCard, SKIN_BLOCKS, skinGrid, withoutBlocks } from "./blocks";
+import { isSkinCard, SKIN_BLOCKS, skinGrid } from "./blocks";
 import { themeVars, type SkinPalette } from "./bklit-blocks";
 
 export type SkinGridControl = {
   items: PageGrid;
   editing?: boolean;
+  /** Na edição, mover e redimensionar (Avançado). Sem isso, só ocultar e remover. */
+  arrange?: boolean;
   onChange?: (g: PageGrid) => void;
   onHide?: (id: string) => void;
   onDropNew?: (id: string, x: number, y: number) => void;
@@ -56,7 +60,7 @@ export function SkinGrid({
   for (const it of items) {
     if (parseMetricCardId(it.id))
       blocks[it.id] = {
-        label: "Métrica",
+        label: metricCardLabel(it.id, ctx.profile),
         node: (
           <PlatformMetricCard
             id={it.id}
@@ -72,6 +76,7 @@ export function SkinGrid({
       items={items}
       blocks={blocks}
       editing={grid?.editing}
+      arrange={grid?.arrange}
       onChange={grid?.onChange}
       onHide={grid?.onHide}
       onDropNew={grid?.onDropNew}

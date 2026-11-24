@@ -1,7 +1,8 @@
 "use client";
 
-// O modo personalizar visto de dentro das fileiras de cards e das tabelas: o ✕, os
-// encaixes vazios e a fileira que recebe o card arrastado. Arquivo leve, sem a bandeja:
+// O modo personalizar visto de dentro do dashboard: o ✕ dos cards e das colunas, o "+ card"
+// no fim da fileira, a fileira que recebe o card arrastado, o bloco apontado (acende na
+// grade e no painel ao mesmo tempo) e quantas telas a aba vira. Arquivo leve, sem a bandeja:
 // os cards também aparecem na landing page, onde este contexto fica vazio.
 
 import { Plus, X } from "lucide-react";
@@ -16,12 +17,17 @@ export type MetricEditor = {
   canRemoveColumn: boolean;
   removeKpi: (id: string) => void;
   removeColumn: (id: string) => void;
-  /** Encaixe vazio: abre a bandeja com o foco na busca. */
+  /** Encaixe vazio ou "+ card": abre a lista de cards do painel com o foco na busca. */
   openTray: () => void;
   dragging: boolean;
   /** A fileira ainda aceita um card. */
   canDrop: boolean;
   dropKpi: (id: string) => void;
+  /** Bloco apontado no painel ou na grade: os dois acendem juntos. */
+  highlight: string | null;
+  setHighlight: (id: string | null) => void;
+  /** A grade avisa em quantas telas a aba vai aparecer (null: não mede, como no celular). */
+  setScreens: (n: number | null) => void;
 };
 
 const Ctx = createContext<MetricEditor | null>(null);
@@ -82,6 +88,29 @@ export function EmptySlots({ count, onClick }: { count: number; onClick: () => v
         </button>
       ))}
     </div>
+  );
+}
+
+/** Fileira única (a da grade): no fim dela, um "+ card" enquanto houver vaga. */
+export function AddCardTile({ free, onClick, className = "" }: { free: number; onClick: () => void; className?: string }) {
+  if (free <= 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-add-card
+      data-free={free}
+      aria-label={`Adicionar card (${free} ${free === 1 ? "vaga" : "vagas"})`}
+      title={`${free} ${free === 1 ? "vaga" : "vagas"} na fileira`}
+      className={`flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-card border border-dashed border-accent/60 px-3 text-[12.5px] font-semibold text-fg outline-none hover:border-accent hover:bg-accent-soft/40 focus-visible:ring-2 focus-visible:ring-accent print:hidden ${className}`}
+    >
+      <span className="flex items-center gap-1">
+        <Plus size={14} aria-hidden /> Card
+      </span>
+      <span className="text-[11px] font-medium text-fg-2 tnum">
+        {free} {free === 1 ? "vaga" : "vagas"}
+      </span>
+    </button>
   );
 }
 

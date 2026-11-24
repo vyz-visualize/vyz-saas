@@ -15,7 +15,7 @@ import { GOOGLE_CATALOG, IMPORT_CATALOG, META_CATALOG, type CatalogMetric } from
 import { MetricVisibilityProvider, useMetricPrefsState, type SaveMetricPrefs } from "@/features/dashboards/metric-prefs-context";
 import { MetricEditProvider } from "@/features/dashboards/metric-edit-context";
 import { MetricNoticeBar } from "@/features/dashboards/MetricActions";
-import { CustomizeButton, MetricTray, useMetricEditorState } from "@/features/dashboards/MetricEditor";
+import { CustomizeButton, EDITING_PAD, EDITING_PAD_COLLAPSED, MetricTray, useMetricEditorState } from "@/features/dashboards/MetricEditor";
 import { PresenterBar, presentingClass, usePresentation } from "@/features/dashboards/present";
 import { useWatchPage } from "@/features/share/page-watch";
 import { PAGES } from "@/features/templates/pages";
@@ -112,6 +112,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
   const allKpis = useMemo(() => new Map([...data.view.kpis, ...(data.view.extraKpis ?? [])].map((k) => [k.id, k])), [data.view]);
   const edit = useMetricEditorState({
     metrics,
+    pageName: PAGES[active]?.name,
     visibleKpis: [...metrics.visibility.kpis],
     hasData: (id) => liveHasData(data.view, id),
     valueOf: (id) => {
@@ -135,7 +136,7 @@ export function LiveDashboardView({ data, pageIds, initialPage, actions, toolbar
   return (
     <MetricEditProvider value={edit.editor}>
     <FilterProvider value={filters}>
-    <div ref={rootRef} data-presenting={presenting ? "" : undefined} data-metric-editing={editing ? edit.section : undefined} className={`@container space-y-4 ${presenting ? presentingClass(false) : editing ? (edit.collapsed ? "pb-24" : "pb-[80dvh] md:pb-[324px]") : ""}`}>
+    <div ref={rootRef} data-presenting={presenting ? "" : undefined} data-metric-editing={editing ? edit.section : undefined} className={`@container space-y-4 ${presenting ? presentingClass(false) : editing ? (edit.collapsed ? EDITING_PAD_COLLAPSED : EDITING_PAD) : ""}`}>
       <header className="flex items-start justify-between gap-4 overflow-x-clip [overflow-clip-margin:4px]">
         {logo && <div className="hidden shrink-0 pt-1.5 @[500px]:block @[900px]:pt-0.5">{logo}</div>}
         {/* no largo, título, cliente e etiquetas dividem uma linha: sobra altura para os números */}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PageLayout } from "@/features/templates/types";
-import { alignGrid, compact, COLS, constrain, defaultGrid, firstFree, KPI_ROWS, KPIS_ID, limitsOf, metricCardId, normalizeGrid, overlaps, parseMetricCardId, place, sameGrid } from "./model";
+import { alignGrid, compact, COLS, constrain, defaultGrid, firstFree, fixedGrid, hideBlock, KPI_ROWS, KPIS_ID, limitsOf, metricCardId, normalizeGrid, overlaps, parseMetricCardId, place, sameGrid, screenBreaks, widthLabel } from "./model";
 
 const page: PageLayout = {
   kpis: [{ metric: "spend" }, { metric: "revenue" }, { metric: "roas" }, { metric: "cpa" }, { metric: "ctr" }],
@@ -170,3 +170,61 @@ describe("alignGrid: alinhar a grade", () => {
     expect(at(base, "w1").h).toBe(at(base, "w2").h);
   });
 });
+
+describe("ocultar e telas (o Personalizar)", () => {
+  // KPIs em cima; linha (12) embaixo; funil (6) e barras (6) lado a lado
+  const base = defaultGrid(page);
+  const at = (g: ReturnType<typeof defaultGrid>, id: string) => g.find((i) => i.id === id);
+
+  it("ocultar: o vizinho da mesma fileira ocupa o espaço, sem buraco", () => {
+    const g = hideBlock(base, "w1");
+    expect(at(g, "w1")).toBeUndefined();
+    expect(at(g, "w2")).toMatchObject({ x: 0, w: 12 });
+    expect(noOverlap(g)).toBe(true);
+  });
+
+  it("ocultar o bloco sozinho na fileira: os de baixo sobem", () => {
+    const g = hideBlock(base, "w0");
+    expect(at(g, "w1")!.y).toBe(KPI_ROWS);
+    expect(at(g, "w2")!.y).toBe(KPI_ROWS);
+  });
+
+  it("o vizinho só cresce até o limite dele: um card de plataforma não vira faixa", () => {
+    const card = metricCardId("meta", "ctr");
+    const g = hideBlock([{ id: card, x: 0, y: 0, w: 3, h: 4 }, { id: "w0", x: 3, y: 0, w: 9, h: 4 }], "w0");
+    expect(at(g, card)!.w).toBe(3);
+  });
+
+  it("fora do Avançado: o modelo sem os ocultos, e o oculto volta ao lugar dele", () => {
+    const hidden = fixedGrid(base, base.filter((i) => i.id !== "w1"));
+    expect(sameGrid(hidden, hideBlock(base, "w1"))).toBe(true);
+    // mesmo que o rascunho tenha posições inventadas, vale o modelo
+    const back = fixedGrid(base, [...hidden, { id: "w1", x: 7, y: 40, w: 3, h: 6 }]);
+    expect(sameGrid(back, base)).toBe(true);
+  });
+
+  it("fora do Avançado: cards de plataforma e blocos pedidos entram no primeiro espaço livre; nada se move", () => {
+    const card = metricCardId("meta", "ctr");
+    const moved = base.map((i) => (i.id === "w0" ? { ...i, w: 6 } : i));
+    const g = fixedGrid(base, [...moved, { id: card, x: 0, y: 99, w: 3, h: 4 }]);
+    expect(at(g, "w0")!.w).toBe(12);
+    expect(at(g, card)).toBeTruthy();
+    expect(noOverlap(g)).toBe(true);
+  });
+
+  it("largura em palavras", () => {
+    expect([12, 9, 8, 6, 4, 3, 2, 5].map(widthLabel)).toEqual(["Inteira", "3/4", "2/3", "Metade", "1/3", "1/4", "1/6", "5/12"]);
+  });
+
+  it("telas: tudo cabe numa tela alta; numa baixa, a aba vira telas e diz onde cada uma começa", () => {
+    const tall = defaultGrid({ ...page, widgets: [...page.widgets, { type: "table", source: "campaigns", span: 4 }] });
+    const isCard = (id: string) => id === KPIS_ID;
+    expect(screenBreaks(tall, 2000, isCard)).toEqual({ screens: 1, breaks: [] });
+    const low = screenBreaks(tall, 700, isCard)!;
+    expect(low.screens).toBeGreaterThan(1);
+    // a faixa de cards repete em todas as telas: nunca é o começo de uma
+    expect(low.breaks.every((y) => y > 0)).toBe(true);
+    expect(low.breaks).toHaveLength(low.screens - 1);
+  });
+});
+

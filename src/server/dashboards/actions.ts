@@ -13,7 +13,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { catalogForTemplate } from "@/features/dashboards/data";
 import { pageRules } from "@/features/dashboards/layout/page-rules";
-import { canArrangeLayout, kindOf, normalizeGrid, withAddedBlocks, type DashboardLayout } from "@/features/dashboards/layout/model";
+import { canArrangeLayout, fixedGrid, normalizeGrid, type DashboardLayout } from "@/features/dashboards/layout/model";
 import type { PageId } from "@/features/templates/types";
 import { normalizeScope, withScope, type MetricScope, type ScopePrefs } from "@/features/dashboards/metric-prefs";
 import { allowedPages, copyName, defaultPages, settingsToDb, type DashboardDetail } from "@/features/dashboards/model";
@@ -259,8 +259,8 @@ export async function saveDashboardLayout(dashboardId: string, page: string, ite
     else {
       const rules = pageRules(t, pageId);
       const valid = normalizeGrid(items, rules.accept, 1);
-      // fora do Avançado não se mexe na disposição: o modelo do template e, no próximo espaço livre, os cards de plataforma e os blocos pedidos
-      const clean = arrange ? valid : withAddedBlocks(rules.base(), valid.filter((i) => kindOf(i.id) === "metric" || kindOf(i.id) === "custom"));
+      // fora do Avançado nada muda de lugar nem de tamanho: o modelo sem os blocos ocultos (o vizinho ocupa o espaço) e, no próximo espaço livre, os cards de plataforma e os blocos pedidos
+      const clean = arrange ? valid : fixedGrid(rules.base(), valid);
       if (clean.length === 0) throw appError("validation", "A aba precisa de pelo menos um bloco.");
       next[pageId] = clean;
     }
