@@ -6,11 +6,11 @@
 
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import { ACTIVE_WORKSPACE_COOKIE, WORKSPACE_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
+import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
 import { getSessionUser } from "@/server/auth/session";
 import { fulfillStripeSession } from "@/server/billing/stripe";
 import { logActivity } from "@/server/history/log";
-import { appOrigin } from "@/server/http/request";
+import { appOrigin, activeWorkspaceCookieOptions } from "@/server/http/request";
 import { createServerSupabase } from "@/server/supabase/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   if (!result || result.checkoutId !== pedido || result.userId !== user.id) return go("/assinar");
   if (!result.paid) return go(`/assinar/pagamento/${pedido}?erro=pendente`);
 
-  (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, result.workspaceId, WORKSPACE_COOKIE_OPTIONS);
+  (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, result.workspaceId, await activeWorkspaceCookieOptions());
   const supabase = await createServerSupabase();
   const profile = await supabase.from("profiles").update({ default_workspace_id: result.workspaceId }).eq("id", user.id);
   if (profile.error) console.error("[vyz] workspace padrão", profile.error);

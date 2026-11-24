@@ -6,7 +6,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { HOST_RESERVED, productFromHost } from "@/lib/product-hosts";
-import { AUTH_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
+import { authCookieOptions } from "@/lib/supabase/cookies";
 
 const PROTECTED = ["/painel", "/comecar", "/integracoes", "/convite", "/assinar/pagamento", "/assinar/concluido"];
 const GUEST_ONLY = ["/entrar", "/recuperar-senha"];
@@ -83,6 +83,7 @@ export async function proxy(request: NextRequest) {
   if (await publicLinkMissing(request)) return notFoundPage(request.nextUrl.pathname.startsWith("/r/"));
 
   let response = NextResponse.next({ request });
+  const cookieOptions = authCookieOptions(request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
 
   const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!, {
     cookies: {
@@ -90,10 +91,10 @@ export async function proxy(request: NextRequest) {
       setAll: (list) => {
         for (const { name, value } of list) request.cookies.set(name, value);
         response = NextResponse.next({ request });
-        for (const { name, value, options } of list) response.cookies.set(name, value, { ...options, ...AUTH_COOKIE_OPTIONS });
+        for (const { name, value, options } of list) response.cookies.set(name, value, { ...options, ...cookieOptions });
       },
     },
-    cookieOptions: AUTH_COOKIE_OPTIONS,
+    cookieOptions,
   });
 
   // Valida o JWT (e renova, se perto de expirar) antes de qualquer outra coisa.

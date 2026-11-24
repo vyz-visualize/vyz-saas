@@ -4,7 +4,7 @@
 // produto: onboarding ou dashboards (dash), lista de LPs (lp).
 
 import { NextResponse } from "next/server";
-import { ACTIVE_WORKSPACE_COOKIE, WORKSPACE_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
+import { ACTIVE_WORKSPACE_COOKIE, workspaceCookieOptions } from "@/lib/supabase/cookies";
 import { getViewer } from "@/server/auth/workspace";
 
 export async function GET(request: Request, ctx: RouteContext<"/painel/w/[slug]">) {
@@ -31,6 +31,6 @@ export async function GET(request: Request, ctx: RouteContext<"/painel/w/[slug]"
         ? "/comecar"
         : "/painel";
   const res = to(home);
-  res.cookies.set(ACTIVE_WORKSPACE_COOKIE, w.id, WORKSPACE_COOKIE_OPTIONS);
+  res.cookies.set(ACTIVE_WORKSPACE_COOKIE, w.id, workspaceCookieOptions(host));
   return res;
 }
