@@ -26,7 +26,7 @@ export function RankWidget({ ctx, spec }: { ctx: WidgetContext; spec: Extract<Wi
   const noun = RANK_NOUN[spec.entity];
 
   if (needsMargin(spec.metric, ds)) return <Empty>O lucro usa a margem do dashboard. Defina a margem em Nome, contas e metas.</Empty>;
-  if (rows === null) return <Empty>{spec.entity === "terms" ? "Os termos de pesquisa chegam com a próxima sincronização do Google Ads." : "Esta quebra chega com a próxima sincronização das contas."}</Empty>;
+  if (rows === null) return <Empty>{spec.entity === "terms" ? "Sem termos de pesquisa no período: a importação do Google Ads ainda não traz os termos." : "Sem dados desta quebra no período: a plataforma não informou."}</Empty>;
   if (!rows.length)
     return <Empty>{spec.entity === "products" ? "Os produtos aparecem quando a loja estiver ligada ao dashboard." : `Nenhum ${noun.one} com ${def.label.toLowerCase()} no período.`}</Empty>;
 

@@ -32,7 +32,10 @@ export type CatalogMetric = {
 
 export type SectionPrefs = { hidden: string[]; shown: string[] };
 export type ScopePrefs = Partial<Record<MetricSection, SectionPrefs>>;
-export type MetricPrefs = Partial<Record<MetricScope, ScopePrefs>>;
+export type MetricPrefs = Partial<Record<MetricScope, ScopePrefs>> & {
+  /** Métricas dos cards de criativo (1 a 4, na ordem escolhida), em todas as abas de criativos do dashboard. Sem isso, o padrão do visual. */
+  creatives?: string[];
+};
 
 const EMPTY: SectionPrefs = { hidden: [], shown: [] };
 
@@ -207,7 +210,17 @@ export function parseMetricPrefs(raw: unknown): MetricPrefs {
     }
     out[scope] = scoped;
   }
+  const cards = ids((raw as Record<string, unknown>).creatives).slice(0, 4);
+  if (cards.length) out.creatives = cards;
   return out;
+}
+
+/** Grava a escolha dos cards de criativo (o resto das preferências fica como está). Vazio volta ao padrão. */
+export function withCreativeCards(prefs: MetricPrefs, cards: readonly string[]): MetricPrefs {
+  const next: MetricPrefs = { ...prefs };
+  if (cards.length) next.creatives = [...cards].slice(0, 4);
+  else delete next.creatives;
+  return next;
 }
 
 const inSection = (catalog: readonly CatalogMetric[], section: MetricSection) => catalog.filter((m) => (section === "kpis" ? !!m.kpi : !!m.column));

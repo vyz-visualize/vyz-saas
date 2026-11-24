@@ -288,6 +288,9 @@ const metrics = (r: Pick<ImportRow, "spend" | "impressions" | "clicks" | "conver
   initiateCheckout: null,
   conversions: r.conversions,
   conversionValue: r.revenue,
+  // a planilha traz um resultado só: a coluna de conversões (sem separar lead de compra)
+  leads: null,
+  messages: null,
   videoViews: null,
   videoThruplays: null,
   searchImpressionShare: null,

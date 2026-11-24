@@ -19,12 +19,14 @@ import { useMemo, useState } from "react";
 import type { PlatformId } from "@/features/accounts/platforms";
 import { PAGES } from "@/features/templates/pages";
 import { hasGoal } from "@/features/metrics/targets";
-import { ChartTheme, dayDates, FlowLines, SkinBar, SkinChrome, SkinPage, WeekBars, type SkinPalette } from "./bklit-blocks";
+import { ChartTheme, DailyChart, dayDates, SkinBar, SkinChrome, SkinPage, WeekBars, type SkinPalette } from "./bklit-blocks";
 import { BulletBar, WaterfallBars } from "./extras";
 import { FullName } from "./FullName";
 import { ADJUST_LABEL, bestDay, waterfall } from "./insights";
 import { CreativeImage, isVideoFormat } from "../widgets/CreativeImage";
 import { LavandaReport } from "./LavandaReport";
+import { SkinCreatives } from "./CreativeViews";
+import { AnnexChapter } from "./TabViews";
 import {
   buckets,
   change,
@@ -101,6 +103,8 @@ export function LavandaSkin({
   screen,
   bar,
   month,
+  pageCtx,
+  cards,
 }: SkinProps) {
   // "Mês anterior fechado": o mês inteiro contra o mês antes dele (não contra o trecho do período anterior)
   const monthOn = !!month?.active && !!month.before;
@@ -160,6 +164,8 @@ export function LavandaSkin({
     return r > 0 ? sp / r : 0;
   });
   const costDates = dayDates(days.filter((_, i) => i % roasStep === 0).map((d) => d.ago), ctx.today);
+  // o rótulo do eixo de cada parte: o primeiro dia dela
+  const partLabels = days.filter((_, i) => i % roasStep === 0).map((d) => dayLabel(d.ago, ctx.today));
   const costKnown = costParts.filter((v) => v > 0);
   const withGoal = hasGoal(ctx.ds);
   const campaignSpend = Math.max(1, campaigns.reduce((a, c) => a + c.spend, 0));
@@ -200,16 +206,18 @@ export function LavandaSkin({
                 <Trend c={cpa} against={monthOn ? `a ${prevName}` : "ao período anterior"} />
                 {costKnown.length >= 2 && !ctx.hideSpend ? (
                   <>
-                    <ChartTheme palette={CHART} className="mt-2 flex min-h-[min(72px,var(--fit-cap,72px))] flex-1 flex-col">
-                      <FlowLines
-                        className="flex-1"
+                    {/* com eixo: o valor à esquerda e a data de cada parte embaixo */}
+                    <ChartTheme palette={CHART} className="mt-2 flex min-h-[150px] flex-1 flex-col">
+                      <DailyChart
                         points={costParts.map((v) => ({ custo: v, ...(withGoal ? { meta: ctx.ds.goal } : {}) }))}
-                        dates={costDates}
+                        dates={costDates.slice(0, costParts.length)}
+                        labels={partLabels.slice(0, costParts.length)}
                         series={[
-                          { key: "custo", label: label(ctx, g.cost), color: C.accent, width: 2.2, area: 0.18 },
-                          ...(withGoal ? [{ key: "meta", label: "Alvo de custo", color: "#9aa0b8", width: 1.4, dashed: true }] : []),
+                          { key: "custo", label: label(ctx, g.cost), color: C.accent, kind: "area" },
+                          ...(withGoal ? [{ key: "meta", label: "Alvo de custo", color: "#9aa0b8", kind: "line" as const }] : []),
                         ]}
                         format={(_, v) => money(ctx, v)}
+                        formatY={(v) => money(ctx, v, true)}
                         summary={`${label(ctx, g.cost)} ao longo do período: de ${money(ctx, Math.min(...costKnown))} a ${money(ctx, Math.max(...costKnown))}.`}
                       />
                     </ChartTheme>
@@ -408,13 +416,14 @@ export function LavandaSkin({
                   {value(ctx, g.efficiency)}
                 </p>
                 <Trend c={roas} against={monthOn ? `a ${prevName}` : "ao período anterior"} />
-                <ChartTheme palette={CHART} className="mt-2 flex min-h-[min(92px,var(--fit-cap,92px))] flex-1 flex-col">
-                  <FlowLines
-                    className="-mx-4 -mb-4 flex-1 overflow-hidden rounded-b-[20px]"
+                <ChartTheme palette={CHART} className="mt-2 flex min-h-[150px] flex-1 flex-col">
+                  <DailyChart
                     points={roasLine.map((v) => ({ roas: v }))}
-                    dates={roasDates}
-                    series={[{ key: "roas", label: label(ctx, g.efficiency), color: C.accent, width: 2.2, area: 0.26 }]}
+                    dates={roasDates.slice(0, roasLine.length)}
+                    labels={partLabels.slice(0, roasLine.length)}
+                    series={[{ key: "roas", label: label(ctx, g.efficiency), color: C.accent, kind: "area" }]}
                     format={(_, v) => showEfficiency(v)}
+                    formatY={(v) => showEfficiency(v)}
                     summary={`${label(ctx, g.efficiency)} ao longo do período: ${g.sales ? "média de " : ""}${value(ctx, g.efficiency)}.`}
                   />
                 </ChartTheme>
@@ -817,7 +826,18 @@ export function LavandaSkin({
 
         {/* respiro entre o título e os cards; nas outras abas, os blocos padrão na paleta do visual */}
         <div className={screen ? "mt-3" : "mt-5"}>
-        {children ? <SkinPage palette={PAGE}>{children}</SkinPage> : (
+        {children ? (
+          // as abas anexas também são capítulos: o texto e o destaque, e o conteúdo embaixo
+          <SkinPage palette={PAGE}>
+            {active === "criativos" && cards && cards.level !== "list" ? (
+              <SkinCreatives kind="lavanda" list={cards.source} data={cards.data} kpis={cards.kpis} />
+            ) : (
+              <AnnexChapter ctx={pageCtx ?? ctx} name={PAGES[active].name}>
+                {children}
+              </AnnexChapter>
+            )}
+          </SkinPage>
+        ) : (
         <LavandaReport
           ctx={ctx}
           nodes={nodes}

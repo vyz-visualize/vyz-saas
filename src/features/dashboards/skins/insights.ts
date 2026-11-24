@@ -94,7 +94,7 @@ export function pacing(ds: Pick<Dataset, "budget" | "current" | "previous">): Pa
 // ---- Onde o mês fecha (Noturno) ------------------------------------------------------------------
 
 export type MonthClose = {
-  /** Acumulado do mês até hoje, dia a dia. */
+  /** Acumulado do mês até o último dia com dados, dia a dia. */
   done: number[];
   /** Acumulado previsto do dia seguinte ao fim do mês, com a faixa de confiança (95%). */
   future: number[];
@@ -103,13 +103,28 @@ export type MonthClose = {
   total: number;
   totalLo: number;
   totalHi: number;
+  /** Dias do mês que ainda faltam depois do último dia com dados. */
+  left: number;
+  /** A previsão por dia (tendência com o dia da semana), para o gráfico e a faixa. */
+  forecast: Forecast;
 };
 
-/** Até hoje (o que já foi no mês) + o previsto até o fim do mês pela tendência com o dia da semana. */
-export function monthClose(rows: readonly DayRow[], pick: (d: DayRow) => number, budget: { day: number; daysInMonth: number }): MonthClose | null {
+/** Dias do mês depois do último dia com dados (os dados reais terminam ontem; a amostra, hoje). */
+export function monthLeft(rows: readonly DayRow[], budget: { day: number; daysInMonth: number }): number {
+  if (!rows.length) return Math.max(0, budget.daysInMonth - budget.day);
+  const last = Math.min(...rows.map((d) => d.ago));
+  return Math.max(0, budget.daysInMonth - (budget.day - last));
+}
+
+/**
+ * A projeção do mês (a única: Noturno, Previsão de KPIs e quem mais mostrar onde o mês fecha):
+ * o que já foi no mês (os dias do mês pela data) + o previsto até o último dia pela tendência com
+ * o dia da semana. Com menos de `minDays` dias de histórico, null.
+ */
+export function monthClose(rows: readonly DayRow[], pick: (d: DayRow) => number, budget: { day: number; daysInMonth: number }, minDays = 14): MonthClose | null {
   const days = chrono(rows);
-  if (days.length < 14 || budget.day < 1) return null;
-  const left = Math.max(0, budget.daysInMonth - budget.day);
+  if (days.length < Math.max(2, minDays) || budget.day < 1) return null;
+  const left = monthLeft(rows, budget);
   const f = forecast(days.map(pick), Math.max(1, left));
   const month = days.filter((d) => d.ago < budget.day).map(pick);
   const done: number[] = [];
@@ -119,7 +134,7 @@ export function monthClose(rows: readonly DayRow[], pick: (d: DayRow) => number,
   const future = cum(f.future);
   const lo = cum(f.lo);
   const hi = cum(f.hi);
-  return { done, future, lo, hi, total: future.at(-1) ?? base, totalLo: lo.at(-1) ?? base, totalHi: hi.at(-1) ?? base };
+  return { done, future, lo, hi, total: future.at(-1) ?? base, totalLo: lo.at(-1) ?? base, totalHi: hi.at(-1) ?? base, left, forecast: f };
 }
 
 // ---- Precisa de ação hoje (Pulso) ----------------------------------------------------------------
@@ -366,11 +381,18 @@ export const BR_TILES: Record<string, [number, number]> = {
 };
 
 /** Parte de cada estado no total (os que vieram na quebra por estado). */
-export function stateShares(rows: readonly { key: string; conversions: number }[] | undefined): Map<string, number> {
+/** Por estado, a parte de cada um: dos resultados, ou das impressões quando a plataforma não manda resultado por estado (a Meta não manda). */
+export function stateBasis(rows: readonly { conversions: number; impressions?: number }[] | undefined): "resultados" | "impressões" {
+  const conv = sum((rows ?? []).map((r) => r.conversions));
+  return conv > 0 || !(rows ?? []).some((r) => (r.impressions ?? 0) > 0) ? "resultados" : "impressões";
+}
+
+export function stateShares(rows: readonly { key: string; conversions: number; impressions?: number }[] | undefined): Map<string, number> {
   const out = new Map<string, number>();
   if (!rows?.length) return out;
+  const basis = stateBasis(rows);
   const by = new Map<string, number>();
-  for (const r of rows) by.set(r.key.toUpperCase(), (by.get(r.key.toUpperCase()) ?? 0) + r.conversions);
+  for (const r of rows) by.set(r.key.toUpperCase(), (by.get(r.key.toUpperCase()) ?? 0) + (basis === "resultados" ? r.conversions : (r.impressions ?? 0)));
   const total = sum([...by.values()]);
   if (total <= 0) return out;
   for (const [k, v] of by) if (BR_TILES[k]) out.set(k, v / total);

@@ -44,6 +44,8 @@ import { BulletBar, MoveTag, PacingChart } from "./extras";
 import { FullName } from "./FullName";
 import { campaignMovers, dayNotes, pacing, yesterdayVsWeek } from "./insights";
 import { SkinGrid } from "./SkinGrid";
+import { SkinCreatives } from "./CreativeViews";
+import { PulsoFunnel } from "./TabViews";
 import { ActionsPage, AttentionPanel, C, PlatformStatus, StatusTable, TiredStrip, TONE, useAttentionClosed } from "./PulsoParts";
 import { PAGE_PLATFORM } from "@/features/templates/dashboards/composed";
 import {
@@ -94,7 +96,7 @@ const PAGE_ICON: Partial<Record<PageId, LucideIcon>> = {
 
 
 /** Card escuro dos blocos novos, com título e a linha de apoio. */
-function Card({ title, note, children, ...data }: { title: string; note?: React.ReactNode; children: React.ReactNode; "data-ritmo"?: number }) {
+function Card({ title, note, children, ...data }: { title: string; note?: React.ReactNode; children: React.ReactNode; "data-ritmo"?: number; "data-ontem"?: boolean }) {
   return (
     <section className="flex min-w-0 flex-col rounded-[22px] border p-4" style={{ background: C.card, borderColor: C.line }} {...data}>
       <header className="flex shrink-0 items-baseline justify-between gap-2">
@@ -121,6 +123,8 @@ export function PulsoSkin({
   screen,
   bar,
   syncHours,
+  pageCtx,
+  cards,
 }: SkinProps) {
   // "Ações de hoje": a aba do próprio visual (a lateral some, a aba é ela por inteiro)
   const ownPage = active === "acoes-hoje" && !children;
@@ -194,8 +198,9 @@ export function PulsoSkin({
   // (o React Compiler memoriza estes cálculos)
   const movers = campaignMovers(ctx.ds.campaigns, sales ? "revenue" : "conversions");
   const yday = [
-    { label: "Investimento", check: yesterdayVsWeek(ctx.ds.current, (d) => d.spend), fmt: (v: number) => money(ctx, v, true), money: true },
-    { label: label(ctx, conv), check: yesterdayVsWeek(ctx.ds.current, (d) => d[conv]), fmt: (v: number) => decimal(v, v < 10 ? 1 : 0), money: false },
+    { label: "Investimento", check: yesterdayVsWeek(ctx.ds.current, (d) => d.spend), fmt: (v: number) => money(ctx, v, true), fmtMean: (v: number) => money(ctx, v, true), money: true },
+    // contagem é inteira; só a média dos 7 dias pode ter casa decimal
+    { label: label(ctx, conv), check: yesterdayVsWeek(ctx.ds.current, (d) => d[conv]), fmt: (v: number) => int(v), fmtMean: (v: number) => decimal(v, v < 10 ? 1 : 0), money: false },
   ];
   const notes = dayNotes(ctx.ds.current, (d) => d[conv], 2);
 
@@ -212,9 +217,11 @@ export function PulsoSkin({
         style={{ background: C.frame, borderColor: C.line }}
       >
         <div className={`flex min-w-0 gap-5 p-4 @[700px]:p-5 ${screen ? "pb-[var(--screen-pb,7rem)] @[700px]:pb-[var(--screen-pb,7rem)]" : ""}`}>
-          {/* barra lateral: uma aba por página, com ícone e nome; com muitas, a lista rola dentro da barra */}
+          {/* barra lateral: uma aba por página, com ícone e nome; com muitas, a lista rola dentro da barra.
+              Na tela do dashboard fica no meio da altura da tela (uma coluna fixa da altura da tela, centralizada) */}
+          <div className={screen ? "sticky top-0 hidden h-[calc(100dvh-5rem)] w-[88px] shrink-0 items-center self-start @[700px]:flex" : "contents"}>
           <aside
-            className="sticky top-4 hidden max-h-[calc(100dvh-2rem)] w-[88px] shrink-0 flex-col items-center gap-2 self-start rounded-[26px] py-4 text-white @[700px]:flex"
+            className={`hidden w-[88px] shrink-0 flex-col items-center gap-2 rounded-[26px] py-4 text-white @[700px]:flex ${screen ? "max-h-full" : "sticky top-4 max-h-[calc(100dvh-2rem)] self-start"}`}
             style={{ background: C.side }}
           >
             <nav aria-label="Páginas" data-tour="abas" className="flex min-h-0 w-full flex-1 flex-col items-center gap-1.5 overflow-y-auto overscroll-contain px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -238,6 +245,7 @@ export function PulsoSkin({
               })}
             </nav>
           </aside>
+          </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
@@ -282,13 +290,31 @@ export function PulsoSkin({
 
             <SkinChrome palette={PAGE} controls={controls} note={note} screen={screen} className="mt-4" />
 
+            {/* no estreito, a lateral "Atenção agora" vem depois do nome e das abas (antes dos blocos) */}
+            {!ownPage && (
+              <div className="mt-4 rounded-[22px] border p-4 @[1000px]:hidden" style={{ borderColor: C.line, background: "#0d0a18" }}>
+                <AttentionPanel ctx={ctx} syncHours={syncHours} pages={pages} onPage={onPage} closed={closed} />
+              </div>
+            )}
+
             <div className="mt-5">
               {children ? (
                 <>
                   {/* abas de uma plataforma: o status das campanhas dela; Criativos: os que estão cansando primeiro */}
                   {platformTab && campaigns.some((c) => c.platform === platformTab) && <PlatformStatus ctx={ctx} platform={platformTab} />}
-                  {active === "criativos" && ctx.ds.creatives.length > 0 && <TiredStrip ctx={ctx} />}
-                  <SkinPage palette={PAGE}>{children}</SkinPage>
+                  {/* Funil: onde está o gargalo nos últimos 7 dias contra os 7 antes */}
+                  {active === "funil" && <PulsoFunnel ctx={pageCtx ?? ctx} tone={{ card: C.card, line: C.line, fg: C.fg, fg2: C.fg2, bad: C.red, good: C.green }} />}
+                  {/* Criativos: a fila de decisão (escalar, manter, pausar), com as métricas escolhidas nos cards */}
+                  {active === "criativos" && cards && cards.level !== "list" ? (
+                    <SkinPage palette={PAGE}>
+                      <SkinCreatives kind="pulso" list={cards.source} data={cards.data} kpis={cards.kpis} />
+                    </SkinPage>
+                  ) : (
+                    <>
+                      {active === "criativos" && ctx.ds.creatives.length > 0 && <TiredStrip ctx={ctx} />}
+                      <SkinPage palette={PAGE}>{children}</SkinPage>
+                    </>
+                  )}
                 </>
               ) : ownPage ? (
                 <ActionsPage ctx={ctx} syncHours={syncHours} pages={pages} onPage={onPage} />
@@ -464,7 +490,7 @@ export function PulsoSkin({
                     </Card>
                   ),
                   "s-ontem": (
-                    <Card title="Ontem contra a semana" note="faixa: mínimo a máximo dos 7 dias antes">
+                    <Card title="Ontem contra a semana" note="faixa: mínimo a máximo dos 7 dias antes" data-ontem>
                       <ul className="space-y-4">
                         {yday
                           .filter((y) => !(y.money && ctx.hideSpend))
@@ -480,8 +506,8 @@ export function PulsoSkin({
                                     </span>
                                   </span>
                                 </p>
-                                <BulletBar value={y.check.value} target={y.check.mean} lo={y.check.lo} hi={y.check.hi} color={C.pinkFlat} tone={TONE} label={`${y.label} ontem: ${y.fmt(y.check.value)}; média dos 7 dias antes: ${y.fmt(y.check.mean)}.`} />
-                                <p className="mt-1 text-[10.5px] tnum" style={{ color: C.fg2 }}>média {y.fmt(y.check.mean)}</p>
+                                <BulletBar value={y.check.value} target={y.check.mean} lo={y.check.lo} hi={y.check.hi} color={C.pinkFlat} tone={TONE} label={`${y.label} ontem: ${y.fmt(y.check.value)}; média dos 7 dias antes: ${y.fmtMean(y.check.mean)}.`} />
+                                <p className="mt-1 text-[10.5px] tnum" style={{ color: C.fg2 }}>média {y.fmtMean(y.check.mean)}</p>
                               </li>
                             ) : (
                               <li key={y.label} className="text-[12px]" style={{ color: C.fg2 }}>
@@ -527,7 +553,7 @@ export function PulsoSkin({
         {!ownPage && (
           <aside
             // na tela do dashboard a lateral não dita a altura: acompanha a dos blocos e rola dentro; no estreito, vem antes dos blocos
-            className={`order-first min-w-0 p-4 @[700px]:px-5 @[1000px]:order-none @[1000px]:border-l ${closed ? "@[1000px]:p-0" : "@[1000px]:p-5"} ${screen ? "@[1000px]:overflow-y-auto @[1000px]:[contain:size] @[1000px]:[scrollbar-width:thin]" : ""}`}
+            className={`hidden min-w-0 @[1000px]:block @[1000px]:border-l ${closed ? "@[1000px]:p-0" : "@[1000px]:p-5"} ${screen ? "@[1000px]:overflow-y-auto @[1000px]:[contain:size] @[1000px]:[scrollbar-width:thin]" : ""}`}
             style={{ borderColor: C.line, background: "#0d0a18" }}
           >
             <AttentionPanel ctx={ctx} syncHours={syncHours} pages={pages} onPage={onPage} closed={closed} />

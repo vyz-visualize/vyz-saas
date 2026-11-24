@@ -18,10 +18,12 @@ import { BulletBar, HeatGrid, MiniSpark, MoveTag } from "./extras";
 import { FullName } from "./FullName";
 import { heatPeak, sharesOfTotal, WEEKDAYS } from "./insights";
 import { SkinGrid } from "./SkinGrid";
+import { SkinCreatives } from "./CreativeViews";
+import { AreiaAudience } from "./TabViews";
 import { skinGrid } from "./blocks";
 import { CrmStageDetail, FunnelRail, LeadSources, stagesOf, type Stage } from "./AreiaParts";
 import { PAGE_PLATFORM } from "@/features/templates/dashboards/composed";
-import { brl, change, chrono, daily, dayLabel, goalOf, HIDDEN, initials, int, Invite, label, money, pct, platformName, value, type SkinProps } from "./shared";
+import { brl, change, chrono, daily, dayLabel, decimal, goalOf, HIDDEN, initials, int, Invite, label, money, pct, platformName, value, type SkinProps } from "./shared";
 
 const P: SkinPalette = {
   scheme: "light",
@@ -44,9 +46,11 @@ const PLUM = "#7a5c8e";
 const ORIGIN = [P.accent, TEAL, OCHRE, PLUM];
 const HERO = "linear-gradient(140deg,#d2634a 0%,#b9472f 100%)";
 /** Cores dos blocos exclusivos (extras.tsx). */
+/** Contagem (dados reais) é inteira; a amostra reparte o total e pode ter casa decimal. */
+const countOrShare = (v: number) => (Number.isInteger(v) ? int(v) : decimal(v, 1));
 const TONE = { fg: P.fg, fg2: P.fg2, line: P.line, accent: P.accent, good: TEAL, bad: P.error };
 
-export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar }: SkinProps) {
+export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar, pageCtx, cards: creativeCards }: SkinProps) {
   const [mode, setMode] = useState<"dia" | "semana">("dia");
   // o trilho do funil: a etapa escolhida (começa no lead)
   const [stagePick, setStagePick] = useState("lead");
@@ -161,7 +165,7 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
       ),
     "s-calor": (
       <Block title={`${resultName} por dia da semana e hora`} aside={peak ? <span className="text-[11px] text-fg-2">pico: {WEEKDAYS[peak.day]}, {peak.hour}h</span> : undefined}>
-        {hourWeek && <HeatGrid grid={hourWeek} color={P.accent} tone={TONE} what={resultName} format={(v) => (v < 10 ? v.toFixed(1).replace(".", ",") : int(v))} />}
+        {hourWeek && <HeatGrid grid={hourWeek} color={P.accent} tone={TONE} what={resultName} format={countOrShare} />}
         <p className="mt-auto pt-2 text-[10.5px] text-fg-2">Pela hora de cada dia na Meta, no fuso da conta: bom para escalar o atendimento.</p>
       </Block>
     ),
@@ -378,7 +382,15 @@ export function AreiaSkin({ ctx, name, client, pages, active, onPage, periodLabe
           {children ? (
             <>
               {platformTab && <LeadSources ctx={ctx} platform={platformTab} accent={P.accent} />}
-              <SkinPage palette={P}>{children}</SkinPage>
+              {/* Público (e a aba da Meta, que tem o público dentro): quem converte, não quem só recebe a verba */}
+              {(active === "publico" || active === "meta-ads") && <AreiaAudience ctx={pageCtx ?? ctx} accent={P.accent} />}
+              {active === "criativos" && creativeCards && creativeCards.level !== "list" ? (
+                <SkinPage palette={P}>
+                  <SkinCreatives kind="areia" list={creativeCards.source} data={creativeCards.data} kpis={creativeCards.kpis} />
+                </SkinPage>
+              ) : (
+                <SkinPage palette={P}>{children}</SkinPage>
+              )}
             </>
           ) : grid?.editing ? (
             // no Personalizar, a grade de sempre: esconder e adicionar blocos valem no detalhe das etapas

@@ -11,7 +11,8 @@ import { metaAuthParams } from "@/server/integrations/meta-auth";
 import { fetchJson, SYNC_CACHE_SECONDS } from "@/server/integrations/providers/http";
 import { getValidAccessToken } from "@/server/integrations/tokens";
 import type { SyncAccount } from "../source";
-import { mapMetaAd, mapMetaAdDay, mapMetaCampaign, mapMetaCampaignDay, sumAccountDays, type MetaAd, type MetaCampaign, type MetaInsight } from "./map";
+import { BR_STATES } from "@/features/sync/breakdowns";
+import { mapMetaAd, mapMetaAdDay, mapMetaBreakdown, mapMetaCampaign, mapMetaCampaignDay, META_BREAKDOWNS, sumAccountDays, type MetaAd, type MetaBreakdownDimension, type MetaBreakdownRow, type MetaCampaign, type MetaInsight } from "./map";
 
 const GRAPH = "https://graph.facebook.com/v26.0";
 const MAX_PAGES = 50;
@@ -35,7 +36,7 @@ const THUMB_PX = 640;
  * conferido nas contas reais: 64x64 assim, 720x720 com o modificador). Vídeo: a capa.
  * child_attachments: o carrossel (dois cartões ou mais).
  */
-export const AD_CREATIVE_FIELDS = `creative.thumbnail_width(${THUMB_PX}).thumbnail_height(${THUMB_PX}){title,body,call_to_action_type,thumbnail_url,image_url,object_url,link_url,video_id,object_type,instagram_permalink_url,object_story_spec{link_data{child_attachments{link}}}}`;
+export const AD_CREATIVE_FIELDS = `creative.thumbnail_width(${THUMB_PX}).thumbnail_height(${THUMB_PX}){title,body,call_to_action_type,thumbnail_url,image_url,object_url,link_url,video_id,object_type,instagram_permalink_url,effective_object_story_id,object_story_spec{link_data{child_attachments{link}}}}`;
 
 const AD_EXTRA_FIELDS = ["video_p25_watched_actions", "video_p50_watched_actions", "video_p75_watched_actions", "video_p95_watched_actions", "video_p100_watched_actions"].join(",");
 
@@ -88,12 +89,40 @@ async function optional<T>(p: Promise<T[]>, label: string): Promise<T[]> {
   }
 }
 
-export async function fetchMetaDataset(account: SyncAccount, range: SyncRange): Promise<AccountDataset> {
+const actOf = (account: SyncAccount) => (account.externalId.startsWith("act_") ? account.externalId : `act_${account.externalId}`);
+
+/**
+ * Quebras da conta (posicionamento, estado, dispositivo, hora, idade e gênero), uma chamada cada,
+ * em paralelo. Cada uma é opcional: a que falhar fica de fora (com aviso no log) e não entra em
+ * `dimensions` (as linhas dela no banco ficam como estão).
+ */
+export async function fetchMetaBreakdowns(account: SyncAccount, range: SyncRange, token?: string): Promise<{ rows: AccountDataset["breakdownDaily"]; dimensions: MetaBreakdownDimension[] }> {
+  const t = token ?? (await getValidAccessToken(account.connectionId));
+  const act = actOf(account);
+  const timeRange = JSON.stringify({ since: range.from, until: range.to });
+  const breakdown = async (dim: MetaBreakdownDimension) => {
+    try {
+      const rows = await all<MetaBreakdownRow>(`${act}/insights`, { level: "account", fields: "date_start,spend,impressions,clicks,actions,action_values", breakdowns: META_BREAKDOWNS[dim], time_range: timeRange, time_increment: "1", action_attribution_windows: '["7d_click","1d_view"]' }, t, `Meta: quebra ${dim}`);
+      return { dim, rows: mapMetaBreakdown(dim, rows, BR_STATES), ok: true };
+    } catch (err) {
+      console.warn(`[vyz] Meta: quebra ${dim} ficou de fora`, err instanceof Error ? err.message.slice(0, 300) : err);
+      return { dim, rows: [], ok: false };
+    }
+  };
+  const parts = await Promise.all((Object.keys(META_BREAKDOWNS) as MetaBreakdownDimension[]).map(breakdown));
+  return { rows: parts.flatMap((p) => p.rows), dimensions: parts.filter((p) => p.ok).map((p) => p.dim) };
+}
+
+/** Dados da conta. Com { breakdowns: false }, sem as quebras (que podem ir numa rodada à parte). */
+export async function fetchMetaDataset(account: SyncAccount, range: SyncRange, opts: { breakdowns?: boolean } = {}): Promise<AccountDataset> {
   const token = await getValidAccessToken(account.connectionId);
-  const act = account.externalId.startsWith("act_") ? account.externalId : `act_${account.externalId}`;
+  const act = actOf(account);
   const timeRange = JSON.stringify({ since: range.from, until: range.to });
   const insights = (level: string, fields: string) =>
     all<MetaInsight>(`${act}/insights`, { level, fields, time_range: timeRange, time_increment: "1", action_attribution_windows: '["7d_click","1d_view"]' }, token, `Meta: insights ${level}`);
+
+  // quebras da conta (Público e abas da Meta), em paralelo com o resto
+  const breakdownsP = opts.breakdowns === false ? Promise.resolve({ rows: [], dimensions: [] as MetaBreakdownDimension[] }) : fetchMetaBreakdowns(account, range, token);
 
   const [campaigns, ads, campaignRows, adRows, accountRows] = await Promise.all([
     all<MetaCampaign>(`${act}/campaigns`, { fields: "id,name,status,effective_status,objective,daily_budget,start_time" }, token, "Meta: campanhas"),
@@ -114,6 +143,7 @@ export async function fetchMetaDataset(account: SyncAccount, range: SyncRange): 
   ]);
 
   const campaignDaily = campaignRows.map(mapMetaCampaignDay).filter((d) => d !== null);
+  const breakdowns = await breakdownsP;
   const reachByDate = new Map(accountRows.filter((r) => r.reach).map((r) => [r.date_start, Number(r.reach)] as const));
 
   return {
@@ -127,7 +157,8 @@ export async function fetchMetaDataset(account: SyncAccount, range: SyncRange): 
     accountDaily: sumAccountDays(campaignDaily, reachByDate),
     campaignDaily,
     adDaily: adRows.map(mapMetaAdDay).filter((d) => d !== null),
-    breakdownDaily: [],
+    breakdownDaily: breakdowns.rows,
+    breakdownDimensions: breakdowns.dimensions,
     searchTermDaily: [],
     productDaily: [],
   };

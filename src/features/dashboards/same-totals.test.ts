@@ -121,3 +121,23 @@ describe("o mês é o mesmo em todo lugar", () => {
     expect(r.attributed).toBe(2301);
   });
 });
+
+import { SkinView } from "./skins";
+import { monthClose } from "./skins/insights";
+
+describe("a projeção do mês é a mesma em todo lugar", () => {
+  for (const { name, ds } of datasets("noturno-ecommerce")) {
+    it(`noturno (${name}): "Onde o mês fecha" = Previsão de KPIs = monthClose`, async () => {
+      const host = await render("noturno-ecommerce", ds);
+      const noturno = Number(host.querySelector("[data-fecha]")?.getAttribute("data-fecha"));
+      const ctx = { ...makeContext(ds), today };
+      const box = document.createElement("div");
+      document.body.append(box);
+      await act(async () => createRoot(box).render(createElement(SkinView, { skin: "previsao", ctx, name: "T", client: "C", pages: ["previsao"], active: "previsao", periodLabel: "30 dias" } as never)));
+      const previsao = Number(box.querySelector('[data-fecha-alvo="revenue"]')?.getAttribute("data-fecha"));
+      const expected = monthClose(ds.current, (d) => d.revenue, ds.budget)!.total;
+      expect(noturno).toBeCloseTo(expected, 6);
+      expect(previsao).toBeCloseTo(expected, 6);
+    }, 60_000);
+  }
+});

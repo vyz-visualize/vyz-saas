@@ -86,6 +86,8 @@ const metricColumns = (m: DailyMetrics) => ({
   initiate_checkout: m.initiateCheckout,
   conversions: m.conversions,
   conversion_value: m.conversionValue,
+  leads: m.leads,
+  messages: m.messages,
   video_views: m.videoViews,
   video_thruplays: m.videoThruplays,
   search_impression_share: m.searchImpressionShare,
@@ -100,6 +102,15 @@ const basicColumns = (m: BasicMetrics) => ({
   conversions: m.conversions,
   conversion_value: m.conversionValue,
 });
+
+/**
+ * Que linhas de quebra a gravação limpa no período: todas (sem a lista: gerador, fontes antigas),
+ * nenhuma (a rodada não pediu as quebras) ou só as das quebras que vieram (as que falharam ficam).
+ */
+export function breakdownPrune(dims: readonly string[] | undefined): "all" | "none" | string[] {
+  if (!dims) return "all";
+  return dims.length ? [...dims] : "none";
+}
 
 /** Uma linha por chave (a última vence): o upsert do Postgres não aceita a mesma chave duas vezes no lote. */
 function uniqueBy<T extends object>(rows: T[], key: readonly (keyof T)[]): T[] {
@@ -139,6 +150,7 @@ export function factRows(ds: AccountDataset, scope: RowScope, ids: EntityIds): F
         video_views: r.videoViews,
         video_thruplays: r.videoThruplays,
         leads: r.leads ?? null,
+        messages: r.messages ?? null,
         registrations: r.registrations ?? null,
         post_engagement: r.postEngagement ?? null,
         post_reactions: r.postReactions ?? null,
@@ -156,7 +168,7 @@ export function factRows(ds: AccountDataset, scope: RowScope, ids: EntityIds): F
       FACT_KEYS.insights_ad_daily,
     ),
     insights_breakdown_daily: uniqueBy(
-      ds.breakdownDaily.map((r) => ({ ...base, date: r.date, dimension: r.dimension, value: r.value, ...basicColumns(r) })),
+      ds.breakdownDaily.map((r) => ({ ...base, date: r.date, dimension: r.dimension, value: r.value, ...basicColumns(r), leads: r.leads ?? null, messages: r.messages ?? null })),
       FACT_KEYS.insights_breakdown_daily,
     ),
     insights_search_term_daily: uniqueBy(

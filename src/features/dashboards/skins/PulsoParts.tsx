@@ -49,9 +49,10 @@ const STALE_HOURS = 30;
 // ---- status das campanhas -----------------------------------------------------------------------
 
 const STATUS: Record<CampaignStatus["status"], { text: string; color: string; order: number }> = {
-  "sem resultado": { text: "Sem resultado", color: C.red, order: 0 },
-  "custo subindo": { text: "Custo subindo", color: C.pinkFlat, order: 1 },
-  "sem gasto": { text: "Sem gasto", color: C.fg2, order: 3 },
+  // o status olha os últimos 3 dias (as colunas, o período inteiro): o texto diz a janela
+  "sem resultado": { text: "Sem resultado em 3 dias", color: C.red, order: 0 },
+  "custo subindo": { text: "Custo subindo em 3 dias", color: C.pinkFlat, order: 1 },
+  "sem gasto": { text: "Sem gasto em 3 dias", color: C.fg2, order: 3 },
   normal: { text: "Normal", color: C.green, order: 2 },
 };
 
@@ -71,8 +72,8 @@ function StatusChip({ s }: { s: CampaignStatus | null }) {
   if (!s) return <span className="text-[11px]" style={{ color: C.fg2 }} title="Menos de 7 dias no período: sem o dia a dia para dizer">—</span>;
   const st = STATUS[s.status];
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold whitespace-nowrap" style={{ color: st.color }} title={s.detail || undefined}>
-      <span className="size-2 shrink-0 rounded-full" style={{ background: st.color }} aria-hidden />
+    <span className="inline-flex items-start gap-1.5 text-[11px] leading-tight font-semibold" style={{ color: st.color }} title={s.detail || undefined}>
+      <span className="mt-[3px] size-2 shrink-0 rounded-full" style={{ background: st.color }} aria-hidden />
       {st.text}
     </span>
   );
@@ -92,14 +93,14 @@ export function StatusTable({ ctx, platform, limit, className = "" }: { ctx: Ctx
   if (!rows.length) return <p className="m-auto py-6 text-center text-[12.5px]" style={{ color: C.fg2 }}>Sem campanhas no período{platform ? ` em ${platformName(platform)}` : ""}.</p>;
   return (
     <div className={`min-h-0 overflow-auto [scrollbar-width:thin] ${className}`}>
-      <table className="w-full border-separate @[640px]:min-w-[520px] border-spacing-0 text-[12px]" data-status-campanhas>
+      <table className="w-full border-separate @[640px]:min-w-[480px] border-spacing-0 text-[12px]" data-status-campanhas>
         <thead>
-          <tr className="text-left text-[10.5px] tracking-wide whitespace-nowrap uppercase" style={{ color: C.fg2 }}>
-            <th className="sticky top-0 py-1.5 pr-3 font-medium" style={{ background: C.card }}>Status</th>
-            <th className="sticky top-0 py-1.5 pr-3 font-medium" style={{ background: C.card }}>Campanha</th>
-            {!ctx.hideSpend && <th className="sticky top-0 hidden @[640px]:table-cell py-1.5 pr-3 text-right font-medium" style={{ background: C.card }}>Investimento</th>}
-            <th className="sticky top-0 py-1.5 pr-3 text-right font-medium" style={{ background: C.card }}>{conv}</th>
-            {!ctx.hideSpend && <th className="sticky top-0 hidden @[640px]:table-cell py-1.5 pr-3 text-right font-medium" style={{ background: C.card }}>{cost}</th>}
+          <tr className="text-left align-bottom text-[10.5px] leading-tight tracking-wide uppercase" style={{ color: C.fg2 }}>
+            <th className="sticky top-0 w-[92px] py-1.5 pr-2 font-medium" style={{ background: C.card }} title="Pelos últimos 3 dias; as colunas são do período inteiro">Status · 3 dias</th>
+            <th className="sticky top-0 py-1.5 pr-2 font-medium" style={{ background: C.card }}>Campanha</th>
+            {!ctx.hideSpend && <th className="sticky top-0 hidden @[640px]:table-cell py-1.5 pr-2 text-right font-medium" style={{ background: C.card }}>Investimento</th>}
+            <th className="sticky top-0 py-1.5 pr-2 text-right font-medium" style={{ background: C.card }}>{conv}</th>
+            {!ctx.hideSpend && <th className="sticky top-0 hidden @[640px]:table-cell py-1.5 pr-2 text-right font-medium" style={{ background: C.card }}>{cost}</th>}
             <th className="sticky top-0 py-1.5 font-medium" style={{ background: C.card }}>7 dias</th>
           </tr>
         </thead>
@@ -108,10 +109,10 @@ export function StatusTable({ ctx, platform, limit, className = "" }: { ctx: Ctx
             const tone = filterTone(filters, "campaigns", c.id);
             return (
               <tr key={c.id} style={{ opacity: tone === "dimmed" ? 0.45 : 1 }} data-status={s?.status ?? "sem-dados"}>
-                <td className="border-t py-2 pr-3" style={{ borderColor: C.line }}>
+                <td className="border-t py-2 pr-2" style={{ borderColor: C.line }}>
                   <StatusChip s={s} />
                 </td>
-                <td className="max-w-[260px] border-t py-2 pr-3" style={{ borderColor: C.line }}>
+                <td className="max-w-[220px] border-t py-2 pr-2" style={{ borderColor: C.line }}>
                   {filters?.interactive ? (
                     <button
                       type="button"
@@ -132,7 +133,7 @@ export function StatusTable({ ctx, platform, limit, className = "" }: { ctx: Ctx
                   )}
                 </td>
                 {!ctx.hideSpend && <td className="hidden border-t @[640px]:table-cell py-2 pr-3 text-right tnum" style={{ borderColor: C.line }}>{money(ctx, c.spend, true)}</td>}
-                <td className="border-t py-2 pr-3 text-right font-semibold tnum" style={{ borderColor: C.line }}>{int(c.conversions)}</td>
+                <td className="border-t py-2 pr-2 text-right font-semibold tnum" style={{ borderColor: C.line }}>{int(c.conversions)}</td>
                 {!ctx.hideSpend && <td className="hidden border-t @[640px]:table-cell py-2 pr-3 text-right tnum" style={{ borderColor: C.line }}>{c.conversions > 0 ? money(ctx, c.spend / c.conversions, true) : "—"}</td>}
                 <td className="border-t py-2" style={{ borderColor: C.line }}>
                   {s ? <MiniSpark values={s.spark} scaleMax={top} color={s.status === "normal" ? C.green : STATUS[s.status].color} className="h-6 w-16" label={`${conv} nos últimos 7 dias`} /> : null}

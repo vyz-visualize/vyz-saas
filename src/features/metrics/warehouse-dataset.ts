@@ -9,7 +9,7 @@ import type { PlatformId } from "@/features/accounts/platforms";
 import type { WarehouseRows } from "@/features/analytics/types";
 import { BR_STATES, DEVICE_LABEL, parseAgeGender, PLACEMENT_LABEL } from "@/features/sync/breakdowns";
 import type { BreakdownRow, DatasetDetail, DetailDimension, SearchTermRow } from "./detail";
-import type { Profile } from "./definitions";
+import { isSalesProfile, type Profile } from "./definitions";
 import { crmStagesForDataset, type CrmRow } from "./crm";
 import { metaPurchaseFunnel, type FunnelStep } from "./funnel";
 import { FORMAT_LABEL } from "@/features/analytics/format";
@@ -40,6 +40,28 @@ export type AnalyticsRow = { date: string; channel: string; sessions: number; us
 /** Perfis em que a conversão confirmada é a compra (no resto, o evento-chave). */
 const PURCHASE_PROFILES: readonly Profile[] = ["ecommerce", "marketplace", "executivo"];
 
+/**
+ * O resultado de cada objetivo, nunca a compra com outro nome:
+ *   - venda (e-commerce, infoproduto, site...): a compra;
+ *   - leads, imobiliário, saúde e educação: o lead da Meta;
+ *   - negócio local: as conversas iniciadas da Meta (WhatsApp, Messenger, Direct);
+ *   - os outros: as conversões da plataforma.
+ * O Google e as planilhas não separam lead de compra: valem as conversões que a conta marcou.
+ * Na Meta, sem o campo na linha (linhas de antes da importação de leads e conversas), conta 0.
+ */
+export type ResultField = "conversions" | "leads" | "messages";
+const LEAD_PROFILES: readonly Profile[] = ["leads", "imob", "saude", "educacao"];
+export function resultField(profile: Profile): ResultField {
+  if (isSalesProfile(profile)) return "conversions";
+  if (profile === "local") return "messages";
+  return LEAD_PROFILES.includes(profile) ? "leads" : "conversions";
+}
+type ResultCols = { conversions: number; leads?: number | null; messages?: number | null };
+export function resultOf(r: ResultCols, platform: string, field: ResultField): number {
+  if (field === "conversions" || platform !== "meta") return r.conversions;
+  return r[field] ?? 0;
+}
+
 /** Perfis de loja: o funil é o de compra da Meta (quando a Meta está ligada). */
 const SHOP_PROFILES: readonly Profile[] = ["ecommerce", "marketplace"];
 
@@ -54,6 +76,7 @@ function emptyDay(ago: number): DayRow {
 
 /** Dias do intervalo, do mais antigo ao mais novo, somando todas as plataformas. */
 function daysOf(sets: readonly WarehouseRows[], range: { from: string; to: string }, today: string, profile: Profile, maturingDays: number): DayRow[] {
+  const field = resultField(profile);
   const n = dayDiff(range.to, range.from) + 1;
   const out: DayRow[] = [];
   const at = new Map<string, DayRow>();
@@ -72,7 +95,7 @@ function daysOf(sets: readonly WarehouseRows[], range: { from: string; to: strin
       const d = at.get(r.date);
       if (!d) continue;
       const spend = cents(r.spend);
-      const conv = Math.round(r.conversions);
+      const conv = Math.round(resultOf(r, pid, field));
       d.spend += spend;
       d.impressions += r.impressions;
       d.clicks += r.clicks;
@@ -80,15 +103,13 @@ function daysOf(sets: readonly WarehouseRows[], range: { from: string; to: strin
       d.revenue += cents(r.conversionValue);
       d.sessions += r.landingPageViews ?? r.linkClicks ?? r.clicks;
       d.views += r.videoViews ?? 0;
+      // os leads de verdade (Meta: o lead; nas outras, a conversão quando o objetivo é lead)
+      d.leads += Math.round(pid === "meta" ? (r.leads ?? 0) : LEAD_PROFILES.includes(profile) ? r.conversions : 0);
       const p = d.byPlatform[pid] ?? { spend: 0, impressions: 0, clicks: 0, conv: 0 };
       d.byPlatform[pid] = { spend: p.spend + spend, impressions: p.impressions + r.impressions, clicks: p.clicks + r.clicks, conv: p.conv + conv };
     }
   }
-  // as contas trazem conversões; nos modelos de leads, a conversão é o lead
-  for (const d of out) {
-    d.leads = d.conversions;
-    if (profile === "imob") d.qualified = d.conversions;
-  }
+  // lead qualificado só com CRM (ou na amostra): sem ele, fica 0, não a conversão copiada
   return out;
 }
 
@@ -101,7 +122,7 @@ function datesOf(r: { from: string; to: string }): string[] {
   return out;
 }
 
-function campaignsOf(sets: readonly WarehouseRows[]): Campaign[] {
+function campaignsOf(sets: readonly WarehouseRows[], field: ResultField = "conversions"): Campaign[] {
   const out: Campaign[] = [];
   for (const rows of sets) {
     const names = new Map(rows.campaigns.map((c) => [c.id, c.name]));
@@ -116,7 +137,7 @@ function campaignsOf(sets: readonly WarehouseRows[]): Campaign[] {
         // o período anterior, por campanha: o ranking com subiu/desceu e a cascata da variação
         const p = prev.get(r.campaignId) ?? { spend: 0, conversions: 0, revenue: 0 };
         p.spend += cents(r.spend);
-        p.conversions += Math.round(r.conversions);
+        p.conversions += Math.round(resultOf(r, rows.platform, field));
         p.revenue += cents(r.conversionValue);
         prev.set(r.campaignId, p);
       }
@@ -125,14 +146,14 @@ function campaignsOf(sets: readonly WarehouseRows[]): Campaign[] {
       c.spend += cents(r.spend);
       c.impressions += r.impressions;
       c.clicks += r.clicks;
-      c.conversions += Math.round(r.conversions);
+      c.conversions += Math.round(resultOf(r, rows.platform, field));
       c.revenue += cents(r.conversionValue);
       sum.set(r.campaignId, c);
       const sr = series.get(r.campaignId) ?? { spend: dates.map(() => 0), conversions: dates.map(() => 0) };
       const i = at.get(r.date);
       if (i !== undefined) {
         sr.spend[i] += cents(r.spend);
-        sr.conversions[i] += Math.round(r.conversions);
+        sr.conversions[i] += Math.round(resultOf(r, rows.platform, field));
       }
       series.set(r.campaignId, sr);
     }
@@ -141,7 +162,7 @@ function campaignsOf(sets: readonly WarehouseRows[]): Campaign[] {
   return out.filter((c) => c.spend > 0 || c.impressions > 0).sort((a, b) => b.spend - a.spend);
 }
 
-function creativesOf(sets: readonly WarehouseRows[]): Creative[] {
+function creativesOf(sets: readonly WarehouseRows[], field: ResultField = "conversions"): Creative[] {
   const out: Creative[] = [];
   for (const rows of sets) {
     const info = new Map(rows.ads.map((a) => [a.id, a]));
@@ -151,11 +172,11 @@ function creativesOf(sets: readonly WarehouseRows[]): Creative[] {
       const a = info.get(r.adId);
       const c =
         sum.get(r.adId) ??
-        { id: r.adId, name: a?.name ?? "Anúncio", format: formatLabel(a?.format), platform: rows.platform as PlatformId, spend: 0, impressions: 0, clicks: 0, conversions: 0, frequency: 0, tone: 0, reach: 0, imageUrl: a?.thumbnailUrl ?? null, v: { views: 0, p25: 0, p50: 0, p75: 0, p100: 0, any: false } };
+        { id: r.adId, name: a?.name ?? "Anúncio", format: formatLabel(a?.format), platform: rows.platform as PlatformId, spend: 0, impressions: 0, clicks: 0, conversions: 0, frequency: 0, tone: 0, reach: 0, imageUrl: a?.thumbnailUrl ?? null, postUrl: a?.postUrl ?? null, v: { views: 0, p25: 0, p50: 0, p75: 0, p100: 0, any: false } };
       c.spend += cents(r.spend);
       c.impressions += r.impressions;
       c.clicks += r.linkClicks ?? r.clicks;
-      c.conversions += Math.round(r.conversions);
+      c.conversions += Math.round(resultOf(r, rows.platform, field));
       c.reach += r.reach ?? 0;
       // retenção do vídeo (quando a plataforma manda os quartis)
       if (r.videoP25 != null || r.videoP100 != null) {
@@ -181,7 +202,7 @@ function creativesOf(sets: readonly WarehouseRows[]): Creative[] {
 }
 
 /** Conversões por dia da semana × hora no período (da quebra por hora de cada dia). Sem a quebra, nada. */
-function hourWeekOf(sets: readonly WarehouseRows[]): number[][] | undefined {
+function hourWeekOf(sets: readonly WarehouseRows[], field: ResultField = "conversions"): number[][] | undefined {
   const grid = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => 0));
   let any = false;
   for (const rows of sets) {
@@ -190,7 +211,7 @@ function hourWeekOf(sets: readonly WarehouseRows[]): number[][] | undefined {
       const h = Number.parseInt(r.value, 10);
       if (!Number.isInteger(h) || h < 0 || h > 23) continue;
       const wd = new Date(`${r.date}T12:00:00Z`).getUTCDay();
-      grid[wd][h] += r.conversions;
+      grid[wd][h] += resultOf(r, rows.platform, field);
       any = true;
     }
   }
@@ -198,7 +219,7 @@ function hourWeekOf(sets: readonly WarehouseRows[]): number[][] | undefined {
 }
 
 /** Quebras do período (posicionamento, dispositivo, estado, hora), somadas por valor e plataforma. */
-function breakdownsOf(sets: readonly WarehouseRows[]): NonNullable<DatasetDetail["breakdowns"]> {
+function breakdownsOf(sets: readonly WarehouseRows[], field: ResultField = "conversions"): NonNullable<DatasetDetail["breakdowns"]> {
   const out: NonNullable<DatasetDetail["breakdowns"]> = {};
   const label: Record<DetailDimension, (v: string) => string> = { placement: (v) => PLACEMENT_LABEL[v] ?? v, device: (v) => DEVICE_LABEL[v] ?? v, region: (v) => BR_STATES[v] ?? v, hour: (v) => `${v}h` };
   for (const dim of ["placement", "device", "region", "hour"] as const) {
@@ -211,7 +232,7 @@ function breakdownsOf(sets: readonly WarehouseRows[]): NonNullable<DatasetDetail
         b.spend += cents(r.spend);
         b.impressions += r.impressions;
         b.clicks += r.clicks;
-        b.conversions += r.conversions;
+        b.conversions += resultOf(r, rows.platform, field);
         b.revenue += cents(r.conversionValue);
         sum.set(key, b);
       }
@@ -245,7 +266,7 @@ function searchTermsOf(sets: readonly WarehouseRows[]): SearchTermRow[] | undefi
 
 const AGE_LABEL: Record<string, string> = { "18-24": "18 a 24", "25-34": "25 a 34", "35-44": "35 a 44", "45-54": "45 a 54", "55-64": "55 a 64", "65+": "65+" };
 
-function audienceOf(sets: readonly WarehouseRows[]): { audience: AudienceRow[]; gender: { label: string; share: number }[] } {
+function audienceOf(sets: readonly WarehouseRows[], field: ResultField = "conversions"): { audience: AudienceRow[]; gender: { label: string; share: number }[] } {
   const byAge = new Map<string, { spend: number; conv: number }>();
   const byGender = { female: 0, male: 0 };
   for (const rows of sets) {
@@ -255,7 +276,7 @@ function audienceOf(sets: readonly WarehouseRows[]): { audience: AudienceRow[]; 
       if (!p) continue;
       const a = byAge.get(p.age) ?? { spend: 0, conv: 0 };
       a.spend += cents(r.spend);
-      a.conv += r.conversions;
+      a.conv += resultOf(r, rows.platform, field);
       byAge.set(p.age, a);
       if (p.gender === "female" || p.gender === "male") byGender[p.gender] += r.impressions;
     }
@@ -327,16 +348,18 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
     const byDate = new Map<string, AnalyticsRow[]>();
     for (const r of analytics) byDate.set(r.date, [...(byDate.get(r.date) ?? []), r]);
     const purchase = PURCHASE_PROFILES.includes(spec.profile);
+    const sales = isSalesProfile(spec.profile);
     const apply = (days: DayRow[], range: { from: string; to: string } | undefined) => {
       if (!range) return;
       for (const d of days) {
         const rows = byDate.get(isoAdd(spec.today, -d.ago)) ?? [];
         const sum = (k: keyof Omit<AnalyticsRow, "date" | "channel">) => rows.reduce((a, r) => a + r[k], 0);
         d.sessions = Math.round(sum("sessions"));
+        // venda: a compra confirmada no site. Nos outros objetivos, o evento-chave do GA4 pode ser
+        // qualquer coisa: o resultado continua o das plataformas (lead, conversa), com o nome certo
+        if (!sales) continue;
         d.conversions = Math.round(purchase ? sum("transactions") : sum("keyEvents"));
         d.revenue = cents(sum("revenue"));
-        d.leads = d.conversions;
-        if (spec.profile === "imob") d.qualified = d.conversions;
       }
     };
     apply(current, curRange);
@@ -344,7 +367,8 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
   }
   const totals = current.reduce((a, d) => ({ impressions: a.impressions + d.impressions, clicks: a.clicks + d.clicks, conv: a.conv + d.conversions }), { impressions: 0, clicks: 0, conv: 0 });
   const pct = (a: number, b: number) => (b > 0 ? (a / b) * 100 : 0);
-  const { audience, gender } = audienceOf(sets);
+  const field = resultField(spec.profile);
+  const { audience, gender } = audienceOf(sets, field);
   const meta = sets.find((s) => s.platform === "meta");
   const metaFunnel = meta && curRange && SHOP_PROFILES.includes(spec.profile) ? metaPurchaseFunnel(meta.accountDaily, curRange) : [];
 
@@ -357,10 +381,10 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
     current,
     previous,
     adPlatforms: sets.map((s) => s.platform as PlatformId),
-    campaigns: campaignsOf(sets),
-    creatives: creativesOf(sets),
-    breakdowns: breakdownsOf(sets),
-    hourWeek: hourWeekOf(sets),
+    campaigns: campaignsOf(sets, field),
+    creatives: creativesOf(sets, field),
+    breakdowns: breakdownsOf(sets, field),
+    hourWeek: hourWeekOf(sets, field),
     searchTerms: searchTermsOf(sets),
     // e-commerce com a Meta: o funil de compra dela (cada etapa sobre a anterior); senão o do
     // site (GA4); senão impressões → cliques → conversões
@@ -386,5 +410,14 @@ export function datasetFromWarehouse(sets: readonly WarehouseRows[], spec: Wareh
     // sem margem, a regra do produto: equilíbrio no ROAS 1 (receita = investimento)
     breakEven: spec.margin ? 1 / spec.margin : 1,
     marginSet: !!spec.margin,
+    ...(field !== "conversions" && meta && curRange
+      ? {
+          result: {
+            field,
+            informed: meta.accountDaily.some((r) => inRange(r.date, curRange) && r[field] != null),
+            purchases: Math.round(meta.accountDaily.filter((r) => inRange(r.date, curRange)).reduce((a, r) => a + r.conversions, 0)),
+          },
+        }
+      : {}),
   };
 }

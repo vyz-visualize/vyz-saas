@@ -423,6 +423,7 @@ export function creatives(rows: WarehouseRows): CreativeVM[] {
       status: ad.status,
       headline: ad.headline,
       thumbnailUrl: ad.thumbnailUrl,
+      postUrl: ad.postUrl ?? null,
       spend: tt.spend,
       value: tt.value,
       conversions: tt.conversions,
@@ -435,6 +436,20 @@ export function creatives(rows: WarehouseRows): CreativeVM[] {
       hookRate: videoViews ? ratio(videoViews, tt.impressions) : null,
       holdRate: videoViews && thruplays != null ? ratio(thruplays, videoViews) : null,
       fatigue: fatigueOf(first, second),
+      raw: {
+        impressions: tt.impressions,
+        reach: sumNullable(list, (r) => r.reach),
+        clicks: tt.clicks,
+        linkClicks: tt.linkClicks,
+        cpm: tt.cpm,
+        cpc: ratio(tt.spend, tt.linkClicks ?? tt.clicks),
+        videoViews,
+        thruplays,
+        p25: videoViews ? ratio(sumNullable(list, (r) => r.videoP25), videoViews) : null,
+        p50: videoViews ? ratio(sumNullable(list, (r) => r.videoP50), videoViews) : null,
+        p75: videoViews ? ratio(sumNullable(list, (r) => r.videoP75), videoViews) : null,
+        p100: videoViews ? ratio(sumNullable(list, (r) => r.videoP100), videoViews) : null,
+      },
       ctrSpark: ctrSpark(list, dates),
     });
   }
@@ -457,6 +472,7 @@ export function creativeList(rows: WarehouseRows): CreativeListVM[] {
     out.push({
       id: ad.id,
       name: ad.name,
+      postUrl: ad.postUrl ?? null,
       campaignName: campaign?.name ?? "",
       status: ad.status,
       spend: tt.spend,

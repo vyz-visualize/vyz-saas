@@ -4,7 +4,7 @@
 // diária e a tabela por perfil) e "Conteúdo" (ranking de posts, reels e stories e
 // o que cada formato entrega). Os números vêm em data.organic (server/analytics/queries).
 
-import { ExternalLink } from "lucide-react";
+import { PostLink } from "@/features/analytics/creatives/PostLink";
 import { LineChart } from "@/components/charts/LineChart";
 import { addDays, diffDays } from "@/features/sync/dates";
 import { int, pct } from "@/lib/format";
@@ -141,11 +141,7 @@ export function OrganicContent({ data }: PageProps) {
                   <span className="max-w-[260px] truncate font-medium" title={r.caption}>
                     {r.caption}
                   </span>
-                  {r.permalink && (
-                    <a href={r.permalink} target="_blank" rel="noreferrer" aria-label="Abrir o post" className="shrink-0 text-fg-2 hover:text-fg">
-                      <ExternalLink size={13} aria-hidden />
-                    </a>
-                  )}
+                  <PostLink url={r.permalink} />
                 </span>
               ),
             },

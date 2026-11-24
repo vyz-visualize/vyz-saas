@@ -6,6 +6,8 @@
 // plan:template, plan:white_label, dashboard:source_disabled). Tudo com a
 // sessão de quem pede; nada aqui precisa da chave de serviço.
 
+import { CARD_MAX, cardMetric } from "@/features/analytics/creatives/card-metrics";
+import { withCreativeCards } from "@/features/dashboards/metric-prefs";
 import { showsSampleData } from "@/features/dashboards/sample-gate";
 import { refresh, updateTag } from "next/cache";
 import { cookies } from "next/headers";
@@ -235,6 +237,25 @@ export async function saveDashboardMetricPrefs(dashboardId: string, scope: Metri
     const next = withScope(current.metricPrefs, scope, clean);
     unwrap(await db.from("dashboards").update({ metric_prefs: next as Json }).eq("id", dashboardId));
     await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "dashboard.metrics_changed", entityType: "dashboard", entityId: dashboardId, metadata: { scope } });
+    return { ok: true, data: undefined };
+  } catch (err) {
+    unstable_rethrow(err);
+    return toActionError(err);
+  }
+}
+
+/** Métricas dos cards de criativo do dashboard (member): 1 a 4, do catálogo, na ordem escolhida. Vazio volta ao padrão. */
+export async function saveDashboardCreativeCards(dashboardId: string, ids: string[]): Promise<ActionResult> {
+  try {
+    if (!Id.safeParse(dashboardId).success) throw appError("dashboard:not_found");
+    const clean = [...new Set(Array.isArray(ids) ? ids : [])].filter((id) => typeof id === "string" && !!cardMetric(id));
+    if (clean.length > CARD_MAX || (ids.length && !clean.length)) throw appError("validation");
+    const session = await authorize("member", { access: false });
+    const current = await getDashboard(dashboardId);
+    if (!current) throw appError("dashboard:not_found");
+    const db = await createServerSupabase();
+    unwrap(await db.from("dashboards").update({ metric_prefs: withCreativeCards(current.metricPrefs, clean) as Json }).eq("id", dashboardId));
+    await logActivity({ workspaceId: session.workspace.id, actorId: session.user.id, event: "dashboard.metrics_changed", entityType: "dashboard", entityId: dashboardId, metadata: { scope: "creatives" } });
     return { ok: true, data: undefined };
   } catch (err) {
     unstable_rethrow(err);

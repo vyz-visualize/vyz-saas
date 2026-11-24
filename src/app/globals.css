@@ -985,8 +985,9 @@ details.lines summary::-webkit-details-marker {
 .m-bar {
   transform-origin: left center;
 }
+/* backwards: depois da revelação o recorte sai (não corta o topo nem as sombras do visual) */
 [data-anim="on"] .m-unveil {
-  animation: unveil 700ms cubic-bezier(0.45, 0, 0.2, 1) both;
+  animation: unveil 700ms cubic-bezier(0.45, 0, 0.2, 1) backwards;
 }
 /* a sidebar do mock se revela junto com a varredura (animação própria nela
    deixava a camada sem pintar no Chrome) */
@@ -1031,8 +1032,10 @@ details.lines summary::-webkit-details-marker {
   height: var(--cut);
   background: var(--accent);
 }
+/* backwards (não both): ao terminar, o scanner volta ao lugar. Com "both" ele ficava deslocado
+   uma altura inteira para baixo e esticava a rolagem da tela (a faixa vazia depois do dashboard) */
 [data-anim="on"] .scanner {
-  animation: scan 700ms cubic-bezier(0.45, 0, 0.2, 1) both;
+  animation: scan 700ms cubic-bezier(0.45, 0, 0.2, 1) backwards;
 }
 
 /* Landing page: wireframe que se preenche bloco a bloco */

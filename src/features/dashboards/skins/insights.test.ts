@@ -128,3 +128,14 @@ describe("status das campanhas e criativos cansando (Pulso)", () => {
     expect(r.map((t) => t.creative.id)).toEqual(["b", "a"]);
   });
 });
+
+import { stateBasis } from "./insights";
+
+describe("estado sem resultado (a Meta não manda resultado por estado)", () => {
+  it("sem resultado em nenhum estado: a divisão é das impressões, e diz isso", () => {
+    const rows = [{ key: "SP", conversions: 0, impressions: 300 }, { key: "BA", conversions: 0, impressions: 100 }];
+    expect(stateBasis(rows)).toBe("impressões");
+    expect(stateShares(rows).get("SP")).toBeCloseTo(0.75);
+    expect(stateBasis([{ conversions: 2, impressions: 300 }])).toBe("resultados");
+  });
+});

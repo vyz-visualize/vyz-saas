@@ -1,6 +1,7 @@
 // Widgets do dashboard. Os mesmos componentes servem o gerador da LP, o passo 2
 // de "Como funciona", as miniaturas, o painel e o link público: só muda o Dataset.
 
+import { PostLink } from "@/features/analytics/creatives/PostLink";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { TrendSpark } from "@/components/charts/TrendSpark";
 import { CreativeImage, isVideoFormat } from "./CreativeImage";
@@ -777,7 +778,7 @@ function Creatives({ ctx }: { ctx: WidgetContext }) {
           <li
             key={c.id}
             data-filter-tone={filterTone(filters, "ads", c.id) ?? undefined}
-            onClick={filters?.interactive ? (e) => !(e.target as Element).closest("button") && filters.toggle("ads", c.id, c.name, e) : undefined}
+            onClick={filters?.interactive ? (e) => !(e.target as Element).closest("button, a") && filters.toggle("ads", c.id, c.name, e) : undefined}
             className={`overflow-hidden rounded-[8px] border bg-bg ${filters?.interactive ? "cursor-pointer" : ""} ${filterTone(filters, "ads", c.id) === "selected" ? "border-accent ring-1 ring-accent" : "border-line"} ${filterTone(filters, "ads", c.id) === "dimmed" ? "opacity-45" : ""}`}
           >
             {/* dados reais: a imagem do anúncio (vídeo: a capa); amostra ou sem imagem: a miniatura geométrica */}
@@ -805,6 +806,7 @@ function Creatives({ ctx }: { ctx: WidgetContext }) {
                   c.name
                 )}
               </p>
+              {c.postUrl && <PostLink url={c.postUrl} className="mt-1" />}
               <dl className="mt-1 grid grid-cols-3 gap-1 tnum">
                 <div>
                   <dt className="text-fg-2">CTR</dt>

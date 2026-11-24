@@ -22,10 +22,18 @@ function fingerprint(d: ReturnType<typeof gen>) {
     delete old.interactions;
     delete old.topImpressionPct;
     delete old.absoluteTopImpressionPct;
+    delete old.leads;
+    delete old.messages;
+    return old;
+  });
+  const account = d.accountDaily.map((r) => {
+    const old: Partial<typeof r> = { ...r };
+    delete old.leads;
+    delete old.messages;
     return old;
   });
   return createHash("sha256")
-    .update(JSON.stringify([d.accountDaily, campaigns, ad, d.breakdownDaily, terms, d.productDaily]))
+    .update(JSON.stringify([account, campaigns, ad, d.breakdownDaily, terms, d.productDaily]))
     .digest("hex");
 }
 

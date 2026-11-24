@@ -43,7 +43,9 @@ import { generateCrmData } from "@/features/sync/mock/crm";
 import { diffDays } from "@/features/sync/dates";
 
 import { isSampleMetric, pageCatalog, pageKpiIds, sampleCatalog, type MetricPrefs } from "./metric-prefs";
-import { useMetricPrefsState, type SaveMetricPrefs } from "./metric-prefs-context";
+import { useMetricPrefsState, type SaveCreativeCards, type SaveMetricPrefs } from "./metric-prefs-context";
+import { cardIds, fromDataset, fromGallery } from "@/features/analytics/creatives/card-metrics";
+import { CardPrefsProvider, type CardPrefs } from "@/features/analytics/creatives/CardMetrics";
 import { MetricNoticeBar } from "./MetricActions";
 import { MetricEditProvider } from "./metric-edit-context";
 import { CustomizeButton, EDITING_PAD, EDITING_PAD_COLLAPSED, MetricTray, useMetricEditorState, type EditorBlocks } from "./MetricEditor";
@@ -59,6 +61,8 @@ import { useDashboardLayout, type SaveLayout } from "./layout/useDashboardLayout
 import { SkinView } from "./skins";
 import { hasCoverSkin, isFramedSkin, isSkinPage, skinTabs } from "./skins/blocks";
 import type { MonthReport } from "./skins/shared";
+import type { MmmReadinessData } from "@/features/mmm/readiness";
+import { resultNotice } from "@/features/metrics/result-notice";
 import { closedMonth, coversRange, isClosedMonth, rowsIn } from "@/features/analytics/closed-month";
 import { withLaunchSheet } from "@/features/metrics/launch-dataset";
 import { useDashboardCover, type CoverHost } from "./useDashboardCover";
@@ -95,6 +99,8 @@ type BodyProps = {
   /** Dashboard salvo que pode ser personalizado (member+ no painel). */
   customizeId?: string;
   saveMetrics?: SaveMetricPrefs;
+  /** Grava as métricas dos cards de criativo (visuais próprios). */
+  saveCards?: SaveCreativeCards;
   /** Grava a disposição de uma aba (member+). */
   saveLayout?: (dashboardId: string, page: PageId, items: unknown) => ReturnType<SaveLayout>;
   /** "Pedir ao Vyz" com IA (askLayout). Sem isso, o editor lê o pedido sozinho. */
@@ -118,6 +124,11 @@ type BodyProps = {
   syncStamp?: ReactNode;
   /** Horas desde a última sincronização (dados reais): o Pulso avisa quando atrasa. */
   syncHours?: number;
+  /** O que falta para o MMM de cada cliente (dados reais). Sem isso, com dados reais, a aba diz que não deu para ler. */
+  mmmReadiness?: MmmReadinessData | null;
+  /** Hora da última sincronização (ISO) e o fuso da conta: "atualizado às HH:MM" nos visuais. */
+  syncedAt?: string;
+  timeZone?: string;
   /** Filtros que vieram na URL. */
   initialFilters?: DashFilters;
   /** Galeria e métricas novas vêm do servidor: filtrar precisa navegar. Sem isso, só troca o endereço. */
@@ -127,6 +138,9 @@ type BodyProps = {
   /** Visuais com capa: como gravar a imagem, o endereço e a planilha do lançamento. Sem isso, as mudanças valem só nesta aba. */
   coverHost?: CoverHost;
 };
+
+/** O nome do resultado do objetivo ("Vendas confirmadas", "Leads"), para os cards de criativo da amostra. */
+const formatResultLabel = (profile: Parameters<typeof metricDefinition>[1]) => metricDefinition("conversions", profile).label;
 
 /** Abas que as fontes desenham (GA4, CRM, orgânico, recursos do Avançado): não usam a grade. */
 const SOURCE_TABS: ReadonlySet<PageId> = new Set(["site", "canais-site", "crm", "instagram", "pagina-facebook", "conteudo", "criativos-ao-vivo", "previsao", "mmm"]);
@@ -139,7 +153,7 @@ export function sampleLayout(layout: PageLayout, visible: readonly string[]): Pa
 }
 
 /** Cabeçalho, abas, período e a página ativa. Mesmo miolo no painel e no link público. */
-export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, syncStamp, syncHours, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveLayout, askLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref, coverHost }: BodyProps) {
+export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatforms, syncStamp, syncHours, syncedAt, timeZone, mmmReadiness, spec, hideSpend, assemble, actions, printing, customizeId, saveMetrics, saveCards, saveLayout, askLayout, canArrange: arrangePlan = false, creatives, extraMetrics = [], initialPage, onPeriodChange, initialFilters = NO_FILTERS, onFilterNavigate, backHref, coverHost }: BodyProps) {
   const t = dashboardTemplate(spec.templateId);
   // as abas na tela: as do dashboard e as que o visual desenha (Pulso: Ações de hoje)
   const [page, setPage] = useState<PageId>(() => {
@@ -187,7 +201,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     arrange: arrangePlan,
   });
   const canArrange = !!customizeId && !!saveLayout;
-  const metrics = useMetricPrefsState({ dashboardId: customizeId ?? null, scope: "sample", catalog: activeCatalog, pageKpis, initial: spec.metricPrefs, hideSpend, saveAction: saveMetrics, companion: canArrange ? grid.companion : undefined });
+  const metrics = useMetricPrefsState({ dashboardId: customizeId ?? null, scope: "sample", catalog: activeCatalog, pageKpis, initial: spec.metricPrefs, hideSpend, saveAction: saveMetrics, saveCards, companion: canArrange ? grid.companion : undefined });
   const pagesWithCards = spec.pages.filter((p, i) => (pageKpis[i] ?? []).length > 0);
   const known = (id: string) => isSampleMetric(id) || extraById.has(id);
   const activeIds = pageKpiIds(catalog, activeKpis ?? [], metrics.prefs?.kpis, { hideSpend }).filter(known);
@@ -348,7 +362,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
       : p === "criativos-ao-vivo" || p === "previsao" || p === "mmm" ? (
         // o desenho do recurso ocupa a altura toda (sem sobrar faixa escura embaixo) e rola por dentro
         <div className="h-full min-h-0 overflow-auto rounded-card [&>*]:min-h-full">
-          <SkinView skin={p} ctx={ctxFor(p)} name={spec.name} client={spec.client} pages={[p]} active={p} periodLabel={periodLabel} />
+          <SkinView skin={p} ctx={ctxFor(p)} name={spec.name} client={spec.client} pages={[p]} active={p} periodLabel={periodLabel} syncedAt={syncedAt} timeZone={timeZone} mmm={p === "mmm" ? (isReal ? { real: mmmReadiness ?? null, connectHref: backHref ? "/painel/contas" : undefined } : { sample: true }) : undefined} />
         </div>
       )
       : null;
@@ -388,6 +402,13 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   };
   // no relatório com o mês fechado, a comparação é com o mês antes dele: o selo do filtro diz isso
   const filterApi = month.active && month.before && active === t.pages[0] ? { ...filterState, compared: cm.before } : filterState;
+  // cards de criativo dos visuais: a galeria do servidor (com o resultado do objetivo de cada campanha)
+  // ou, sem ela, os criativos do dashboard; as métricas escolhidas valem para todos os cards
+  const cardSource = creatives && creatives.level !== "list" && creatives.gallery.length ? fromGallery(creatives.gallery) : fromDataset(ctx.ds, formatResultLabel(t.profile));
+  // quem edita troca (e grava); no link compartilhado, só vê a escolha salva
+  const cardPrefs: CardPrefs = { ids: cardIds(metrics.cards, t.skin, { hideSpend }), set: metrics.canSaveCards ? metrics.setCards : undefined, hideSpend };
+  // a fileira de cards da aba Criativos (a mesma da aba padrão, editável no modo edição), acima do jeito de cada visual
+  const creativesKpis = <PageView layout={{ ...layoutOf("criativos"), widgets: [] }} ctx={creatives ? creativesCtx : ctxFor("criativos")} kpiEdit={metrics.edit} extraCards={extrasOf("criativos")} />;
   const skinView = (p: PageId, nav: boolean, content?: ReactNode) =>
     t.skin ? (
       <SkinView
@@ -399,7 +420,11 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
         active={p}
         periodLabel={periodLabel}
         month={month}
+        cards={{ source: cardSource, level: creatives?.level ?? null, data: creatives, kpis: p === "criativos" ? creativesKpis : undefined }}
         syncHours={syncHours}
+        syncedAt={syncedAt}
+        timeZone={timeZone}
+        pageCtx={ctxFor(p)}
         controls={nav ? skinControls : undefined}
         note={nav ? skinNote : undefined}
         screen={nav && screen}
@@ -460,6 +485,13 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
   // visual, com a paleta dele, e todas as abas ficam dentro da moldura.
   const framed = isFramedSkin(t.skin);
   const periodNote = `${periodLabel} · ${days} dias · janela de atribuição: ${attribution}. Os últimos 3 dias ficam em maturação.`;
+  // objetivo sem resultado no período (lead, conversa): o aviso diz o que a conta registrou no lugar
+  const notice = resultNotice(ds);
+  const noticeLine = notice ? (
+    <p role="status" className="rounded-control border border-line bg-surface-2/60 px-3 py-2 text-[12.5px] text-fg" data-aviso-resultado>
+      {notice}
+    </p>
+  ) : null;
   // Na tela cheia, a nota do período vira dica: cada linha de texto a menos é altura para os blocos. No estreito ela segue escrita.
   const periodHint = (
     <Tooltip side="bottom" content={<span className="block max-w-[300px] font-normal">{periodNote}</span>}>
@@ -516,6 +548,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     <>
       <FilterBar compare={compare} />
       <p className={`text-[12.5px] text-fg-2 ${screen ? "@[720px]:hidden" : ""}`}>{periodNote}</p>
+      {noticeLine}
     </>
   ) : undefined;
   // o miolo das abas que o visual não desenha: os blocos padrão (dentro da moldura, ganham a paleta dele)
@@ -533,6 +566,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     ));
 
   return (
+    <CardPrefsProvider value={t?.skin ? cardPrefs : null}>
     <MetricEditProvider value={edit.editor}>
     <FilterProvider value={filterApi}>
     {/* data-skin-screen: avisa a moldura do painel (globals.css) que este dashboard toma a tela toda */}
@@ -608,6 +642,7 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
 
           {/* no encaixe a nota vira dica ao lado do período; no celular ela segue escrita */}
           <p className={`text-[12.5px] text-fg-2 print:hidden ${fit ? "md:hidden" : ""}`}>{periodNote}</p>
+          {noticeLine}
         </>
       )}
 
@@ -692,5 +727,6 @@ export function DashboardBody({ dataset, sourceExtras: realExtras, linkedPlatfor
     </div>
     </FilterProvider>
     </MetricEditProvider>
+    </CardPrefsProvider>
   );
 }

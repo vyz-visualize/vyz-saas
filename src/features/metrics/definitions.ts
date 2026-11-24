@@ -60,7 +60,8 @@ export const VOCAB: Record<Profile, { conv: string; one: string; cpa: string }> 
   site: { conv: "Compras", one: "compra", cpa: "Custo por compra" },
   infoproduto: { conv: "Vendas", one: "venda", cpa: "Custo por venda" },
   leads: { conv: "Leads", one: "lead", cpa: "Custo por lead" },
-  imob: { conv: "Leads qualificados", one: "lead", cpa: "Custo por lead qualificado" },
+  // as conversões do imobiliário são os leads (o qualificado é a métrica "qualified", que vem do CRM)
+  imob: { conv: "Leads", one: "lead", cpa: "Custo por lead" },
   local: { conv: "Conversas no WhatsApp", one: "conversa", cpa: "Custo por conversa" },
   midia: { conv: "Resultados", one: "resultado", cpa: "Custo por resultado" },
   pesquisa: { conv: "Conversões", one: "conversão", cpa: "Custo por conversão" },

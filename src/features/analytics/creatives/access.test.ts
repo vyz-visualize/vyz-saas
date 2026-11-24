@@ -44,7 +44,7 @@ describe("corte por plano", () => {
     expect(creatives!.list.length).toBeGreaterThan(5);
     expect(creatives!.gallery).toEqual([]);
     expect(creatives!.compare).toEqual([]);
-    expect(Object.keys(creatives!.list[0]).sort()).toEqual(["campaignName", "id", "name", "result", "spend", "status"]);
+    expect(Object.keys(creatives!.list[0]).sort()).toEqual(["campaignName", "id", "name", "postUrl", "result", "spend", "status"]);
     expect(view).toMatchObject({ creatives: [], creativeList: [], creativeDays: [] });
     expect(JSON.stringify(creatives)).not.toMatch(/hookRate|ctrSpark|thumbnailUrl|"days"/);
   });

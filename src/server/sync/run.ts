@@ -12,7 +12,7 @@ import "server-only";
 // Os horários do histórico (sync_runs, last_synced_at) seguem o relógio do
 // banco, o mesmo de created_at: o fim nunca fica antes do início.
 
-import { failureMessage, rereadAllPosts } from "@/features/sync/round";
+import { failureMessage, fetchBreakdownsNow, rereadAllPosts } from "@/features/sync/round";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { PLATFORMS } from "@/features/accounts/platforms";
@@ -240,7 +240,8 @@ export async function syncAdAccount(adAccountId: string, trigger: SyncTrigger, o
       byTable = { organic_daily: written.days, organic_posts: written.posts };
     } else {
       const ads = { ...current, platform: current.platform as Exclude<typeof current.platform, "instagram" | "facebook" | "ga4" | "rdstation" | "hubspot" | "pipedrive" | "kommo"> };
-      const dataset = await source.fetch(ads, range);
+      // as quebras da Meta uma vez por dia (e na primeira sincronização da conta)
+      const dataset = await source.fetch(ads, range, { breakdowns: fetchBreakdownsNow(trigger, new Date()) });
       const written = await writeDataset(db, current, dataset, run.createdAt);
       const days = await rollupAccount(db, current, dataset, range, run.createdAt);
       rowsWritten = written.entities + written.facts + days;

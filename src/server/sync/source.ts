@@ -40,7 +40,8 @@ export type SyncAccount = {
 export interface SyncSource {
   readonly kind: "mock" | "live";
   /** Entidades e fatos diários da conta no intervalo (inclusive). */
-  fetch(account: SyncAccount & { platform: SyncPlatform }, range: SyncRange): Promise<AccountDataset>;
+  /** breakdowns: false pula as quebras da Meta (elas vêm uma vez por dia; as do banco ficam). */
+  fetch(account: SyncAccount & { platform: SyncPlatform }, range: SyncRange, opts?: { breakdowns?: boolean }): Promise<AccountDataset>;
   /** Orgânico (Instagram e Página do Facebook). */
   /** allPosts: relê os números de todos os posts da janela de 30 dias (false: só os dos últimos 7). */
   fetchOrganic(account: SyncAccount & { platform: OrganicPlatform }, range: SyncRange, opts?: { allPosts?: boolean }): Promise<OrganicDataset>;
@@ -87,8 +88,8 @@ export const mockSource: SyncSource = {
 // Os tokens saem de getValidAccessToken, que renova quando precisa.
 export const liveSource: SyncSource = {
   kind: "live",
-  async fetch(account, range) {
-    if (account.platform === "meta") return fetchMetaDataset(account, range);
+  async fetch(account, range, opts) {
+    if (account.platform === "meta") return fetchMetaDataset(account, range, { breakdowns: opts?.breakdowns });
     if (account.platform === "google") return fetchGoogleDataset(account, range);
     if (account.platform === "tiktok") return fetchTikTokDataset(account, range);
     if (account.platform === "linkedin") return fetchLinkedInDataset(account, range);

@@ -24,7 +24,7 @@ export const parseSyncGroup = (raw: string | null | undefined): SyncGroup | null
  * Quanto tempo a conta costuma levar (pior caso comum, medido em produção em nov/2026: o orgânico de
  * uma conta grande passava de 150 s antes de ler os posts em paralelo; a Meta Ads, até 110 s).
  */
-export const PLATFORM_ESTIMATE_MS: Record<string, number> = { instagram: 70_000, facebook: 70_000, meta: 45_000, tiktok: 30_000, linkedin: 30_000 };
+export const PLATFORM_ESTIMATE_MS: Record<string, number> = { instagram: 70_000, facebook: 70_000, meta: 60_000, tiktok: 30_000, linkedin: 30_000 };
 export const DEFAULT_ESTIMATE_MS = 15_000;
 export const estimateMs = (platform: string) => PLATFORM_ESTIMATE_MS[platform] ?? DEFAULT_ESTIMATE_MS;
 
@@ -47,6 +47,13 @@ export const hourInSaoPaulo = (now: Date) => Number(new Intl.DateTimeFormat("en-
  * mudam e os já gravados ficam (o orgânico grava os posts por upsert, sem apagar).
  */
 export const rereadAllPosts = (trigger: "initial" | "scheduled" | "manual", now: Date) => trigger !== "scheduled" || hourInSaoPaulo(now) < 8;
+
+/**
+ * Quebras da Meta (posicionamento, estado, dispositivo, hora, idade e gênero) uma vez por dia: na
+ * primeira rodada de anúncios (09 UTC; até as 12 UTC, para uma rodada que atrasou) e sempre na
+ * primeira sincronização de uma conta. Nas outras, ficam as do banco: 6 chamadas a menos por conta.
+ */
+export const fetchBreakdownsNow = (trigger: "initial" | "scheduled" | "manual", now: Date) => trigger === "initial" || (trigger === "scheduled" && now.getUTCHours() < 12);
 
 /** Janela de posts relidos em toda rodada. */
 export const RECENT_POST_DAYS = 7;

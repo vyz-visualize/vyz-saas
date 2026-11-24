@@ -26,6 +26,9 @@ export type MetricRow = {
   initiateCheckout: number | null;
   conversions: number;
   conversionValue: number;
+  /** Meta: leads e conversas iniciadas. null: a plataforma não informa (ou a linha é de antes de 24/11/2026). */
+  leads?: number | null;
+  messages?: number | null;
   videoViews: number | null;
   videoThruplays: number | null;
   searchImpressionShare: number | null;
@@ -41,7 +44,7 @@ export type AdDayRow = Pick<MetricRow, "spend" | "impressions" | "reach" | "clic
     date: string;
   };
 export type BasicRow = Pick<MetricRow, "spend" | "impressions" | "clicks" | "conversions" | "conversionValue">;
-export type BreakdownDayRow = BasicRow & { date: string; dimension: BreakdownDimension | string; value: string };
+export type BreakdownDayRow = BasicRow & { date: string; dimension: BreakdownDimension | string; value: string; leads?: number | null; messages?: number | null };
 export type SearchTermDayRow = BasicRow & { campaignId: string; date: string; searchTerm: string; matchType: string };
 export type ProductDayRow = BasicRow & { productId: string; date: string };
 
@@ -170,6 +173,8 @@ export type CreativeVM = {
   status: string;
   headline: string | null;
   thumbnailUrl: string | null;
+  /** O post original (Instagram, Facebook): o botão "Ver post". */
+  postUrl?: string | null;
   spend: number | null;
   value: number;
   conversions: number;
@@ -188,6 +193,22 @@ export type CreativeVM = {
   holdRate: number | null;
   /** Frequência subindo e CTR caindo entre a 1ª e a 2ª metade do período. */
   fatigue: { frequencyChange: number; ctrChange: number } | null;
+  /** Os números brutos do período (as métricas que a pessoa escolhe para os cards). null: a plataforma não informa. */
+  raw?: {
+    impressions: number;
+    reach: number | null;
+    clicks: number;
+    linkClicks: number | null;
+    cpm: number | null;
+    cpc: number | null;
+    videoViews: number | null;
+    thruplays: number | null;
+    /** Retenção: quem chegou a 25, 50, 75 e 100% ÷ visualizações de 3 s. */
+    p25: number | null;
+    p50: number | null;
+    p75: number | null;
+    p100: number | null;
+  };
   /** CTR do link por dia (sparkline). */
   ctrSpark: (number | null)[];
 };
@@ -196,6 +217,8 @@ export type CreativeVM = {
 export type CreativeListVM = {
   id: string;
   name: string;
+  /** O post original: o botão "Ver post". */
+  postUrl?: string | null;
   campaignName: string;
   status: string;
   spend: number | null;

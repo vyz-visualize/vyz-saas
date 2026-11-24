@@ -17,6 +17,8 @@ import { Block, SkinBar, SkinChrome, SkinPage, StatBlock, themeVars, type SkinPa
 import { HeatGrid, MonthCloseChart } from "./extras";
 import { heatPeak, monthClose, WEEKDAYS } from "./insights";
 import { SkinGrid } from "./SkinGrid";
+import { SkinCreatives } from "./CreativeViews";
+import { NoturnoFunnel } from "./TabViews";
 import { AnalysisBar, MasterDetail, ProductsPage } from "./NoturnoParts";
 import { PAGE_PLATFORM } from "@/features/templates/dashboards/composed";
 import { brl, change, daily, decimal, goalOf, int, label, value, type SkinProps } from "./shared";
@@ -40,11 +42,25 @@ const BLUE = "#6ea8ff";
 const VIOLET = "#b392ff";
 /** A linha do período anterior. */
 const PREV = "rgb(238 240 247 / 0.45)";
-const HERO = "linear-gradient(140deg,#ffc76e 0%,#ff9f43 100%)";
+/**
+ * Noturno editorial: o azul-noite com o âmbar como a única cor de destaque, sem degradê nem brilho.
+ * Os blocos viram seções separadas por linhas finas (sem cartão dentro de cartão), os títulos são
+ * rótulos em caixa-alta e os números são grandes. Os blocos são os comuns (bklit-blocks e os
+ * widgets padrão): o estilo vale só dentro do Noturno.
+ */
+const EDITORIAL_CSS = `
+.noturno-ed section.rounded-\\[22px\\], .noturno-ed .m-in { border-radius: 0; background: transparent; border-width: 0; border-top: 1px solid var(--line); box-shadow: none; padding-left: 0; padding-right: 0; }
+.noturno-ed section.rounded-\\[22px\\] h3, .noturno-ed .m-in h3 { font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-2); }
+.noturno-ed section.rounded-\\[22px\\] p.text-\\[26px\\] { font-size: 34px; font-weight: 700; letter-spacing: -.035em; }
+.noturno-ed section.rounded-\\[22px\\] .rounded-\\[9px\\] { display: none; }
+.noturno-ed [data-grid-item] { overflow: visible; }
+`;
 /** Cores dos blocos exclusivos (extras.tsx). */
+/** Contagem (dados reais) é inteira; a amostra reparte o total e pode ter casa decimal. */
+const countOrShare = (v: number) => (Number.isInteger(v) ? int(v) : decimal(v, 1));
 const TONE = { fg: P.fg, fg2: P.fg2, line: P.line, accent: P.accent, good: P.good, bad: P.error };
 
-export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar }: SkinProps) {
+export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar, pageCtx, cards }: SkinProps) {
   // filtros desta análise: o dia da semana e o comparar (plataforma e campanha são os do dashboard)
   const [weekday, setWeekday] = useState<number | null>(null);
   const [compare, setCompare] = useState(true);
@@ -69,7 +85,7 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
   const hidden = [...(peak ? [] : ["s-calor"]), ...(close ? [] : ["s-fecha"])];
 
   const nodes = {
-    "s-receita": <StatBlock title={label(ctx, valueKey)} v={value(ctx, valueKey)} delta={change(ctx, valueKey)} note="contra o período anterior" values={daily(ctx, valueKey)} icon={g.sales ? CircleDollarSign : Target} solid={HERO} />,
+    "s-receita": <StatBlock title={label(ctx, valueKey)} v={value(ctx, valueKey)} delta={change(ctx, valueKey)} note="contra o período anterior" values={daily(ctx, valueKey)} icon={g.sales ? CircleDollarSign : Target} color={P.accent} />,
     "s-invest": <StatBlock title={label(ctx, "spend")} v={value(ctx, "spend")} delta={hide ? undefined : change(ctx, "spend")} note={hide ? "oculto neste link" : `${int(ctx.cur[g.conv])} ${resultName.toLowerCase()}`} values={hide ? undefined : daily(ctx, "spend")} color={BLUE} icon={Wallet} />,
     "s-roas": !g.sales ? (
       <StatBlock title={label(ctx, "convRate")} v={value(ctx, "convRate")} delta={change(ctx, "convRate")} note={`${resultName.toLowerCase()} ÷ visitas da página`} values={daily(ctx, "convRate")} color={P.accent} icon={Percent} />
@@ -77,7 +93,7 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
     "s-cpa": <StatBlock title={label(ctx, g.cost)} v={value(ctx, g.cost)} delta={hide ? undefined : change(ctx, g.cost)} note={hide ? undefined : hasGoal(ctx.ds) ? `alvo ${brl(ctx.ds.goal, { decimals: false })}` : GOAL_INVITE} values={hide ? undefined : daily(ctx, g.cost)} color={VIOLET} icon={Target} />,
     "s-calor": (
       <Block title={`${resultName} por dia da semana e hora`} aside={peak ? <span className="text-[11px] text-fg-2">pico: {WEEKDAYS[peak.day]}, {peak.hour}h</span> : undefined}>
-        {hourWeek && <HeatGrid grid={hourWeek} color={P.accent} tone={TONE} what={resultName} format={(v) => decimal(v, v < 10 ? 1 : 0)} />}
+        {hourWeek && <HeatGrid grid={hourWeek} color={P.accent} tone={TONE} what={resultName} format={countOrShare} />}
         <p className="mt-auto pt-2 text-[10.5px] text-fg-2">Pela hora de cada dia na Meta, no fuso da conta.</p>
       </Block>
     ),
@@ -85,11 +101,12 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
       <Block title="Onde o mês fecha" aside={<span className="text-[11px] text-fg-2">dia {ctx.ds.budget.day} de {ctx.ds.budget.daysInMonth}</span>}>
         {close && !(hide && g.sales) && (
           <>
+            <span hidden data-fecha={close.total} />
             <p className="text-[24px] leading-tight font-bold tnum">{showValue(close.total)}</p>
             <p className="text-[11.5px] text-fg-2 tnum">
               entre {showValue(close.totalLo)} e {showValue(close.totalHi)} · {label(ctx, valueKey).toLowerCase()} no mês
             </p>
-            <MonthCloseChart m={close} color={P.accent} tone={TONE} label={`${label(ctx, valueKey)} no mês: ${showValue(close.done.at(-1) ?? 0)} até hoje; deve fechar em ${showValue(close.total)}.`} className="mt-3 min-h-[70px] flex-1" />
+            <MonthCloseChart m={close} color={P.accent} tone={TONE} format={showValue} label={`${label(ctx, valueKey)} no mês: ${showValue(close.done.at(-1) ?? 0)} até hoje; deve fechar em ${showValue(close.total)}.`} className="mt-3 min-h-[70px] flex-1" />
             <p className="mt-1 text-[10.5px] text-fg-2">Cheio: até hoje · tracejado: a previsão, com a faixa de 95%</p>
           </>
         )}
@@ -100,29 +117,28 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
 
   return (
     // na tela do dashboard (screen) não há moldura de fora: o painel vai de ponta a ponta e ocupa a altura da tela
-    <div data-chart-theme className={screen ? "@container" : "@container rounded-[32px] p-2.5 @[700px]:p-4"} style={{ ...themeVars(P), background: screen ? P.bg : "#05070c" }}>
-      <div className={screen ? "min-h-dvh px-4 pt-3 pb-[var(--screen-pb,7rem)] @[700px]:px-6" : "rounded-[26px] p-4 @[700px]:p-6"} style={{ background: `radial-gradient(820px 340px at 88% -12%, rgb(255 179 71 / 0.11), transparent 62%), ${P.bg}` }}>
+    <div data-chart-theme className={`noturno-ed ${screen ? "@container" : "@container rounded-[6px] p-2.5 @[700px]:p-4"}`} style={{ ...themeVars(P), background: screen ? P.bg : "#05070c" }}>
+      <style>{EDITORIAL_CSS}</style>
+      <div className={screen ? "min-h-dvh px-4 pt-3 pb-[var(--screen-pb,7rem)] @[700px]:px-8" : "p-4 @[700px]:p-8"} style={{ background: P.bg }}>
         <SkinBar palette={P} bar={bar} className="mb-3" />
-        {/* topo: marca do cliente, abas em pílula e período */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-[13px]" style={{ background: HERO, color: P.onAccent }}>
-              {g.sales ? <ShoppingBag size={18} strokeWidth={2.2} /> : <Target size={18} strokeWidth={2.2} />}
-            </span>
-            <div className="min-w-0 leading-tight">
-              <p className="truncate text-[11px] font-medium tracking-[0.08em] text-fg-2 uppercase">{client}</p>
-              <h2 className="truncate text-[18px] font-bold tracking-tight">{name}</h2>
-            </div>
+        {/* topo editorial: o cliente em rótulo, o nome grande e as abas sublinhadas numa linha fina */}
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-3 border-b border-line pb-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 truncate text-[10.5px] font-semibold tracking-[0.16em] text-fg-2 uppercase">
+              {g.sales ? <ShoppingBag size={13} aria-hidden style={{ color: P.accent }} /> : <Target size={13} aria-hidden style={{ color: P.accent }} />}
+              {client}
+            </p>
+            <h2 className="mt-1 truncate text-[28px] leading-none font-bold tracking-[-0.035em] @[700px]:text-[34px]">{name}</h2>
           </div>
-          <nav data-tour="abas" className="order-last flex w-full min-w-0 flex-nowrap gap-1 overflow-x-auto rounded-[22px] border border-line p-1 [scrollbar-width:none] @[900px]:order-none @[900px]:ml-2 @[900px]:w-auto @[900px]:flex-1 [&>*]:shrink-0 [&>*]:whitespace-nowrap" style={{ background: "rgb(255 255 255 / 0.03)" }}>
+          <nav data-tour="abas" className="order-last -mb-3 flex w-full min-w-0 flex-nowrap gap-5 overflow-x-auto [scrollbar-width:none] @[900px]:order-none @[900px]:w-auto @[900px]:flex-1 [&>*]:shrink-0 [&>*]:whitespace-nowrap">
             {pages.map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => onPage?.(p)}
                 aria-current={p === active ? "page" : undefined}
-                className={`rounded-full px-3 py-1.5 text-[11.5px] font-medium transition-colors ${p === active ? "" : "text-fg-2 hover:text-fg"}`}
-                style={p === active ? { background: P.fg, color: P.bg } : undefined}
+                className={`border-b-2 pb-3 text-[12.5px] font-medium transition-colors ${p === active ? "text-fg" : "border-transparent text-fg-2 hover:text-fg"}`}
+                style={p === active ? { borderColor: P.accent } : undefined}
               >
                 {PAGES[p].name}
               </button>
@@ -148,11 +164,18 @@ export function NoturnoSkin({ ctx, name, client, pages, active, onPage, periodLa
                 <div className="mb-4 space-y-3">
                   <AnalysisBar ctx={ctx} weekday={weekday} setWeekday={setWeekday} compare={compare} setCompare={setCompare} platformOnly={platformTab} />
                   <div className="flex h-auto flex-col @[900px]:h-[440px] [&>*]:flex-1">
-                    <MasterDetail ctx={ctx} tone={TONE} weekday={weekday} compare={compare} platform={platformTab} accent={P.accent} prevColor={PREV} />
+                    <MasterDetail ctx={pageCtx ?? ctx} tone={TONE} weekday={weekday} compare={compare} platform={platformTab} accent={P.accent} prevColor={PREV} />
                   </div>
                 </div>
               )}
-              <SkinPage palette={P}>{children}</SkinPage>
+              {active === "funil" && <NoturnoFunnel ctx={pageCtx ?? ctx} accent={P.accent} />}
+              {active === "criativos" && cards && cards.level !== "list" ? (
+                <SkinPage palette={P}>
+                  <SkinCreatives kind="noturno" list={cards.source} data={cards.data} kpis={cards.kpis} />
+                </SkinPage>
+              ) : (
+                <SkinPage palette={P}>{children}</SkinPage>
+              )}
             </>
           ) : ownPage ? (
             <ProductsPage ctx={ctx} tone={TONE} />

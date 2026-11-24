@@ -4,13 +4,14 @@
 // números do gerador de amostra (mesmos para o mesmo nome + cliente). O PDF
 // imprime todas as páginas, uma por folha.
 
+import type { MmmReadinessData } from "@/features/mmm/readiness";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import type { DashFilters } from "@/features/analytics/filters";
 import type { CreativesData, SampleExtraMetric } from "@/features/analytics/types";
 import type { PageId } from "@/features/templates/types";
 import type { Brand } from "@/features/workspace/workspace";
-import { saveDashboardLayout, saveDashboardMetricPrefs } from "@/server/dashboards/actions";
+import { saveDashboardLayout, saveDashboardMetricPrefs, saveDashboardCreativeCards } from "@/server/dashboards/actions";
 import { askLayout } from "@/server/dashboards/ask";
 import { connectLaunchSheet, disconnectLaunchSheet, saveDashboardCover, uploadDashboardCover } from "@/server/dashboards/cover-actions";
 import type { CoverData } from "@/server/dashboards/cover";
@@ -53,11 +54,16 @@ type Props = {
   syncStamp?: ReactNode;
   /** Horas desde a última sincronização (no servidor, na hora de abrir): o Pulso avisa quando atrasa. */
   syncHours?: number;
+  /** O que falta para o MMM de cada cliente (dados reais com a aba de MMM). */
+  mmmReadiness?: MmmReadinessData | null;
+  /** Hora da última sincronização (ISO) e o fuso da conta. */
+  syncedAt?: string;
+  timeZone?: string;
   /** Visuais com capa: a capa e a planilha do lançamento salvas. */
   coverData?: CoverData;
 };
 
-export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms, syncStamp, syncHours, sampleOnly = false, coverData }: Props) {
+export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpend, assemble, creatives, extraMetrics, initialPage, initialFilters, backHref, realData, sourceExtras, linkedPlatforms, syncStamp, syncHours, syncedAt, timeZone, mmmReadiness, sampleOnly = false, coverData }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -119,6 +125,9 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       linkedPlatforms={linkedPlatforms}
       syncStamp={syncStamp}
       syncHours={syncHours}
+      mmmReadiness={mmmReadiness}
+      syncedAt={syncedAt}
+      timeZone={timeZone}
       hideSpend={hideSpend}
       assemble={assemble}
       printing={printing}
@@ -149,6 +158,7 @@ export function SampleDashboard({ dashboard, brand, canEdit, canArrange, hideSpe
       }
       customizeId={canEdit ? dashboard.id : undefined}
       saveMetrics={canEdit ? saveDashboardMetricPrefs : undefined}
+      saveCards={canEdit ? saveDashboardCreativeCards : undefined}
       saveLayout={canEdit ? saveDashboardLayout : undefined}
       askLayout={canEdit ? askLayout : undefined}
       canArrange={canEdit && canArrange}

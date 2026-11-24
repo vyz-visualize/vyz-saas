@@ -1437,6 +1437,8 @@ export type Database = {
           initiate_checkout: number | null
           conversions: number
           conversion_value: number
+          leads: number | null
+          messages: number | null
           video_views: number | null
           video_thruplays: number | null
           search_impression_share: number | null
@@ -1458,6 +1460,8 @@ export type Database = {
           initiate_checkout?: number | null
           conversions?: number
           conversion_value?: number
+          leads?: number | null
+          messages?: number | null
           video_views?: number | null
           video_thruplays?: number | null
           search_impression_share?: number | null
@@ -1479,6 +1483,8 @@ export type Database = {
           initiate_checkout?: number | null
           conversions?: number
           conversion_value?: number
+          leads?: number | null
+          messages?: number | null
           video_views?: number | null
           video_thruplays?: number | null
           search_impression_share?: number | null
@@ -1509,6 +1515,7 @@ export type Database = {
           link_clicks: number | null
           conversions: number
           conversion_value: number
+          messages: number | null
           video_views: number | null
           video_thruplays: number | null
           synced_at: string
@@ -1539,6 +1546,7 @@ export type Database = {
           link_clicks?: number | null
           conversions?: number
           conversion_value?: number
+          messages?: number | null
           video_views?: number | null
           video_thruplays?: number | null
           synced_at?: string
@@ -1569,6 +1577,7 @@ export type Database = {
           link_clicks?: number | null
           conversions?: number
           conversion_value?: number
+          messages?: number | null
           video_views?: number | null
           video_thruplays?: number | null
           synced_at?: string
@@ -1609,6 +1618,8 @@ export type Database = {
           clicks: number
           conversions: number
           conversion_value: number
+          leads: number | null
+          messages: number | null
           synced_at: string
         }
         Insert: {
@@ -1622,6 +1633,8 @@ export type Database = {
           clicks?: number
           conversions?: number
           conversion_value?: number
+          leads?: number | null
+          messages?: number | null
           synced_at?: string
         }
         Update: {
@@ -1635,6 +1648,8 @@ export type Database = {
           clicks?: number
           conversions?: number
           conversion_value?: number
+          leads?: number | null
+          messages?: number | null
           synced_at?: string
         }
         Relationships: [
@@ -1663,6 +1678,8 @@ export type Database = {
           initiate_checkout: number | null
           conversions: number
           conversion_value: number
+          leads: number | null
+          messages: number | null
           video_views: number | null
           video_thruplays: number | null
           search_impression_share: number | null
@@ -1689,6 +1706,8 @@ export type Database = {
           initiate_checkout?: number | null
           conversions?: number
           conversion_value?: number
+          leads?: number | null
+          messages?: number | null
           video_views?: number | null
           video_thruplays?: number | null
           search_impression_share?: number | null
@@ -1715,6 +1734,8 @@ export type Database = {
           initiate_checkout?: number | null
           conversions?: number
           conversion_value?: number
+          leads?: number | null
+          messages?: number | null
           video_views?: number | null
           video_thruplays?: number | null
           search_impression_share?: number | null
@@ -4427,6 +4448,17 @@ export type Database = {
       mmm_google_ops_today: {
         Args: never
         Returns: number
+      }
+      mmm_historico_investimento: {
+        Args: { p_ad_account_ids: string[] }
+        Returns: {
+          ad_account_id: string
+          platform_id: string
+          mes: string
+          investimento: number
+          dias_com_gasto: number
+          soma_quadrados: number
+        }[]
       }
       mmm_save_backfill: {
         Args: {

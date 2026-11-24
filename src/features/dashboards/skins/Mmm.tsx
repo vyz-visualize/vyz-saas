@@ -3,7 +3,9 @@
 // MMM (marketing mix modeling): receita de cada dia separada em base (o que
 // viria sem mídia) e a parte de cada canal, com efeito residual (adstock) e
 // saturação (curva de Hill). Daí saem o ROI e o ROI marginal por canal e o
-// otimizador que redistribui a mesma verba. Modelo estimado sobre dados de exemplo.
+// otimizador que redistribui a mesma verba. Os números de entrada são os do período (reais
+// com as contas ligadas); a base, o efeito residual e a saturação são parâmetros fixos de
+// simulação, não ajustados aos dados. Com um canal só, não há o que redistribuir.
 
 import { Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -22,6 +24,7 @@ import {
   Stat,
   type SkinProps,
 } from "./shared";
+import { MmmConstruction } from "./MmmConstruction";
 import { SkinGrid } from "./SkinGrid";
 
 type Channel = {
@@ -44,7 +47,14 @@ const adstock = (xs: number[], decay: number) =>
 const hill = (x: number, half: number, shape = 1) =>
   x ** shape / (x ** shape + half ** shape);
 
-export function MmmSkin({ ctx, grid }: SkinProps) {
+export function MmmSkin(props: SkinProps) {
+  // dados reais: até existir o modelo de verdade, só o que falta para treiná-lo (por cliente)
+  if (props.mmm && "real" in props.mmm) return <MmmConstruction data={props.mmm.real} connectHref={props.mmm.connectHref} />;
+  return <MmmExample {...props} />;
+}
+
+/** O MMM de exemplo (dashboards de amostra): simulação com os números da amostra, com o selo "Exemplo". */
+function MmmExample({ ctx, grid }: SkinProps) {
   const current = ctx.ds.current;
   const days = useMemo(() => chrono(current), [current]);
   const kpi = ctx.cur.revenue > 0 ? "revenue" : "conversions";
@@ -142,9 +152,15 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
   const fmtOut = (v: number) =>
     kpi === "revenue" ? money(ctx, v, true) : int(v);
   const mediaShare = 1 - model.baseShare;
+  // com um canal só, não há para onde mover a verba: o melhor ROI, o ganho e a redistribuição saem
+  const several = model.channels.length >= 2;
 
   return (
     <div className="@container space-y-4">
+      <p className="flex flex-wrap items-center gap-2 rounded-card border-2 border-dashed border-accent bg-accent/10 px-4 py-2.5 text-[12.5px] text-fg" data-mmm-exemplo>
+        <span className="rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-accent">Exemplo</span>
+        Modelo de exemplo, com dados de amostra. Num dashboard real, esta tela mostra o que falta para treinar o MMM do cliente.
+      </p>
       <SkinGrid
         skin="mmm"
         ctx={ctx}
@@ -157,7 +173,9 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
               sub={`base sem mídia: ${pct(model.baseShare, 0)}`}
             />
           ),
-          "s-stat1": (
+          "s-stat1": !several ? (
+            <Stat title="Canal no período" v={model.channels[0] ? platformName(model.channels[0].id) : "sem canal"} sub="com um canal só, não há comparação de ROI" />
+          ) : (
             <Stat
               title="Melhor ROI"
               v={(() => {
@@ -171,7 +189,9 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
               sub="resultado incremental por real"
             />
           ),
-          "s-stat2": (
+          "s-stat2": !several ? (
+            <Stat title="Redistribuição" v="—" sub="precisa de dois canais ou mais" />
+          ) : (
             <Stat
               title="Ganho com a mesma verba"
               v={`+${pct(Math.max(0, optimal.gain), 1)}`}
@@ -183,7 +203,7 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
             <Stat
               title="Canais no modelo"
               v={String(model.channels.length)}
-              sub={`${days.length} dias de histórico`}
+              sub={`${days.length} dias no período`}
             />
           ),
           "s-decomposicao": (
@@ -226,7 +246,7 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
           ),
           "s-tabela": (
             <Panel
-              title="Contribuição, ROI e redistribuição sugerida"
+              title={several ? "Contribuição, ROI e redistribuição sugerida" : "Contribuição e ROI"}
               aside={<Sparkles size={15} className="text-accent" />}
             >
               <div className="overflow-x-auto">
@@ -241,9 +261,11 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
                       <th className="pb-2 text-right font-medium">
                         ROI marginal
                       </th>
-                      <th className="pb-2 text-right font-medium">
-                        Verba/dia hoje → sugerida
-                      </th>
+                      {several && (
+                        <th className="pb-2 text-right font-medium">
+                          Verba/dia hoje → sugerida
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -281,7 +303,7 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
                                     1 / Math.max(1e-9, marginal(c, c.spendDay)),
                                   )}
                           </td>
-                          <td className="py-2 text-right whitespace-nowrap tnum">
+                          {several && <td className="py-2 text-right whitespace-nowrap tnum">
                             {money(ctx, c.spendDay, true)} →{" "}
                             <b>{money(ctx, optimal.alloc[k], true)}</b>{" "}
                             <span
@@ -292,7 +314,7 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
                               ({diff >= 0 ? "+" : ""}
                               {pct(diff, 0)})
                             </span>
-                          </td>
+                          </td>}
                         </tr>
                       );
                     })}
@@ -303,8 +325,8 @@ export function MmmSkin({ ctx, grid }: SkinProps) {
                 {kpi === "revenue"
                   ? "ROI: receita incremental por real investido."
                   : `ROI em ${label(ctx, "cpa")}: custo de cada resultado incremental.`}{" "}
-                A sugestão mantém a verba total e move dinheiro para onde o
-                próximo real rende mais. Modelo estimado sobre dados de exemplo.
+                {several ? "A sugestão mantém a verba total e move dinheiro para onde o próximo real rende mais. " : ""}
+                Simulação com os números reais do período: a base, o efeito residual e a saturação são parâmetros fixos, não um modelo ajustado aos seus dados.
               </p>
             </Panel>
           ),
