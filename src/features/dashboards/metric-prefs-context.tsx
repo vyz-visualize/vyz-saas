@@ -4,7 +4,7 @@
 // que já aparece na tela. Fechar sem salvar volta ao que estava.
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { hideKpi, normalizeScope, parseMetricPrefs, pickColumns, toggleMetric, visibleIds, withScope, type CatalogMetric, type MetricPrefs, type MetricScope, type MetricSection, type ScopePrefs } from "./metric-prefs";
+import { hideKpi, normalizeScope, parseMetricPrefs, pickColumns, toggleMetric, visibleIds, withCreativeCards, withScope, type CatalogMetric, type MetricPrefs, type MetricScope, type MetricSection, type ScopePrefs } from "./metric-prefs";
 
 /** Atalhos nos próprios cards. Só existem para quem pode editar. */
 export type KpiEdit = { hide: (id: string) => void };
@@ -36,6 +36,8 @@ export const useColumnVisible = (id: string) => {
 
 /** A ação de salvar vem de quem renderiza: as tabelas usam este arquivo e não podem puxar código de servidor. */
 export type SaveMetricPrefs = (dashboardId: string, scope: MetricScope, value: ScopePrefs) => Promise<{ ok: true } | { ok: false; error: { message: string } }>;
+/** Grava as métricas dos cards de criativo (1 a 4, na ordem). Vazio volta ao padrão do visual. */
+export type SaveCreativeCards = (dashboardId: string, ids: string[]) => Promise<{ ok: true } | { ok: false; error: { message: string } }>;
 
 type Input = {
   dashboardId: string | null;
@@ -49,11 +51,13 @@ type Input = {
   initial: unknown;
   hideSpend?: boolean;
   saveAction?: SaveMetricPrefs;
+  /** Grava as métricas dos cards de criativo. Sem isso, a escolha vale só nesta aba do navegador. */
+  saveCards?: SaveCreativeCards;
   /** O que o Personalizar edita junto (a disposição): salva, cancela e restaura com as métricas. */
   companion?: { dirty: boolean; reset: () => void; restore: () => void; save: () => Promise<string | null> };
 };
 
-export function useMetricPrefsState({ dashboardId, scope, catalog, normalizeCatalog, pageKpis, initial, hideSpend, saveAction, companion }: Input) {
+export function useMetricPrefsState({ dashboardId, scope, catalog, normalizeCatalog, pageKpis, initial, hideSpend, saveAction, saveCards, companion }: Input) {
   const [saved, setSaved] = useState<MetricPrefs>(() => parseMetricPrefs(initial));
   const [draft, setDraft] = useState<MetricPrefs>(saved);
   const [open, setOpen] = useState(false);
@@ -150,8 +154,29 @@ export function useMetricPrefsState({ dashboardId, scope, catalog, normalizeCata
     setOpen(false);
   }, [catalog, companion, dashboardId, draft, normalizeCatalog, pageKpis, saveAction, scope]);
 
+  // métricas dos cards de criativo: gravam na hora (sem o painel do Personalizar); se falhar, voltam e avisam
+  const setCards = useCallback(
+    (ids: string[]) => {
+      const before = saved;
+      const next = withCreativeCards(saved, ids);
+      setSaved(next);
+      setDraft((d) => withCreativeCards(d, ids));
+      if (!dashboardId || !saveCards) return;
+      void saveCards(dashboardId, ids)
+        .then((r) => {
+          if (!r.ok) throw new Error(r.error.message);
+        })
+        .catch((e: unknown) => {
+          setSaved(before);
+          setDraft(before);
+          setNotice({ id: Date.now(), text: e instanceof Error && e.message ? e.message : "Não foi possível salvar as métricas dos cards." });
+        });
+    },
+    [dashboardId, saveCards, saved],
+  );
+
   const writeCatalog = normalizeCatalog ?? catalog;
   const dirty = open && (!!companion?.dirty || JSON.stringify(normalizeScope(writeCatalog, draft[scope], pageKpis)) !== JSON.stringify(normalizeScope(writeCatalog, saved[scope], pageKpis)));
 
-  return { open, openPanel, close, save, restore, toggle, pending, error, prefs: current, visibility, catalog, edit, notice, undo, dismiss, dirty };
+  return { open, openPanel, close, save, restore, toggle, pending, error, prefs: current, visibility, catalog, edit, notice, undo, dismiss, dirty, cards: saved.creatives, setCards, canSaveCards: !!dashboardId && !!saveCards };
 }

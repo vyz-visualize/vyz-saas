@@ -171,6 +171,7 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
           {items.map((d) => {
             const t = anyDashboardTemplate(d.templateId);
             const enabled = d.sources.filter((s) => s.isEnabled);
+            const linked = [...new Set(enabled.map((s) => s.platformId))].filter((p) => p in PLATFORMS);
             return (
               <li key={d.id} className="group relative flex flex-col overflow-hidden rounded-card border border-line bg-card transition-[border-color,box-shadow] duration-200 hover:border-fg-2/40 hover:shadow-pop">
                 <Link href={`/painel/dashboards/${d.id}`} className="flex flex-1 flex-col rounded-card outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset">
@@ -193,9 +194,10 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
                   <div className="flex flex-1 flex-col p-4 pr-12">
                     <p className="truncate text-[15px] font-semibold">{d.name}</p>
                     <p className="mt-0.5 truncate text-[13px] text-fg-2">{[d.client, t?.name].filter(Boolean).join(" · ")}</p>
-                    {(t?.sources ?? []).length > 0 && (
+                    {/* só as plataformas com conta ativa ligada a este dashboard (não as que o modelo aceita) */}
+                    {linked.length > 0 && (
                       <p className="mt-3 flex flex-wrap gap-1">
-                        {(t?.sources ?? []).map((s) => (
+                        {linked.map((s) => (
                           <Badge key={s} tone="outline">
                             {PLATFORMS[s].short}
                           </Badge>

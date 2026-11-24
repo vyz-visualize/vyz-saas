@@ -43,7 +43,8 @@ function merge(rows: readonly BreakdownRow[]): BreakdownRow[] {
 export function BreakdownWidget({ ctx, dimension, platform, limit = 7 }: { ctx: WidgetContext; dimension: DetailDimension; platform?: PlatformId; limit?: number }) {
   const all = ctx.ds.breakdowns?.[dimension];
   const rows = useMemo(() => merge((all ?? []).filter((r) => !platform || r.platform === platform)), [all, platform]);
-  if (!all) return <Empty>Esta quebra chega com a próxima sincronização da conta.</Empty>;
+  // a sync pede as quebras da Meta e do Google: sem nenhuma linha, a plataforma não informou no período
+  if (!all) return <Empty>Sem dados desta quebra no período: a plataforma não informou.</Empty>;
   if (!rows.length) return <Empty>Sem dados desta quebra no período.</Empty>;
   if (dimension === "hour") return <Hours rows={rows} ctx={ctx} />;
   const money = sales(ctx.profile);
@@ -52,6 +53,38 @@ export function BreakdownWidget({ ctx, dimension, platform, limit = 7 }: { ctx: 
   const avg = money ? rows.reduce((a, r) => a + r.revenue, 0) / spend : conv ? spend / conv : 0;
   const list = [...rows].sort((a, b) => b.spend - a.spend).slice(0, limit);
   const effLabel = money ? "ROAS" : metric("cpa", ctx.profile).label;
+  // a Meta não manda resultado em algumas quebras (por estado, por exemplo): só a entrega, dizendo isso
+  if (conv === 0 && rows.some((r) => r.impressions > 0)) {
+    const imp = rows.reduce((a, r) => a + r.impressions, 0) || 1;
+    const byImp = [...rows].sort((a, b) => b.impressions - a.impressions).slice(0, limit);
+    return (
+      <div className="flex min-h-0 flex-1 flex-col" data-so-entrega>
+        <div className="grid grid-cols-[minmax(0,1fr)_64px_56px] gap-x-3 border-b border-line pb-1.5 text-[10.5px] font-medium tracking-[0.04em] text-fg-2 uppercase">
+          <span>Parte das impressões</span>
+          <span className="text-right">Cliques</span>
+          <span className="text-right">CTR</span>
+        </div>
+        <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pt-1 [scrollbar-width:thin]">
+          {byImp.map((r) => (
+            <li key={r.key} className="grid grid-cols-[minmax(0,1fr)_64px_56px] items-center gap-x-3 py-1.5 text-[12px]">
+              <span className="min-w-0">
+                <span className="flex justify-between gap-2">
+                  <span className="truncate">{r.label}</span>
+                  <span className="text-fg-2 tnum">{Math.round((r.impressions / imp) * 100)}%</span>
+                </span>
+                <span className="mt-1 block h-1 rounded-full bg-line" aria-hidden>
+                  <span className="block h-full rounded-full bg-accent" style={{ width: `${(r.impressions / imp) * 100}%` }} />
+                </span>
+              </span>
+              <span className="text-right tnum">{r.clicks.toLocaleString("pt-BR")}</span>
+              <span className="text-right tnum">{r.impressions ? `${((r.clicks / r.impressions) * 100).toFixed(2).replace(".", ",")}%` : "—"}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-[10.5px] text-fg-2">A plataforma não informa resultado nesta quebra: aqui, só a entrega (impressões e cliques).</p>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="grid grid-cols-[minmax(0,1fr)_64px_56px] gap-x-3 border-b border-line pb-1.5 text-[10.5px] font-medium tracking-[0.04em] text-fg-2 uppercase">

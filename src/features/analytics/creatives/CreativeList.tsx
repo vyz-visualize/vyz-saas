@@ -3,6 +3,7 @@
 // Lista simples de criativos (todos os planos): nome, campanha, investimento e o
 // resultado principal do objetivo. Serve também ao PDF.
 
+import { PostLink } from "./PostLink";
 import { int } from "@/lib/format";
 import { useDashFilters } from "../filter-context";
 import { hasFilters } from "../filters";
@@ -25,7 +26,10 @@ export function CreativeList({ rows, currency, hideSpend }: { rows: CreativeList
             <span className="min-w-0 [overflow-wrap:anywhere]">{r.name}</span>
             {r.status !== "active" && <Chip>{r.status === "paused" ? "Pausado" : r.status}</Chip>}
           </span>
-          <span className="mt-0.5 block text-[11.5px] text-fg-2 [overflow-wrap:anywhere]">{r.campaignName}</span>
+          <span className="mt-0.5 flex flex-wrap items-center gap-2 text-[11.5px] text-fg-2 [overflow-wrap:anywhere]">
+            {r.campaignName}
+            <PostLink url={r.postUrl} />
+          </span>
         </span>
       ),
     },

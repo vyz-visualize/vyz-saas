@@ -12,7 +12,7 @@ import "server-only";
 // Os horários do histórico (sync_runs, last_synced_at) seguem o relógio do
 // banco, o mesmo de created_at: o fim nunca fica antes do início.
 
-import { failureMessage, rereadAllPosts } from "@/features/sync/round";
+import { failureMessage, fetchBreakdownsNow, needsBreakdownBackfill, rereadAllPosts } from "@/features/sync/round";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { PLATFORMS } from "@/features/accounts/platforms";
@@ -20,7 +20,7 @@ import { isSyncPlatform } from "@/features/sync/dataset";
 import { isOrganicSyncPlatform } from "@/features/sync/organic";
 import { isAnalyticsSyncPlatform } from "@/features/sync/analytics";
 import { isCrmSyncPlatform } from "@/features/sync/crm";
-import { syncRange, type SyncRange, type SyncTrigger } from "@/features/sync/dates";
+import { addDays, syncRange, type SyncRange, type SyncTrigger } from "@/features/sync/dates";
 import { insightsTag } from "@/features/sync/tags";
 import { logActivity } from "@/server/history/log";
 import { requestContext } from "@/server/http/request";
@@ -58,6 +58,8 @@ export type SyncResult = {
 export type SyncOptions = {
   /** Quem pediu (vai para a auditoria e o histórico). Vazio = o agendador. */
   actorId?: string | null;
+  /** Rodada agendada: pede uma vaga para a carga única das quebras (sem isso, a conta pega sempre). */
+  breakdownBackfillSlot?: () => boolean;
 };
 
 const MESSAGES: Record<SyncErrorCode, string> = {
@@ -197,6 +199,21 @@ function invalidateInsights(adAccountId: string, trigger: SyncTrigger, inRequest
 }
 
 /**
+ * A conta já tem alguma linha de quebra? E gastou nos últimos 90 dias (sem gasto, a Meta não tem
+ * quebra a devolver: a carga não se repetiria à toa a cada rodada)?
+ */
+async function breakdownState(db: ReturnType<typeof createAdminSupabase>, adAccountId: string, range: SyncRange): Promise<{ hasBreakdownRows: boolean; hasRecentSpend: boolean }> {
+  const since = addDays(range.to, -89);
+  const [rows, spend] = await Promise.all([
+    db.from("insights_breakdown_daily").select("date").eq("ad_account_id", adAccountId).limit(1),
+    db.from("insights_account_daily").select("date").eq("ad_account_id", adAccountId).gte("date", since).gt("spend", 0).limit(1),
+  ]);
+  // sem resposta do banco, não arrisca a carga (fica para a próxima rodada)
+  if (rows.error || spend.error) return { hasBreakdownRows: true, hasRecentSpend: false };
+  return { hasBreakdownRows: (rows.data ?? []).length > 0, hasRecentSpend: (spend.data ?? []).length > 0 };
+}
+
+/**
  * Sincroniza uma conta. initial = 90 dias até ontem; scheduled e manual = os
  * últimos 7 dias (cobrem as conversões que chegam atrasadas). Ontem no fuso
  * da conta.
@@ -210,6 +227,7 @@ export async function syncAdAccount(adAccountId: string, trigger: SyncTrigger, o
   let account: SyncAccount | null = null;
   let run: Run | null = null;
   let range: SyncRange | null = null;
+  let backfill = false;
 
   try {
     account = await loadAccount(db, adAccountId);
@@ -240,7 +258,16 @@ export async function syncAdAccount(adAccountId: string, trigger: SyncTrigger, o
       byTable = { organic_daily: written.days, organic_posts: written.posts };
     } else {
       const ads = { ...current, platform: current.platform as Exclude<typeof current.platform, "instagram" | "facebook" | "ga4" | "rdstation" | "hubspot" | "pipedrive" | "kommo"> };
-      const dataset = await source.fetch(ads, range);
+      // as quebras da Meta uma vez por dia (e na primeira sincronização da conta); a conta que ainda
+      // não tem nenhuma pede, uma vez, as dos últimos 90 dias (se houver vaga nesta rodada)
+      const candidate = !!source.fetchBreakdowns && needsBreakdownBackfill({ trigger, platform: ads.platform, isMock: current.isMock, hasBreakdownRows: false, hasRecentSpend: true });
+      backfill = candidate && needsBreakdownBackfill({ trigger, platform: ads.platform, isMock: current.isMock, ...(await breakdownState(db, current.id, range)) }) && (opts.breakdownBackfillSlot?.() ?? true);
+      let dataset = await source.fetch(ads, range, { breakdowns: !backfill && fetchBreakdownsNow(trigger, new Date()) });
+      if (backfill && source.fetchBreakdowns) {
+        const bd = await source.fetchBreakdowns(ads, syncRange("initial", { timeZone: current.timezone }));
+        // as linhas antes da janela de 7 dias entram por upsert; a limpeza continua só na janela
+        dataset = { ...dataset, breakdownDaily: bd.rows, breakdownDimensions: bd.dimensions };
+      }
       const written = await writeDataset(db, current, dataset, run.createdAt);
       const days = await rollupAccount(db, current, dataset, range, run.createdAt);
       rowsWritten = written.entities + written.facts + days;
@@ -273,6 +300,7 @@ export async function syncAdAccount(adAccountId: string, trigger: SyncTrigger, o
         rows_written: rowsWritten,
         rows_by_table: byTable,
         duration_ms: durationMs,
+        ...(backfill ? { breakdown_backfill_days: 90 } : {}),
       },
     });
     return { ok: true, rowsWritten, runId: run.id, range: { from: range.from, to: range.to }, durationMs };

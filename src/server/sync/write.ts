@@ -15,7 +15,7 @@ import { organicDayRow, organicPostRow, type OrganicDataset } from "@/features/s
 import { closeDataset } from "@/features/sync/close-dataset";
 import { analyticsDayRow, type AnalyticsDataset } from "@/features/sync/analytics";
 import { crmDayRow, type CrmDataset } from "@/features/sync/crm";
-import { accountReachRows, adRows, campaignRows, FACT_KEYS, FACT_TABLES, factRows, idLookup, productRows, type FactTable } from "@/features/sync/rows";
+import { breakdownPrune, accountReachRows, adRows, campaignRows, FACT_KEYS, FACT_TABLES, factRows, idLookup, productRows, type FactTable } from "@/features/sync/rows";
 import { AppError } from "@/server/supabase/errors";
 import type { DB } from "@/server/supabase/server";
 import type { SyncAccount } from "./source";
@@ -129,8 +129,17 @@ export async function writeDataset(db: DB, account: SyncAccount, raw: AccountDat
   const facts = factRows(dataset, { ...scope, syncedAt }, { campaign: campaignId, ad: idLookup("Anúncio", ads), product: idLookup("Produto", products) });
   const tasks = FACT_TABLES.flatMap((table) => chunk<object>(facts[table], BATCH_SIZE).map((rows) => () => upsertFacts(db, table, rows)));
   await runLimited(tasks, CONCURRENCY);
+  // quebras: só as que esta busca trouxe são limpas (as que falharam ou ficaram para a rodada
+  // do dia seguinte mantêm as linhas que já estão no banco)
+  const prune = breakdownPrune(dataset.breakdownDimensions);
   await runLimited(
-    FACT_TABLES.map((table) => () => pruneStale(db, table, account.id, dataset.range, syncedAt)),
+    FACT_TABLES.map((table) => () =>
+      table !== "insights_breakdown_daily" || prune === "all"
+        ? pruneStale(db, table, account.id, dataset.range, syncedAt)
+        : prune === "none"
+          ? Promise.resolve()
+          : request((signal) => db.from(table).delete().eq("ad_account_id", account.id).in("dimension", prune).gte("date", dataset.range.from).lte("date", dataset.range.to).lt("synced_at", syncedAt).abortSignal(signal)),
+    ),
     CONCURRENCY,
   );
 

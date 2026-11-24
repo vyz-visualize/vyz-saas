@@ -76,8 +76,12 @@ export type ShareOfSearch = Pick<DailyMetrics, "searchImpressionShare" | "search
 const NO_SEARCH_SHARE: ShareOfSearch = { searchImpressionShare: null, searchLostIsBudget: null, searchLostIsRank: null };
 
 export function toDailyMetrics(u: FullUnits, conversionScale: number, share: ShareOfSearch = NO_SEARCH_SHARE): DailyMetrics {
+  const basic = toBasic(u, conversionScale);
   return {
-    ...toBasic(u, conversionScale),
+    ...basic,
+    // amostra: o mesmo número serve de lead e de conversa (cada modelo lê o do objetivo dele)
+    leads: basic.conversions,
+    messages: basic.conversions,
     reach: u.reach,
     linkClicks: u.linkClicks,
     landingPageViews: u.landingPageViews,

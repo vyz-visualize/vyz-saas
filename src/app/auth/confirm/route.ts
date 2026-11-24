@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { failurePath, isEmailLinkType, isTokenHash, setsPassword } from "@/features/auth/links";
 import { RESET_PASSWORD_PATH } from "@/features/auth/recovery";
 import { logAuthEvent } from "@/server/history/log";
-import { appOrigin, safeNextPath } from "@/server/http/request";
+import { loginOrigin, safeNextPath } from "@/server/http/request";
 import { createServerSupabase } from "@/server/supabase/server";
 
 export async function GET(request: NextRequest) {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const type = params.get("type");
   const tokenHash = params.get("token_hash");
   const next = safeNextPath(params.get("next"));
-  const origin = await appOrigin();
+  const origin = await loginOrigin();
   const go = (path: string) => NextResponse.redirect(new URL(path, origin));
   const recovery = type === "recovery" || type === "invite";
 

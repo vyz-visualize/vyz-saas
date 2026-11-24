@@ -5,6 +5,8 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
+import { authOrigin } from "@/lib/auth-origin";
+import { authCookieOptions, workspaceCookieOptions } from "@/lib/supabase/cookies";
 import { isSamePageRequest } from "@/lib/navigation";
 import { serverEnv } from "@/server/env";
 
@@ -67,6 +69,31 @@ export async function appOrigin(): Promise<string> {
     if (hostname === site.hostname) return `${site.protocol}//${host}`;
   }
   return site.origin;
+}
+
+/** O host que o navegador usou (o domain dos cookies e a origem do login dependem dele). */
+async function requestHost(): Promise<string | null> {
+  const h = await requestHeaders();
+  return h?.get("x-forwarded-host") ?? h?.get("host") ?? null;
+}
+
+/** Opções dos cookies da sessão nesta requisição (domain compartilhado só em *.vyzualize.com.br). */
+export async function sessionCookieOptions() {
+  return authCookieOptions(await requestHost());
+}
+
+/** Opções do cookie do workspace aberto nesta requisição. */
+export async function activeWorkspaceCookieOptions() {
+  return workspaceCookieOptions(await requestHost());
+}
+
+/**
+ * Origem para onde o login volta (Google, Apple, nova senha e links de e-mail): o host da
+ * requisição, se for confiável (site, localhost:3000 ou preview de branch da Vercel); senão, o
+ * NEXT_PUBLIC_SITE_URL. O `next` continua sendo só caminho interno (safeNextPath).
+ */
+export async function loginOrigin(): Promise<string> {
+  return authOrigin(await requestHost(), new URL(serverEnv().NEXT_PUBLIC_SITE_URL).origin);
 }
 
 /** Hash curto e estável (sha256) para chaves de limite sem guardar IP ou e-mail. */

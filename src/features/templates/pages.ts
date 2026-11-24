@@ -263,7 +263,7 @@ export const PAGES: Record<PageId, PageDef> = {
     name: "Mix de mídia (MMM)",
     tier: "avancado",
     templateOnly: true,
-    description: "Quanto cada canal contribui de verdade e para onde mover a verba.",
+    description: "O que falta para o modelo do cliente e, com os dados completos, quanto cada canal contribui.",
     build: () => ({ kpis: [], widgets: [] }),
   },
   // aba do visual Pulso (o visual desenha; não entra no seletor de abas)

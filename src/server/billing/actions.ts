@@ -17,12 +17,12 @@ import { BLOCK_MESSAGE, buildOrder, normalizeState } from "@/features/checkout/o
 import { planSelection } from "@/features/checkout/plan-change";
 import { checkoutFormSchema, paymentInputSchema, planChangeSchema, type PaymentInput, type PlanChangeInput } from "@/features/checkout/schema";
 import { fromQuery } from "@/features/pricing/pricing";
-import { ACTIVE_WORKSPACE_COOKIE, WORKSPACE_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
+import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
 import { createConfirmedUser, signInWithPasswordServer } from "@/server/auth/accounts";
 import { getSessionUser } from "@/server/auth/session";
 import { authorize } from "@/server/auth/workspace";
 import { logActivity, logAuthEvent, recordLegalAcceptances } from "@/server/history/log";
-import { requestContext } from "@/server/http/request";
+import { requestContext, activeWorkspaceCookieOptions } from "@/server/http/request";
 import { hitRateLimit, type RateRule } from "@/server/security/rate-limit";
 import { appError, toActionError, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
@@ -183,7 +183,7 @@ export async function payCheckout(checkoutId: string, input: PaymentInput): Prom
     const paid = await payCheckoutSession({ checkoutId: id, userId: user.id, card: { brand, last4, expMonth, expYear } });
 
     // abre o workspace pago, como na troca de workspace
-    (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, paid.workspaceId, WORKSPACE_COOKIE_OPTIONS);
+    (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, paid.workspaceId, await activeWorkspaceCookieOptions());
     if (!paid.alreadyCompleted) {
       const profile = await supabase.from("profiles").update({ default_workspace_id: paid.workspaceId }).eq("id", user.id);
       if (profile.error) console.error("[vyz] workspace padrão", profile.error);

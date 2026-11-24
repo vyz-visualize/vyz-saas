@@ -3,6 +3,7 @@
 // Galeria de criativos (Padrão em diante): preview, ordenar por e alerta de
 // fadiga. No Avançado, cada card ganha "Comparar".
 
+import { PostLink } from "./PostLink";
 import { BarChart3, Check, GitCompareArrows } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
@@ -121,7 +122,10 @@ function CreativeCard({ c, data, compare, onDetail }: { c: CreativeVM; data: Pro
           </h4>
           {c.status !== "active" && <Chip>{c.status === "paused" ? "Pausado" : c.status}</Chip>}
         </div>
-        <p className="mt-0.5 truncate text-[11.5px] text-fg-2">{c.campaignName}</p>
+        <p className="mt-0.5 flex min-w-0 items-center gap-2 text-[11.5px] text-fg-2">
+          <span className="min-w-0 truncate">{c.campaignName}</span>
+          <PostLink url={c.postUrl} className="ml-auto" />
+        </p>
         <dl className="mt-3 grid grid-cols-3 gap-x-2 gap-y-2 text-[11px] tnum">
           {!hideSpend && <Metric label="Investimento" value={moneyCompact(c.spend, currency)} />}
           {!hideSpend && (c.hasRevenue ? <Metric label="ROAS" value={<Roas value={c.roas} breakEven={breakEvenRoas} />} /> : <Metric label="Custo por resultado" value={money(c.costPerResult, currency)} />)}

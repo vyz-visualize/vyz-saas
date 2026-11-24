@@ -27,51 +27,34 @@ type Target = "revenue" | "conversions" | "spend";
 /** Elasticidade das conversões à verba (retorno decrescente). */
 const ELASTICITY = 0.72;
 
-import { forecast, type Forecast } from "./insights";
+import { monthClose, monthLeft, type Forecast } from "./insights";
 
 export function PrevisaoSkin({ ctx, grid }: SkinProps) {
   const current = ctx.ds.current;
   const days = useMemo(() => chrono(current), [current]);
   const { budget } = ctx.ds;
-  const horizon = Math.max(1, budget.daysInMonth - budget.day);
+  // a mesma projeção do Noturno ("Onde o mês fecha"): monthClose, com os dias do mês pela data
+  const horizon = Math.max(1, monthLeft(current, budget));
   const [target, setTarget] = useState<Target>(
     ctx.cur.revenue > 0 ? "revenue" : "conversions",
   );
   const [budgetChange, setBudgetChange] = useState(0);
   const pick = (d: DayRow, t: Target) =>
     t === "revenue" ? d.revenue : t === "spend" ? d.spend : d.conversions;
-  const f = useMemo(
-    () =>
-      forecast(
-        days.map((d) => pick(d, target)),
-        horizon,
-      ),
-    [days, horizon, target],
-  );
-  const fConv = useMemo(
-    () =>
-      forecast(
-        days.map((d) => d.conversions),
-        horizon,
-      ),
-    [days, horizon],
-  );
-  const fSpend = useMemo(
-    () =>
-      forecast(
-        days.map((d) => d.spend),
-        horizon,
-      ),
-    [days, horizon],
-  );
+  const mc = useMemo(() => monthClose(current, (d) => pick(d, target), budget, 2), [current, budget, target]);
+  const mcConv = useMemo(() => monthClose(current, (d) => d.conversions, budget, 2), [current, budget]);
+  const mcSpend = useMemo(() => monthClose(current, (d) => d.spend, budget, 2), [current, budget]);
+  const f: Forecast = mc?.forecast ?? { hist: [], fit: [], future: [], lo: [], hi: [], sd: 0, anomalies: [] };
+  const fConv = mcConv?.forecast ?? f;
 
-  // mês: o que já foi (proporcional aos dias do mês no período) + o previsto
-  const sum = (a: number[]) => a.reduce((x, y) => x + y, 0);
-  const doneConv = sum(days.slice(-budget.day).map((d) => d.conversions));
-  const doneSpend = sum(days.slice(-budget.day).map((d) => d.spend));
+  // mês: o que já foi (os dias do mês) + o previsto; o simulador mexe só no que falta
+  const doneConv = mcConv?.done.at(-1) ?? 0;
+  const doneSpend = mcSpend?.done.at(-1) ?? 0;
+  const futureConv = (mcConv?.total ?? doneConv) - doneConv;
+  const futureSpend = (mcSpend?.total ?? doneSpend) - doneSpend;
   const scale = (1 + budgetChange / 100) ** ELASTICITY;
-  const projConv = doneConv + sum(fConv.future) * scale;
-  const projSpend = doneSpend + sum(fSpend.future) * (1 + budgetChange / 100);
+  const projConv = doneConv + futureConv * scale;
+  const projSpend = doneSpend + futureSpend * (1 + budgetChange / 100);
   const projCpa = projSpend / Math.max(1, projConv);
   const goalCpa = ctx.ds.goal;
   // chance de o CPA do mês ficar abaixo da meta (variância somada dos dias que faltam)
@@ -164,6 +147,7 @@ export function PrevisaoSkin({ ctx, grid }: SkinProps) {
                 </div>
               }
             >
+              <span hidden data-fecha={mc?.total} data-fecha-alvo={target} />
               <ForecastChart f={f} />
               <div className="mt-2 flex shrink-0 flex-wrap justify-between gap-2 text-[11px] text-fg-2">
                 <span>{dayLabel(days.length - 1, ctx.today)}</span>
@@ -178,24 +162,15 @@ export function PrevisaoSkin({ ctx, grid }: SkinProps) {
               <p className="mt-3 shrink-0 text-[12.5px]">
                 Fechamento previsto de {label(ctx, metricId).toLowerCase()}:{" "}
                 <b className="tnum">
-                  {fmt(
-                    sum(days.slice(-budget.day).map((d) => pick(d, target))) +
-                      sum(f.future),
-                  )}
+                  {fmt(mc?.total ?? 0)}
                 </b>{" "}
                 (entre{" "}
                 <span className="tnum">
-                  {fmt(
-                    sum(days.slice(-budget.day).map((d) => pick(d, target))) +
-                      sum(f.lo),
-                  )}
+                  {fmt(mc?.totalLo ?? 0)}
                 </span>{" "}
                 e{" "}
                 <span className="tnum">
-                  {fmt(
-                    sum(days.slice(-budget.day).map((d) => pick(d, target))) +
-                      sum(f.hi),
-                  )}
+                  {fmt(mc?.totalHi ?? 0)}
                 </span>
                 ).
               </p>
@@ -246,17 +221,17 @@ export function PrevisaoSkin({ ctx, grid }: SkinProps) {
                       ? "•••"
                       : money(
                           ctx,
-                          (sum(fSpend.future) * (1 + budgetChange / 100)) /
+                          (futureSpend * (1 + budgetChange / 100)) /
                             (ELASTICITY *
-                              Math.max(1, sum(fConv.future) * scale)),
+                              Math.max(1, futureConv * scale)),
                         )}
                   </dd>
                 </div>
               </dl>
               <p className="mt-3 text-[11px] text-fg-2">
-                Cada real a mais rende menos que o anterior (elasticidade{" "}
-                {String(ELASTICITY).replace(".", ",")}). Use para decidir se
-                vale acelerar ou segurar.
+                Estimativa com elasticidade padrão (
+                {String(ELASTICITY).replace(".", ",")}), não calculada para
+                este cliente: cada real a mais rende menos que o anterior.
               </p>
             </Panel>
           ),

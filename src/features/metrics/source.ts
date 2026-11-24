@@ -76,6 +76,8 @@ export type Creative = {
   tone: number;
   /** Imagem do anúncio (dados reais; vídeo: a capa). Sem ela, a miniatura de amostra. */
   imageUrl?: string | null;
+  /** O post original (Instagram, Facebook, YouTube): o botão "Ver post". Sem ele, nada. */
+  postUrl?: string | null;
   /** Vídeo: quantas pessoas chegaram a 25%, 50%, 75% e 100%. */
   video?: VideoRetention;
 };
@@ -116,6 +118,12 @@ export type Dataset = DatasetDetail & {
   marginSet?: boolean;
   /** Com a planilha do lançamento ligada: o funil de vendas dela no período. Sem o campo, não há planilha. */
   launch?: LaunchInfo;
+  /**
+   * Dados reais de um objetivo que não é venda (leads, conversas): o resultado vem do campo dele
+   * na Meta. informed: alguma linha do período trouxe o campo (linhas antigas não trazem);
+   * purchases: as compras do período na Meta, para dizer o que a conta registrou no lugar.
+   */
+  result?: { field: "leads" | "messages"; informed: boolean; purchases: number };
 };
 
 export interface DataSource {
@@ -459,6 +467,8 @@ export const MockSource: DataSource = {
         conversions: Math.max(0, Math.round((spend / cpa) * r.range(0.4, 1.7))),
         frequency: r.range(1.2, 4.1),
         tone: i % 5,
+        // o post de exemplo num domínio reservado (.example): o botão aparece, sem apontar para um post real
+        postUrl: `https://instagram.amostra.example/p/criativo-${i + 1}`,
       };
     });
 

@@ -10,7 +10,8 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { z } from "zod";
 import { normalizePhone } from "@/features/checkout/phone";
 import { LOGO_MAX_BYTES, LOGO_MESSAGES, sniffLogo } from "@/features/workspace/logo";
-import { ACTIVE_WORKSPACE_COOKIE, WORKSPACE_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
+import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
+import { activeWorkspaceCookieOptions } from "@/server/http/request";
 import { BRAND_BUCKET, publicAssetUrl } from "@/lib/supabase/storage";
 import { getSessionUser } from "@/server/auth/session";
 import { authorize, getViewer } from "@/server/auth/workspace";
@@ -191,7 +192,7 @@ export async function switchWorkspace(workspaceId: string) {
   const viewer = await getViewer();
   if (!viewer) redirect("/entrar");
   if (!z.uuid().safeParse(workspaceId).success || !viewer.memberships.some((m) => m.workspace.id === workspaceId)) redirect("/painel");
-  (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, workspaceId, WORKSPACE_COOKIE_OPTIONS);
+  (await cookies()).set(ACTIVE_WORKSPACE_COOKIE, workspaceId, await activeWorkspaceCookieOptions());
   const supabase = await createServerSupabase();
   await supabase.from("profiles").update({ default_workspace_id: workspaceId }).eq("id", viewer.user.id);
   await logActivity({ workspaceId, actorId: viewer.user.id, event: "workspace.opened", entityType: "workspace", entityId: workspaceId });

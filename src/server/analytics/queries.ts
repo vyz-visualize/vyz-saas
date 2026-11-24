@@ -422,7 +422,7 @@ const num = (v: number | string | null | undefined) => (v == null ? 0 : Number(v
 const opt = (v: number | string | null | undefined) => (v == null ? null : Number(v));
 
 const METRIC_COLUMNS =
-  "spend, impressions, reach, clicks, link_clicks, landing_page_views, add_to_cart, initiate_checkout, conversions, conversion_value, video_views, video_thruplays, search_impression_share, search_lost_is_budget, search_lost_is_rank";
+  "spend, impressions, reach, clicks, link_clicks, landing_page_views, add_to_cart, initiate_checkout, conversions, conversion_value, leads, messages, video_views, video_thruplays, search_impression_share, search_lost_is_budget, search_lost_is_rank";
 
 type MetricColumns = {
   spend: number;
@@ -435,6 +435,8 @@ type MetricColumns = {
   initiate_checkout: number | null;
   conversions: number;
   conversion_value: number;
+  leads: number | null;
+  messages: number | null;
   video_views: number | null;
   video_thruplays: number | null;
   search_impression_share: number | null;
@@ -453,6 +455,8 @@ const metricRow = (r: MetricColumns) => ({
   initiateCheckout: opt(r.initiate_checkout),
   conversions: num(r.conversions),
   conversionValue: num(r.conversion_value),
+  leads: opt(r.leads),
+  messages: opt(r.messages),
   videoViews: opt(r.video_views),
   videoThruplays: opt(r.video_thruplays),
   searchImpressionShare: opt(r.search_impression_share),
@@ -465,7 +469,7 @@ const basicRow = (r: BasicColumns) => ({ spend: num(r.spend), impressions: num(r
 
 const BASIC_COLUMNS = "spend, impressions, clicks, conversions, conversion_value";
 
-const BREAKDOWNS: Record<LivePlatform, string[]> = { meta: ["age_gender", "placement", "device", "region"], google: ["device", "hour"], import: [] };
+const BREAKDOWNS: Record<LivePlatform, string[]> = { meta: ["age_gender", "placement", "device", "region", "hour"], google: ["device", "hour"], import: [] };
 
 async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
   const ids = q.accountIds;
@@ -500,7 +504,7 @@ async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
       ? fetchAll((a, b) =>
           db
             .from("insights_ad_daily")
-            .select("ad_id, date, spend, impressions, reach, clicks, link_clicks, conversions, conversion_value, video_views, video_thruplays, leads, registrations, post_engagement, post_reactions, post_comments, post_shares, post_saves, profile_visits, video_p25, video_p50, video_p75, video_p95, video_p100, video_watch_seconds")
+            .select("ad_id, date, spend, impressions, reach, clicks, link_clicks, conversions, conversion_value, video_views, video_thruplays, leads, messages, registrations, post_engagement, post_reactions, post_comments, post_shares, post_saves, profile_visits, video_p25, video_p50, video_p75, video_p95, video_p100, video_watch_seconds")
             .in("ad_account_id", ids)
             // os dois períodos: os cards que vêm dos anúncios comparam com o anterior
             .gte("date", prev.from)
@@ -522,6 +526,7 @@ async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
             videoViews: opt(r.video_views),
             videoThruplays: opt(r.video_thruplays),
             leads: opt(r.leads),
+            messages: opt(r.messages),
             registrations: opt(r.registrations),
             postEngagement: opt(r.post_engagement),
             postReactions: opt(r.post_reactions),
@@ -541,7 +546,7 @@ async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
     fetchAll((a, b) =>
       db
         .from("insights_breakdown_daily")
-        .select(`date, dimension, value, ${BASIC_COLUMNS}`)
+        .select(`date, dimension, value, ${BASIC_COLUMNS}, leads, messages`)
         .in("ad_account_id", ids)
         .in("dimension", BREAKDOWNS[q.platform])
         .gte("date", cur.from)
@@ -551,7 +556,7 @@ async function fetchRows(db: DB, q: WarehouseQuery): Promise<WarehouseRows> {
         .order("dimension")
         .order("value")
         .range(a, b),
-    ).then((rows): BreakdownDayRow[] => rows.map((r) => ({ date: r.date, dimension: r.dimension, value: r.value, ...basicRow(r) }))),
+    ).then((rows): BreakdownDayRow[] => rows.map((r) => ({ date: r.date, dimension: r.dimension, value: r.value, ...basicRow(r), leads: opt(r.leads), messages: opt(r.messages) }))),
     meta
       ? []
       : fetchAll((a, b) =>

@@ -59,7 +59,7 @@ describe("Google", () => {
 
 describe("total da conta", () => {
   it("soma as campanhas por dia e usa o alcance da conta à parte", () => {
-    const base = { impressions: 10, reach: 5, clicks: 1, linkClicks: null, landingPageViews: null, addToCart: null, initiateCheckout: null, conversions: 1, conversionValue: 10, videoViews: null, videoThruplays: null, searchImpressionShare: null, searchLostIsBudget: null, searchLostIsRank: null };
+    const base = { impressions: 10, reach: 5, clicks: 1, linkClicks: null, landingPageViews: null, addToCart: null, initiateCheckout: null, conversions: 1, conversionValue: 10, leads: null, messages: null, videoViews: null, videoThruplays: null, searchImpressionShare: null, searchLostIsBudget: null, searchLostIsRank: null };
     const days = sumAccountDays(
       [
         { ...base, spend: 1.1, campaignExternalId: "a", date: "2026-11-02" },
@@ -84,5 +84,41 @@ describe("anúncio da Meta", () => {
     expect(image).toMatchObject({ format: "image", thumbnailUrl: "https://x/full.jpg" });
     const oneCard = mapMetaAd({ id: "4", campaign_id: "c", creative: { object_type: "SHARE", object_story_spec: { link_data: { child_attachments: [{}] } } } });
     expect(oneCard?.format).toBe("image");
+  });
+});
+
+import { facebookPostUrl, mapGoogleBreakdown, mapMetaBreakdown, ufOf } from "./map";
+import { BR_STATES } from "@/features/sync/breakdowns";
+
+describe("quebras da Meta e do Google", () => {
+  const row = (extra: Record<string, string>, spend = "10", purchases = "1") => ({ date_start: "2026-11-20", spend, impressions: "100", clicks: "5", actions: [{ action_type: "omni_purchase", value: purchases }, { action_type: "lead", value: "2" }], ...extra });
+  it("posicionamento, estado, dispositivo, hora e idade/gênero nas chaves do VYZ", () => {
+    expect(mapMetaBreakdown("placement", [row({ publisher_platform: "instagram", platform_position: "story" })], BR_STATES)[0]).toMatchObject({ dimension: "placement", value: "instagram_stories", spend: 10, conversions: 1, leads: 2 });
+    expect(mapMetaBreakdown("region", [row({ region: "São Paulo" }), row({ region: "Lisbon" })], BR_STATES).map((r) => r.value)).toEqual(["SP"]);
+    expect(mapMetaBreakdown("hour", [row({ hourly_stats_aggregated_by_advertiser_time_zone: "09:00:00 - 09:59:59" })], BR_STATES)[0].value).toBe("09");
+    expect(mapMetaBreakdown("age_gender", [row({ age: "25-34", gender: "female" })], BR_STATES)[0].value).toBe("25-34|female");
+  });
+  it("Android tablet e iPad viram o mesmo 'tablet', somados (a chave não se repete)", () => {
+    const out = mapMetaBreakdown("device", [row({ impression_device: "android_tablet" }), row({ impression_device: "ipad" }, "5", "2")], BR_STATES);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ value: "tablet", spend: 15, conversions: 3 });
+  });
+  it("estado pelo nome em qualquer formato", () => {
+    expect(ufOf("Sao Paulo (state)", BR_STATES)).toBe("SP");
+    expect(ufOf("Federal District", BR_STATES)).toBe("DF");
+    expect(ufOf("Ontario", BR_STATES)).toBeNull();
+  });
+  it("Google: dispositivo e hora", () => {
+    const g = (seg: Record<string, unknown>) => ({ segments: { date: "2026-11-20", ...seg }, metrics: { costMicros: "2000000", impressions: "10", clicks: "1", conversions: 1, conversionsValue: 0 } });
+    expect(mapGoogleBreakdown("device", [g({ device: "MOBILE" }), g({ device: "MOBILE" })])[0]).toMatchObject({ value: "mobile", spend: 4, conversions: 2 });
+    expect(mapGoogleBreakdown("hour", [g({ hour: 7 })])[0].value).toBe("07");
+  });
+});
+
+describe("link do post do anúncio", () => {
+  it("Facebook pelo id do post da página; fora do formato, nada", () => {
+    expect(facebookPostUrl("123_456")).toBe("https://www.facebook.com/123/posts/456");
+    expect(facebookPostUrl("abc")).toBeNull();
+    expect(facebookPostUrl(undefined)).toBeNull();
   });
 });

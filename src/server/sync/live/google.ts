@@ -11,7 +11,7 @@ import { fetchJson, SYNC_CACHE_SECONDS } from "@/server/integrations/providers/h
 import { getValidAccessToken } from "@/server/integrations/tokens";
 import { createAdminSupabase } from "@/server/supabase/admin";
 import type { SyncAccount } from "../source";
-import { mapGoogleAd, mapGoogleAdDay, mapGoogleCampaign, mapGoogleCampaignDay, sumAccountDays, type GoogleRow } from "./map";
+import { mapGoogleAd, mapGoogleAdDay, mapGoogleBreakdown, mapGoogleCampaign, mapGoogleCampaignDay, sumAccountDays, type GoogleRow } from "./map";
 
 const MAX_PAGES = 50;
 
@@ -59,6 +59,19 @@ export async function fetchGoogleDataset(account: SyncAccount, range: SyncRange)
     return out;
   };
 
+  // dispositivo e hora (aba do Google Ads): opcionais, a conta entra mesmo sem elas
+  // cada quebra opcional: a que falhar não entra em breakdownDimensions (as linhas dela no banco ficam)
+  const part = (dim: "device" | "hour", query: string, label: string) =>
+    search(query, `Google: ${label}`)
+      .then((rows) => ({ dim, rows: mapGoogleBreakdown(dim, rows), ok: true }))
+      .catch((err: unknown) => {
+        console.warn(`[vyz] Google: ${label} ficou de fora`, err instanceof Error ? err.message.slice(0, 300) : err);
+        return { dim, rows: [] as ReturnType<typeof mapGoogleBreakdown>, ok: false };
+      });
+  const breakdownsP = Promise.all([
+    part("device", `SELECT segments.date, segments.device, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value FROM campaign WHERE ${during}`, "dispositivos"),
+    part("hour", `SELECT segments.date, segments.hour, metrics.cost_micros, metrics.impressions, metrics.clicks, metrics.conversions, metrics.conversions_value FROM campaign WHERE ${during}`, "horas"),
+  ]);
   const [campaignRows, campaignDayRows, adRows, adDayRows] = await Promise.all([
     search(
       "SELECT campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, campaign.start_date_time, campaign_budget.amount_micros, campaign_budget.explicitly_shared FROM campaign WHERE campaign.status != 'REMOVED'",
@@ -134,7 +147,8 @@ export async function fetchGoogleDataset(account: SyncAccount, range: SyncRange)
     accountDaily: sumAccountDays(campaignDaily),
     campaignDaily,
     adDaily: [...adDays.values()],
-    breakdownDaily: [],
+    breakdownDaily: (await breakdownsP).flatMap((p) => p.rows),
+    breakdownDimensions: (await breakdownsP).filter((p) => p.ok).map((p) => p.dim),
     searchTermDaily: [],
     productDaily: [],
   };

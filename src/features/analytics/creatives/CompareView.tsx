@@ -4,6 +4,7 @@
 // recurso e abriu a aba. "Personalizar métricas" não se aplica aqui: mostra todas
 // as métricas que o anúncio tem.
 
+import { postPlace } from "./PostLink";
 import { AlertTriangle, ChevronDown, Clipboard, ExternalLink, Plus, Replace, Sparkles, Trash2, Trophy, X } from "lucide-react";
 import { Popover } from "radix-ui";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -24,7 +25,6 @@ import { fold } from "@/lib/text";
 
 /** Uma cor por anúncio. Mesmas cores nos temas claro e escuro. */
 const COLORS = ["var(--accent)", "#C2703D", "#5B7FA6"] as const;
-const postPlace = (url: string) => (/instagram/i.test(url) ? "Instagram" : /facebook|fb\.com/i.test(url) ? "Facebook" : null);
 
 export function CompareView({ data }: { data: Pick<CreativesData, "compare" | "initialAds" | "hideSpend" | "currency"> }) {
   const { compare: pool, hideSpend, currency } = data;
@@ -121,7 +121,7 @@ export function CompareView({ data }: { data: Pick<CreativesData, "compare" | "i
 
 function AdCard({ s, color, pool, chosen, onPick, onRemove }: { s: AdStats; color: string; pool: CompareAd[]; chosen: string[]; onPick: (id: string) => void; onRemove: () => void }) {
   const { ad } = s;
-  const place = ad.postUrl?.startsWith("https://") ? postPlace(ad.postUrl) : null;
+  const place = postPlace(ad.postUrl);
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-card border border-line bg-card" aria-label={ad.name}>
       <span className="h-1.5 shrink-0" style={{ background: color }} aria-hidden />

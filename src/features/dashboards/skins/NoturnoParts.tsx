@@ -35,11 +35,11 @@ export function AnalysisBar({ ctx, weekday, setWeekday, compare, setCompare, pla
   const plat = filters?.filters.platforms[0] ?? ALL;
   const camp = filters?.filters.campaigns[0] ?? ALL;
   const campaigns = [...ctx.ds.campaigns].filter((c) => !platformOnly || c.platform === platformOnly).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  const field = "h-9 min-w-0 rounded-full border border-line bg-card px-3 text-[12px] text-fg outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50";
+  const field = "h-9 min-w-0 rounded-[4px] border border-line bg-transparent px-2.5 text-[12px] font-normal tracking-normal normal-case text-fg outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50";
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-[16px] border border-line p-2" style={{ background: "rgb(255 255 255 / 0.03)" }} data-analise-filtros>
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line pb-3" data-analise-filtros>
       {!platformOnly && platforms.length > 1 && (
-        <label className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-fg-2">
+        <label className="flex min-w-0 items-center gap-2 text-[10.5px] font-semibold tracking-[0.12em] text-fg-2 uppercase">
           Plataforma
           <select
             className={field}
@@ -60,7 +60,7 @@ export function AnalysisBar({ ctx, weekday, setWeekday, compare, setCompare, pla
           </select>
         </label>
       )}
-      <label className="flex min-w-0 max-w-full items-center gap-1.5 text-[11.5px] text-fg-2">
+      <label className="flex min-w-0 max-w-full items-center gap-2 text-[10.5px] font-semibold tracking-[0.12em] text-fg-2 uppercase">
         Campanha
         <select
           className={`${field} max-w-[240px]`}
@@ -81,7 +81,7 @@ export function AnalysisBar({ ctx, weekday, setWeekday, compare, setCompare, pla
         </select>
       </label>
       {ctx.today && (
-        <label className="flex items-center gap-1.5 text-[11.5px] text-fg-2">
+        <label className="flex items-center gap-2 text-[10.5px] font-semibold tracking-[0.12em] text-fg-2 uppercase">
           Dia da semana
           <select className={field} value={weekday ?? ALL} onChange={(e) => setWeekday(e.target.value === ALL ? null : Number(e.target.value))}>
             <option value={ALL}>Todos</option>
@@ -145,13 +145,6 @@ function rowsOf(ctx: Ctx, weekday: number | null, platform?: PlatformId): Row[] 
       };
     })
     .sort((a, b) => b.total - a.total);
-  // aba de uma plataforma: "Todas" é a soma das campanhas dela (o período anterior só vem somado por campanha)
-  if (platform) {
-    const n = all.values.length;
-    const values = Array.from({ length: n }, (_, k) => camps.reduce((a, r) => a + (r.values[k - (n - r.values.length)] ?? 0), 0));
-    const prevSum = camps.every((r) => r.prevPerDay !== null) ? camps.reduce((a, r) => a + (r.prevPerDay ?? 0), 0) : null;
-    return [{ ...all, values, total: camps.reduce((a, r) => a + r.total, 0), spend: camps.reduce((a, r) => a + r.spend, 0), prevValues: null, prevPerDay: prevSum }, ...camps];
-  }
   return [all, ...camps];
 }
 
@@ -203,7 +196,7 @@ export function MasterDetail({ ctx, tone, weekday, compare, platform, accent, pr
             );
           })}
         </ul>
-        <div className="flex min-h-[260px] min-w-0 flex-col" data-detalhe={sel.id}>
+        <div className="flex min-h-[260px] min-w-0 flex-col" data-detalhe={sel.id} data-total={sel.total} data-anterior={prevTotal ?? undefined}>
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <FullName text={sel.name} className="min-w-0 text-[15px] font-bold" />
             <span className="text-[22px] font-bold tnum">{int(sel.total)}</span>
@@ -230,7 +223,8 @@ export function MasterDetail({ ctx, tone, weekday, compare, platform, accent, pr
               dates={dayDates(sel.agos, ctx.today)}
               labels={sel.agos.map((a) => dayLabel(a, ctx.today))}
               series={series}
-              format={(_, v) => decimal(v, v < 10 ? 1 : 0)}
+              // contagem por dia é inteira; só a média por dia do período anterior tem casa decimal
+              format={(key, v) => (key === "anterior" && !sel.prevValues ? decimal(v, v < 10 ? 1 : 0) : int(v))}
               formatY={(v) => int(v)}
               summary={`${sel.name}: ${int(sel.total)} ${word.toLowerCase()} no período${wd ? `, só ${wd}` : ""}.`}
             />

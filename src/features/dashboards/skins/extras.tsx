@@ -205,7 +205,7 @@ export function HourBars({ values, color, tone, what }: { values: readonly numbe
 }
 
 /** Onde o mês fecha: o acumulado até hoje (cheio) e o previsto até o fim do mês (tracejado, com a faixa). */
-export function MonthCloseChart({ m, color, tone, label, className = "h-[110px]" }: { m: MonthClose; color: string; tone: Tone; label: string; className?: string }) {
+export function MonthCloseChart({ m, color, tone, label, format, className = "h-[110px]" }: { m: MonthClose; color: string; tone: Tone; label: string; /** Valor do eixo (R$ ou contagem). */ format: (v: number) => string; className?: string }) {
   const n = m.done.length + m.future.length;
   const top = Math.max(m.totalHi, m.done.at(-1) ?? 0) * 1.05 || 1;
   const x = (i: number) => (i / Math.max(1, n - 1)) * 100;
@@ -213,12 +213,39 @@ export function MonthCloseChart({ m, color, tone, label, className = "h-[110px]"
   const off = m.done.length;
   const band = [...m.hi.map((v, i) => `${x(off + i)},${y(v)}`), ...m.lo.map((v, i) => `${x(off + i)},${y(v)}`).reverse()].join(" ");
   const last = `${x(off - 1)},${y(m.done.at(-1) ?? 0)}`;
+  // eixo: o valor em três linhas (0, metade, topo) e os dias do mês (o 1º, o último com dados, o último do mês)
+  const ticks = [top, top / 2, 0];
+  const days = [
+    { at: 0, text: "dia 1" },
+    ...(off > 1 && off < n ? [{ at: off - 1, text: `dia ${off}` }] : []),
+    { at: n - 1, text: `dia ${n}` },
+  ];
   return (
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className={`w-full overflow-visible ${className}`} role="img" aria-label={label}>
-      {m.future.length > 0 && <polygon points={`${last} ${band}`} fill={color} opacity={0.14} />}
-      <polyline points={m.done.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" stroke={color} strokeWidth={2.4} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
-      {m.future.length > 0 && <polyline points={`${last} ${m.future.map((v, i) => `${x(off + i)},${y(v)}`).join(" ")}`} fill="none" stroke={color} strokeWidth={2} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />}
-      <line x1={x(off - 1)} x2={x(off - 1)} y1={0} y2={100} stroke={tone.fg2} strokeWidth={1} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" opacity={0.6} />
-    </svg>
+    <div className={`grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] gap-x-2 ${className}`} role="img" aria-label={label}>
+      <div className="flex flex-col justify-between py-0 text-right text-[10px] leading-none tnum" style={{ color: tone.fg2 }} aria-hidden>
+        {ticks.map((t, k) => (
+          <span key={k}>{format(t)}</span>
+        ))}
+      </div>
+      <div className="relative min-h-0">
+        {ticks.map((_, k) => (
+          <span key={k} className="absolute inset-x-0 border-t" style={{ top: `${k * 50}%`, borderColor: tone.line, opacity: 0.7 }} aria-hidden />
+        ))}
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible" aria-hidden>
+          {m.future.length > 0 && <polygon points={`${last} ${band}`} fill={color} opacity={0.14} />}
+          <polyline points={m.done.map((v, i) => `${x(i)},${y(v)}`).join(" ")} fill="none" stroke={color} strokeWidth={2.4} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+          {m.future.length > 0 && <polyline points={`${last} ${m.future.map((v, i) => `${x(off + i)},${y(v)}`).join(" ")}`} fill="none" stroke={color} strokeWidth={2} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />}
+          <line x1={x(off - 1)} x2={x(off - 1)} y1={0} y2={100} stroke={tone.fg2} strokeWidth={1} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" opacity={0.6} />
+        </svg>
+      </div>
+      <span aria-hidden />
+      <div className="relative mt-1 h-3.5 text-[10px] leading-none tnum" style={{ color: tone.fg2 }} aria-hidden>
+        {days.map((d) => (
+          <span key={d.at} className="absolute whitespace-nowrap" style={{ left: `${x(d.at)}%`, transform: d.at === 0 ? "none" : d.at === n - 1 ? "translateX(-100%)" : "translateX(-50%)" }}>
+            {d.text}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }

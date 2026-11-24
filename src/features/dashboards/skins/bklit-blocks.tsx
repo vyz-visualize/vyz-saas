@@ -156,7 +156,8 @@ export function DeltaChip({ delta, solid = false }: { delta: Delta; solid?: bool
   const color = solid ? "currentColor" : delta.good === null ? "var(--fg-2)" : delta.good ? "var(--good)" : "var(--error-fg)";
   return (
     <span className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold tnum" style={{ color, background: solid ? "rgb(0 0 0 / 0.12)" : `color-mix(in srgb, ${color} 14%, transparent)` }}>
-      <Arrow size={12} strokeWidth={2.4} aria-hidden />
+      {/* sem base no período anterior ("—"): sem seta */}
+      {delta.text !== "—" && <Arrow size={12} strokeWidth={2.4} aria-hidden />}
       {delta.text}
     </span>
   );

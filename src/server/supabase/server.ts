@@ -7,10 +7,9 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
-import { AUTH_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
 import type { Database } from "@/lib/supabase/database.types";
 import { serverEnv } from "@/server/env";
-import { requestContext } from "@/server/http/request";
+import { requestContext, sessionCookieOptions } from "@/server/http/request";
 
 export type DB = SupabaseClient<Database>;
 
@@ -18,18 +17,19 @@ export async function createServerSupabase(): Promise<DB> {
   const env = serverEnv();
   const store = await cookies();
   const ctx = await requestContext();
+  const cookieOptions = await sessionCookieOptions();
   return createServerClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     cookies: {
       getAll: () => store.getAll(),
       setAll: (list) => {
         try {
-          for (const { name, value, options } of list) store.set(name, value, { ...options, ...AUTH_COOKIE_OPTIONS });
+          for (const { name, value, options } of list) store.set(name, value, { ...options, ...cookieOptions });
         } catch {
           // Server Component não grava cookie: o proxy renova a sessão na próxima requisição.
         }
       },
     },
-    cookieOptions: AUTH_COOKIE_OPTIONS,
+    cookieOptions,
     global: { headers: ctx.forwardHeaders },
   });
 }

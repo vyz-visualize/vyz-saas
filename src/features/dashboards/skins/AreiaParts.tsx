@@ -25,12 +25,20 @@ function leadNote(now: number, before: number): string {
   return before > 0 && Number.isFinite(d) && d !== 0 ? `${d > 0 ? "▲" : "▼"} ${pct(Math.abs(d), 1)} contra o anterior` : "das plataformas";
 }
 
+/** Cliques no link do período: a primeira etapa do funil, quando ela é essa (o mesmo número do Funil). */
+export function linkClicksOf(ctx: Ctx): number | null {
+  const step = ctx.ds.funnel.find((s) => /^cliques no link$/i.test(s.label));
+  return step?.count != null ? step.count : null;
+}
+
 /** As etapas do trilho: Anúncio (cliques), Lead (o resultado do objetivo) e as do CRM (ou o convite). */
 export function stagesOf(ctx: Ctx): Stage[] {
   const { conv } = goalOf(ctx.profile, ctx.cur.leads);
   const crm = ctx.ds.crm.filter((s) => s.count > 0 || s.value > 0);
+  const link = linkClicksOf(ctx);
   const out: Stage[] = [
-    { id: "anuncio", name: "Anúncio", count: ctx.cur.clicks, kind: "anuncio" },
+    // o anúncio conta os cliques no link (os mesmos do funil): é deles que sai o lead. Sem o dado, todos os cliques, com esse nome
+    { id: "anuncio", name: "Anúncio", count: link ?? ctx.cur.clicks, kind: "anuncio", note: link != null ? "cliques no link" : "cliques (todos)" },
     { id: "lead", name: label(ctx, conv), count: ctx.cur[conv], kind: "lead", note: leadNote(ctx.cur[conv], ctx.prev[conv]) },
   ];
   if (crm.length) {
@@ -78,7 +86,7 @@ export function FunnelRail({ stages, picked, onPick, money, accent }: { stages: 
                   <>
                     <span className="mt-1 text-[22px] leading-tight font-bold tnum">{int(s.count ?? 0)}</span>
                     <span className={`text-[11px] ${on ? "opacity-85" : "text-fg-2"}`}>
-                      {s.kind === "anuncio" ? "cliques nos anúncios" : s.kind === "lead" ? s.note : s.value && money ? money(s.value) : "no CRM"}
+                      {s.kind === "anuncio" || s.kind === "lead" ? s.note : s.value && money ? money(s.value) : "no CRM"}
                     </span>
                   </>
                 )}

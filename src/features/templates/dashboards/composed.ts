@@ -76,7 +76,7 @@ export const FEATURES: Feature[] = [
   { id: "comparativo", label: "Comparativo de períodos", hint: "Este período contra o anterior e o mesmo período do ano passado.", tier: "pro" },
   { id: "criativos-ao-vivo", label: "Comparativo de criativos", hint: "Os anúncios lado a lado: o que entrega, o que cansou e o que escalar.", tier: "avancado", needs: ["meta"] },
   { id: "previsao", label: "Análise preditiva", hint: "Onde o mês fecha em investimento, conversões e custo, com a faixa de confiança.", tier: "avancado", needs: ["meta", "google"] },
-  { id: "mmm", label: "Mix de mídia (MMM)", hint: "Quanto cada canal contribui de verdade e para onde mover a verba.", tier: "avancado", needs: ["meta", "google"] },
+  { id: "mmm", label: "Mix de mídia (MMM)", hint: "Mostra o que falta para o modelo do cliente e, com os dados completos, quanto cada canal contribui.", tier: "avancado", needs: ["meta", "google"] },
 ];
 
 /** O recurso faz sentido com as plataformas escolhidas? */

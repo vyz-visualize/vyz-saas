@@ -24,7 +24,7 @@ export const parseSyncGroup = (raw: string | null | undefined): SyncGroup | null
  * Quanto tempo a conta costuma levar (pior caso comum, medido em produção em nov/2026: o orgânico de
  * uma conta grande passava de 150 s antes de ler os posts em paralelo; a Meta Ads, até 110 s).
  */
-export const PLATFORM_ESTIMATE_MS: Record<string, number> = { instagram: 70_000, facebook: 70_000, meta: 45_000, tiktok: 30_000, linkedin: 30_000 };
+export const PLATFORM_ESTIMATE_MS: Record<string, number> = { instagram: 70_000, facebook: 70_000, meta: 60_000, tiktok: 30_000, linkedin: 30_000 };
 export const DEFAULT_ESTIMATE_MS = 15_000;
 export const estimateMs = (platform: string) => PLATFORM_ESTIMATE_MS[platform] ?? DEFAULT_ESTIMATE_MS;
 
@@ -47,6 +47,32 @@ export const hourInSaoPaulo = (now: Date) => Number(new Intl.DateTimeFormat("en-
  * mudam e os já gravados ficam (o orgânico grava os posts por upsert, sem apagar).
  */
 export const rereadAllPosts = (trigger: "initial" | "scheduled" | "manual", now: Date) => trigger !== "scheduled" || hourInSaoPaulo(now) < 8;
+
+/**
+ * Quebras da Meta (posicionamento, estado, dispositivo, hora, idade e gênero) uma vez por dia: na
+ * primeira rodada de anúncios (09 UTC; até as 12 UTC, para uma rodada que atrasou) e sempre na
+ * primeira sincronização de uma conta. Nas outras, ficam as do banco: 6 chamadas a menos por conta.
+ */
+export const fetchBreakdownsNow = (trigger: "initial" | "scheduled" | "manual", now: Date) => trigger === "initial" || (trigger === "scheduled" && now.getUTCHours() < 12);
+
+/**
+ * Carga única das quebras da Meta: a conta que já existia antes das quebras (nenhuma linha delas no
+ * banco, mas com gasto nos últimos 90 dias) pede as quebras dos 90 dias uma vez, na próxima rodada,
+ * no lugar das do dia. Sem isso, a aba Público dos "últimos 30 dias" ficaria quase vazia até a
+ * janela de 7 dias da rodada diária encher. A primeira sincronização já busca 90 dias.
+ */
+export function needsBreakdownBackfill(a: { trigger: "initial" | "scheduled" | "manual"; platform: string; isMock: boolean; hasBreakdownRows: boolean; hasRecentSpend: boolean }): boolean {
+  return a.trigger !== "initial" && a.platform === "meta" && !a.isMock && !a.hasBreakdownRows && a.hasRecentSpend;
+}
+
+/** Cargas de 90 dias por rodada agendada (6 chamadas cada à Meta): as outras ficam para as rodadas seguintes. */
+export const BREAKDOWN_BACKFILLS_PER_ROUND = 3;
+
+/** As vagas de carga de uma rodada: cada conta que precisa pega uma; acabou, fica para a próxima. */
+export function backfillSlots(max = BREAKDOWN_BACKFILLS_PER_ROUND): () => boolean {
+  let used = 0;
+  return () => (used < max ? (used++, true) : false);
+}
 
 /** Janela de posts relidos em toda rodada. */
 export const RECENT_POST_DAYS = 7;

@@ -1,6 +1,7 @@
 // Widgets do dashboard. Os mesmos componentes servem o gerador da LP, o passo 2
 // de "Como funciona", as miniaturas, o painel e o link público: só muda o Dataset.
 
+import { PostLink } from "@/features/analytics/creatives/PostLink";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { TrendSpark } from "@/components/charts/TrendSpark";
 import { CreativeImage, isVideoFormat } from "./CreativeImage";
@@ -18,7 +19,7 @@ import { Scatter } from "@/components/charts/Scatter";
 import { Odometer, zeroed } from "@/components/ui/Odometer";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { byPlatform, currentTotals, delta, maturedAverage, previousTotals, series, type Totals } from "@/features/metrics/compute";
-import { formatValue, isGood, metric, type MetricDef, type MetricId, type Profile } from "@/features/metrics/definitions";
+import { formatMetric, formatValue, isGood, metric, type MetricDef, type MetricId, type Profile } from "@/features/metrics/definitions";
 import { rankMetric } from "@/features/metrics/rank";
 import type { Dataset } from "@/features/metrics/source";
 import type { KpiSpec, WidgetSpec } from "@/features/templates/types";
@@ -91,6 +92,7 @@ export function Card({ title, children, delay = 440, className = "", aside, note
 }
 
 function Delta({ cur, prev, id, profile, suffix = "" }: { cur: number; prev: number; id: MetricId; profile: Profile; suffix?: string }) {
+  if (!prev) return <span className="font-semibold text-fg-2">—{suffix}</span>;
   const d = delta(cur, prev);
   const good = isGood(d, metric(id, profile).better);
   const color = good === null ? "text-fg-2" : good ? "text-accent" : "text-error-fg";
@@ -115,7 +117,7 @@ export function Kpi({ spec, ctx, delay, size = "md", onHide, onRemove }: { spec:
   const def = metric(spec.metric, profile);
   const label = `${def.label}${ctx.labelSuffix ?? ""}`;
   const hidden = ctx.hideSpend && spec.metric === "spend";
-  const raw = formatValue(cur[spec.metric], def.format);
+  const raw = formatMetric(spec.metric, cur[spec.metric], def.format);
   const value = hidden ? HIDDEN : ctx.zero ? zeroed(raw) : raw;
   const strong = spec.highlight;
   const filters = useDashFilters();
@@ -777,7 +779,7 @@ function Creatives({ ctx }: { ctx: WidgetContext }) {
           <li
             key={c.id}
             data-filter-tone={filterTone(filters, "ads", c.id) ?? undefined}
-            onClick={filters?.interactive ? (e) => !(e.target as Element).closest("button") && filters.toggle("ads", c.id, c.name, e) : undefined}
+            onClick={filters?.interactive ? (e) => !(e.target as Element).closest("button, a") && filters.toggle("ads", c.id, c.name, e) : undefined}
             className={`overflow-hidden rounded-[8px] border bg-bg ${filters?.interactive ? "cursor-pointer" : ""} ${filterTone(filters, "ads", c.id) === "selected" ? "border-accent ring-1 ring-accent" : "border-line"} ${filterTone(filters, "ads", c.id) === "dimmed" ? "opacity-45" : ""}`}
           >
             {/* dados reais: a imagem do anúncio (vídeo: a capa); amostra ou sem imagem: a miniatura geométrica */}
@@ -805,6 +807,7 @@ function Creatives({ ctx }: { ctx: WidgetContext }) {
                   c.name
                 )}
               </p>
+              {c.postUrl && <PostLink url={c.postUrl} className="mt-1" />}
               <dl className="mt-1 grid grid-cols-3 gap-1 tnum">
                 <div>
                   <dt className="text-fg-2">CTR</dt>
@@ -986,8 +989,8 @@ function Compare({ ctx }: { ctx: WidgetContext }) {
           return (
             <tr key={id} className="border-b border-line/60 last:border-0">
               <td className="py-1.5 font-medium text-fg">{def.label}</td>
-              <td className="py-1.5 text-right font-semibold">{formatValue(cur[id], def.format)}</td>
-              <td className="py-1.5 text-right text-fg-2">{formatValue(prev[id], def.format)}</td>
+              <td className="py-1.5 text-right font-semibold">{formatMetric(id, cur[id], def.format)}</td>
+              <td className="py-1.5 text-right text-fg-2">{formatMetric(id, prev[id], def.format)}</td>
               <td className="py-1.5 text-right">
                 <Delta cur={cur[id]} prev={prev[id]} id={id} profile={profile} />
               </td>

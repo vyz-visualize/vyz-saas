@@ -29,7 +29,7 @@ import { CRM_PLATFORMS } from "@/features/sync/crm";
 import { runPool, summarizeRuns } from "@/features/sync/throttle";
 import type { Enums } from "@/lib/supabase/database.types";
 import { createAdminSupabase } from "@/server/supabase/admin";
-import { fitsInRound, STALE_ACCOUNT_MS, STALE_RUN_MS, SYNC_GROUPS, type SyncGroup } from "@/features/sync/round";
+import { backfillSlots, fitsInRound, STALE_ACCOUNT_MS, STALE_RUN_MS, SYNC_GROUPS, type SyncGroup } from "@/features/sync/round";
 import { syncAdAccount, type SyncErrorCode } from "./run";
 
 const HOUR = 60 * 60 * 1000;
@@ -125,6 +125,8 @@ export async function syncDueAccounts(opts: ScheduledOptions = {}): Promise<Sche
   // Com Redis, também as pausas de outras funções (limite da Meta ou do Google, cota do dia)
   const paused = new Set<string>();
   const sharedPaused = await sharedPauses(due);
+  // carga única das quebras de 90 dias (contas que ainda não têm nenhuma): poucas por rodada
+  const breakdownBackfillSlot = backfillSlots();
   const ran = await runPool(
     due,
     SCHEDULED_CONCURRENCY,
@@ -134,7 +136,7 @@ export async function syncDueAccounts(opts: ScheduledOptions = {}): Promise<Sche
       const timeout = new Promise<"timeout">((resolve) => {
         timer = setTimeout(() => resolve("timeout"), Math.max(1_000, hardStop - (Date.now() - startedAt)));
       });
-      const r = await Promise.race([syncAdAccount(account.id, "scheduled"), timeout]);
+      const r = await Promise.race([syncAdAccount(account.id, "scheduled", { breakdownBackfillSlot }), timeout]);
       clearTimeout(timer);
       if (r === "timeout") {
         const closed = await db

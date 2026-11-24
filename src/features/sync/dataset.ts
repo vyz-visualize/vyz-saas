@@ -78,6 +78,10 @@ export type DailyMetrics = {
   initiateCheckout: number | null;
   conversions: number;
   conversionValue: number;
+  /** Meta: leads (o "lead" agrupado). null: a plataforma não informa. */
+  leads: number | null;
+  /** Meta: conversas iniciadas (WhatsApp, Messenger, Direct). null: a plataforma não informa. */
+  messages: number | null;
   /** Meta: reproduções de 3 s. Google: visualizações do YouTube. */
   videoViews: number | null;
   /** Meta: ThruPlays. Google: vídeos assistidos até o fim. */
@@ -104,6 +108,8 @@ export type CampaignDay = DailyMetrics & CampaignExtraMetrics & { campaignExtern
 /** Métricas só do anúncio (página de Criativos). Sem o dado = null ou ausente: a tela esconde. */
 export type AdCreativeMetrics = {
   leads?: number | null;
+  /** Conversas iniciadas (Meta). */
+  messages?: number | null;
   registrations?: number | null;
   postEngagement?: number | null;
   postReactions?: number | null;
@@ -130,7 +136,7 @@ export type AdDay = Pick<DailyMetrics, "spend" | "impressions" | "reach" | "clic
 /** Métricas das quebras, dos termos e dos produtos. */
 export type BasicMetrics = Pick<DailyMetrics, "spend" | "impressions" | "clicks" | "conversions" | "conversionValue">;
 
-export type BreakdownDay = BasicMetrics & { date: string; dimension: BreakdownDimension; value: string };
+export type BreakdownDay = BasicMetrics & Partial<Pick<DailyMetrics, "leads" | "messages">> & { date: string; dimension: BreakdownDimension; value: string };
 
 export type SearchTermDay = BasicMetrics & { campaignExternalId: string; date: string; searchTerm: string; matchType: MatchType };
 
@@ -150,6 +156,12 @@ export type AccountDataset = {
   campaignDaily: CampaignDay[];
   adDaily: AdDay[];
   breakdownDaily: BreakdownDay[];
+  /**
+   * As quebras que esta busca trouxe. Só elas são regravadas: as que falharam ou ficaram para outra
+   * rodada (a Meta pede as quebras uma vez por dia) mantêm as linhas que já estão no banco. Sem o
+   * campo, todas (o gerador e as fontes sem quebra).
+   */
+  breakdownDimensions?: BreakdownDimension[];
   searchTermDaily: SearchTermDay[];
   productDaily: ProductDay[];
 };

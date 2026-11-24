@@ -11,6 +11,8 @@ const uuid = (externalId: string) => `id:${externalId}`;
 const ids = { campaign: uuid, ad: uuid, product: uuid };
 
 const zero: DailyMetrics = {
+  leads: null,
+  messages: null,
   spend: 0,
   impressions: 0,
   reach: null,

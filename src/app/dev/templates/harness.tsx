@@ -152,6 +152,7 @@ export function TemplatesBench() {
               initialPage={page}
               customizeId="00000000-0000-0000-0000-000000000000"
               saveMetrics={ok}
+              saveCards={ok}
               saveLayout={ok}
               askLayout={askLayout}
               canArrange={canArrangeLayout(plan)}

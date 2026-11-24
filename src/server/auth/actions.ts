@@ -16,11 +16,11 @@ import { AUTH_MESSAGES } from "@/features/auth/messages";
 import { PASSWORD_MESSAGES } from "@/features/auth/password";
 import { isRecentRecovery, RESET_PASSWORD_PATH } from "@/features/auth/recovery";
 import { changePasswordSchema, newPasswordSchema, nextPathSchema, resetRequestSchema, signInSchema } from "@/features/auth/schemas";
-import { ACTIVE_WORKSPACE_COOKIE, AUTH_COOKIE_OPTIONS } from "@/lib/supabase/cookies";
+import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/supabase/cookies";
 import type { Database } from "@/lib/supabase/database.types";
 import { serverEnv } from "@/server/env";
 import { logAuthEvent, type AuthMethod } from "@/server/history/log";
-import { appOrigin, requestContext, safeNextPath } from "@/server/http/request";
+import { loginOrigin, requestContext, safeNextPath, sessionCookieOptions } from "@/server/http/request";
 import { hitRateLimit, type RateRule } from "@/server/security/rate-limit";
 import { AppError, appError, toActionError, type ActionResult } from "@/server/supabase/errors";
 import { createServerSupabase } from "@/server/supabase/server";
@@ -61,16 +61,17 @@ async function resetLinkClient() {
   const env = serverEnv();
   const store = await cookies();
   const { forwardHeaders } = await requestContext();
+  const cookieOptions = await sessionCookieOptions();
   return createServerClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     cookies: {
       getAll: () => store.getAll(),
       setAll: (list) => {
         for (const { name, value, options } of list) {
-          if (!/-flows?-/.test(name)) store.set(name, value, { ...options, ...AUTH_COOKIE_OPTIONS });
+          if (!/-flows?-/.test(name)) store.set(name, value, { ...options, ...cookieOptions });
         }
       },
     },
-    cookieOptions: AUTH_COOKIE_OPTIONS,
+    cookieOptions,
     global: { headers: forwardHeaders },
   });
 }
@@ -126,7 +127,7 @@ async function signInWithProvider(provider: OAuthProvider, next?: string | null)
     const status = provider === "google" ? await googleSignInStatus() : await appleSignInStatus();
     if (status === "disabled") throw appError(`auth:${provider}_disabled`, `${(provider === "google" ? GOOGLE_PENDING : APPLE_PENDING).label}.`);
     const parsed = nextPathSchema.safeParse(next);
-    const callback = new URL("/auth/callback", await appOrigin());
+    const callback = new URL("/auth/callback", await loginOrigin());
     callback.searchParams.set("next", safeNextPath(parsed.success ? parsed.data : null));
     const supabase = await createServerSupabase();
     // PKCE: o verificador fica num cookie deste navegador até a volta.
@@ -171,7 +172,7 @@ export async function requestPasswordReset(_prev: AuthFormState<{ email: string 
       ],
       { email },
     );
-    const redirectTo = new URL("/auth/callback", await appOrigin());
+    const redirectTo = new URL("/auth/callback", await loginOrigin());
     redirectTo.searchParams.set("next", RESET_PASSWORD_PATH);
     const supabase = await resetLinkClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectTo.toString() });

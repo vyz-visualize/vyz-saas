@@ -60,7 +60,8 @@ export const VOCAB: Record<Profile, { conv: string; one: string; cpa: string }> 
   site: { conv: "Compras", one: "compra", cpa: "Custo por compra" },
   infoproduto: { conv: "Vendas", one: "venda", cpa: "Custo por venda" },
   leads: { conv: "Leads", one: "lead", cpa: "Custo por lead" },
-  imob: { conv: "Leads qualificados", one: "lead", cpa: "Custo por lead qualificado" },
+  // as conversões do imobiliário são os leads (o qualificado é a métrica "qualified", que vem do CRM)
+  imob: { conv: "Leads", one: "lead", cpa: "Custo por lead" },
   local: { conv: "Conversas no WhatsApp", one: "conversa", cpa: "Custo por conversa" },
   midia: { conv: "Resultados", one: "resultado", cpa: "Custo por resultado" },
   pesquisa: { conv: "Conversões", one: "conversão", cpa: "Custo por conversão" },
@@ -119,6 +120,15 @@ export function formatValue(value: number, format: Format): string {
     case "decimal":
       return decimal(value, 1);
   }
+}
+
+/** Custos por unidade: com 0 unidades (ou sem investimento), não há custo a mostrar. */
+const COST_PER: ReadonlySet<string> = new Set(["cpa", "cpl", "cplq", "cpv", "cpc", "cpm"]);
+
+/** O valor de uma métrica na tela: custo por resultado sem resultado é "—", nunca "R$ 0,00". */
+export function formatMetric(id: string, value: number, format: Format): string {
+  if (COST_PER.has(id) && !(value > 0)) return "—";
+  return formatValue(value, format);
 }
 
 /** Variação boa ou ruim, segundo o sentido da métrica. */

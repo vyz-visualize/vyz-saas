@@ -7,6 +7,8 @@
 export const META_ACTION_FIELDS = {
   conversions: "omni_purchase",
   leads: "lead",
+  /** Conversas iniciadas no WhatsApp, no Messenger ou no Direct (janela de 7 dias da Meta). */
+  messages: "onsite_conversion.messaging_conversation_started_7d",
   registrations: "omni_complete_registration",
   addToCart: "omni_add_to_cart",
   initiateCheckout: "omni_initiated_checkout",

@@ -128,12 +128,13 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
 
   const template = anyDashboardTemplate(d.templateId);
   // contas ligadas: o modelo desenha com os dados reais delas; sem nenhuma, a amostra (com o aviso fixo)
-  const { realData, linkedPlatforms, sourceExtras, sync } = await loadDashboardData(d, template, { period, customDays });
+  const { realData, linkedPlatforms, sourceExtras, sync, mmm } = await loadDashboardData(d, template, { period, customDays });
   const sample = !realData;
   // "Conectar" no aviso: com conta ativa no workspace, liga ao dashboard (editar); sem nenhuma, conecta em Contas
   const hasEnabledAccounts = sample ? await workspaceHasEnabledAccounts(session.workspace.id) : false;
   // visuais com capa: a imagem, o endereço e a planilha do lançamento
-  const coverData = hasCoverSkin(template?.skin) ? await loadCoverData(await createServerSupabase(), d.id, session.workspace.id) : undefined;
+  // a planilha do lançamento: a capa dos visuais com capa e a tela do MMM (resultado independente)
+  const coverData = hasCoverSkin(template?.skin) || d.pages.includes("mmm") ? await loadCoverData(await createServerSupabase(), d.id, session.workspace.id) : undefined;
   return (
     <>
       {sample && <SampleNotice connectHref={hasEnabledAccounts ? `/painel/dashboards/${d.id}/editar` : "/painel/contas"} canConnect={canEdit} />}
@@ -142,8 +143,11 @@ async function Ver({ params, searchParams }: Pick<PageProps<"/painel/dashboards/
         sampleOnly={sample}
         linkedPlatforms={linkedPlatforms}
         sourceExtras={sourceExtras}
+        mmmReadiness={mmm}
         syncStamp={sync?.lastSyncedAt ? <SyncStamp dashboardId={d.id} lastSyncedAt={sync.lastSyncedAt} timeZone={sync.timeZone} autoRefresh /> : undefined}
         syncHours={sync?.lastSyncedAt ? hoursSince(sync.lastSyncedAt) : undefined}
+        syncedAt={sync?.lastSyncedAt ?? undefined}
+        timeZone={sync?.timeZone}
         dashboard={{
           id: d.id,
           templateId: d.templateId,

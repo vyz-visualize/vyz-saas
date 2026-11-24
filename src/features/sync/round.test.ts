@@ -38,3 +38,22 @@ describe("rodada de sincronização", () => {
     expect(failureMessage(null, generic)).toBe(generic);
   });
 });
+
+import { fetchBreakdownsNow } from "./round";
+import { breakdownPrune } from "./rows";
+
+describe("quebras da Meta uma vez por dia", () => {
+  const at = (iso: string) => new Date(iso);
+  it("na primeira rodada de anúncios (09 UTC) e sempre na primeira sincronização da conta", () => {
+    expect(fetchBreakdownsNow("scheduled", at("2026-11-24T09:00:30Z"))).toBe(true);
+    expect(fetchBreakdownsNow("scheduled", at("2026-11-24T15:00:30Z"))).toBe(false);
+    expect(fetchBreakdownsNow("scheduled", at("2026-11-24T21:00:30Z"))).toBe(false);
+    expect(fetchBreakdownsNow("initial", at("2026-11-24T21:00:30Z"))).toBe(true);
+    expect(fetchBreakdownsNow("manual", at("2026-11-24T15:00:30Z"))).toBe(false);
+  });
+  it("sem as quebras na rodada, as do banco ficam; com parte delas, só essas são regravadas", () => {
+    expect(breakdownPrune(undefined)).toBe("all");
+    expect(breakdownPrune([])).toBe("none");
+    expect(breakdownPrune(["placement", "hour"])).toEqual(["placement", "hour"]);
+  });
+});

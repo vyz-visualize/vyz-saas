@@ -58,6 +58,8 @@ export function sumMetrics(rows: readonly DailyMetrics[]): DailyMetrics {
     initiateCheckout: sumNullable(rows, "initiateCheckout"),
     conversions: sumOf(rows, "conversions"),
     conversionValue: sumOf(rows, "conversionValue"),
+    leads: sumNullable(rows, "leads"),
+    messages: sumNullable(rows, "messages"),
     videoViews: sumNullable(rows, "videoViews"),
     videoThruplays: sumNullable(rows, "videoThruplays"),
     searchImpressionShare: weightedShare(rows, "searchImpressionShare"),

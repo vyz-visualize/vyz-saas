@@ -18,6 +18,7 @@ import type { DashboardTemplate } from "@/features/templates/types";
 import type { PeriodId } from "@/features/workspace/types";
 import { loadTemplateWarehouse } from "@/server/analytics/queries";
 import type { DB } from "@/server/supabase/server";
+import { loadMmmReadiness, type MmmReadinessData } from "@/server/mmm/readiness";
 
 export type DashboardData = {
   realData?: Dataset;
@@ -25,6 +26,8 @@ export type DashboardData = {
   sourceExtras?: SourceExtras;
   /** A sincronização mais antiga das contas que importam pela API (planilha fica de fora) e o fuso delas. */
   sync?: { lastSyncedAt: string | null; timeZone: string };
+  /** Com a aba de MMM: o que falta para o modelo de cada cliente (até o modelo de verdade existir). */
+  mmm?: MmmReadinessData | null;
 };
 
 export async function loadDashboardData(d: DashboardDetail, template: DashboardTemplate | undefined, opts: { period: PeriodId; customDays: number; db?: DB }): Promise<DashboardData> {
@@ -42,5 +45,7 @@ export async function loadDashboardData(d: DashboardDetail, template: DashboardT
       ? { current: warehouse.current, previous: warehouse.previous, currency: "BRL", analytics: warehouse.analytics, crm: warehouse.crm, organic: warehouse.organic }
       : undefined;
   const sync = { lastSyncedAt: oldestSync(warehouse.accounts.filter((a) => !isImportPlatform(a.platform)).map((a) => a.lastSyncedAt)), timeZone: warehouse.timeZone };
-  return { realData, linkedPlatforms: [...new Set(warehouse.accounts.map((a) => a.platform))] as PlatformId[], sourceExtras: extras, sync };
+  // MMM: a lista do que falta por cliente (se falhar, a tela diz que não deu para ler, nunca mostra modelo de exemplo)
+  const mmm = d.pages.includes("mmm") ? await loadMmmReadiness(d.id, warehouse.today).catch((err: unknown) => (console.warn("[vyz] MMM: o que falta não foi lido", err instanceof Error ? err.message : err), null)) : undefined;
+  return { realData, linkedPlatforms: [...new Set(warehouse.accounts.map((a) => a.platform))] as PlatformId[], sourceExtras: extras, sync, mmm };
 }

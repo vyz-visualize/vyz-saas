@@ -4,7 +4,7 @@
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { delta, series } from "@/features/metrics/compute";
 import {
-  formatValue,
+  formatMetric,
   isSalesProfile,
   metric,
   type MetricId,
@@ -14,6 +14,9 @@ import type { DayRow } from "@/features/metrics/source";
 import type { PageId } from "@/features/templates/types";
 import type { ClosedMonth } from "@/features/analytics/closed-month";
 import type { Totals } from "@/features/metrics/compute";
+import type { CardCreative } from "@/features/analytics/creatives/card-metrics";
+import type { CreativesData } from "@/features/analytics/types";
+import type { MmmReadinessData } from "@/features/mmm/readiness";
 import { brl, brlCompact, decimal, int, pct } from "@/lib/format";
 import type { CoverControl, LaunchSheetControl } from "../cover";
 import type { WidgetContext } from "../widgets/Widgets";
@@ -48,6 +51,23 @@ export type SkinProps = {
   month?: MonthReport;
   /** Horas desde a última sincronização (dados reais). Sem isso, não há aviso de atraso. */
   syncHours?: number;
+  /** Hora da última sincronização (ISO) e o fuso da conta: "atualizado às HH:MM". Sem isso (amostra), nada. */
+  syncedAt?: string;
+  timeZone?: string;
+  /** Criativos para os cards (com as métricas escolhidas): a galeria do servidor ou os do dashboard; o nível do plano e os dados completos (comparativo). */
+  cards?: { source: CardCreative[]; level: "list" | "gallery" | "compare" | null; data?: CreativesData; /** A fileira de cards da aba Criativos (a padrão), acima do jeito do visual. */ kpis?: React.ReactNode };
+  /** MMM: com dados reais, o que falta para o modelo de cada cliente (null: não deu para ler); na amostra, o exemplo. */
+  mmm?:
+    | {
+        real: MmmReadinessData | null;
+        /** No painel: para onde levam os botões de ligar fonte. No link público, sem botões. */
+        connectHref?: string;
+        /** A planilha do lançamento deste dashboard (com connect: quem edita liga por aqui, em qualquer visual). */
+        sheet?: LaunchSheetControl;
+      }
+    | { sample: true };
+  /** Os números da aba aberta (nas abas de uma plataforma, só dela): os mesmos dos cards da aba. */
+  pageCtx?: WidgetContext;
 };
 
 export type MonthReport = {
@@ -76,7 +96,7 @@ export function value(ctx: WidgetContext, id: MetricId, cur = ctx.cur): string {
       id === "cpv")
   )
     return HIDDEN;
-  return formatValue(cur[id], metric(id, ctx.profile).format);
+  return formatMetric(id, cur[id], metric(id, ctx.profile).format);
 }
 
 export const label = (ctx: WidgetContext, id: MetricId) =>
@@ -96,7 +116,8 @@ export function change(
   ctx: WidgetContext,
   id: MetricId,
 ): { text: string; up: boolean; good: boolean | null } {
-  const d = delta(ctx.cur[id], ctx.prev[id]);
+  // sem base no período anterior (0), não há variação: "—", nunca "0,0%"
+  const d = ctx.prev[id] ? delta(ctx.cur[id], ctx.prev[id]) : NaN;
   const better = metric(id, ctx.profile).better;
   const good =
     better === "neutral" || !Number.isFinite(d) || d === 0

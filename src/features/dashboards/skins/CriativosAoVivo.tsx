@@ -1,18 +1,18 @@
 "use client";
 
-// Criativos ao vivo: ranking que se atualiza sozinho (hoje, hora a hora), duelo
-// entre dois criativos com a confiança estatística da diferença de CTR e o
-// alerta de fadiga (frequência alta com CTR caindo). Dados de exemplo.
+// Comparativo de criativos: o ranking do período (custo por resultado, CTR ou resultado), o
+// duelo entre dois criativos com a confiança estatística da diferença de CTR e o alerta de
+// fadiga (frequência alta). Os números são os do período, da última sincronização: nada de
+// "ao vivo" (as contas sincronizam algumas vezes por dia).
 
 import { CreativeImage, isVideoFormat } from "../widgets/CreativeImage";
-import { ArrowDown, ArrowUp, Flame, Trophy } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Clock, Flame, Trophy } from "lucide-react";
+import { useMemo, useState } from "react";
 import {
   decimal,
   int,
   label,
   money,
-  noise,
   normCdf,
   Panel,
   pct,
@@ -22,77 +22,47 @@ import {
   type SkinProps,
 } from "./shared";
 import { SkinGrid } from "./SkinGrid";
+import { CardMetricsButton, cardValue, CreativeDetailModal, useCardPrefs } from "@/features/analytics/creatives/CardMetrics";
+import { cardLabel, cardShort, fromDataset, metricsFor, type CardCreative } from "@/features/analytics/creatives/card-metrics";
 
 type Sort = "cpa" | "ctr" | "conv";
-const TICK_MS = 4000;
 
-export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
+/** "atualizado às 14:05" no fuso da conta (sem a hora, nada). */
+export function syncedAtLabel(syncedAt: string | undefined, timeZone = "America/Sao_Paulo"): string | null {
+  if (!syncedAt) return null;
+  const d = new Date(syncedAt);
+  if (Number.isNaN(d.getTime())) return null;
+  const hm = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone }).format(d);
+  const day = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone }).format(d);
+  return `Atualizado em ${day} às ${hm}`;
+}
+
+/** Ranking: custo por resultado só com resultado (sem venda, sem custo: vai para o fim, com "—"). */
+export function rankCreatives<T extends { spend: number; clicks: number; impressions: number; conversions: number }>(list: readonly T[], sort: Sort): (T & { ctr: number; cpa: number | null })[] {
+  const rows = list.map((c) => ({ ...c, ctr: c.clicks / Math.max(1, c.impressions), cpa: c.conversions > 0 ? c.spend / c.conversions : null }));
+  return rows.sort((a, b) => {
+    if (sort === "ctr") return b.ctr - a.ctr;
+    if (sort === "conv") return b.conversions - a.conversions;
+    if (a.cpa === null && b.cpa === null) return b.spend - a.spend;
+    if (a.cpa === null) return 1;
+    if (b.cpa === null) return -1;
+    return a.cpa - b.cpa;
+  });
+}
+
+export function CriativosAoVivoSkin({ ctx, periodLabel, grid, syncedAt, timeZone }: SkinProps) {
   const base = useMemo(
     () => [...ctx.ds.creatives].sort((a, b) => b.spend - a.spend).slice(0, 8),
     [ctx.ds.creatives],
   );
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), TICK_MS);
-    return () => window.clearInterval(id);
-  }, []);
-
-  // "hoje": cerca de 1/30 do período, crescendo a cada atualização
-  const live = useMemo(
-    () =>
-      base.map((c, i) => {
-        const share = 1 / 30;
-        const grow = (k: number) =>
-          Array.from({ length: tick }, (_, t) => noise(i, t, k)).reduce(
-            (a, b) => a + b,
-            0,
-          );
-        const impressions = Math.round(
-          c.impressions * share * 0.55 + grow(1) * c.impressions * share * 0.04,
-        );
-        const ctrNow =
-          (c.clicks / Math.max(1, c.impressions)) *
-          (0.9 + noise(i, tick, 2) * 0.2);
-        const clicks = Math.round(impressions * ctrNow);
-        const convRate = c.conversions / Math.max(1, c.clicks);
-        const conversions = Math.round(clicks * convRate + grow(3) * 0.3);
-        const spend = c.spend * share * 0.55 + grow(4) * c.spend * share * 0.04;
-        const hours = Array.from(
-          { length: 12 },
-          (_, h) => ctrNow * (0.8 + noise(i, h, tick > h ? 1 : 0) * 0.4),
-        );
-        return {
-          ...c,
-          impressions,
-          clicks,
-          conversions,
-          spend,
-          ctr: clicks / Math.max(1, impressions),
-          cpa: spend / Math.max(1, conversions),
-          hours,
-        };
-      }),
-    [base, tick],
-  );
   const [sort, setSort] = useState<Sort>("cpa");
-  const ranked = [...live].sort((a, b) =>
-    sort === "cpa"
-      ? a.cpa - b.cpa
-      : sort === "ctr"
-        ? b.ctr - a.ctr
-        : b.conversions - a.conversions,
-  );
-  const prevRank = useMemo(
-    () =>
-      new Map(
-        [...live]
-          .sort(
-            (a, b) => a.cpa - b.cpa + (noise(a.tone, tick) - 0.5) * a.cpa * 0.3,
-          )
-          .map((c, i) => [c.id, i]),
-      ),
-    [live, tick],
-  );
+  const ranked = rankCreatives(base, sort);
+  const live = ranked;
+  const stamp = syncedAtLabel(syncedAt, timeZone);
+  // os cards de criativo com as métricas escolhidas (as mesmas contas do resto do dashboard)
+  const cardsById = new Map(fromDataset({ creatives: base }, label(ctx, "conversions")).map((c) => [c.id, c]));
+  const [detail, setDetail] = useState<string | null>(null);
+  const detailCard = detail ? cardsById.get(detail) : undefined;
 
   const [aId, setA] = useState<string | null>(null);
   const [bId, setB] = useState<string | null>(null);
@@ -119,29 +89,22 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
     );
   }
   const fatigued = base.filter((c) => c.frequency >= 2.8);
-  const today = live.reduce(
-    (acc, c) => ({
-      spend: acc.spend + c.spend,
-      conv: acc.conv + c.conversions,
-      clicks: acc.clicks + c.clicks,
-      imp: acc.imp + c.impressions,
-    }),
+  const total = base.reduce(
+    (acc, c) => ({ spend: acc.spend + c.spend, conv: acc.conv + c.conversions, clicks: acc.clicks + c.clicks, imp: acc.imp + c.impressions }),
     { spend: 0, conv: 0, clicks: 0, imp: 0 },
   );
 
   return (
     <div className="@container space-y-4">
+      {detailCard && <CreativeDetailModal c={detailCard} open onClose={() => setDetail(null)} />}
       <div className="flex flex-wrap items-center gap-3">
-        <span className="flex items-center gap-2 rounded-full bg-error-soft px-3 py-1 text-[12px] font-semibold text-error-fg">
-          <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-current opacity-60" />
-            <span className="relative inline-flex size-2 rounded-full bg-current" />
+        {stamp && (
+          <span className="flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 text-[12px] font-medium text-fg">
+            <Clock size={13} aria-hidden /> {stamp}
           </span>
-          Ao vivo
-        </span>
+        )}
         <span className="text-[12.5px] text-fg-2">
-          Hoje, atualizando a cada {TICK_MS / 1000} s · {tick} atualizações ·
-          comparação com {periodLabel.toLowerCase()}
+          {base.length} criativos com mais investimento · {periodLabel.toLowerCase()}
         </span>
       </div>
 
@@ -151,51 +114,27 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
         grid={grid}
         nodes={{
           "s-stat0": (
-            <Stat
-              title="Investimento hoje"
-              v={money(ctx, today.spend, true)}
-              sub={`${base.length} criativos rodando`}
-            />
+            <Stat title="Investimento no período" v={money(ctx, total.spend, true)} sub={`${base.length} criativos`} />
           ),
           "s-stat1": (
-            <Stat
-              title={`${label(ctx, "conversions")} hoje`}
-              v={int(today.conv)}
-              sub="desde 0h"
-            />
+            <Stat title={`${label(ctx, "conversions")} no período`} v={int(total.conv)} sub="dos criativos da lista" />
           ),
           "s-stat2": (
-            <Stat
-              title="CTR hoje"
-              v={pct(today.clicks / Math.max(1, today.imp), 2)}
-              sub={`período: ${pct(ctx.cur.ctr, 2)}`}
-              tone={
-                today.clicks / Math.max(1, today.imp) >= ctx.cur.ctr
-                  ? "good"
-                  : "bad"
-              }
-            />
+            <Stat title="CTR dos criativos" v={pct(total.clicks / Math.max(1, total.imp), 2)} sub={`conta: ${pct(ctx.cur.ctr, 2)}`} />
           ),
           "s-stat3": (
             <Stat
-              title={`${label(ctx, "cpa")} hoje`}
-              v={
-                ctx.hideSpend
-                  ? "•••"
-                  : money(ctx, today.spend / Math.max(1, today.conv))
-              }
-              sub={`período: ${money(ctx, ctx.cur.cpa)}`}
-              tone={
-                today.spend / Math.max(1, today.conv) <= ctx.cur.cpa
-                  ? "good"
-                  : "bad"
-              }
+              title={label(ctx, "cpa")}
+              v={ctx.hideSpend ? "•••" : total.conv > 0 ? money(ctx, total.spend / total.conv) : "—"}
+              sub={`conta: ${ctx.cur.conversions > 0 ? money(ctx, ctx.cur.cpa) : "—"}`}
             />
           ),
           "s-ranking": (
             <Panel
               title="Ranking de criativos"
               aside={
+                <div className="flex flex-wrap items-center gap-2">
+                <CardMetricsButton className="h-8" />
                 <div className="flex gap-1 rounded-full border border-line p-0.5 text-[11.5px]">
                   {(["cpa", "ctr", "conv"] as Sort[]).map((s) => (
                     <button
@@ -212,12 +151,11 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
                     </button>
                   ))}
                 </div>
+                </div>
               }
             >
               <ol className="divide-y divide-line">
                 {ranked.map((c, i) => {
-                  const was = prevRank.get(c.id) ?? i;
-                  const moved = was - i;
                   return (
                     <li
                       key={c.id}
@@ -226,7 +164,7 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
                       <span
                         className={`grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-bold ${i === 0 ? "bg-accent text-on-accent" : "bg-accent-soft text-fg"}`}
                       >
-                        {i === 0 ? <Trophy size={13} /> : i + 1}
+                        {i === 0 && (sort !== "cpa" || c.cpa !== null) ? <Trophy size={13} /> : i + 1}
                       </span>
                       {/* com dados reais, a imagem do anúncio ao lado do nome (a amostra não tem imagem) */}
                       {c.imageUrl && (
@@ -239,42 +177,21 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
                         />
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[12.5px] font-semibold">
+                        <button type="button" onClick={() => setDetail(c.id)} className="block max-w-full truncate text-left text-[12.5px] font-semibold outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent" title={`${c.name}: ver todas as métricas`}>
                           {c.name}
-                        </span>
+                        </button>
                         <span className="block text-[11px] text-fg-2">
                           {c.format} · {platformName(c.platform)}
                         </span>
                       </span>
-                      <HourBars values={c.hours} />
-                      <span className="w-[74px] text-right text-[12px] tnum">
-                        {pct(c.ctr, 2)}
-                      </span>
-                      <span className="hidden w-[84px] text-right text-[12px] tnum @[560px]:block">
-                        {ctx.hideSpend ? "•••" : money(ctx, c.cpa)}
-                      </span>
-                      <span className="w-[40px] text-right text-[12px] font-semibold tnum">
-                        {int(c.conversions)}
-                      </span>
-                      <span
-                        className={`flex w-[30px] items-center justify-end text-[11px] ${moved > 0 ? "text-accent" : moved < 0 ? "text-error-fg" : "text-fg-2"}`}
-                      >
-                        {moved > 0 ? (
-                          <ArrowUp size={12} />
-                        ) : moved < 0 ? (
-                          <ArrowDown size={12} />
-                        ) : (
-                          "·"
-                        )}
-                        {moved !== 0 ? Math.abs(moved) : ""}
-                      </span>
+                      {/* as métricas escolhidas no botão "Métricas" (as mesmas dos cards de criativo do dashboard) */}
+                      {cardsById.get(c.id) && <ChosenCells c={cardsById.get(c.id)!} />}
                     </li>
                   );
                 })}
               </ol>
               <p className="mt-2 text-[11px] text-fg-2">
-                Barras: CTR por hora nas últimas 12 horas. Setas: posição em
-                relação à atualização anterior.
+                Números do período. Sem {label(ctx, "conversions").toLowerCase()}, o custo fica em branco (—) e o criativo vai para o fim do ranking por custo.
               </p>
             </Panel>
           ),
@@ -321,9 +238,9 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
                     },
                     {
                       l: label(ctx, "cpa"),
-                      va: pa.spend / Math.max(1, pa.conversions),
-                      vb: pb.spend / Math.max(1, pb.conversions),
-                      f: (v: number) => money(ctx, v),
+                      va: pa.conversions > 0 ? pa.spend / pa.conversions : Number.NaN,
+                      vb: pb.conversions > 0 ? pb.spend / pb.conversions : Number.NaN,
+                      f: (v: number) => (Number.isFinite(v) ? money(ctx, v) : "—"),
                       up: false,
                     },
                     {
@@ -341,8 +258,11 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
                       up: false,
                     },
                   ].map((r) => {
-                    const max = Math.max(r.va, r.vb, 1e-9);
-                    const aWins = r.up ? r.va >= r.vb : r.va <= r.vb;
+                    const va = Number.isFinite(r.va) ? r.va : 0;
+                    const vb = Number.isFinite(r.vb) ? r.vb : 0;
+                    const max = Math.max(va, vb, 1e-9);
+                    // custo sem resultado não ganha
+                    const aWins = !Number.isFinite(r.va) ? false : !Number.isFinite(r.vb) ? true : r.up ? r.va >= r.vb : r.va <= r.vb;
                     return (
                       <div key={r.l}>
                         <p className="mb-1 flex justify-between text-[11px] text-fg-2">
@@ -363,7 +283,7 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
                             <div
                               className="rounded-full"
                               style={{
-                                width: `${(r.va / max) * 100}%`,
+                                width: `${(va / max) * 100}%`,
                                 background: SERIES[0],
                               }}
                             />
@@ -372,7 +292,7 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
                             <div
                               className="rounded-full"
                               style={{
-                                width: `${(r.vb / max) * 100}%`,
+                                width: `${(vb / max) * 100}%`,
                                 background: SERIES[1],
                               }}
                             />
@@ -428,25 +348,20 @@ export function CriativosAoVivoSkin({ ctx, periodLabel, grid }: SkinProps) {
   );
 }
 
-function HourBars({ values }: { values: number[] }) {
-  const max = Math.max(...values, 1e-9);
+/** As métricas escolhidas, em colunas na linha do ranking ("—" sem dado; as de vídeo só no vídeo). */
+function ChosenCells({ c }: { c: CardCreative }) {
+  const prefs = useCardPrefs();
+  // no Padrão VYZ (sem a escolha), as colunas de antes: CTR, custo por resultado e resultado
+  const list = metricsFor(prefs?.ids ?? ["linkCtr", "costPerResult", "result"], c);
   return (
-    <span
-      className="hidden h-6 w-[72px] items-end gap-[2px] @[700px]:flex"
-      aria-hidden
-    >
-      {values.map((v, i) => (
-        <span
-          key={i}
-          className="flex-1 rounded-[1px] transition-all duration-500"
-          style={{
-            height: `${(v / max) * 100}%`,
-            background:
-              i === values.length - 1
-                ? "var(--accent)"
-                : "color-mix(in srgb, var(--accent) 45%, transparent)",
-          }}
-        />
+    <span className="flex shrink-0 items-start gap-3" data-card-metricas={list.map((m) => m.id).join(",")}>
+      {list.map((m) => (
+        <span key={m.id} className="hidden w-[78px] text-right @[480px]:block">
+          <span className="block truncate text-[10px] text-fg-2" title={`${cardLabel(m, c)}: ${m.help}`}>
+            {cardShort(m, c)}
+          </span>
+          <span className="block text-[12px] font-semibold tnum">{cardValue(m, c, prefs?.hideSpend)}</span>
+        </span>
       ))}
     </span>
   );

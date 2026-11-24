@@ -68,7 +68,7 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
   // os números reais das contas ligadas (lidos com a chave de serviço do link, só leitura);
   // sem conta ligada, nada de amostra para o cliente: só a mensagem
   const template = anyDashboardTemplate(d.templateId);
-  const { realData, linkedPlatforms, sourceExtras } = showsSampleData(d) ? {} : await loadDashboardData(d, template, { period, customDays, db: shared.db });
+  const { realData, linkedPlatforms, sourceExtras, mmm } = showsSampleData(d) ? {} : await loadDashboardData(d, template, { period, customDays, db: shared.db });
   if (!realData) return <ShareMessage kind="sample" />;
   return (
     <VisitTracker token={token}>
@@ -82,6 +82,7 @@ export default async function Page({ params, searchParams }: PageProps<"/r/[toke
           realData={realData}
           linkedPlatforms={linkedPlatforms}
           sourceExtras={sourceExtras}
+          mmmReadiness={mmm}
         />
       </PublicShell>
     </VisitTracker>

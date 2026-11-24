@@ -59,9 +59,10 @@ import { ArcMeter, CapsuleBars, DialMeter, TrackMeter } from "./fachada/meters";
 import { Tower } from "./fachada/Tower";
 import { BrTiles, HourBars } from "./extras";
 import { FullName } from "./FullName";
-import { stateShares } from "./insights";
+import { stateBasis, stateShares } from "./insights";
 import { BR_STATES } from "@/features/sync/breakdowns";
 import { SkinGrid } from "./SkinGrid";
+import { SkinCreatives } from "./CreativeViews";
 import { skinGrid } from "./blocks";
 import { brl, change, chrono, dayLabel, goalOf, int, label, pct, platformName, platformShort, value, type SkinProps } from "./shared";
 
@@ -141,7 +142,9 @@ const SECTIONS: { id: string; label: string; icon: LucideIcon }[] = [
 
 function Rail({ pages, active, onPage, sections }: { pages: PageId[]; active: PageId; onPage?: (p: PageId) => void; /** Na primeira aba: atalhos para as seções dela. */ sections?: { id: string; label: string; icon: LucideIcon }[] }) {
   return (
-    <nav data-tour="abas" aria-label="Páginas do dashboard" className="flex min-w-0 shrink-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] @[900px]:sticky @[900px]:top-4 @[900px]:w-10 @[900px]:flex-col @[900px]:self-start @[900px]:overflow-visible @[900px]:pb-0">
+    // no largo, a barra de ícones fica no meio da altura da tela (coluna fixa da altura da tela, centralizada)
+    <div className="contents @[900px]:sticky @[900px]:top-0 @[900px]:flex @[900px]:h-[calc(100dvh-6rem)] @[900px]:w-10 @[900px]:shrink-0 @[900px]:items-center @[900px]:self-start">
+    <nav data-tour="abas" aria-label="Páginas do dashboard" className="flex min-w-0 shrink-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] @[900px]:max-h-full @[900px]:w-10 @[900px]:flex-col @[900px]:overflow-visible @[900px]:pb-0">
       {sections && sections.length > 1 && (
         <>
           {sections.map((sec) => (
@@ -182,6 +185,7 @@ function Rail({ pages, active, onPage, sections }: { pages: PageId[]; active: Pa
         );
       })}
     </nav>
+    </div>
   );
 }
 
@@ -481,7 +485,7 @@ function Capa({ client, name, subtitle, campaigns, campaignShare, funnel, funnel
 
 // ---- o visual -------------------------------------------------------------------------
 
-export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar, cover, sheet }: SkinProps) {
+export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLabel, grid, controls, note, children, screen, bar, cover, sheet, cards }: SkinProps) {
   const [dialog, setDialog] = useState<"capa" | "planilha" | null>(null);
   const hide = !!ctx.hideSpend;
   // com o Comparar desligado, as variações contra o período anterior saem
@@ -552,6 +556,7 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
   // sem o investimento (link que esconde a verba), os dois medidores de dinheiro saem e os outros ocupam a fileira
   // negócio local: de onde vêm (estados) e a hora de pico (as quebras da Meta; sem elas, os blocos saem)
   const states = useMemo(() => stateShares(ds.breakdowns?.region), [ds.breakdowns]);
+  const stateBy = stateBasis(ds.breakdowns?.region);
   const hours = useMemo(() => {
     const out = Array.from({ length: 24 }, () => 0);
     for (const r of ds.breakdowns?.hour ?? []) {
@@ -682,7 +687,7 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
       </section>
     ) : null,
     "s-estados": (
-      <Card icon={MapPin} title="De onde vêm os resultados">
+      <Card icon={MapPin} title={stateBy === "resultados" ? "De onde vêm os resultados" : "Onde os anúncios aparecem"}>
         <div className="flex min-h-0 flex-1 items-center gap-4">
           <BrTiles shares={states} color={P.accent} tone={tone} />
           <ol className="min-w-0 flex-1 space-y-1.5 text-[12px]">
@@ -694,7 +699,7 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
             ))}
           </ol>
         </div>
-        <p className="mt-2 shrink-0 text-[10.5px] text-fg-2">{resultName} por estado, pela Meta.</p>
+        <p className="mt-2 shrink-0 text-[10.5px] text-fg-2">{stateBy === "resultados" ? `${resultName} por estado, pela Meta.` : "A Meta não informa resultado por estado: a divisão é das impressões."}</p>
       </Card>
     ),
     "s-horas": (
@@ -761,12 +766,22 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
                     </p>
                     <h2 className="mt-0.5 truncate text-[26px] leading-tight font-normal tracking-[-0.03em]">{PAGES[active].name}</h2>
                   </div>
-                  <p className="hidden max-w-[46ch] text-right text-[12px] leading-snug text-fg-2 @[900px]:block">{PAGES[active].description}</p>
+                  {!(active === "criativos" && cards && cards.level !== "list") && <p className="hidden max-w-[46ch] text-right text-[12px] leading-snug text-fg-2 @[900px]:block">{PAGES[active].description}</p>}
                 </header>
                 {/* respiro dos cards de número e dos painéis nas abas padrão (só neste visual) */}
                 <style>{FACHADA_PAGE_CSS}</style>
+                {/* Público (e a aba da Meta): de onde vêm e quando chamam, no tamanho de leitura */}
+                {(active === "publico" || active === "meta-ads") && regionIds.length > 0 && (
+                  <div className="mb-4 grid gap-4 @[900px]:grid-cols-2" data-regiao-contato>
+                    {regionIds.map((id) => (
+                      <div key={id} className="h-[300px] min-w-0 [&>*]:h-full">
+                        {nodes[id as keyof typeof nodes]}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <SkinPage palette={P} className="fachada-page [--radius-card:20px] [&_.m-in]:rounded-[20px] [&_.m-in]:shadow-[inset_0_1px_0_rgb(255_255_255/0.7)]">
-                  {children}
+                  {active === "criativos" && cards && cards.level !== "list" ? <SkinCreatives kind="fachada" list={cards.source} data={cards.data} kpis={cards.kpis} /> : children}
                 </SkinPage>
               </>
             ) : (
@@ -792,7 +807,7 @@ export function FachadaSkin({ ctx, name, client, pages, active, onPage, periodLa
                   )}
                   {regionShown && (
                     <section id="secao-regiao" className="mt-8 scroll-mt-4" data-secao="regiao">
-                      <SectionTitle icon={MapPin} title="De onde vêm e quando chamam" note="pela Meta: estado e hora de cada resultado" />
+                      <SectionTitle icon={MapPin} title="De onde vêm e quando chamam" note={stateBy === "resultados" ? "pela Meta: estado e hora de cada resultado" : "pela Meta: onde os anúncios aparecem e a hora de cada resultado"} />
                       <div className="grid gap-4 @[900px]:grid-cols-2">
                         {regionIds.map((id) => (
                           <div key={id} className="h-[300px] min-w-0 [&>*]:h-full">
