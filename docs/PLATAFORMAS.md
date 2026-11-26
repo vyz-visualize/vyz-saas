@@ -70,10 +70,28 @@ Ressalva do Meta: sem a Análise do App, o token lê com segurança as contas da
 3. Faça a **Verificação da Empresa** no Business Manager (CNPJ e documento). Sem ela, o Meta não libera o Acesso Avançado.
 4. Em Login para Empresas, crie uma **configuração** com:
    - tipo de token: **token de usuário do sistema** (não expira);
-   - ativos: **Contas de anúncio**;
-   - permissões: `ads_read`, `ads_management` e `business_management`.
+   - ativos: **Contas de anúncio**, **Páginas** e **Contas do Instagram**;
+   - permissões: todas as da tabela abaixo.
 
-   O ID dessa configuração vai em `META_LOGIN_CONFIG_ID`. Sem `ads_management`, o VYZ só lê, e o botão Aplicar avisa para reconectar.
+   O ID dessa configuração vai em `META_LOGIN_CONFIG_ID`. O código não manda `scope`: as permissões vêm desta configuração. Sem `ads_management`, o VYZ só lê, e o botão Aplicar avisa para reconectar.
+
+   Permissões que o código usa de fato (login e token do cliente):
+
+   | Permissão | Para quê |
+   |---|---|
+   | `ads_read` | Ler campanhas, conjuntos, anúncios e métricas das contas de anúncio escolhidas. |
+   | `business_management` | Listar os Business Managers e as contas de anúncio de cada um. |
+   | `ads_management` | Pausar ou reativar campanha e mudar o orçamento diário, só no Aplicar ou no automático (opcional: sem ela, o VYZ só lê). |
+   | `pages_show_list` | Listar as Páginas do Facebook da pessoa e os Instagrams ligados a elas. |
+   | `read_insights` | Ler os números das Páginas (seguidores, visualizações, interações). |
+   | `pages_read_engagement` | Ler os posts das Páginas e as interações deles, para o ranking de conteúdo. |
+   | `pages_read_user_content` | Ler reações, comentários e compartilhamentos direto no post (opcional: sem ela, o post fica só com os números básicos). |
+   | `instagram_basic` | Ler o perfil do Instagram (nome, seguidores) e a lista de posts. |
+   | `instagram_manage_insights` | Ler alcance, visualizações e interações do perfil, dos posts, reels e stories. |
+
+   Fora do login do cliente, o WhatsApp do VYZ usa um token próprio de usuário do sistema com `whatsapp_business_messaging` (envio de relatórios e alertas; ver `docs/WHATSAPP.md`).
+
+   A separação "login padrão só leitura + passo opcional para escrita" fica para depois da Análise do App: exige uma segunda configuração (com `ads_management`) só para esse passo.
 5. Em Configurações > Básico, preencha:
    - o domínio do app: `vyzualize.com.br`;
    - a política de privacidade;
@@ -82,7 +100,7 @@ Ressalva do Meta: sem a Análise do App, o token lê com segurança as contas da
 6. Em Login do Facebook > Configurações:
    - em URIs de redirecionamento do OAuth válidos, ponha `https://vyzualize.com.br/api/integrations/meta/callback`;
    - ligue **Exigir segredo do app**.
-7. Na **Análise do App**, peça Acesso Avançado para `ads_read`, `ads_management` e `business_management`.
+7. Na **Análise do App**, peça Acesso Avançado para todas as permissões da tabela do passo 4 (as de Página e Instagram também: sem elas, só as contas da própria empresa funcionam).
    - Grave um vídeo mostrando o login, a lista de contas e o botão Aplicar com o "de → para".
    - Explique que o VYZ só pausa campanhas e ajusta orçamento, sempre com registro e com a opção de desfazer.
 8. Variáveis na Vercel: `META_APP_ID`, `META_APP_SECRET` e `META_LOGIN_CONFIG_ID`.

@@ -249,6 +249,7 @@ function Inicio() {
     provider,
     name: provider === "meta" ? "Meta Ads" : "Google Ads",
     connected: n > 0,
+    lapsed: false,
     enabledCount: n,
     accountsCount: n ? 2 : 0,
     lastSyncedAt: n ? NOW : null,

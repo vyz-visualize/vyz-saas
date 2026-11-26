@@ -12,10 +12,18 @@ import { useState } from "react";
 import { usePortalContainer } from "./portal";
 import type { Period, Range } from "./PeriodPicker";
 import { MONTH_NAMES } from "@/lib/format";
+import { DEFAULT_TIME_ZONE, localDate } from "@/features/sync/dates";
+import { useOptionalWorkspaceSession } from "@/features/workspace/WorkspaceProvider";
 
 const MON = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const WEEK = ["D", "S", "T", "Q", "Q", "S", "S"];
 const DAY = 86_400_000;
+
+/** Hoje (meia-noite) no fuso dado: igual no servidor (UTC) e no navegador, sem o relógio local da máquina. */
+function todayIn(timeZone: string): Date {
+  const [y, m, d] = localDate(new Date(), timeZone).split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
 
 const day0 = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const add = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
@@ -67,7 +75,9 @@ type Props = {
 export function DateRangePicker({ period, range, customDays, onChange, compare, onCompare, maxDays = 60, compact = false, className = "" }: Props) {
   const container = usePortalContainer();
   const [open, setOpen] = useState(false);
-  const [today] = useState(() => day0(new Date()));
+  // fuso do workspace (no link público, sem workspace, o padrão): o texto das datas sai igual no servidor e no navegador
+  const timeZone = useOptionalWorkspaceSession()?.workspace.timezone || DEFAULT_TIME_ZONE;
+  const [today] = useState(() => todayIn(timeZone));
   const current = periodRange(period, range, customDays, today);
   const preset = presetOf(period, range, today);
   const label = preset ? PRESETS.find((p) => p.id === preset)!.label : `${span(current)} dias`;

@@ -60,8 +60,8 @@ const HOME: HomeData = {
     { kind: "dashboard", id: "d4", title: "Aurora · Black Friday", sub: "Loja Aurora · VYZ · E-commerce", href: "/painel/dashboards/d4", updatedAt: at(60 * 24 * 4) },
   ],
   connections: [
-    { provider: "meta", name: "Meta Ads", connected: true, enabledCount: 3, accountsCount: 6, lastSyncedAt: at(42), syncFailed: false, syncing: false },
-    { provider: "google", name: "Google Ads", connected: true, enabledCount: 2, accountsCount: 4, lastSyncedAt: at(180), syncFailed: true, syncing: false },
+    { provider: "meta", name: "Meta Ads", connected: true, lapsed: false, enabledCount: 3, accountsCount: 6, lastSyncedAt: at(42), syncFailed: false, syncing: false },
+    { provider: "google", name: "Google Ads", connected: true, lapsed: false, enabledCount: 2, accountsCount: 4, lastSyncedAt: at(180), syncFailed: true, syncing: false },
   ],
   activeShareLinks: 2,
   realDashboards: 3,
@@ -75,8 +75,8 @@ const HOME_NEW: HomeData = {
   ...HOME,
   recent: [],
   connections: [
-    { provider: "meta", name: "Meta Ads", connected: false, enabledCount: 0, accountsCount: 0, lastSyncedAt: null, syncFailed: false, syncing: false },
-    { provider: "google", name: "Google Ads", connected: false, enabledCount: 0, accountsCount: 0, lastSyncedAt: null, syncFailed: false, syncing: false },
+    { provider: "meta", name: "Meta Ads", connected: false, lapsed: false, enabledCount: 0, accountsCount: 0, lastSyncedAt: null, syncFailed: false, syncing: false },
+    { provider: "google", name: "Google Ads", connected: false, lapsed: false, enabledCount: 0, accountsCount: 0, lastSyncedAt: null, syncFailed: false, syncing: false },
   ],
   activeShareLinks: 0,
   realDashboards: 0,
@@ -220,6 +220,13 @@ const BILLING: BillingOverview = {
 };
 const PLAN_USAGE = { projects: 3, dashboards: 4, publishedLandingPages: 0, enabledPlatforms: ["meta", "google"] };
 
+// contas para o assistente de novo dashboard: Meta com 2 ativas (já vêm marcadas) e Google com 4 (a pessoa escolhe)
+const WIZARD_SOURCES = [
+  { id: "wm1", name: "Loja Aurora · Meta", platformId: "meta" as const, isEnabled: true, businessName: "BM Aurora", lastSyncedAt: NOW },
+  { id: "wm2", name: "Aurora Outlet · Meta", platformId: "meta" as const, isEnabled: true, businessName: "BM Aurora", lastSyncedAt: NOW },
+  ...[1, 2, 3, 4].map((n) => ({ id: `wg${n}`, name: `Google Ads ${n}`, platformId: "google" as const, isEnabled: true, businessName: "MCC Agência", lastSyncedAt: NOW })),
+];
+
 const SCREENS: Record<string, Screen> = {
   ...SCREENS_DADOS,
   ...SCREENS_TAREFAS,
@@ -241,7 +248,7 @@ const SCREENS: Record<string, Screen> = {
   dashboards: {
     path: "/painel/dashboards",
     node: (tier, role) => (
-      <DashboardsList items={DASHBOARDS} limit={ENTITLEMENTS[tier].maxDashboards} planLabel={TIER_LABEL[tier]} canEdit={role !== "viewer"} sources={[]} tier={tier} pagesTier={ENTITLEMENTS[tier].pages} hasProject brand={{ color: "#4B5320", logoUrl: null, canEdit: true }} />
+      <DashboardsList items={DASHBOARDS} limit={ENTITLEMENTS[tier].maxDashboards} planLabel={TIER_LABEL[tier]} canEdit={role !== "viewer"} sources={WIZARD_SOURCES} tier={tier} pagesTier={ENTITLEMENTS[tier].pages} hasProject brand={{ color: "#4B5320", logoUrl: null, canEdit: true }} />
     ),
   },
   plano: { path: "/painel/plano", node: () => <PlanPage overview={BILLING} usage={PLAN_USAGE} now={NOW} /> },

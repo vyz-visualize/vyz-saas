@@ -12,11 +12,12 @@ describe("recompose", () => {
   });
 
   it("mantém a ordem que a pessoa arrumou e encaixa as páginas novas na posição do modelo", () => {
-    // com o Google, o Público entra na página da Meta: a aba própria sai
+    // com o Google, entra a página da Meta; o Público continua (há Meta Ads) e na ordem da pessoa
     const mine: PageId[] = ["publico", "criativos", "visao-geral", "funil"];
     const out = recompose(t, "personalizado", mine, ["meta", "google"], []);
-    expect(out.slice(0, 3)).toEqual(["meta-ads", "criativos", "visao-geral"]);
-    expect(out).not.toContain("publico");
+    expect(out.indexOf("publico")).toBeLessThan(out.indexOf("criativos"));
+    expect(out.indexOf("criativos")).toBeLessThan(out.indexOf("visao-geral"));
+    expect(out).toContain("meta-ads");
     expect(new Set(out)).toEqual(new Set(composePages(["meta", "google"])));
   });
 

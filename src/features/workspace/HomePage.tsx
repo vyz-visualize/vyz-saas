@@ -35,7 +35,8 @@ const ring = "outline-none focus-visible:ring-2 focus-visible:ring-accent focus-
 const cardLink = "text-[13.5px] font-semibold text-accent underline-offset-4 hover:underline";
 
 function connectionStatus(c: HomeConnection, now: string, timeZone: string): { text: string; tone: "ok" | "error" | "idle" | "running" } {
-  if (!c.connected) return { text: c.accountsCount ? "Conexão desfeita ou expirada" : "Não conectado", tone: "idle" };
+  // desconectar de propósito apaga o login: "Não conectado"; login que expirou ou foi revogado na plataforma: avisa
+  if (!c.connected) return c.lapsed ? { text: "Conexão expirada: reconecte", tone: "error" } : { text: "Não conectado", tone: "idle" };
   if (c.syncing) return { text: "Sincronizando…", tone: "running" };
   if (c.syncFailed) return { text: "A última sincronização falhou", tone: "error" };
   if (c.lastSyncedAt) return { text: `Sincronizada ${relativeTime(c.lastSyncedAt, now, timeZone)}`, tone: "ok" };

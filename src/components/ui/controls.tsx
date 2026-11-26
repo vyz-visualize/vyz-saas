@@ -42,12 +42,13 @@ export function Checkbox({ label, checked, onChange, disabled, hint }: { label: 
   );
 }
 
-export function Switch({ label, checked, onChange, disabled, hint }: { label: ReactNode; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; hint?: ReactNode }) {
+export function Switch({ label, checked, onChange, disabled, hint, ariaLabel }: { label: ReactNode; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; hint?: ReactNode; /** Nome do botão para leitor de tela quando o rótulo visível não basta (ex.: "Ligar Conta X"). */ ariaLabel?: string }) {
   const id = useId();
   return (
     <div className={`flex items-center gap-3 text-[14px] ${disabled ? "opacity-50" : ""}`}>
       <Sw.Root
         id={id}
+        aria-label={ariaLabel}
         checked={checked}
         disabled={disabled}
         onCheckedChange={onChange}

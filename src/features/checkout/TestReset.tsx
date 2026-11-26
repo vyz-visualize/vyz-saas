@@ -18,6 +18,9 @@ function Confirmable({ label, confirmLabel, pendingLabel, action }: { label: str
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
+  // depois que a ação responde, a tela ainda vai trocar (o Next busca a página seguinte): o botão segue ocupado até lá
+  const [done, setDone] = useState(false);
+  const busy = pending || done;
   return (
     <>
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -25,19 +28,22 @@ function Confirmable({ label, confirmLabel, pendingLabel, action }: { label: str
           <>
             <button
               type="button"
-              disabled={pending}
-              onClick={() =>
+              disabled={busy}
+              aria-busy={busy}
+              onClick={() => {
+                setError(null);
                 start(async () => {
                   const res = await action();
                   if (res && !res.ok) setError(res.error.message);
-                })
-              }
+                  else setDone(true);
+                });
+              }}
               className={btn.small}
             >
-              {pending && <LoaderCircle size={15} aria-hidden className="animate-spin motion-reduce:animate-none" />}
-              {pending ? pendingLabel : confirmLabel}
+              {busy && <LoaderCircle size={15} aria-hidden className="animate-spin motion-reduce:animate-none" />}
+              {busy ? pendingLabel : confirmLabel}
             </button>
-            <button type="button" disabled={pending} onClick={() => setConfirm(false)} className={`${btn.ghost} h-9`}>
+            <button type="button" disabled={busy} onClick={() => setConfirm(false)} className={`${btn.ghost} h-9`}>
               Cancelar
             </button>
           </>
@@ -65,7 +71,7 @@ export function TestReset({ reset = false, replay = false, className = "" }: { r
           <Confirmable
             label="Refazer primeiro acesso"
             confirmLabel="Sim, refazer agora"
-            pendingLabel="Voltando…"
+            pendingLabel="Refazendo…"
             // o banco volta ao começo na ação; o que esta aba guardou (lembrete já visto, último passo) também
             action={() => {
               forgetFirstAccessSession();

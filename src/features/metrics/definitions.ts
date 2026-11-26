@@ -125,10 +125,19 @@ export function formatValue(value: number, format: Format): string {
 /** Custos por unidade: com 0 unidades (ou sem investimento), não há custo a mostrar. */
 const COST_PER: ReadonlySet<string> = new Set(["cpa", "cpl", "cplq", "cpv", "cpc", "cpm"]);
 
-/** O valor de uma métrica na tela: custo por resultado sem resultado é "—", nunca "R$ 0,00". */
+/**
+ * O valor de uma métrica na tela: custo por resultado sem resultado é "—", nunca "R$ 0,00".
+ * ROAS não entra aqui: com investimento e sem venda ele é 0 ("0,0"); só sem investimento
+ * não há ROAS (ratio dá NaN, que vira "—").
+ */
 export function formatMetric(id: string, value: number, format: Format): string {
   if (COST_PER.has(id) && !(value > 0)) return "—";
   return formatValue(value, format);
+}
+
+/** Razão para as métricas de custo e retorno: sem base (denominador 0) não há valor (NaN, que vira "—"). */
+export function ratio(num: number, den: number): number {
+  return den > 0 && Number.isFinite(num) ? num / den : NaN;
 }
 
 /** Variação boa ou ruim, segundo o sentido da métrica. */

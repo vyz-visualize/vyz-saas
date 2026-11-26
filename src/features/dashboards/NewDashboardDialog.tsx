@@ -47,6 +47,9 @@ const HINT: Partial<Record<PlatformId, string>> = {
 
 const STEPS = ["Objetivo", "Visual", "Plataformas", "Recursos", "Páginas", "Marca e nome"];
 
+/** Ao marcar uma plataforma, as contas dela já vêm marcadas quando são até estas. */
+const PRESELECT_MAX = 3;
+
 export function NewDashboardDialog({
   open,
   onClose,
@@ -129,8 +132,9 @@ export function NewDashboardDialog({
     const on = !platforms.includes(p);
     setPlatforms(on ? [...platforms, p] : platforms.filter((x) => x !== p));
     const ids = (byPlatform.get(p) ?? []).map((a) => a.id);
-    // ligou a plataforma com uma conta só: já marca; desligou: tira as contas dela
-    if (on && ids.length === 1) setAccountIds((cur) => [...new Set([...cur, ids[0]])]);
+    // ligou a plataforma com até 3 contas ativas: já vêm marcadas (a pessoa desmarca se quiser); desligou: tira as contas dela
+    const active = (byPlatform.get(p) ?? []).filter((a) => a.isEnabled).map((a) => a.id);
+    if (on && active.length > 0 && active.length <= PRESELECT_MAX) setAccountIds((cur) => [...new Set([...cur, ...active])]);
     if (!on) setAccountIds((cur) => cur.filter((x) => !ids.includes(x)));
   }
   function create() {

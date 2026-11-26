@@ -3,8 +3,8 @@
 // Um login conectado (Meta ou Google): quem autorizou, desde quando, status e
 // as ações Reconectar e Desconectar (com confirmação).
 
-import { CircleAlert, Unplug } from "lucide-react";
-import { useState, useTransition } from "react";
+import { CircleAlert, LoaderCircle, Unplug } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
 import { Badge, Modal, PendingChip, type BadgeTone } from "@/components/ui/kit";
 import { disconnect } from "@/server/integrations/actions";
 import { ConnectButton } from "./ConnectButton";
@@ -46,6 +46,17 @@ export function ConnectionCard({ connection: c, canManage, next, timeZone, showT
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // desconectou: o card some quando a lista atualiza; até lá, o modal segue em "Desconectando…"
+  const [gone, setGone] = useState(false);
+  const busy = pending || gone;
+  useEffect(() => {
+    if (!gone) return;
+    const t = window.setTimeout(() => {
+      setGone(false);
+      setConfirming(false);
+    }, 8000);
+    return () => window.clearTimeout(t);
+  }, [gone]);
   const info = PROVIDERS[c.provider];
   const status = STATUS[c.status];
   const login = [c.userName, c.userEmail].filter(Boolean).join(" · ") || "Login sem nome";
@@ -54,7 +65,7 @@ export function ConnectionCard({ connection: c, canManage, next, timeZone, showT
     setError(null);
     start(async () => {
       const res = await disconnect(c.id);
-      if (res.ok) setConfirming(false);
+      if (res.ok) setGone(true);
       else setError(res.error.message);
     });
   }
@@ -91,14 +102,14 @@ export function ConnectionCard({ connection: c, canManage, next, timeZone, showT
             ) : (
               <ConnectButton provider={c.provider} next={next} connected variant={c.status === "active" ? "secondary" : "primary"} available={loginReady} />
             )}
-            <button type="button" onClick={() => setConfirming(true)} className={btnSmallOutline}>
-              <Unplug size={15} aria-hidden /> Desconectar
+            <button type="button" onClick={() => setConfirming(true)} disabled={busy} className={btnSmallOutline}>
+              <Unplug size={15} aria-hidden /> {busy ? "Desconectando…" : "Desconectar"}
             </button>
           </div>
         )}
       </div>
 
-      <Modal open={confirming} onClose={() => !pending && setConfirming(false)} title={`Desconectar ${info.name}`}>
+      <Modal open={confirming} onClose={() => !busy && setConfirming(false)} title={`Desconectar ${info.name}`}>
         <div className="space-y-4 text-[14px]">
           <p>
             Desconectar <strong>{login}</strong>?
@@ -113,11 +124,12 @@ export function ConnectionCard({ connection: c, canManage, next, timeZone, showT
             </p>
           )}
           <div className={modalFooter}>
-            <button type="button" onClick={() => setConfirming(false)} disabled={pending} className={btnSmallGhost}>
+            <button type="button" onClick={() => setConfirming(false)} disabled={busy} className={btnSmallGhost}>
               Cancelar
             </button>
-            <button type="button" onClick={confirmDisconnect} disabled={pending} className={btnSmallDanger}>
-              {pending ? "Desconectando…" : "Desconectar"}
+            <button type="button" onClick={confirmDisconnect} disabled={busy} aria-busy={busy} className={btnSmallDanger}>
+              {busy && <LoaderCircle size={15} aria-hidden className="animate-spin motion-reduce:animate-none" />}
+              {busy ? "Desconectando…" : "Desconectar"}
             </button>
           </div>
         </div>
