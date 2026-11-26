@@ -10,6 +10,8 @@ export type HomeConnection = {
   provider: ProviderId;
   name: string;
   connected: boolean;
+  /** Há login desta plataforma, mas expirado, revogado ou com erro (desconectar de propósito apaga o login: aí é false). */
+  lapsed: boolean;
   /** Contas ativas desta plataforma / contas vistas pela conexão. */
   enabledCount: number;
   accountsCount: number;

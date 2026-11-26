@@ -8,8 +8,8 @@ describe("páginas pelas contas escolhidas", () => {
   it("só Meta: a visão geral é dela, com criativos, público e funil", () => {
     expect(composePages(["meta"])).toEqual(["visao-geral", "criativos", "publico", "funil"]);
   });
-  it("Meta e Google: visão geral unindo, uma página de cada (o público dentro da Meta) e o funil", () => {
-    expect(composePages(["meta", "google"])).toEqual(["visao-geral", "meta-ads", "criativos", "google-ads", "termos", "funil"]);
+  it("Meta e Google: visão geral unindo, uma página de cada (com o Público da Meta) e o funil", () => {
+    expect(composePages(["meta", "google"])).toEqual(["visao-geral", "meta-ads", "criativos", "publico", "google-ads", "termos", "funil"]);
   });
   it("com GA4 e anúncios: site e força dos canais", () => {
     expect(composePages(["google", "ga4"])).toEqual(["visao-geral", "google-ads", "termos", "site", "canais-site", "funil"]);
@@ -18,7 +18,7 @@ describe("páginas pelas contas escolhidas", () => {
     expect(composePages(["ga4"])).toEqual(["site", "funil"]);
   });
   it("Instagram e Página: uma página cada e o conteúdo", () => {
-    expect(composePages(["meta", "instagram", "facebook"])).toEqual(["visao-geral", "meta-ads", "criativos", "instagram", "pagina-facebook", "conteudo", "funil"]);
+    expect(composePages(["meta", "instagram", "facebook"])).toEqual(["visao-geral", "meta-ads", "criativos", "publico", "instagram", "pagina-facebook", "conteudo", "funil"]);
     expect(composePages(["instagram"])).toEqual(["instagram", "conteudo"]);
   });
   it("recursos escolhidos entram antes do funil, só se combinam com as plataformas", () => {
@@ -28,10 +28,10 @@ describe("páginas pelas contas escolhidas", () => {
   it("planilha: soma na Visão geral e ganha a página de campanhas", () => {
     const sheet = IMPORT_PLATFORMS[0];
     expect(composePages([sheet])).toEqual(["visao-geral", "campanhas", "funil"]);
-    expect(composePages(["meta", sheet])).toEqual(["visao-geral", "meta-ads", "criativos", "campanhas", "funil"]);
+    expect(composePages(["meta", sheet])).toEqual(["visao-geral", "meta-ads", "criativos", "publico", "campanhas", "funil"]);
   });
   it("CRM: página própria, cruzada com a mídia quando há anúncios", () => {
-    expect(composePages(["meta", "hubspot"])).toEqual(["visao-geral", "meta-ads", "criativos", "crm", "funil"]);
+    expect(composePages(["meta", "hubspot"])).toEqual(["visao-geral", "meta-ads", "criativos", "publico", "crm", "funil"]);
     expect(composePages(["pipedrive"])).toEqual(["crm"]);
     expect(composePages(["ga4", "kommo", "rdstation"])).toEqual(["site", "crm", "funil"]);
   });

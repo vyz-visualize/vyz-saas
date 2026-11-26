@@ -19,7 +19,7 @@ import { Scatter } from "@/components/charts/Scatter";
 import { Odometer, zeroed } from "@/components/ui/Odometer";
 import { PLATFORMS, type PlatformId } from "@/features/accounts/platforms";
 import { byPlatform, currentTotals, delta, maturedAverage, previousTotals, series, type Totals } from "@/features/metrics/compute";
-import { formatMetric, formatValue, isGood, metric, type MetricDef, type MetricId, type Profile } from "@/features/metrics/definitions";
+import { formatMetric, formatValue, isGood, metric, ratio, type MetricDef, type MetricId, type Profile } from "@/features/metrics/definitions";
 import { rankMetric } from "@/features/metrics/rank";
 import type { Dataset } from "@/features/metrics/source";
 import type { KpiSpec, WidgetSpec } from "@/features/templates/types";
@@ -693,24 +693,25 @@ function TableWidget({ source, ctx }: { source: "campaigns" | "products" | "clie
         show("spend") ? brlCompact(c.spend) : null,
         show("ctr") ? pct(c.clicks / Math.max(1, c.impressions), 2) : null,
         show("conversions") ? int(c.conversions) : null,
-        show("cpa") ? brl(c.spend / c.conversions) : null,
-        money && show("roas") ? decimal(c.revenue / c.spend) : null,
+        // 0 vendas (ou 0 investimento): "—", pela mesma regra dos cards
+        show("cpa") ? formatMetric("cpa", ratio(c.spend, c.conversions), "brl") : null,
+        money && show("roas") ? formatMetric("roas", ratio(c.revenue, c.spend), "decimal") : null,
       ].filter((v) => v !== null),
     );
   } else if (source === "products") {
     head = ["Produto", "Vendidos", show("revenue") ? "Receita" : "", show("roas") ? "ROAS" : ""].filter(Boolean);
-    rows = ds.products.map((p) => [p.name, int(p.sold), show("revenue") ? brlCompact(p.revenue) : null, show("roas") ? decimal(p.revenue / p.spend) : null].filter((v) => v !== null));
+    rows = ds.products.map((p) => [p.name, int(p.sold), show("revenue") ? brlCompact(p.revenue) : null, show("roas") ? formatMetric("roas", ratio(p.revenue, p.spend), "decimal") : null].filter((v) => v !== null));
   } else {
     head = ["Cliente", show("spend") ? "Investimento" : "", show("conversions") ? "Conversões" : "", show("cpa") ? "CPA" : "", ctx.hideSpend ? "" : "Alvo", ctx.hideSpend ? "" : "Status"].filter(Boolean);
     rows = ds.clients.map((c) => {
-      const cpa = c.spend / c.conversions;
-      const ratio = cpa / c.goal;
-      const status = ratio <= 1 ? ["Dentro do alvo", "text-accent"] : ratio <= 1.15 ? ["Atenção", "text-warning"] : ["Fora do alvo", "text-error-fg"];
+      const cpa = ratio(c.spend, c.conversions);
+      const vsGoal = cpa / c.goal;
+      const status = !Number.isFinite(vsGoal) ? ["—", "text-fg-2"] : vsGoal <= 1 ? ["Dentro do alvo", "text-accent"] : vsGoal <= 1.15 ? ["Atenção", "text-warning"] : ["Fora do alvo", "text-error-fg"];
       return [
         c.name,
         show("spend") ? brlCompact(c.spend) : null,
         show("conversions") ? int(c.conversions) : null,
-        show("cpa") ? brl(cpa) : null,
+        show("cpa") ? formatMetric("cpa", cpa, "brl") : null,
         ctx.hideSpend ? null : brl(c.goal, { decimals: false }),
         ctx.hideSpend ? null : (
           <span key="s" className={`font-semibold ${status[1]}`}>

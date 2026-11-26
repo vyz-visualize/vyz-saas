@@ -5,7 +5,7 @@
 // e pega as contas dos logins que a organização já tem; sem login, conecta um e volta para cá)
 // e os logins que alimentam o workspace. Só admin mexe; member pede sincronização.
 
-import { AlertTriangle, ArrowRight, ArrowUpRight, ChevronLeft, FolderInput, MoreHorizontal, Plug, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, ArrowUpRight, ChevronLeft, FolderInput, MoreHorizontal, Plug, Plus, Power, RefreshCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { PlatformIcon } from "@/components/brand/PlatformIcon";
@@ -21,6 +21,7 @@ import { TokenConnectButton } from "@/features/integrations/TokenConnect";
 import { PROVIDERS, type ProviderId } from "@/features/integrations/providers";
 import { relativeTime, syncSummary } from "@/features/integrations/sync-label";
 import type { AdAccountDTO, ConnectionDTO } from "@/features/integrations/types";
+import { countUnits, fitsProject } from "@/features/integrations/limits";
 import { projectHref } from "@/features/workspace/nav";
 import { removeAdAccount, resyncAccount } from "@/server/integrations/actions";
 import { addAccountsToProject, setAccountActive } from "@/server/projects/accounts";
@@ -76,7 +77,9 @@ function AddAccounts({ data, projectId, projectName, onDone }: { data: ProjectAc
   const next = projectHref(projectId, "contas");
   const conns = useMemo(() => new Map(data.connections.map((c) => [c.id, c])), [data.connections]);
   const providerOf = (a: AdAccountDTO) => (a.connectionId ? conns.get(a.connectionId)?.provider : undefined);
-  const inHere = (platformId: string) => data.accounts.filter((a) => a.platformId === platformId && a.isEnabled).length;
+  // a mesma conta do plano que o banco conta: na Meta Ads, as contas da mesma BM ocupam uma vaga só
+  const enabledHere = (platformId: string) => data.accounts.filter((a) => a.platformId === platformId && a.isEnabled);
+  const inHere = (platformId: string) => countUnits(enabledHere(platformId));
 
   if (!provider) {
     return (
@@ -123,7 +126,6 @@ function AddAccounts({ data, projectId, projectName, onDone }: { data: ProjectAc
   const list = data.candidates.filter((a) => providerOf(a) === provider);
   const platforms = [...new Set(list.map((a) => a.platformId))].sort((a, b) => PLATFORM_ORDER.indexOf(a) - PLATFORM_ORDER.indexOf(b));
   const room = (platformId: string) => Math.max(0, data.maxAccountsPerPlatform - inHere(platformId));
-  const pickedIn = (platformId: string) => list.filter((a) => a.platformId === platformId && picked.has(a.id)).length;
 
   const add = () =>
     start(async () => {
@@ -183,7 +185,8 @@ function AddAccounts({ data, projectId, projectName, onDone }: { data: ProjectAc
                     .filter((a) => a.platformId === platformId)
                     .map((a) => {
                       const on = picked.has(a.id);
-                      const full = !on && pickedIn(platformId) >= free;
+                      // cabe se, somando as já ligadas e as marcadas agora, não passa do plano (BM da Meta conta uma vez)
+                      const full = !on && !fitsProject(a, [...enabledHere(platformId), ...list.filter((x) => x.platformId === platformId && x.id !== a.id && picked.has(x.id))], data.maxAccountsPerPlatform);
                       return (
                         <li key={a.id}>
                           <label className={`flex items-center gap-3 px-3 py-2.5 ${full ? "opacity-50" : "cursor-pointer hover:bg-surface-2/40"}`}>
@@ -282,7 +285,7 @@ export function WorkspaceAccounts({ data, projectId, projectName }: { data: Proj
     <div className="space-y-5 lg:space-y-6">
       <PageHeader
         title="Contas"
-        text={`${plural(enabled, "conta ligada", "contas ligadas")} em ${projectName}. Os dashboards deste workspace usam só estas contas (até ${plural(data.maxAccountsPerPlatform, "conta", "contas")} de cada plataforma).`}
+        text={`${plural(enabled, "conta ligada", "contas ligadas")} em ${projectName}. Os dashboards deste workspace usam só estas contas (até ${plural(data.maxAccountsPerPlatform, "conta", "contas")} de cada plataforma; na Meta Ads, as da mesma BM contam como uma).`}
         actions={addButton || undefined}
       />
 
@@ -300,14 +303,16 @@ export function WorkspaceAccounts({ data, projectId, projectName }: { data: Proj
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 2xl:grid-cols-2">
           {groups.map(({ platformId, list }) => {
-            const on = list.filter((a) => a.isEnabled).length;
+            const on = countUnits(list.filter((a) => a.isEnabled));
+            const rows = list.filter((a) => a.isEnabled).length;
             return (
               <section key={platformId} aria-label={platformName(platformId)} className="rounded-card border border-line bg-card shadow-card">
                 <header className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-5">
                   <PlatformIcon id={platformId} size={32} />
                   <h3 className="min-w-0 flex-1 truncate text-[15px] font-semibold">{platformName(platformId)}</h3>
                   <span className={`text-[12.5px] tnum ${on >= data.maxAccountsPerPlatform ? "text-fg" : "text-fg-2"}`}>
-                    {on} de {data.maxAccountsPerPlatform} ligadas
+                    {on} de {data.maxAccountsPerPlatform} do plano
+                    {rows !== on && <span className="text-fg-2"> · {rows} ligadas (mesma BM conta uma)</span>}
                   </span>
                 </header>
                 <ul className="divide-y divide-line">
@@ -352,7 +357,16 @@ export function WorkspaceAccounts({ data, projectId, projectName }: { data: Proj
                                   Mover para outro workspace
                                 </MenuItem>
                               )}
-                              {data.canManage && (
+                              {/* conta de um login conectado não sai do VYZ por aqui (o servidor recusa): desliga; para tirar de vez, desconecta o login */}
+                              {data.canManage && a.connectionId && a.isEnabled && (
+                                <>
+                                  <MenuSeparator />
+                                  <MenuItem icon={<Power size={15} />} onSelect={() => run(a.id, () => setAccountActive(a.id, false), `${a.name} desligada.`)}>
+                                    Desligar
+                                  </MenuItem>
+                                </>
+                              )}
+                              {data.canManage && !a.connectionId && (
                                 <>
                                   <MenuSeparator />
                                   <MenuItem icon={<Trash2 size={15} />} className="text-error-fg" onSelect={() => setRemoving(a)}>

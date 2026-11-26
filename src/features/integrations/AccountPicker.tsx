@@ -46,6 +46,8 @@ type AccountPickerProps = {
   onSelectionChange?: (selection: PickerSelection) => void;
   /** Salva a cada toque no toggle (página de contas): sem botão Salvar no fim da lista. */
   autoSave?: boolean;
+  /** Quem salva é o botão de fora (o Continuar do primeiro acesso, por onSelectionChange): sem Desfazer nem Salvar no bloco. */
+  savedByParent?: boolean;
 };
 
 const norm = (v: string) => v.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
@@ -100,7 +102,7 @@ export function SyncBadge({ summary }: { summary: SyncSummary }) {
   );
 }
 
-export function AccountPicker({ provider, platformId, accounts, projects, maxPerProject, canManage, canSync = canManage, now, timeZone, onSaved, saveLabel = "Salvar escolha", onRemove, onSelectionChange, autoSave = false }: AccountPickerProps) {
+export function AccountPicker({ provider, platformId, accounts, projects, maxPerProject, canManage, canSync = canManage, now, timeZone, onSaved, saveLabel = "Salvar escolha", onRemove, onSelectionChange, autoSave = false, savedByParent = false }: AccountPickerProps) {
   // conta tocada por último: o aviso de salvando/salvo aparece na linha dela, não no fim da lista
   const [touched, setTouched] = useState<string | null>(null);
   // muitas contas: busca por nome, ID ou Business, e o filtro "só as ligadas"
@@ -131,6 +133,14 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
   const selected = accounts.filter(isOn);
   const dirty = accounts.some((a) => isOn(a) !== a.isEnabled) || Object.keys(projectDraft).length > 0;
   const groups = useMemo(() => groupsOf(provider, accounts, platformId), [provider, accounts, platformId]);
+  // Instagram e Página do Facebook (vêm pelo login da Meta): regra e textos de cada um, não os de Meta Ads
+  const organic = platformId === "instagram" || platformId === "facebook";
+  const limitText =
+    platformId === "instagram"
+      ? `Até ${maxPerProject} ${maxPerProject === 1 ? "perfil" : "perfis"} do Instagram por workspace`
+      : platformId === "facebook"
+        ? `Até ${maxPerProject} ${maxPerProject === 1 ? "Página" : "Páginas"} do Facebook por workspace`
+        : `Até ${maxPerProject} ${maxPerProject === 1 ? "conta" : "contas"} de ${PROVIDERS[provider].name} por workspace`;
   const busy = saving || syncing;
   const inProject = (project: string, except?: AdAccountDTO) => selected.filter((s) => s !== except && projectOf(s) === project).map(ref);
   const fitsIn = (a: AdAccountDTO, project: string) => fitsProject(ref(a), inProject(project, a), maxPerProject);
@@ -288,10 +298,13 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
                       label={<span className="font-semibold break-words">{a.name}</span>}
                       hint={
                         <span className="tnum">
-                          {a.externalId} · {a.currency}
+                          {/* Instagram e Página não têm moeda (só as contas de anúncio) */}
+                          {a.externalId}
+                          {!organic && a.currency ? ` · ${a.currency}` : ""}
                           {why && !on ? <span className="block text-fg-2">{why}</span> : null}
                         </span>
                       }
+                      ariaLabel={`${on ? "Desligar" : "Ligar"} ${a.name}`}
                       checked={on}
                       disabled={!canManage || busy || (!on && (!enableable || !fits))}
                       onChange={(v) => toggle(a, v)}
@@ -349,9 +362,10 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
           <Info size={15} aria-hidden className={`mt-0.5 shrink-0 ${overLimit ? "text-error-fg" : "text-fg-2"}`} />
           <div className="min-w-0">
             <p className={`font-semibold ${overLimit ? "text-error-fg" : "text-fg"}`}>
-              Até {maxPerProject} {maxPerProject === 1 ? "conta" : "contas"} de {PROVIDERS[provider].name} por workspace
+              {limitText}
             </p>
-            {provider === "meta" && <p className="text-fg-2">Contas da mesma BM contam como uma.</p>}
+            {/* só as contas de anúncio da Meta se agrupam por BM; Instagram e Página contam uma a uma */}
+            {provider === "meta" && !organic && <p className="text-fg-2">Contas da mesma BM contam como uma.</p>}
             {blockedByPlan && canManage && (
               <p className="text-fg-2">
                 Para ativar mais, coloque a conta em outro workspace em{" "}
@@ -368,7 +382,7 @@ export function AccountPicker({ provider, platformId, accounts, projects, maxPer
             {!canManage && <p className="text-fg-2">Só administradores escolhem as contas.</p>}
           </div>
         </div>
-        {canManage && !autoSave && (dirty || onSaved) && (
+        {canManage && !autoSave && !savedByParent && (dirty || onSaved) && (
           <div className="flex shrink-0 flex-wrap gap-2 max-sm:[&>*]:flex-1">
             {dirty && !saving && (
               <button

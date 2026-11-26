@@ -31,7 +31,7 @@ export default function Privacidade() {
       <ul>
         <li><strong>Cadastro:</strong> nome, e-mail, senha (guardada apenas como hash) e, se você entrar com Google ou Apple, o identificador e o e-mail fornecidos por esses serviços.</li>
         <li><strong>Empresa e cobrança:</strong> razão social ou nome, CPF ou CNPJ, endereço de cobrança, plano contratado e histórico de faturas. Os dados de pagamento são processados pelo parceiro de pagamentos ou pela loja de aplicativos; não armazenamos os dados completos do meio de pagamento.</li>
-        <li><strong>Contas de anúncio conectadas:</strong> quando você autoriza, pela Meta (anúncios no Facebook e no Instagram) e pelo Google Ads (GA4 em breve), recebemos tokens de acesso, os dados das contas de anúncio e as métricas das campanhas (investimento, impressões, cliques, conversões e receita), com os nomes e as prévias dos anúncios.</li>
+        <li><strong>Contas de anúncio conectadas:</strong> quando você autoriza, pela Meta (anúncios no Facebook e no Instagram) e pelo Google Ads (GA4 em breve), recebemos tokens de acesso, os dados das contas de anúncio e as métricas das campanhas (investimento, impressões, cliques, conversões e receita), com os nomes e as prévias dos anúncios. Das Páginas do Facebook e dos perfis do Instagram que você escolher, recebemos os números do perfil e dos posts (seguidores, alcance, visualizações e interações).</li>
         <li><strong>Conteúdo:</strong> dashboards, landing pages, logotipos e configurações que você cria.</li>
         <li><strong>WhatsApp:</strong> o número que você cadastrar para receber relatórios e alertas, se usar esse recurso.</li>
         <li><strong>Uso e segurança:</strong> endereço IP, tipo de navegador ou aparelho, data e hora de acesso, ações realizadas no Serviço e registros de login, mantidos para segurança e auditoria.</li>
@@ -57,7 +57,20 @@ export default function Privacidade() {
       </p>
       <p>As permissões que o app pede são:</p>
       <ul>
-        <li><strong>Meta:</strong> <code>ads_read</code> (ler os relatórios de anúncios), <code>ads_management</code> (aplicar as mudanças acima) e <code>business_management</code> (listar as contas de anúncio dos seus Business Managers).</li>
+        <li>
+          <strong>Meta</strong> (anúncios, Páginas do Facebook e Instagram):
+          <ul>
+            <li><code>ads_read</code>: ler as campanhas, os anúncios e as métricas das contas de anúncio que você escolher.</li>
+            <li><code>business_management</code>: listar os seus Business Managers e as contas de anúncio de cada um.</li>
+            <li><code>ads_management</code>: aplicar as mudanças descritas acima (pausar campanha, ajustar o orçamento diário).</li>
+            <li><code>pages_show_list</code>: listar as suas Páginas do Facebook e os perfis do Instagram ligados a elas.</li>
+            <li><code>read_insights</code>: ler os números das Páginas que você escolher (seguidores, visualizações e interações).</li>
+            <li><code>pages_read_engagement</code>: ler os posts dessas Páginas e as interações deles, para o ranking de conteúdo.</li>
+            <li><code>pages_read_user_content</code>: ler reações, comentários e compartilhamentos dos posts dessas Páginas, para o mesmo ranking.</li>
+            <li><code>instagram_basic</code>: ler o perfil do Instagram (nome e seguidores) e a lista de posts.</li>
+            <li><code>instagram_manage_insights</code>: ler o alcance, as visualizações e as interações do perfil, dos posts, dos reels e dos stories.</li>
+          </ul>
+        </li>
         <li><strong>Google:</strong> <code>https://www.googleapis.com/auth/adwords</code> (acessar as contas do Google Ads, para leitura e alterações) e <code>openid</code>, <code>email</code> e <code>profile</code> (mostrar qual login está conectado).</li>
       </ul>
 

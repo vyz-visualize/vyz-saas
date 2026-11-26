@@ -28,6 +28,8 @@ import { ImportSection } from "./ImportSection";
 import { manualIdLabel, MANUAL_PLATFORMS } from "./manual";
 import { PLATFORMS, type PlatformId } from "./platforms";
 import { plural } from "@/lib/format";
+import { unlimitedProjects } from "@/features/pricing/entitlements";
+import { useOptionalWorkspaceSession } from "@/features/workspace/WorkspaceProvider";
 
 const RETURN_PATH = "/painel/contas";
 
@@ -258,6 +260,11 @@ const toolGrid = "grid gap-3 @xl:grid-cols-2 @xl:gap-4 @5xl:grid-cols-3";
 
 export function AccountsPage({ state, manual, imported, result, now, timeZone, showTestBadges }: AccountsPageProps) {
   const [banner, setBanner] = useState(result);
+  // workspaces usados e contratados: a mesma fonte do cartão do plano na barra lateral (a sessão)
+  const session = useOptionalWorkspaceSession();
+  const projectsUsed = session?.usage.projects ?? state.projects.length;
+  const projectsLimit = session?.access.accountsQuantity ?? state.limit.accountsQuantity;
+  const projectsUnlimited = session?.access.tier ? unlimitedProjects(session.access.tier) : false;
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<AdAccountDTO | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -305,10 +312,18 @@ export function AccountsPage({ state, manual, imported, result, now, timeZone, s
 
       <section aria-label="Resumo das conexões" className="grid gap-px overflow-hidden rounded-card border border-line bg-line shadow-card @3xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <div className="bg-card p-4 sm:p-5">
-          <UsageBar used={state.limit.billableAccounts} limit={state.limit.accountsQuantity} label="Contas ativas × contratadas" />
+          {/* o plano conta workspaces; as contas têm limite dentro de cada workspace (o mesmo que o banco aplica) */}
+          {projectsUnlimited ? (
+            <p className="flex items-baseline justify-between gap-3 text-[13px]">
+              <span className="min-w-0 text-fg-2">Workspaces</span>
+              <span className="shrink-0 font-semibold text-fg tnum">{projectsUsed} · ilimitados</span>
+            </p>
+          ) : (
+            <UsageBar used={projectsUsed} limit={projectsLimit} label="Workspaces × contratados" />
+          )}
           <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[12.5px] leading-snug text-fg-2">
             <span>
-              Só as contas ligadas ocupam o plano.{" "}
+              {plural(state.limit.billableAccounts, "conta ligada", "contas ligadas")} (na Meta Ads, as da mesma BM contam como uma). Em cada workspace, até {plural(state.limit.maxAccountsPerPlatform, "conta", "contas")} de cada plataforma.{" "}
               <Link href="/painel/plano" className="font-semibold text-accent underline-offset-4 hover:underline">
                 Mudar o plano
               </Link>

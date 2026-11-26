@@ -110,7 +110,7 @@ export const PAGE_PLATFORM: Partial<Record<PageId, PlatformId>> = { "meta-ads": 
 /**
  * As páginas que as contas escolhidas pedem, na ordem das abas:
  *   - Visão geral primeiro quando há anúncio (com mais de uma fonte, ela une todas; com uma, é a dela);
- *   - Meta: página da Meta (com mais fontes, já com o público dentro) e Criativos; só com a Meta, Criativos e Público;
+ *   - Meta: página da Meta (com mais fontes), Criativos e Público (sempre que há Meta Ads: quem converte, por idade, gênero e região);
  *   - Google Ads: página do Google (com mais fontes) e Termos de pesquisa;
  *   - GA4: Site e, com anúncios, a Força dos canais;
  *   - CRM (RD Station, HubSpot, Pipedrive, Kommo): a página do CRM, cruzada com a mídia;
@@ -131,8 +131,8 @@ export function composePages(platforms: readonly string[], features: readonly Fe
   const many = sources > 1;
   // a Visão geral é de anúncios: sem Meta nem Google, o dashboard começa pelo site ou pelo orgânico
   const out: PageId[] = ads.length || sheets.length ? ["visao-geral"] : [];
-  // com a página da Meta, o público fica dentro dela; sem ela (só a Meta), ganha página própria
-  if (has("meta")) out.push(...(many ? (["meta-ads", "criativos"] as PageId[]) : (["criativos", "publico"] as PageId[])));
+  // o Público entra sempre que há Meta Ads (o login da Meta traz Instagram e Página junto: com mais fontes ele também fica)
+  if (has("meta")) out.push(...(many ? (["meta-ads", "criativos", "publico"] as PageId[]) : (["criativos", "publico"] as PageId[])));
   if (has("google")) out.push(...(many ? (["google-ads"] as PageId[]) : []), "termos");
   if (has("ga4")) out.push("site", ...(ads.length ? (["canais-site"] as PageId[]) : []));
   if (crm) out.push("crm");

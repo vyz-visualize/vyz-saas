@@ -29,15 +29,20 @@ describe("textos sobre permissão de acesso", () => {
     const privacy = read("src/app/(legal)/privacidade/page.tsx").replace(/\s+/g, " ");
     expect(privacy).toContain("autoriza leitura e alterações");
     for (const p of PAGES) expect(read(p), p).not.toMatch(/somente (de )?leitura/i);
-    const meta = read("src/server/integrations/providers/meta.ts");
-    for (const scope of ["ads_read", "ads_management", "business_management"]) {
-      expect(meta).toContain(scope);
+    // todas as permissões da Meta que o código usa (as da tela de conexão e a de leitura das interações do post)
+    const providers = read("src/features/integrations/providers.ts");
+    const organic = read("src/server/sync/live/organic.ts");
+    const docs = read("docs/PLATAFORMAS.md");
+    for (const scope of ["ads_read", "ads_management", "business_management", "pages_show_list", "read_insights", "pages_read_engagement", "instagram_basic", "instagram_manage_insights"]) {
+      expect(providers).toContain(`scope: "${scope}"`);
       expect(privacy).toContain(`<code>${scope}</code>`);
+      expect(docs).toContain(`\`${scope}\``);
     }
+    expect(organic).toContain("pages_read_user_content");
+    expect(privacy).toContain("<code>pages_read_user_content</code>");
+    expect(docs).toContain("`pages_read_user_content`");
     expect(read("src/server/integrations/providers/google.ts")).toContain('["openid", "email", "profile", ADWORDS_SCOPE]');
     for (const scope of ["https://www.googleapis.com/auth/adwords", "openid", "email", "profile"]) expect(privacy).toContain(`<code>${scope}</code>`);
-    // o app não pede permissão de páginas: os textos não falam em páginas conectadas
-    expect(privacy).not.toMatch(/páginas conectadas|pages_/);
     expect(read("src/app/(legal)/exclusao-de-dados/page.tsx")).not.toMatch(/páginas conectadas/);
   });
 

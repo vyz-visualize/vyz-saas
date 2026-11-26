@@ -59,7 +59,8 @@ function ProductAccountsPanel({ group, state, now, timeZone, onSelection }: Acco
       canSync={state.canSync}
       now={now}
       timeZone={timeZone}
-      saveLabel="Ativar e importar"
+      // um caminho só: o Continuar do passo ativa e importa o que estiver ligado em todos os blocos
+      savedByParent
       onSelectionChange={onChange}
     />
   );

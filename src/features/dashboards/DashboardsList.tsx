@@ -48,17 +48,13 @@ export function DashboardThumb({ d }: { d: Pick<DashboardListItem, "templateId" 
   );
 }
 
-/** Miniatura dos dashboards com dados reais: as contas que alimentam, sem consultar nada. */
+/** Miniatura dos dashboards com dados reais: as contas que alimentam, sem consultar nada (e sem desenho que pareça gráfico). */
 function LiveThumb({ d }: { d: DashboardListItem }) {
   const enabled = d.sources.filter((s) => s.isEnabled);
   return (
     <div className="relative flex h-[150px] flex-col justify-between overflow-hidden bg-surface-2/60 p-4">
-      <svg viewBox="0 0 300 80" preserveAspectRatio="none" className="absolute inset-x-0 bottom-0 h-20 w-full text-accent" aria-hidden>
-        <path d="M0 62 C40 58 60 40 100 44 S170 20 210 28 S270 12 300 8 L300 80 L0 80 Z" fill="currentColor" opacity="0.1" />
-        <path d="M0 62 C40 58 60 40 100 44 S170 20 210 28 S270 12 300 8" fill="none" stroke="currentColor" strokeWidth="2" />
-      </svg>
       <span className="inline-flex w-fit items-center gap-1.5 rounded-chip bg-accent-soft px-2 py-0.5 text-[11.5px] font-medium text-fg">
-        <Radio size={12} aria-hidden /> Dados reais
+        <Radio size={12} aria-hidden /> Dados reais{enabled.length ? ` · ${enabled.length} ${enabled.length === 1 ? "conta" : "contas"}` : ""}
       </span>
       <p className="relative line-clamp-2 text-[12.5px] text-fg-2">{enabled.length ? enabled.map((s) => s.name).join(" · ") : "Nenhuma conta ativa ligada"}</p>
     </div>
@@ -88,6 +84,12 @@ type Props = {
 export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier, pagesTier, openNew = false, brand, hasProject, workspaceName, used = items.length }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(openNew && canEdit && used < limit);
+  // ?novo=1 com a lista já montada (voltar para cá pelo Início, ou a página guardada pelo Next): abre também
+  const [seenOpenNew, setSeenOpenNew] = useState(openNew);
+  if (openNew !== seenOpenNew) {
+    setSeenOpenNew(openNew);
+    if (openNew && canEdit && used < limit) setCreating(true);
+  }
   const [removing, setRemoving] = useState<DashboardListItem | null>(null);
   const [switching, setSwitching] = useState<ChangeTemplateTarget | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -176,18 +178,13 @@ export function DashboardsList({ items, limit, planLabel, canEdit, sources, tier
               <li key={d.id} className="group relative flex flex-col overflow-hidden rounded-card border border-line bg-card transition-[border-color,box-shadow] duration-200 hover:border-fg-2/40 hover:shadow-pop">
                 <Link href={`/painel/dashboards/${d.id}`} className="flex flex-1 flex-col rounded-card outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset">
                   <div className="relative overflow-hidden border-b border-line">
-                    {d.live ? <LiveThumb d={d} /> : <DashboardThumb d={d} />}
-                    {!d.live && (
+                    {/* com conta ativa, a miniatura é neutra (as contas que alimentam): nada de números de exemplo num dashboard de dados reais */}
+                    {d.live || enabled.length ? <LiveThumb d={d} /> : <DashboardThumb d={d} />}
+                    {!d.live && !enabled.length && (
                       <span className="absolute bottom-2 left-2">
-                        {enabled.length ? (
-                          <Badge tone="ok" className="shadow-card ring-1 ring-line" title={enabled.map((s) => s.name).join(" · ")}>
-                            <Radio size={11} aria-hidden /> Dados reais · {enabled.length} {enabled.length === 1 ? "conta" : "contas"}
-                          </Badge>
-                        ) : (
-                          <Badge tone="neutral" className="bg-card ring-1 ring-line">
-                            Amostra
-                          </Badge>
-                        )}
+                        <Badge tone="neutral" className="bg-card ring-1 ring-line">
+                          Amostra
+                        </Badge>
                       </span>
                     )}
                   </div>

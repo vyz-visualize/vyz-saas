@@ -74,6 +74,7 @@ export async function getHomeData(): Promise<HomeData> {
       provider: p,
       name: PROVIDERS[p].name,
       connected: state.connected,
+      lapsed: !state.connected && state.connections.length > 0,
       enabledCount: enabled.length,
       accountsCount: state.accounts.length,
       lastSyncedAt: synced.length ? synced.reduce((a, b) => (a > b ? a : b)) : null,

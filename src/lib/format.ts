@@ -8,6 +8,8 @@ function groupThousands(n: number): string {
 
 /** Centavos → "R$ 1.234,56". */
 export function brl(cents: number, { decimals = true }: { decimals?: boolean } = {}): string {
+  // divisão por zero que escapou de quem chamou: "—", nunca "R$ Infinity,NaN"
+  if (!Number.isFinite(cents)) return "—";
   const rounded = Math.round(cents);
   const abs = Math.abs(rounded);
   const reais = Math.floor(abs / 100);
@@ -19,6 +21,7 @@ export function brl(cents: number, { decimals = true }: { decimals?: boolean } =
 
 /** Centavos → "R$ 80,1 mil" para valores grandes. */
 export function brlCompact(cents: number): string {
+  if (!Number.isFinite(cents)) return "—";
   const reais = cents / 100;
   if (reais >= 1_000_000) return `R$ ${decimal(reais / 1_000_000, 1)} mi`;
   if (reais >= 100_000) return `R$ ${int(reais / 1000)} mil`;
@@ -28,12 +31,14 @@ export function brlCompact(cents: number): string {
 
 /** 1234 → "1.234". */
 export function int(n: number): string {
+  if (!Number.isFinite(n)) return "—";
   const sign = n < 0 ? "−" : "";
   return sign + groupThousands(Math.abs(Math.round(n)));
 }
 
 /** 3.14159, 1 → "3,1". */
 export function decimal(n: number, digits = 1): string {
+  if (!Number.isFinite(n)) return "—";
   const fixed = Math.abs(n).toFixed(digits);
   const [i, d] = fixed.split(".");
   const sign = n < 0 ? "−" : "";
@@ -42,6 +47,7 @@ export function decimal(n: number, digits = 1): string {
 
 /** 0.082 → "8,2%". */
 export function pct(ratio: number, digits = 1): string {
+  if (!Number.isFinite(ratio)) return "—";
   return `${decimal(ratio * 100, digits)}%`;
 }
 

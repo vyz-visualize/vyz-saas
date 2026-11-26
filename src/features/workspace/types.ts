@@ -4,6 +4,7 @@ import type { PlatformId } from "@/features/accounts/platforms";
 import type { LandingContent } from "@/features/templates/landing-pages";
 import type { PageId } from "@/features/templates/types";
 import type { Brand } from "./workspace";
+import { localDate } from "@/features/sync/dates";
 
 export type PeriodId = "7d" | "30d" | "mes" | "custom";
 
@@ -63,14 +64,19 @@ export type LandingPage = {
 
 export type LandingDraft = Partial<LandingPage> & { step: number };
 
-export function periodDays(s: Pick<DashboardSettings, "period" | "customDays">, today = new Date()): number {
+/**
+ * Dias que o período cobre. "Este mês": até o dia de hoje no fuso de São Paulo (o mesmo do
+ * `today` do dashboard), nunca o relógio da máquina: o servidor (UTC) e o navegador (Brasil)
+ * dariam dias diferentes das 21h à meia-noite e o texto do período não bateria na hidratação.
+ */
+export function periodDays(s: Pick<DashboardSettings, "period" | "customDays">, today?: Date): number {
   switch (s.period) {
     case "7d":
       return 7;
     case "30d":
       return 30;
     case "mes":
-      return Math.max(1, today.getDate());
+      return Math.max(1, today ? today.getDate() : Number(localDate(new Date()).slice(8, 10)));
     case "custom":
       return Math.min(60, Math.max(3, s.customDays || 14));
   }
